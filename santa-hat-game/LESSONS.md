@@ -44,6 +44,9 @@ Read this before starting new work on the game. Add to it whenever something rea
 - **Built-in email only reaches the Supabase team.** Friends' sign-in emails fail until a custom SMTP
   service (e.g. Resend) is connected.
 
+- **Test tools kept outside the repo vanish with the session.** The browser tests lived in a temporary
+  scratch folder for weeks; a new Claude would have lost them. Anything worth rerunning goes in the repo.
+
 ## Multiplayer notes
 
 - This workspace can't open WebSockets (proxy limit), so live Supabase play can't be tested here.
