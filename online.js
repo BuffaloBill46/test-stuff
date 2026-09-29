@@ -602,8 +602,12 @@ const app = {
   get profile() { return profile; }, set profile(p) { profile = p; },
   setIdentity(name, a) { me.n = cleanName(name) || me.n; me.a = cleanAvatar(a); $('#name').value = me.n; $('#name').readOnly = !!profile; setPreview(me.a); },
   preview: (a) => setPreview(a),
-  onTab: () => { ui.lastBoard = ''; },
+  onTab: (tab) => {
+    ui.lastBoard = '';
+    if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js')).then((g) => g.showGames(tab === 'games'));
+  },
 };
+let gamesMod = null; // Games tab code loads the first time it's opened
 const tabs = initTabs(app);
 $('#loading')?.remove();
 frame();
