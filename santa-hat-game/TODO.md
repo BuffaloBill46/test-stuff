@@ -8,6 +8,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Email service so friends get sign-in emails:** connect Resend (free tier) to one of Cody's GoDaddy domains, then paste its SMTP settings into Supabase. Until then, email sign-in only reaches Supabase team members.
 - [ ] **Send the new tab design** (the image didn't come through).
 - [ ] **Level table:** how many rank points reach each level, and which items unlock at each.
+- [ ] **Santa Hat Games decisions:** starting pool amount, per-spin transactions vs a deposited balance, slots target payback %, and the 10 reel symbols.
 
 ## Next to build
 - [ ] **Unranked lobby:** pick FFA or TEAM, then Auto match, Private room (code), Practice vs bots, and the live games list with Watch now.
@@ -27,6 +28,15 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Ticket refill limit:** 10 extra per 24 hours.
 - [ ] **Lottery:** daily and weekly draws, provably fair, 90% to winners / 10% burned.
 - [ ] **Buying needs a wallet:** email-only accounts must link one first (linking already works).
+
+## Santa Hat Games tab
+- [ ] New **Games** tab next to Play / Store / Avatar / Ranks.
+- [ ] **Santa Hat Spin:** $0.10 and $1.00, a shared pool, the agreed odds, and an honest 800-slice wheel.
+- [ ] **Santa Hat Slots:** a visually stunning 3D reel with 10 symbols, $0.10 mini hat and $1.00 large hat bets, a shared pool.
+- [ ] **Provably fair results** and a pool safety rule (a spin only starts if the pool can cover 5× the bet).
+- [ ] **Entries split 90% to the pool, 10% burned.**
+- [ ] **Simulate a million spins** to prove the payback % before launch.
+- [ ] More click games from the idea list (Hat Drop, Present Pick, Sleigh Climb, Advent Scratch, Naughty or Nice).
 
 ## Later
 - [ ] Wager mode (players bet SANTA, FFA).

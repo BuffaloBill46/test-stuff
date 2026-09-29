@@ -76,6 +76,50 @@ per player in the pot (bots included), bots can win, and bots play under player-
 - A seasonal pass with a cosmetic reward track.
 - Extra daily-challenge rerolls.
 
+## Santa Hat Games tab (quick click games)
+
+### Decided
+- **Every entry on this tab:** 90% into the game pool, 10% burned.
+- **Santa Hat Spin:** $0.10 and $1.00 spins, paid in SANTA. Both sizes share one pool.
+  - Odds: 0x 50.5% · 1x 33% · 2x 10% · 3x 5% · 4x 1% · 5x 0.5% (adds up to 100%).
+  - A random spin wheel. Every outcome has at least 4 slices, spread around the wheel, not clumped in one spot.
+- **Santa Hat Slots:** a visually stunning slot machine. $0.10 "mini Santa hat" and $1.00 "large Santa hat"
+  bets, one shared pool. The reel needs 10 symbols.
+
+### Checked math (spin)
+- Average paid back per $1 spin: **$0.745**. The pool takes in $0.90, so it gains about **$0.155 per $1** over time.
+- Short-term swings are real: in 2,000 simulated runs of 500 × $1 spins, a pool starting at $0 dipped as low as
+  **−$24.50**. The pool needs a starting balance, plus a rule that a spin can only start if the pool can
+  cover its biggest possible win (5× the bet).
+- **An honest wheel:** 800 thin slices, sized to the real odds: 0x 404, 1x 264, 2x 80, 3x 40, 4x 8, 5x 4.
+  Every outcome gets at least 4 slices spread around the wheel, and what you see matches the real chances.
+
+### Proposals
+- **Provably fair results.** The server commits to a hidden seed before the spin, mixes in the player's own
+  seed, and reveals it afterwards, so anyone can check a result wasn't changed. The wheel then animates to
+  a random slice of the winning outcome.
+- **Paying per spin.** Either each spin is its own wallet transaction (simple and fully on-chain, but a
+  wallet popup every spin), or the player deposits a balance once and spins instantly (smoother, but we
+  hold player funds, which is a bigger responsibility). Cody's call.
+- **Slots paytable.** Set a target payback like the wheel's, then prove it with a million-spin simulation
+  before launch.
+- **Slot reel symbols (pick 10):** Santa Hat (top symbol), Pom-pom, Present, Snowball, Lantern, Pine Tree,
+  Snowman, Reindeer, Star, Coal (the "Naughty" dud). Alternates: Sleigh Bell, Candy Cane, Mitten,
+  Gorilla / Panda heads from the avatar store.
+- **More easy click games:**
+  - **Hat Drop:** drop a pom-pom through pine-tree pegs into multiplier slots (plinko style).
+  - **Present Pick:** choose 1 of 5 presents to reveal a multiplier.
+  - **Sleigh Climb:** a multiplier rises as the sleigh climbs; cash out before it crashes.
+  - **Advent Scratch Card:** scratch a snowy window to reveal a prize.
+  - **Naughty or Nice:** guess higher or lower on the next card.
+  - **Free daily spin:** a small free spin once a day to bring people back.
+
+### Open questions
+1. How much SANTA goes into the pool at the start (a real-money decision).
+2. Per-spin wallet transactions, or a deposited balance?
+3. The slots' target payback %, and which 10 symbols.
+4. Daily spend limits per player?
+
 ## Technical notes for when this gets built
 
 - The live games list needs a server-side list of running rooms (a lobby channel or a database table
