@@ -15,7 +15,7 @@ What changed from the plan below while building:
   of full-room play per month.
 - The free project pauses after about a week with no activity; un-pause it from the Supabase dashboard.
 - Idle players are sent home to save messages: after 3 minutes with no input (with a 20-second
-  "still there?" countdown), or after 1 minute with the game in the background. The room code
+  "still there?" countdown), or after 3 minutes with the game in the background. The room code
   stays filled in, so rejoining is one tap.
 - **Agreed scaling path:** when real traffic arrives, move to our own game server (roughly $5–10/month,
   no per-message billing, and it becomes the cheat-proof referee). Ask Cody before any spending.
