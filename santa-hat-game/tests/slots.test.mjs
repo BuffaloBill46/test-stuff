@@ -1,6 +1,6 @@
 // Santa Hat Slots rules: invariants asserted, plus the numbers a PAR sheet would list for the current (DRAFT) settings.
 // Run: node tests/slots.test.mjs
-import { MACHINES, SYMBOLS, SYM, IN_PER_DOLLAR, START_POOL, MAX_FIXED, stats, gridFor, evaluate, pull, stopsShowing } from '../mockups/slots.js';
+import { MACHINES, SYMBOLS, SYM, IN_PER_DOLLAR, START_POOL, SKIM_AT, SKIM, MAX_FIXED, stats, gridFor, evaluate, pull, stopsShowing } from '../mockups/slots.js';
 import { rng } from './rng.mjs';
 
 const fail = (m) => { console.error('FAIL:', m); process.exit(1); };
@@ -22,19 +22,20 @@ for (const m of Object.values(MACHINES)) {
   });
 }
 
-// Mini Hat: check EVERY possible set of reel stops against the exact PAR-sheet formula.
+// Exhaustive check of the win-reading code: a 3-reel copy of the Big Hat (same strips, same pays for 2–3 in a row,
+// middle row + diagonals) has few enough stop combinations to check every one against the exact PAR-sheet formula.
+// (The full 5-reel Big Hat has 45^5 ≈ 184 million, so it's checked by simulation below instead.)
 {
-  const m = MACHINES.mini, L = m.stripLen; let total = 0, top = 0, fullGrid = 0;
-  for (let a = 0; a < L; a++) for (let b = 0; b < L; b++) for (let c = 0; c < L; c++) {
-    const g = gridFor(m, [a, b, c]), w = evaluate(m, g); total += w.reduce((s, x) => s + x.pay, 0); top += w.filter((x) => x.top).length;
-    if (g.every((col) => col.every((x) => x === SYM.hat))) fullGrid++;
-  }
+  const B = MACHINES.big, m = { ...B, reels: 3, rows: 3, lines: [[1, 1, 1], [0, 0, 0], [2, 2, 2], [0, 1, 2], [2, 1, 0]], strips: B.strips.slice(0, 3),
+    pays: Object.fromEntries(Object.entries(B.pays).map(([id, p]) => [id, { 3: p[3] }])) };
+  const L = m.stripLen; let total = 0;
+  for (let a = 0; a < L; a++) for (let b = 0; b < L; b++) for (let c = 0; c < L; c++) total += evaluate(m, gridFor(m, [a, b, c])).reduce((s, x) => s + x.pay, 0);
   const exact = total / L ** 3 / m.bet, s = stats(m);
-  if (Math.abs(exact - s.payback) > 1e-9) fail(`Mini Hat: all-stops payback ${exact} ≠ formula ${s.payback}`);
-  if (Math.abs(top / L ** 3 - s.topPerLine * s.lines) > 1e-12) fail('Mini Hat: 100× line count mismatch');
-  if (fullGrid) fail('Mini Hat: reel stops alone produced a full grid of hats (that must only come from the pool jackpot)');
-  console.log(`Mini Hat: all ${L ** 3} reel stops checked; payback matches the formula exactly; no full grid of hats from the reels.`);
+  if (Math.abs(exact - s.payback) > 1e-9) fail(`3-reel check: all-stops payback ${exact} ≠ formula ${s.payback}`);
+  console.log(`Win reading: all ${(L ** 3).toLocaleString()} stops of a 3-reel test machine match the exact formula.`);
 }
+// No reel strip has two Santa Hats next to each other, so the reels alone can never show a full grid of hats.
+for (const m of Object.values(MACHINES)) m.strips.forEach((st, r) => st.forEach((x, i) => { if (x === SYM.hat && st[(i + 1) % st.length] === SYM.hat) fail(`${m.id} reel ${r}: two hats in a row at ${i}`); }));
 
 // PAR-sheet numbers (exact) + per-pull numbers (simulated) for each machine.
 for (const m of Object.values(MACHINES)) {
@@ -51,21 +52,23 @@ for (const m of Object.values(MACHINES)) {
     `100× line about 1 in ${Math.round(1 / (s.topPerLine * s.lines)).toLocaleString()}; pool jackpot about 1 in ${Math.round(N / Math.max(1, jp)).toLocaleString()} (set 1 in ${Math.round(1 / m.poolJackpotOdds).toLocaleString()})`);
 }
 
-// Shared pool: long runs of both machines (30% Big Hat pulls). Pool never negative; jackpot never beyond the pool.
-let paused = 0, capped = 0, jackpots = 0; const ends = [];
+// Slots pool over long runs: never negative, never pays beyond the pool, skims $25 to the treasury at $325.
+let paused = 0, capped = 0, jackpots = 0, skims = 0; const ends = [], jackAmts = [];
 for (let run = 0; run < 200; run++) {
   const st = { pool: START_POOL };
   for (let i = 0; i < 20000; i++) {
-    const mid = rand() < 0.3 ? 'big' : 'mini', before = st.pool, r = pull(st, mid, rand);
+    const before = st.pool, r = pull(st, 'big', rand);
     if (r.paused) { paused++; continue; }
     if (r.capped) capped++;
-    if (r.jackpot) jackpots++;
-    if (r.pay > before + MACHINES[mid].bet * IN_PER_DOLLAR + 1e-9) fail('paid more than the pool held');
+    if (r.jackpot) { jackpots++; jackAmts.push(r.pay); }
+    if (r.skim) { skims++; if (st.pool < SKIM_AT - SKIM - 1e-9 || st.pool >= SKIM_AT) fail('skim left the pool out of range'); }
+    if (st.pool >= SKIM_AT) fail('pool should never sit at or above the skim point');
+    if (r.pay > before + MACHINES.big.bet * IN_PER_DOLLAR + 1e-9) fail('paid more than the pool held');
     if (st.pool < -1e-9) fail('pool went negative');
     if (Math.abs(r.received - r.pay * 0.97) > 1e-9) fail('winner should receive the pay minus 3%');
   }
   ends.push(st.pool);
 }
-ends.sort((a, b) => a - b);
-console.log(`Shared pool, 200 runs × 20,000 pulls from $${START_POOL}: median end $${ends[100].toFixed(0)}, lowest $${ends[0].toFixed(0)}; ${jackpots} jackpots; ${paused} paused pulls; ${capped} capped wins`);
+ends.sort((a, b) => a - b); jackAmts.sort((a, b) => a - b);
+console.log(`Slots pool, 200 runs × 20,000 pulls from $${START_POOL}: median end $${ends[100].toFixed(0)}, lowest $${ends[0].toFixed(0)}; ${skims} skims of $${SKIM}; ${jackpots} pool jackpots (median $${(jackAmts[jackAmts.length >> 1] || 0).toFixed(2)}); ${paused} paused pulls; ${capped} capped wins`);
 console.log('OK: strips, paylines, all-stops check, pool invariants');

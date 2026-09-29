@@ -1,7 +1,7 @@
 // Tuning helper for the Slots draft. For each reel mix it keeps the Santa Hat line at 100× the price, scales a fixed
 // "shape" of all the other prizes so line wins pay back TARGET, rounds to tidy numbers, then simulates real pulls
 // for win rates. Run: node tests/slots-tune.mjs   (paste the chosen counts/pays into mockups/slots.js)
-import { MACHINES, gridFor, evaluate } from '../mockups/slots.js';
+import { MACHINES, gridFor, evaluate, stats } from '../mockups/slots.js';
 import { rng } from './rng.mjs';
 
 const TARGET = 0.75, rand = rng(5);
@@ -14,12 +14,8 @@ const SHAPE = {
   },
 };
 
-// Exact payback of a pay table for a reel mix (a PAR-sheet sum): lines × Σ P(exactly n in a row from the left) × prize.
-function payback(m, counts, pays) {
-  const L = Object.values(counts).reduce((a, b) => a + b, 0); let b = 0;
-  for (const [id, p] of Object.entries(pays)) for (const [n, x] of Object.entries(p)) { const f = (counts[id] || 0) / L; b += Math.pow(f, +n) * (+n < m.reels ? 1 - f : 1) * x; }
-  return b * m.lines.length;
-}
+// Exact payback of a pay table for a reel mix, using the game's own (wild-aware) PAR-sheet math.
+function payback(m, counts, pays) { return stats({ ...m, counts, pays }).payback; }
 export function tune(id, counts) {
   const m = MACHINES[id], top = { hat: { [m.reels]: 100 } };
   const k = (TARGET - payback(m, counts, top)) / payback(m, counts, SHAPE[id]);
