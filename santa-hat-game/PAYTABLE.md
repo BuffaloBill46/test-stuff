@@ -13,7 +13,7 @@
 | Pays back | **74.9%** of what's played: line prizes 65.2% + hat bonus 9.6% (exact, from the reel math) |
 | Hat bonus | **Every Santa Hat anywhere on the grid pays $0.05**, on top of line prizes (about 1.9 hats a pull on average) |
 | Pays something | **90.2%** of pulls: 61.3% are micro wins (less than the $1 pull back), 29.0% come out ahead |
-| Pool jackpot | Its own draw: **1 in 2,500 pulls**. Pays **10% of the Slots pool**; all 25 squares show Santa Hats |
+| Pool jackpot | Its own draw: **1 in 2,500 pulls**. Pays **25% of the Slots pool**; all 25 squares show Santa Hats |
 | Winners receive | The prize minus SANTA's **3% token tax** (a $100 prize arrives as $97.00) |
 
 ## Payout table
@@ -55,6 +55,24 @@ The hat bonus is listed at the bottom.
 | **Total** | | | | | | **74.86%** |
 
 Coal pays nothing (it's the dud). Pool jackpot not included above (it's paid from the pool and grows with it).
+
+## What a normal pull pays (pool jackpot not included)
+
+Simulated 399,845 pulls. Biggest normal pull seen: **$110.20** (several lines at once can pass $100).
+
+| A pull pays | How often |
+|---|---|
+| $0 (nothing) | 9.75% (1 in 10) |
+| 5¢ to 99¢ (hat nickels, less than the pull back) | 61.28% (1 in 2) |
+| $1 to $1.99 | 16.69% (1 in 6) |
+| $2 to $4.99 | 10.54% (1 in 9) |
+| $5 to $9.99 | 1.52% (1 in 66) |
+| $10 to $24.99 | 0.19% (1 in 531) |
+| $25 to $49.99 | 0.03% (1 in 2,919) |
+| $50 to $99.99 | 0.00% (not seen in this sample) |
+| $100 and up | 0.00% (1 in 26,656) |
+
+The pool jackpot (25% of the pool, 1 in 2,500) comes on top of these.
 
 ## Santa Hat is WILD
 
@@ -107,9 +125,9 @@ Nothing is staged.
 
 - Starts at **$250.00** in the demo. A pull only starts if the pool can cover the biggest line prize ($100.00).
 - When the pool reaches **$1025.00**, **$25.00** goes to the treasury (arrives as $24.25).
-- Simulated 60 runs × 20,000 pulls from $250.00: the pool's lowest point in any run was **$150.35**;
-  **0 pulls were refused** (pool too low); pools settled around **$1000.54**; the pool jackpot's typical
-  size was **$97.38**; the treasury received about **$1066.60 per 20,000 pulls**.
+- Simulated 60 runs × 20,000 pulls from $250.00: the pool's lowest point in any run was **$117.88**;
+  **0 pulls were refused** (pool too low); pools settled around **$843.74**; the pool jackpot's typical
+  size was **$192.45**; the treasury received about **$430.84 per 20,000 pulls**.
 - If the pool ever did drop under $100.00, pulls would stop and nothing would refill it; a treasury refill rule
   (e.g. top it back up to $250) is the safety net. With the $1025 skim point this hasn't happened in simulation.
 

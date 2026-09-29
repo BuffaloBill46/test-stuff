@@ -147,11 +147,11 @@ $50 start). **The slots paytable is a placeholder** (spin's 1×–4× fixed wins
   only every 3–4 pulls. Reels carry 20 Coal each so line wins come less often.
 - **Pays back 74.9%** (target 75%): line prizes 65.2% + hat bonus 9.6%. **A win over $1 on 29% of pulls (about 1 in 3.5)**;
   90% of pulls pay something (the rest are hat-bonus nickels). 100× line about 1 in 24,750 pulls.
-- **Pool jackpot is separate:** its own draw (draft 1 in 2,500 pulls), pays 10% of the Slots pool, and **all 25 squares show
+- **Pool jackpot is separate:** its own draw (draft 1 in 2,500 pulls), **pays 25% of the Slots pool** (Cody; typically about $190), and **all 25 squares show
   Santa Hats**. The reels alone can never make a full grid of hats.
 - **Slots pool skim (Cody): when it reaches $1,025, $25 goes to the treasury.** Demo start: $250 (must cover the $100 top prize).
-  Simulated: no refused pulls; pools settle around $1,000; the pool jackpot is typically about $97; the treasury gets about
-  $1,070 per 20,000 pulls. Lowest point seen: about $150, early while the pool builds from $250.
+  Simulated with the 25% jackpot: no refused pulls; pools settle around $850; the pool jackpot is typically about $190; the
+  treasury gets about $430 per 20,000 pulls. Lowest point seen: about $118, so the refill safety net matters more.
 - Teasers happen naturally at their real odds (e.g. 4 hats then something else: about 1 in 1,260 pulls). Nothing is staged.
 - **Open, Cody:**
   (1) Refill safety net. Below $100 the game would lock (only pulls refill the pool). With the $1,025 skim it never

@@ -11,11 +11,15 @@ const pct = (x, d = 1) => (x * 100).toFixed(d) + '%';
 const usd = (x) => '$' + x.toFixed(2);
 
 // simulated per-pull numbers (lines overlap, so these need a simulation)
-const N = 400000, st = { pool: 1e12, skimAt: Infinity }; let hit = 0, micro = 0, ahead = 0, back = 0, jp = 0;
+const N = 400000, st = { pool: 1e12, skimAt: Infinity }; let hit = 0, micro = 0, ahead = 0, back = 0, jp = 0, maxPay = 0;
+const BANDS = [[0, 0, '$0 (nothing)'], [0.01, 0.99, '5¢ to 99¢ (hat nickels, less than the pull back)'], [1, 1.99, '$1 to $1.99'], [2, 4.99, '$2 to $4.99'],
+  [5, 9.99, '$5 to $9.99'], [10, 24.99, '$10 to $24.99'], [25, 49.99, '$25 to $49.99'], [50, 99.99, '$50 to $99.99'], [100, Infinity, '$100 and up']];
+const bandCount = BANDS.map(() => 0);
 const tease = { 2: 0, 3: 0, 4: 0 };
 for (let i = 0; i < N; i++) {
   const r = pull(st, 'big', rand); if (r.jackpot) { jp++; continue; }
-  const pay = r.pay; back += pay;
+  const pay = r.pay; back += pay; maxPay = Math.max(maxPay, pay);
+  { const p = Math.round(pay * 100) / 100; bandCount[BANDS.findIndex(([lo, hi]) => p >= lo - 1e-9 && p <= hi + 1e-9)]++; }
   if (pay > 0) hit++; if (pay > m.bet + 1e-9) ahead++; else if (pay > 0) micro++;
   // teasers: the longest run of Santa Hats from the left on any line, when it falls short of 5
   let best = 0; for (const rows of m.lines) { let n = 0; while (n < m.reels && r.grid[n][rows[n]] === 0) n++; best = Math.max(best, n); }
@@ -74,6 +78,16 @@ ${rowsOut.join('\n')}
 | **Total** | | | | | | **${pct(total + s.hatPayback, 2)}** |
 
 Coal pays nothing (it's the dud). Pool jackpot not included above (it's paid from the pool and grows with it).
+
+## What a normal pull pays (pool jackpot not included)
+
+Simulated ${(N - jp).toLocaleString()} pulls. Biggest normal pull seen: **${usd(maxPay)}** (several lines at once can pass $100).
+
+| A pull pays | How often |
+|---|---|
+${BANDS.map(([, , label], i) => `| ${label} | ${pct(bandCount[i] / (N - jp), 2)} (${bandCount[i] ? oneIn(bandCount[i] / (N - jp)) : 'not seen in this sample'}) |`).join('\n')}
+
+The pool jackpot (${m.jackpotPct * 100}% of the pool, ${oneIn(m.poolJackpotOdds)}) comes on top of these.
 
 ## Santa Hat is WILD
 

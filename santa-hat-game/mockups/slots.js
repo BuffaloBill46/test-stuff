@@ -45,7 +45,7 @@ const LINES_5 = [
 // pays: { in-a-row count: × the pull price } for a line. Only the longest run on a line pays.
 export const MACHINES = {
   big: {
-    id: 'big', name: 'Big Hat', bet: 1.00, reels: 5, rows: 5, lines: LINES_5, jackpotPct: 0.10, poolJackpotOdds: 1 / 2500, hatBonus: 0.05,
+    id: 'big', name: 'Big Hat', bet: 1.00, reels: 5, rows: 5, lines: LINES_5, jackpotPct: 0.25, poolJackpotOdds: 1 / 2500, hatBonus: 0.05,
     counts: { hat: 5, star: 3, reindeer: 3, snowman: 4, present: 4, lantern: 5, pine: 6, bell: 7, snowball: 8, coal: 20 },
     pays: { // every line prize is more than the $1 pull
       hat: { 5: 100, 4: 10, 3: 2.5 }, star: { 5: 25, 4: 6, 3: 2 }, reindeer: { 5: 15, 4: 4, 3: 1.7 }, snowman: { 5: 9, 4: 3, 3: 1.5 },
