@@ -30,7 +30,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Buying needs a wallet:** email-only accounts must link one first (linking already works).
 
 ## Santa Hat Games tab
-- [ ] New **Games** tab next to Play / Store / Avatar / Ranks.
+- [ ] New **Games** tab next to Play / Store / Avatar / Ranks. All games here are **single-player**.
 - [ ] **Santa Hat Spin:** $0.10 and $1.00, a shared pool, the agreed odds, and an honest 800-slice wheel.
 - [ ] **Santa Hat Slots:** a visually stunning 3D reel with 10 symbols, $0.10 mini hat and $1.00 large hat bets, a shared pool.
 - [ ] **Provably fair results** and a pool safety rule (a spin only starts if the pool can cover 5× the bet).

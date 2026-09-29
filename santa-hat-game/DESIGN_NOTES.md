@@ -79,6 +79,7 @@ per player in the pot (bots included), bots can win, and bots play under player-
 ## Santa Hat Games tab (quick click games)
 
 ### Decided
+- **Single-player fun games:** each player plays on their own, with no rooms or opponents. They don't use the live multiplayer connection, so they cost no Supabase messages.
 - **Every entry on this tab:** 90% into the game pool, 10% burned.
 - **Santa Hat Spin:** $0.10 and $1.00 spins, paid in SANTA. Both sizes share one pool.
   - Odds: 0x 50.5% · 1x 33% · 2x 10% · 3x 5% · 4x 1% · 5x 0.5% (adds up to 100%).
