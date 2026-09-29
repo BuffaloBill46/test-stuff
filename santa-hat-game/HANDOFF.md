@@ -58,6 +58,8 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
   everything so far). GitHub access comes through the Claude GitHub app.
 - The free project **pauses after about a week unused.** Un-pause it from the Supabase dashboard.
 - **SANTA has a 3% transfer tax** built into the token. Every payment design must account for it (DESIGN_NOTES → SANTA's 3% tax).
+  Winners absorb it, and it must be stated on the Play page and at the top of every SANTA game's description.
+- **Three pool wallets to start** (Spin, Slots, Lottery), keys only on the server. Not created yet.
 - Money: nothing paid is live. No wallet has ever been charged. Keep it that way until Cody signs off.
 
 ## How to test (run these before you call anything done)
@@ -91,7 +93,8 @@ between two devices has never been tested from here. Cody and friends testing on
 
 **Last updated:** 2026-09-29.
 
-**Just finished:** unranked lobby (FFA/TEAM, Auto match into public rooms `PF1-5`/`PT1-5`, private code,
+**Just finished (latest):** 3% SANTA tax notices (Play intro, Wager card, Lottery); decisions recorded:
+winners absorb the tax, 3 pool wallets. **Before that:** unranked lobby (FFA/TEAM, Auto match into public rooms `PF1-5`/`PT1-5`, private code,
 practice), the FFA RANKED lobby layout (Tournament greyed out; Auto match shows "opening soon" and is off),
 and the live games list with **Watch now** (max 4 watchers). Tested and published.
 
@@ -102,8 +105,9 @@ and the live games list with **Watch now** (max 4 watchers). Tested and publishe
 3. The level table (points per level, what unlocks).
 4. The Slots paytable and 10 symbols. Cody is drafting; Claude checks the payback with a simulation.
 5. Confirm the Games daily limit is **dollars** per game per day ($10 at level 1, +$10 per level).
-6. Winners' payouts and the 3% SANTA tax: winner absorbs it, or pool tops it up (see DESIGN_NOTES).
-7. The price cushion (proposal: 60-second quote, accept within 2%).
+6. The price cushion (proposal: 60-second quote, accept within 2%).
+7. Which wallet is the treasury, and when to create and fund the 3 pool wallets (Spin, Slots, Lottery).
+   That's real money, so wait for Cody's go.
 
 **Next up (Claude can start without Cody):** see "Next to build" in `TODO.md`. The Santa Hat Games tab UI
 (Spin wheel with the agreed 400-slice odds) can be built as a free demo with no money attached. Anything

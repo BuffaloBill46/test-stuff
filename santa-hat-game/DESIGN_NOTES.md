@@ -72,15 +72,35 @@ per player in the pot (bots included), bots can win, and bots play under player-
   transaction burns directly and sends straight to each final wallet.
 - **Moving our own SANTA is taxed too:** seeding a $50 pool takes about $51.55 sent.
 
-#### Open question for Cody: winners' payouts are taxed too
-Paying a winner from the pool is a transfer, so 3% comes off. Two ways (both keep the pool healthy;
-simulated 5,000 × 3,000 $1 spins from a $50 start, zero pauses either way):
-- **A. Winner absorbs it:** a 2× win sends $2.00, the player receives $1.94. Players get back 72.3¢ per $1 on
-  average; the pool keeps 13.1¢.
-- **B. Pool tops it up (Claude's pick):** the pool sends $2.06 so the player receives the full $2.00, matching
-  what the wheel shows. Players get back 74.5¢ per $1; the pool keeps 10.8¢. The "must cover the biggest win"
-  rule then needs 5.16× the bet, not 5×.
-The same choice applies to lottery prizes.
+#### Winners' payouts: the player eats the 3% (decided)
+Paying a winner from a pool is a transfer, so 3% comes off. **Cody's call: the winner absorbs it** ("all SANTA
+holders know it"). A 2× win on $1 sends $2.00 and the player receives $1.94. Same for lottery prizes and wagers.
+- Players get back 72.3¢ per $1 spun on average; the pool keeps about 13.1¢. Simulated 5,000 × 3,000 $1 spins
+  from a $50 start: zero pauses. The "must cover the biggest win" rule stays at 5× the bet.
+- (Rejected: the pool tops up winners so they receive the full amount.)
+- **The tax must be written where players read about the game:** the Play page intro, and the top of every
+  game description that pays out SANTA. Done: Play page intro, Wager card, Lottery block. To do: Spin and Slots
+  pages when the Games tab is built.
+
+### Pool wallets ("escrows") (decided: 3 to start)
+Cody wants only 2–3 to start:
+1. **Spin pool.** Takes 90% of spin entries after the tax; pays spin winners.
+2. **Slots pool.** Same for slots.
+3. **Lottery pool.** Holds SANTA lottery entries; pays the draw winners.
+Burns need no wallet (they're destroyed straight from the player's wallet). The **treasury** is a separate
+wallet that only receives. Which wallet that is, is Cody's call (see TODO).
+
+How the pool wallets are controlled (options; Claude's pick marked):
+- **A. A plain wallet whose key lives only on our server (pick, for all three to start).** The server pays winners
+  automatically, which instant spins need. Cheapest and quickest. Risk: if the server key leaked, that one
+  pool could be drained. That's why the pools stay separate and small: anything above a set cap gets swept
+  to the treasury.
+- **B. A shared-approval wallet (multisig, e.g. Squads).** Payouts need Cody's approval too. Too slow for spins,
+  but workable for the lottery (a payout once a day or week). A good upgrade for the lottery later.
+- **C. A custom on-chain program (smart contract).** Rules enforced by code, most trustworthy, but it needs a
+  professional security audit, which costs real money and time. Only if the game grows big.
+Each wallet also needs a little SOL (Solana's own coin) to pay network fees. **Creating and funding them is a
+real-money step: not done, waits for Cody.** The keys never go in the website or the repo.
 
 ### How to make it work (proposals)
 - **One transaction does the whole split.** When a player buys, their wallet signs a single transaction
