@@ -30,6 +30,9 @@ export const ITEMS = [
   { id: 'face_shades', slot: 'face', name: 'Shades', face: 'shades', level: 4 },
   { id: 'face_beard', slot: 'face', name: 'Big Beard', face: 'beard', level: 6 },
   { id: 'face_mask', slot: 'face', name: 'Scarf Mask', face: 'mask', price: 0.30 },
+  { id: 'face_gorilla', slot: 'face', name: 'Gorilla', face: 'gorilla', price: 0.50 },
+  { id: 'face_snowman', slot: 'face', name: 'Snowman', face: 'snowman', price: 0.50 },
+  { id: 'face_panda', slot: 'face', name: 'Panda', face: 'panda', price: 0.50 },
 
   { id: 'skin_1', slot: 'skin', name: 'Tone 1', color: 0xf0c7a0, level: 1 },
   { id: 'skin_2', slot: 'skin', name: 'Tone 2', color: 0xe8b894, level: 1 },

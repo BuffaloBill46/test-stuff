@@ -22,6 +22,9 @@ insert into public.items (id, slot, name, unlock_level, price_usd) values
   ('face_shades', 'face', 'Shades', 4, null),
   ('face_beard', 'face', 'Big Beard', 6, null),
   ('face_mask', 'face', 'Scarf Mask', null, 0.3),
+  ('face_gorilla', 'face', 'Gorilla', null, 0.5),
+  ('face_snowman', 'face', 'Snowman', null, 0.5),
+  ('face_panda', 'face', 'Panda', null, 0.5),
   ('skin_1', 'skin', 'Tone 1', 1, null),
   ('skin_2', 'skin', 'Tone 2', 1, null),
   ('skin_3', 'skin', 'Tone 3', 1, null),
@@ -34,4 +37,4 @@ insert into public.items (id, slot, name, unlock_level, price_usd) values
   ('snow_gold', 'snow', 'Gilded', 5, null),
   ('snow_ember', 'snow', 'Ember', null, 0.25)
 on conflict (id) do update set slot = excluded.slot, name = excluded.name, unlock_level = excluded.unlock_level, price_usd = excluded.price_usd;
-delete from public.items where id not in ('shirt_red', 'shirt_blue', 'shirt_green', 'shirt_gold', 'shirt_violet', 'shirt_teal', 'shirt_pink', 'shirt_snow', 'shirt_coal', 'shirt_ember', 'pants_navy', 'pants_brown', 'pants_grey', 'pants_green', 'pants_red', 'pants_snow', 'face_dots', 'face_smile', 'face_wow', 'face_wink', 'face_shades', 'face_beard', 'face_mask', 'skin_1', 'skin_2', 'skin_3', 'skin_4', 'skin_5', 'snow_white', 'snow_ice', 'snow_pink', 'snow_green', 'snow_gold', 'snow_ember');
+delete from public.items where id not in ('shirt_red', 'shirt_blue', 'shirt_green', 'shirt_gold', 'shirt_violet', 'shirt_teal', 'shirt_pink', 'shirt_snow', 'shirt_coal', 'shirt_ember', 'pants_navy', 'pants_brown', 'pants_grey', 'pants_green', 'pants_red', 'pants_snow', 'face_dots', 'face_smile', 'face_wow', 'face_wink', 'face_shades', 'face_beard', 'face_mask', 'face_gorilla', 'face_snowman', 'face_panda', 'skin_1', 'skin_2', 'skin_3', 'skin_4', 'skin_5', 'snow_white', 'snow_ice', 'snow_pink', 'snow_green', 'snow_gold', 'snow_ember');
