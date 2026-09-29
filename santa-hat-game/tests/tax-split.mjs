@@ -24,3 +24,23 @@ for (const gross of [false, true]) {
   finals.sort((a, b) => a - b);
   console.log(`payouts ${gross ? 'topped up so winner gets full amount' : 'winner absorbs the 3%'}: pool keeps ${((poolIn - cost)*100).toFixed(1)}c per $1 | player gets back avg ${((gross?ev:ev*(1-FEE))*100).toFixed(1)}c | runs that paused ${pauses}/${runs} | median end $${finals[runs/2|0].toFixed(0)}, worst 1% $${finals[runs/100|0].toFixed(0)}`);
 }
+
+// Spin pool skim (decided): when the Spin pool reaches $175, $25 goes to the treasury (arrives $24.25 after the tax).
+// Invariant asserted: the pool never drops below zero and never pauses; after a skim it is back to $150.
+{
+  let pauses = 0, skims = 0, low = Infinity;
+  for (let r = 0; r < 2000; r++) {
+    let pool = 50;
+    for (let i = 0; i < 5000; i++) {
+      const bet = Math.random() < 0.3 ? 1 : 0.10;
+      if (pool < 5 * bet) { pauses++; continue; }
+      pool += bet * poolIn;
+      let u = Math.random(), m = 0; for (const [k, p] of ODDS) { if ((u -= p) < 0) { m = k; break; } }
+      pool -= m * bet;
+      if (pool < 0) throw new Error('INVARIANT BROKEN: spin pool went negative');
+      if (pool >= 175) { pool -= 25; skims++; if (pool < 150 - 1e-9) throw new Error('skim left pool under $150'); }
+      low = Math.min(low, pool);
+    }
+  }
+  console.log(`spin skim ($25 to treasury at $175): ${skims} skims in 2000 runs x 5000 spins, lowest pool $${low.toFixed(2)}, paused ${pauses}; treasury receives $${(25 * (1 - FEE)).toFixed(2)} per skim`);
+}

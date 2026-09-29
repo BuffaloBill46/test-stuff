@@ -134,8 +134,9 @@ $50 start). **The slots paytable is a placeholder** (spin's 1×–4× fixed wins
 - Everything in the Slots pool eventually goes back to Slots players. The game "keeps" the 10% burn.
 - Zero paused plays in every run. The pool never went below zero (checked on every play as an assertion).
 - Winners absorb the 3% tax (decided), jackpots included.
-- The **Spin pool** has no jackpot, so it keeps growing slowly (about 13¢ per $1 spun). With $50 it has never needed to pause
-  in simulation. Since it only grows, it's worth deciding one day what happens to a big Spin pool.
+- The **Spin pool** has no jackpot, so it would keep growing (about 13¢ per $1 spun). **Cody's rule (decided): when the
+  Spin pool reaches $175, $25 goes to the treasury** (arrives as $24.25 after the tax), which puts it back at $150.
+  Simulated in `tests/tax-split.mjs`: 2,000 runs × 5,000 spins from $50, zero pauses, and the pool never went below zero.
 
 **Proposals to confirm (Claude's picks):**
 1. **The jackpot scales with the bet:** a large hat ($1) wins the full %, a mini hat ($0.10) a tenth of it.

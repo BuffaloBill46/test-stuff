@@ -34,6 +34,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 
 ## Santa Hat Games tab
 - [ ] New **Games** tab next to Play / Store / Avatar / Ranks. All games here are **single-player**.
+- [ ] **Spin pool skim:** when the Spin pool reaches $175, the server sends $25 to the treasury (decided).
 - [ ] **Santa Hat Spin:** $0.10 and $1.00, its own Spin pool seeded with **$50**, the agreed odds (unchanged, no jackpot), a 400-slice wheel (5x = 2 slices, 4x = 4), pay per spin.
 - [ ] **Santa Hat Slots:** a visually stunning 3D reel with 10 symbols, $0.10 mini hat and $1.00 large hat bets, its own Slots pool seeded with **$50**, pay per spin.
 - [ ] **Slots jackpot = a % of the Slots pool** (decided; Slots only). Confirm Claude's picks in DESIGN_NOTES → Spin and Slots pools: scales with bet, 10%, top line, live jackpot display.
