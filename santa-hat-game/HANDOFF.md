@@ -59,7 +59,7 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
 - The free project **pauses after about a week unused.** Un-pause it from the Supabase dashboard.
 - **SANTA has a 3% transfer tax** built into the token. Every payment design must account for it (DESIGN_NOTES → SANTA's 3% tax).
   Winners absorb it, and it must be stated on the Play page and at the top of every SANTA game's description.
-- **Pool wallets:** one games pool shared by Spin and Slots (key only on the server), plus a new treasury wallet Cody is making. The
+- **Pool wallets:** a Spin pool and a separate Slots pool (keys only on the server), plus a new treasury wallet Cody is making. The
   lottery runs on Cody's own on-chain lottery program (or manually). None of these are hooked up yet.
 - Money: nothing paid is live. No wallet has ever been charged. Keep it that way until Cody signs off.
 
@@ -96,8 +96,8 @@ between two devices has never been tested from here. Cody and friends testing on
 **Last updated:** 2026-09-29.
 
 **Just finished (latest):** 3% SANTA tax notices (Play intro, Wager card, Lottery); decisions recorded:
-winners absorb the tax, a 2% price cushion, Spin/Slots pool wallets, and the lottery goes through Cody's own program. One games pool
-shared by Spin and Slots keeps all funds; only Slots has a jackpot (a % of the pool); Spin unchanged (`tests/jackpot-sim.mjs`). **Before that:** unranked lobby (FFA/TEAM, Auto match into public rooms `PF1-5`/`PT1-5`, private code,
+winners absorb the tax, a 2% price cushion, Spin/Slots pool wallets, and the lottery goes through Cody's own program. Spin and Slots
+are separate games with separate pools that keep all funds; only Slots has a jackpot (a % of the Slots pool); Spin unchanged (`tests/jackpot-sim.mjs`). **Before that:** unranked lobby (FFA/TEAM, Auto match into public rooms `PF1-5`/`PT1-5`, private code,
 practice), the FFA RANKED lobby layout (Tournament greyed out; Auto match shows "opening soon" and is off),
 and the live games list with **Watch now** (max 4 watchers). Tested and published.
 
@@ -109,10 +109,10 @@ and the live games list with **Watch now** (max 4 watchers). Tested and publishe
 4. The Slots paytable and 10 symbols. Cody is drafting; Claude checks the payback with a simulation.
 5. Confirm the Games daily limit is **dollars** per game per day ($10 at level 1, +$10 per level).
 6. The treasury wallet's public address (Cody is making a new wallet), and when to create and fund the
-   shared games pool wallet. That's real money, so wait for Cody's go.
+   Spin pool and Slots pool wallets. That's real money, so wait for Cody's go.
 7. Where Cody's on-chain lottery program lives (built, on devnet, from Cody's other Claude session). The
    lottery uses that or runs manually. Don't build a separate one.
-8. The Slots jackpot details (DESIGN_NOTES → Games pool): scales with bet? what %? Claude's picks are written
+8. The Slots jackpot details (DESIGN_NOTES → Spin and Slots pools): scales with bet? what %? Claude's picks are written
    there. Spin is final as is, with no jackpot.
 
 **Next up (Claude can start without Cody):** see "Next to build" in `TODO.md`. The Santa Hat Games tab UI
