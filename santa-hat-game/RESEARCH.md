@@ -68,3 +68,36 @@ Recommended next, in rough order of value for the effort:
 - **No wallet or token hookup**, on purpose (see the real-money note at the top).
 - Tested in a headless browser without a GPU, which ran at about 8 frames a second. Game logic was verified (rounds start, score, end), but **how it feels at a full 60 fps on a real phone hasn't been checked yet**. That's the next thing to test.
 - Balance numbers (speeds, gust timing, points) are first guesses.
+
+## Slot machines: how the good ones are built (researched 2026-09-29)
+
+**How the odds work (PAR sheets).** Real slots are defined by a "PAR sheet": the symbols on each reel strip plus a
+paytable. A random number picks where each reel stops; the odds come from how many of each symbol sit on each strip.
+Payback (RTP) and hit frequency are calculated exactly from those counts. Makers change payback by changing symbol
+counts, not the look. ([CDS Press / Harrigan & Dixon](https://cdspress.ca/wp-content/uploads/2022/08/Kevin-A.-Harrigan-Mike-Dixon-.pdf),
+[Easy Vegas](https://easy.vegas/games/slots/par-sheets), [Know Your Slots](https://www.knowyourslots.com/understanding-par-sheets-and-payback/))
+- Symbol order on a strip doesn't change the odds, only the counts do.
+- More paylines don't change payback if the bet is split across them.
+- Frequent small wins cost payback elsewhere (smaller mid-tier prizes).
+
+**Paylines.** Classic 3×3: 1 line (middle), 5 lines (3 rows + 2 diagonals), or 8 (adding columns). 5×5 grids use rows,
+diagonals and V / zigzag shapes. Wins usually count left to right from the first reel; pays are multiples of the bet.
+Alternatives: "ways to win" (any position on consecutive reels) and "cluster pays" (groups of 5+ touching symbols,
+usually with cascades), both common on 5×5 grids.
+([PokerNews](https://www.pokernews.com/casino/slots/slot-paylines-explained.htm), [VegasSlotsOnline](https://www.vegasslotsonline.com/features/paylines/),
+[Casinos.com cluster pays](https://www.casinos.com/slots/cluster-pays), [Bonus.com](https://www.bonus.com/slots/paylines/))
+
+**Feel.** Reels stop one at a time, left to right, each with its own landing. 250–500 ms micro-pauses before reveals
+build anticipation; too fast and there's no build-up, too slow and it drags. Wins are shown by drawing the line and
+lighting the winning symbols, with celebrations scaled to the win size. Web engines: flat reels that scroll a symbol
+strip, blur at speed, stop with a small bounce. ([On: Yorkshire](https://www.on-magazine.co.uk/stuff/gaming/how-millisecond-level-timing-in-slot-animations-shapes-player-emotion-and-perceived-luck/),
+[pixi-reels](https://pixi-reels.schmooky.dev/), [HTML5GameDevs](https://www.html5gamedevs.com/topic/37799-help-slot-game-how-to-spin-the-reels/))
+
+**Honesty: "losses disguised as wins".** On multi-line slots, many "wins" pay back less than the bet, but the lights and
+sounds make players remember them as wins. Research (Dixon et al.) shows players over-count their wins because of it.
+**Our rule: only celebrate when the player actually comes out ahead.**
+([Dixon et al. 2010, Addiction](https://onlinelibrary.wiley.com/doi/10.1111/j.1360-0443.2010.03050.x), [PMC6209046](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6209046/))
+
+**Provably fair.** The server commits to a hidden seed (publishes its hash), mixes in the player's seed and a counter,
+and derives the reel stops from them. Afterwards anyone can re-run it and check.
+([provablysmart](https://provablysmart.com/provably-fair-server-seed-client-seed-nonce/), [DeucesCracked](https://www.deucescracked.com/crypto-gambling/casino/provably-fair))
