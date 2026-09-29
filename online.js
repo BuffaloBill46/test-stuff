@@ -131,12 +131,35 @@ function startPractice() {
   $('#home').hidden = true; renderChrome();
 }
 
-function leaveRoom() {
+function leaveRoom(reason) {
+  const was = roomCode;
   room?.leave(); room = null; practice = false; isHost = false; sim = null; snaps = []; lastRaw = null; curHost = null;
   bg = createSim(); bg.syncRoster([]);
   try { history.replaceState(null, '', location.pathname + (LOCAL ? '?net=local' : '')); } catch {}
   $('#home').hidden = false; ui.lastBoard = ''; renderChrome();
+  if ((reason === 'idle' || reason === 'hidden') && was) {
+    $('#code').value = was; $('#joinBtn').textContent = 'Join room ' + was;
+    status(reason === 'idle' ? `You left room ${was} after 3 minutes without playing. Tap Join to hop back in.` : `You left room ${was} while the game was in the background. Tap Join to hop back in.`);
+  }
 }
+
+// Idle players still cost messages every second, so they're sent home.
+const IDLE_MS = 180000, IDLE_WARN_MS = 20000, HIDDEN_MS = 60000;
+let lastInput = performance.now(), hiddenTimer = 0;
+const active = () => { lastInput = performance.now(); };
+['keydown', 'pointerdown', 'pointermove', 'wheel'].forEach((ev) => addEventListener(ev, active, { passive: true }));
+document.addEventListener('visibilitychange', () => {
+  clearTimeout(hiddenTimer);
+  if (document.hidden && room) hiddenTimer = setTimeout(() => { if (room) leaveRoom('hidden'); }, HIDDEN_MS);
+  else active();
+});
+function idleCheck(now) {
+  if (!room) return 0;
+  const left = IDLE_MS - (now - lastInput);
+  if (left <= 0) { leaveRoom('idle'); return 0; }
+  return left <= IDLE_WARN_MS ? Math.ceil(left / 1000) : 0;
+}
+let idleLeft = 0;
 
 // ---------- local player
 function myEnt(v) { return v && v.ents.find((e) => e.peer === me.id); }
@@ -293,7 +316,7 @@ function renderChrome() {
   $('#roomchip').hidden = !inRoom(); $('#emotes').hidden = !inRoom(); $('#leave').hidden = !inRoom();
   if (inRoom()) {
     const count = practice ? 1 : room.peers().length;
-    $('#roomchip').innerHTML = practice ? '<i>Practice</i><b>vs bots</b>' : `<i>Room</i><b>${esc(roomCode)}</b><span>${count} online${isHost ? ' · you referee' : ''}</span>`;
+    $('#roomchip').innerHTML = practice ? '<i>Practice</i><b>vs bots</b>' : `<i>Room</i><b>${esc(roomCode)}</b><span>${idleLeft ? `<em class="idle">Still there? Leaving in ${idleLeft}s</em>` : `${count} online${isHost ? ' · you referee' : ''}`}</span>`;
   }
   if (!inRoom() || !v) { if (ui.lastCard) { $('#panel').hidden = true; ui.lastCard = ''; } setHud(''); return; }
   const m = myEnt(v);
@@ -439,6 +462,7 @@ function frame() {
   currentView = v;
   if (v) { if (inRoom()) controls(dt, v); draw(v, dt, T); }
   if (inRoom() && !isHost && !v) status('Waiting for the referee…');
+  idleLeft = idleCheck(now);
   if (now - chromeAt > 150) { chromeAt = now; renderChrome(); }
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
@@ -452,11 +476,11 @@ $('#quick').addEventListener('click', () => enterRoom('', true));
 $('#create').addEventListener('click', () => enterRoom(rid(4).toUpperCase().replace(/[^A-Z0-9]/g, 'X'), false));
 $('#joinBtn').addEventListener('click', () => { const c = cleanCode($('#code').value); if (c.length < 3) { status('Type the room code your friend shared.'); return; } enterRoom(c, false); });
 $('#practice').addEventListener('click', startPractice);
-$('#leave').addEventListener('click', leaveRoom);
+$('#leave').addEventListener('click', () => leaveRoom());
 $('#emotes').innerHTML = EMOTES.map((e, i) => `<button data-e="${i}" title="Key ${i + 1}">${esc(e)}</button>`).join('');
 $('#emotes').addEventListener('click', (e) => { const b = e.target.closest('[data-e]'); if (b) sendEmote(+b.dataset.e); });
 addEventListener('pagehide', () => room?.leave());
 $('#loading')?.remove();
 frame();
 
-window.__sq = { get room() { return room; }, get isHost() { return isHost; }, get sim() { return sim; }, get view() { return currentView; }, me, ctl, enterRoom, leaveRoom, startPractice };
+window.__sq = { get room() { return room; }, get isHost() { return isHost; }, get sim() { return sim; }, get view() { return currentView; }, me, ctl, enterRoom, leaveRoom, startPractice, idleFor: (ms) => { lastInput = performance.now() - ms; } };
