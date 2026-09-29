@@ -35,7 +35,7 @@ async function supabaseRoom(code, me) {
   const main = c.channel(base, { config: { broadcast: { self: false }, presence: { key: me.id } } });
   main.on('presence', { event: 'sync' }, () => {
     const st = main.presenceState();
-    peers = Object.entries(st).map(([id, metas]) => ({ id, n: String(metas?.[0]?.n ?? '').slice(0, 14), j: Number(metas?.[0]?.j) || 0, a: metas?.[0]?.a }));
+    peers = Object.entries(st).map(([id, metas]) => ({ id, n: String(metas?.[0]?.n ?? '').slice(0, 14), j: Number(metas?.[0]?.j) || 0, a: metas?.[0]?.a, w: !!metas?.[0]?.w }));
     L.fire('peers', peers); refreshHostChans();
   });
   main.on('broadcast', { event: 'snap' }, ({ payload }) => L.fire('snap', payload));
@@ -43,7 +43,7 @@ async function supabaseRoom(code, me) {
   const mine = c.channel(base + '-u-' + me.id, { config: { broadcast: { self: false } } });
   try {
     await subscribe(main);
-    await main.track({ n: me.n, j: me.j, a: me.a });
+    await main.track({ n: me.n, j: me.j, a: me.a, w: me.w ? 1 : 0 });
     await subscribe(mine);
   } catch (e) { // don't leave the client retrying in the background
     c.removeChannel(main); c.removeChannel(mine); throw e;
@@ -79,7 +79,7 @@ async function localRoom(code, me) {
   const recompute = () => {
     const now = Date.now();
     for (const [id, p] of seen) if (now - p.at > 3500) seen.delete(id);
-    peers = [{ id: me.id, n: me.n, j: me.j, a: me.a }, ...[...seen.values()].map(({ id, n, j, a }) => ({ id, n, j, a }))];
+    peers = [{ id: me.id, n: me.n, j: me.j, a: me.a, w: !!me.w }, ...[...seen.values()].map(({ id, n, j, a, w }) => ({ id, n, j, a, w: !!w }))];
     L.fire('peers', peers);
   };
   bc.onmessage = ({ data: m }) => {
@@ -102,6 +102,44 @@ async function localRoom(code, me) {
     leave() { clearInterval(beat); post({ k: 'bye', id: me.id }); bc.close(); },
   };
 }
+
+// ---------- live games board: each running room's referee posts a short summary here
+// (players, round, time, leader) so lobbies can list games and offer Watch now.
+function supabaseBoard() {
+  const c = sb(), fns = new Set();
+  let ch = null, ready = null, publishing = false;
+  const list = () => (ch ? Object.values(ch.presenceState()).map((m) => m?.[0]).filter((g) => g && typeof g.code === 'string') : []);
+  function open() {
+    if (ready) return ready;
+    ch = c.channel('sq-games', { config: { presence: { key: 'g' + Math.random().toString(36).slice(2, 12) } } });
+    ch.on('presence', { event: 'sync' }, () => { const l = list(); fns.forEach((f) => f(l)); });
+    ready = subscribe(ch).catch((e) => { c.removeChannel(ch); ch = null; ready = null; throw e; });
+    return ready;
+  }
+  function maybeClose() { if (ch && !fns.size && !publishing) { c.removeChannel(ch); ch = null; ready = null; } }
+  return {
+    async watch(fn) { fns.add(fn); await open(); fn(list()); return () => { fns.delete(fn); maybeClose(); }; },
+    async publish(summary) { publishing = true; await open(); await ch.track(summary); },
+    async unpublish() { publishing = false; if (ch) { try { await ch.untrack(); } catch {} } maybeClose(); },
+  };
+}
+
+function localBoard() {
+  const bc = new BroadcastChannel('sq-local-games'), seen = new Map(), fns = new Set();
+  let mine = null;
+  const list = () => { const now = Date.now(); for (const [k, g] of seen) if (now - g.at > 8000) seen.delete(k); return [...seen.values()].map(({ at, ...g }) => g); };
+  const emit = () => { const l = list(); fns.forEach((f) => f(l)); };
+  bc.onmessage = ({ data: m }) => { if (m.k === 'game') { seen.set(m.g.code, { ...m.g, at: Date.now() }); emit(); } else if (m.k === 'gone') { seen.delete(m.code); emit(); } else if (m.k === 'ask' && mine) bc.postMessage({ k: 'game', g: mine }); };
+  setInterval(() => { if (mine) bc.postMessage({ k: 'game', g: mine }); emit(); }, 2000);
+  return {
+    async watch(fn) { fns.add(fn); bc.postMessage({ k: 'ask' }); fn(list()); return () => fns.delete(fn); },
+    async publish(summary) { mine = summary; seen.set(summary.code, { ...summary, at: Date.now() }); bc.postMessage({ k: 'game', g: summary }); },
+    async unpublish() { if (mine) bc.postMessage({ k: 'gone', code: mine.code }); if (mine) seen.delete(mine.code); mine = null; },
+  };
+}
+
+let board = null;
+export function gamesBoard({ local = false } = {}) { return board || (board = local ? localBoard() : supabaseBoard()); }
 
 export function openRoom(code, me, { local = false } = {}) {
   return local ? localRoom(code, me) : supabaseRoom(code, me);

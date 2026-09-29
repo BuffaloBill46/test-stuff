@@ -2,7 +2,7 @@
 import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo } from './kit.js';
 import { buildPlaza, makeHat, shadowBlob } from './plaza.js';
 import { createSim, K, PHASES, constrain } from './sim.js';
-import { openRoom, accounts, findWallet } from './net.js';
+import { openRoom, accounts, findWallet, gamesBoard } from './net.js';
 import { SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable } from './catalog.js';
 import { initTabs, avatarCharacter } from './tabs.js';
 
@@ -63,6 +63,10 @@ const me = { id: rid(10), n: cleanName(store.get('sq_name')) || 'Player ' + (100
 let profile = null; // signed-in wallet profile, if any
 let room = null, roomCode = '', practice = false, isHost = false, sim = null, joinedAt = 0;
 let lastRaw = null, curHost = null, snaps = [], lastEv = 0, lastSnapSent = 0, lastSnapAt = 0;
+// Auto match rooms have a fixed mode and start on their own; private rooms are started by their referee.
+let roomMode = null, autoStart = false, cdEnd = null, boardAt = 0, lobbyKind = 'unranked', lobbyMode = 'ffa';
+const MAX_WATCHERS = 4, isPublic = (c) => /^P[FT][1-5]$/.test(c);
+const board = gamesBoard({ local: LOCAL });
 let bg = createSim(); bg.syncRoster([]); // attract-mode plaza behind the home screen
 const names = new Map(); // peer id -> display name
 const ctl = { x: 0, z: 9, vx: 0, vz: 0, face: Math.PI, ep: -1, q: 0, t: 0, ax: 0, az: 0, cool: 0, throwT: 0, lastSent: 0, wasStun: false, dirty: true };
@@ -78,6 +82,7 @@ function decode(s) {
     hat: { st: ['ped', 'head', 'air', 'ground'][H[0]] || 'ped', x: n(H[1]), y: n(H[2], K.PED_TOP), z: n(H[3]), vx: n(H[4]), vy: n(H[5]), vz: n(H[6]), holder: n(H[7], -1), lx: n(H[8]), lz: n(H[9]) },
     balls: (Array.isArray(s.B) ? s.B : []).map((b) => ({ id: n(b[0]), x: n(b[1]), y: n(b[2]), z: n(b[3]), vx: n(b[4]), vy: n(b[5]), vz: n(b[6]), owner: n(b[7]) })),
     ev: Array.isArray(s.V) ? s.V : [], res: Array.isArray(s.R) ? { team: s.R[0], top: s.R[1], mvp: s.R[2] } : null,
+    cd: n(s.cd), pub: !!s.pub,
   };
 }
 
@@ -91,7 +96,7 @@ function becomeHost() {
   room?.setHost(true);
   sim.S.ev.forEach((v) => { lastEv = Math.max(lastEv, v[0]); });
 }
-function stepDown() { isHost = false; sim = null; room?.setHost(false); }
+function stepDown() { isHost = false; sim = null; room?.setHost(false); board.unpublish(); }
 const better = (a, b) => a.j < b.j || (a.j === b.j && a.id < b.id);
 
 function onSnap(s) {
@@ -110,27 +115,33 @@ function onSnap(s) {
 }
 
 function election(now) {
-  if (!room || isHost || now - joinedAt < 2000 || now - lastSnapAt < 2500) return;
-  const ps = [...room.peers()]; if (!ps.some((p) => p.id === me.id)) ps.push(me);
+  if (!room || isHost || me.w || now - joinedAt < 2000 || now - lastSnapAt < 2500) return;
+  const ps = room.peers().filter((p) => !p.w); if (!ps.some((p) => p.id === me.id)) ps.push(me);
   ps.sort((a, b) => (better(a, b) ? -1 : 1));
   if (ps[0].id === me.id) becomeHost();
 }
 
 // ---------- rooms
-async function enterRoom(code, quick) {
-  status('Connecting…');
+async function enterRoom(code, quick, opts = {}) {
+  status(opts.watch ? 'Joining as a watcher…' : 'Connecting…');
   if (!profile) { me.n = cleanName($('#name')?.value) || me.n; store.set('sq_name', me.n); }
+  me.w = !!opts.watch;
+  const mode = opts.mode || lobbyMode;
   for (let attempt = 0; attempt < (quick ? 5 : 1); attempt++) {
-    const c = quick ? 'PUBLIC' + (attempt + 1) : code;
+    const c = quick ? 'P' + (mode === 'team' ? 'T' : 'F') + (attempt + 1) : code;
     me.j = Date.now();
     let r;
     try { r = await openRoom(c.toLowerCase(), me, { local: LOCAL }); }
     catch (e) { status("Couldn't reach the game server. Check your connection, or try Practice."); return; }
     await new Promise((res) => setTimeout(res, 1200));
-    if (r.peers().length > K.MAX_HUMANS) { r.leave(); if (quick) continue; status(`Room ${c} is full (8 players).`); return; }
+    const players = r.peers().filter((p) => !p.w).length, watchers = r.peers().filter((p) => p.w && p.id !== me.id).length;
+    if (me.w && watchers >= MAX_WATCHERS) { r.leave(); status(`That game already has ${MAX_WATCHERS} watchers. Try another.`); return; }
+    if (!me.w && players > K.MAX_HUMANS) { r.leave(); if (quick) continue; status(`Room ${c} is full (8 players).`); return; }
     room = r; roomCode = c; practice = false; break;
   }
   if (!room) { status('All public rooms are full right now. Try a private room.'); return; }
+  roomMode = isPublic(roomCode) ? (roomCode[1] === 'T' ? 'team' : 'ffa') : null; autoStart = isPublic(roomCode); cdEnd = null;
+  closeLobby();
   room.on('snap', onSnap);
   room.on('rep', (id, r) => { if (isHost && sim) sim.setReport(id, r); });
   room.on('emote', (e) => { if (e && typeof e.p === 'string') showEmote(e.p, Number(e.e)); });
@@ -144,16 +155,17 @@ async function enterRoom(code, quick) {
 
 function startPractice() {
   if (!profile) { me.n = cleanName($('#name')?.value) || me.n; store.set('sq_name', me.n); }
-  practice = true; room = null; roomCode = ''; isHost = true; sim = createSim(); me.j = Date.now(); ctl.ep = -1; snaps = []; lastEv = 0;
-  $('#home').hidden = true; renderChrome();
+  practice = true; room = null; roomCode = ''; isHost = true; sim = createSim(); me.j = Date.now(); me.w = false; ctl.ep = -1; snaps = []; lastEv = 0;
+  roomMode = null; autoStart = false; sim.S.mode = lobbyMode; closeLobby(); renderChrome();
 }
 
 function leaveRoom(reason) {
   const was = roomCode;
-  room?.leave(); room = null; practice = false; isHost = false; sim = null; snaps = []; lastRaw = null; curHost = null;
+  if (isHost) board.unpublish();
+  room?.leave(); room = null; practice = false; isHost = false; sim = null; snaps = []; lastRaw = null; curHost = null; me.w = false; roomMode = null; autoStart = false;
   bg = createSim(); bg.syncRoster([]);
   try { history.replaceState(null, '', location.pathname + (LOCAL ? '?net=local' : '')); } catch {}
-  $('#home').hidden = !(reason === 'idle' || reason === 'hidden'); ui.lastBoard = ''; renderChrome();
+  if (reason === 'idle' || reason === 'hidden') openLobby(lobbyKind); ui.lastBoard = ''; renderChrome();
   if ((reason === 'idle' || reason === 'hidden') && was) {
     $('#code').value = was; $('#joinBtn').textContent = 'Join room ' + was;
     status(reason === 'idle' ? `You left room ${was} after 3 minutes without playing. Tap Join to hop back in.` : `You left room ${was} while the game was in the background. Tap Join to hop back in.`);
@@ -171,7 +183,7 @@ document.addEventListener('visibilitychange', () => {
   else active();
 });
 function idleCheck(now) {
-  if (!room) return 0;
+  if (!room || me.w) return 0;
   const left = IDLE_MS - (now - lastInput);
   if (left <= 0) { leaveRoom(document.hidden ? 'hidden' : 'idle'); return 0; }
   return left <= IDLE_WARN_MS ? Math.ceil(left / 1000) : 0;
@@ -338,25 +350,30 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s; re
 
 function renderChrome() {
   const v = currentView;
-  $('#roomchip').hidden = !inRoom(); $('#emotes').hidden = !inRoom(); $('#leave').hidden = !inRoom();
+  $('#roomchip').hidden = !inRoom(); $('#emotes').hidden = !inRoom() || !!me.w; $('#leave').hidden = !inRoom();
   $('#nav').hidden = inRoom(); $('#pages').hidden = inRoom(); $('#gamebar').hidden = !inRoom(); $('#tags').hidden = !inRoom();
   preview.visible = !inRoom() && tabs?.tab === 'avatar';
   if (inRoom()) {
-    const count = practice ? 1 : room.peers().length;
-    $('#roomchip').innerHTML = practice ? '<i>Practice</i><b>vs bots</b>' : `<i>Room</i><b>${esc(roomCode)}</b><span>${idleLeft ? `<em class="idle">Still there? Leaving in ${idleLeft}s</em>` : `${count} online${isHost ? ' · you referee' : ''}`}</span>`;
+    const count = practice ? 1 : room.peers().filter((p) => !p.w).length, watchers = practice ? 0 : room.peers().filter((p) => p.w).length;
+    $('#roomchip').innerHTML = practice ? '<i>Practice</i><b>vs bots</b>'
+      : `<i>${me.w ? 'Watching' : autoStart ? 'Auto match' : 'Room'}</i><b>${esc(autoStart ? (roomMode === 'team' ? 'TEAM' : 'FFA') : roomCode)}</b><span>${idleLeft ? `<em class="idle">Still there? Leaving in ${idleLeft}s</em>` : `${count} playing${watchers ? ` · ${watchers} watching` : ''}${isHost ? ' · you referee' : ''}`}</span>`;
   }
   if (!inRoom() || !v) { if (ui.lastCard) { $('#panel').hidden = true; ui.lastCard = ''; } setHud(''); return; }
   const m = myEnt(v);
   const humans = v.ents.filter((e) => !e.bot);
   // lobby / results panel
   let card = '';
-  if (v.phase === 'lobby') {
+  if (v.phase === 'lobby' && (v.pub || autoStart)) {
+    const roster = humans.map((e) => `<li>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}${v.mode === 'team' ? ` <u class="t${e.team}">${TEAM_NAME[e.team]}</u>` : ''}</li>`).join('');
+    card = `<div class="eyebrow">Auto match · ${v.mode === 'team' ? 'TEAM' : 'FFA'}${me.w ? ' · watching' : ''}</div><h2>${v.cd ? `Starting in ${Math.ceil(v.cd)}` : 'Finding players…'}</h2>
+      <ul class="roster">${roster}</ul><p class="dim">More players can still join. Bots fill any empty spots when it starts.</p>`;
+  } else if (v.phase === 'lobby') {
     const share = practice ? '' : `<p class="share">Friends join with code <b>${esc(roomCode)}</b> or this link:<br><span class="link">${esc(location.origin + location.pathname + '?room=' + roomCode)}</span></p>`;
     const roster = humans.map((e) => `<li>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}${v.mode === 'team' ? ` <u class="t${e.team}">${TEAM_NAME[e.team]}</u>` : ''}</li>`).join('');
     const bots = v.ents.length - humans.length;
     card = `<div class="eyebrow">Warm-up · run around, throw, grab the hat</div><h2>Snowball Square</h2>${share}
       <ul class="roster">${roster}</ul><p class="dim">${bots ? `${bots} elf bot${bots > 1 ? 's' : ''} fill empty spots.` : ''} Up to 8 players.</p>
-      ${isHost ? `<div class="modes" role="radiogroup" aria-label="Match mode"><button data-mode="ffa" aria-checked="${v.mode === 'ffa'}" role="radio">Everyone vs the hat</button><button data-mode="team" aria-checked="${v.mode === 'team'}" role="radio">Nice vs Naughty</button></div>
+      ${isHost && !me.w ? `<div class="modes" role="radiogroup" aria-label="Match mode"><button data-mode="ffa" aria-checked="${v.mode === 'ffa'}" role="radio">Everyone vs the hat</button><button data-mode="team" aria-checked="${v.mode === 'team'}" role="radio">Nice vs Naughty</button></div>
       <button class="go" id="start">Start match</button>` : `<p class="wait">Mode: <b>${v.mode === 'team' ? 'Nice vs Naughty' : 'Everyone vs the hat'}</b>. Waiting for the referee to start…</p>`}`;
   } else if (v.phase === 'end' && v.res) {
     const sorted = [...v.ents].sort((a, b) => b.score - a.score);
@@ -451,6 +468,12 @@ function draw(v, dt, t) {
     const portrait = H > W * 1.1; camera.fov = portrait ? 62 : 50; camera.updateProjectionMatrix();
     camPos.lerp(tmp.copy(camTarget).add(portrait ? new V3(0, 21, 15) : new V3(0, 14, 12.5)), Math.min(1, dt * 3));
     camera.position.copy(camPos); camera.lookAt(camTarget.x, 0.6, camTarget.z - 1.2);
+  } else if (inRoom()) {
+    const hx = hatMesh.position.x * 0.5, hz = hatMesh.position.z * 0.5;
+    camTarget.lerp(tmp.set(hx, 0, hz), Math.min(1, dt * 1.5));
+    const portrait = H > W * 1.1; camera.fov = portrait ? 66 : 52; camera.updateProjectionMatrix();
+    camPos.lerp(tmp.copy(camTarget).add(portrait ? new V3(0, 26, 19) : new V3(0, 18, 16)), Math.min(1, dt * 2));
+    camera.position.copy(camPos); camera.lookAt(camTarget.x, 0.5, camTarget.z - 1);
   } else if (tabs?.tab === 'avatar') {
     const narrow = W < 820; camera.fov = narrow ? 44 : 34; camera.updateProjectionMatrix();
     camTarget.set(0, 0, 6.5);
@@ -474,12 +497,19 @@ function frame() {
   else {
     election(now);
     if (isHost) {
-      const ids = practice ? [me.id] : [...room.peers()].sort((a, b) => (better(a, b) ? -1 : 1)).map((p) => p.id);
+      const ids = practice ? [me.id] : room.peers().filter((p) => !p.w).sort((a, b) => (better(a, b) ? -1 : 1)).map((p) => p.id);
       if (!ids.includes(me.id)) ids.unshift(me.id);
+      if (roomMode && sim.S.phase === 'lobby' && sim.S.mode !== roomMode) sim.S.mode = roomMode;
       sim.syncRoster(ids);
+      if (autoStart && sim.S.phase === 'lobby') {
+        const humans = sim.S.ents.filter((e) => !e.bot).length, want = humans >= 2 ? 15000 : 25000;
+        if (cdEnd === null || cdEnd - now > want) cdEnd = now + want;
+        if (now >= cdEnd) { sim.startMatch(sim.S.mode); cdEnd = null; }
+      } else cdEnd = null;
       if (ctl.ep >= 0) sim.setReport(me.id, report());
       sim.step(dt);
-      const s = sim.snapshot(); s.hid = me.id; s.hj = me.j;
+      const s = sim.snapshot(); s.hid = me.id; s.hj = me.j; s.pub = autoStart ? 1 : 0; s.cd = cdEnd ? Math.max(0, (cdEnd - now) / 1000) : 0;
+      if (room && autoStart && now - boardAt > 3000) { boardAt = now; publishSummary(); }
       lastRaw = s;
       if (room && now - lastSnapSent >= snapMs(sim.S.ents.filter((e) => !e.bot).length)) { room.sendSnap(s); lastSnapSent = now; }
       v = decode(s); v.age = 0; handleEvents(v);
@@ -504,17 +534,57 @@ function frame() {
 // ---------- home screen wiring
 $('#name').value = me.n;
 const preset = cleanCode(params.get('room'));
-if (preset) { $('#code').value = preset; $('#joinBtn').textContent = 'Join room ' + preset; $('#home').hidden = false; }
+if (preset) { $('#code').value = preset; $('#joinBtn').textContent = 'Join room ' + preset; queueMicrotask(() => openLobby('unranked')); }
+function publishSummary() {
+  const v = currentView; if (!v) return;
+  const top = [...v.ents].sort((a, b) => b.score - a.score)[0];
+  board.publish({ code: roomCode, mode: v.mode, ranked: 0, phase: v.phase, round: v.round, time: Math.ceil(v.time),
+    humans: room.peers().filter((p) => !p.w).length, watchers: room.peers().filter((p) => p.w).length,
+    leader: top && v.phase !== 'lobby' ? nameOf(top) : '', lscore: top ? top.score : 0 }).catch(() => {});
+}
+
+// ---------- lobbies: Unranked (FFA / TEAM) and FFA RANKED, each with a live games list and Watch now
+let stopBoard = null;
+function openLobby(kind) {
+  lobbyKind = kind; const ranked = kind === 'ranked';
+  $('#lobbyEyebrow').textContent = ranked ? 'Ranked · 1 ticket · sign-in needed' : 'Unranked · free';
+  $('#lobbyTitle').textContent = ranked ? 'FFA RANKED' : 'Unranked';
+  $('#lobbyModes').hidden = ranked; $('#tourney').hidden = !ranked;
+  document.querySelectorAll('#home .unr').forEach((el) => { el.hidden = ranked; });
+  $('#quick').disabled = ranked; $('#quick').textContent = ranked ? 'Auto match · opening soon' : 'Auto match';
+  document.querySelectorAll('[data-lmode]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.lmode === lobbyMode)));
+  $('#home').hidden = false; status('');
+  if (!stopBoard) board.watch(renderGames).then((stop) => { stopBoard = stop; }).catch(() => { $('#gamesList').innerHTML = '<p class="dim">Couldn\'t load the games list right now.</p>'; });
+}
+function closeLobby() { $('#home').hidden = true; if (stopBoard) { stopBoard(); stopBoard = null; } }
+let lastGames = [];
+function renderGames(list = lastGames) {
+  lastGames = list;
+  const ranked = lobbyKind === 'ranked';
+  const games = list.filter((g) => (ranked ? g.ranked : !g.ranked && g.mode === lobbyMode) && isPublic(cleanCode(g.code)))
+    .sort((a, b) => (b.watchers - a.watchers) || (b.humans - a.humans));
+  const label = ranked ? 'ranked' : lobbyMode === 'team' ? 'TEAM' : 'FFA';
+  $('#gamesList').innerHTML = games.length ? games.map((g) => {
+    const full = (Number(g.watchers) || 0) >= MAX_WATCHERS;
+    const state = g.phase === 'lobby' ? 'Starting soon' : g.phase === 'end' ? 'Final scores' : `Round ${Number(g.round) || 1}/3 · ${Number(g.time) || 0}s`;
+    return `<div class="game"><div><b>${g.mode === 'team' ? 'TEAM' : 'FFA'}</b><span>${Number(g.humans) || 0}/8 players${g.watchers ? ` · ${Number(g.watchers)} watching` : ''}</span></div>
+      <div><span>${esc(state)}</span>${g.leader ? `<span>Leader: ${esc(String(g.leader).slice(0, 14))} · ${Number(g.lscore) || 0}</span>` : ''}</div>
+      <button class="sec" data-watch="${esc(cleanCode(g.code))}" ${full ? 'disabled' : ''}>${full ? 'Watchers full' : 'Watch now'}</button></div>`;
+  }).join('') : `<p class="dim">No ${label} games right now.${ranked ? ' Ranked opens soon.' : ' Start one with Auto match.'}</p>`;
+}
+$('#gamesList').addEventListener('click', (e) => { const b = e.target.closest('[data-watch]'); if (b) enterRoom(b.dataset.watch, false, { watch: true }); });
+document.querySelectorAll('[data-lmode]').forEach((b) => b.addEventListener('click', () => { lobbyMode = b.dataset.lmode; document.querySelectorAll('[data-lmode]').forEach((x) => x.setAttribute('aria-checked', String(x === b))); renderGames(); }));
+$('#playRanked').addEventListener('click', () => openLobby('ranked'));
 $('#quick').addEventListener('click', () => enterRoom('', true));
 $('#create').addEventListener('click', () => enterRoom(rid(4).toUpperCase().replace(/[^A-Z0-9]/g, 'X'), false));
 $('#joinBtn').addEventListener('click', () => { const c = cleanCode($('#code').value); if (c.length < 3) { status('Type the room code your friend shared.'); return; } enterRoom(c, false); });
 $('#practice').addEventListener('click', startPractice);
-$('#playUnranked').addEventListener('click', () => { $('#home').hidden = false; status(''); $('#name').focus(); });
-$('#homeClose').addEventListener('click', () => { $('#home').hidden = true; });
+$('#playUnranked').addEventListener('click', () => openLobby('unranked'));
+$('#homeClose').addEventListener('click', closeLobby);
 $('#leave').addEventListener('click', () => leaveRoom());
 $('#emotes').innerHTML = EMOTES.map((e, i) => `<button data-e="${i}" title="Key ${i + 1}">${esc(e)}</button>`).join('');
 $('#emotes').addEventListener('click', (e) => { const b = e.target.closest('[data-e]'); if (b) sendEmote(+b.dataset.e); });
-addEventListener('pagehide', () => room?.leave());
+addEventListener('pagehide', () => { if (isHost) board.unpublish(); room?.leave(); });
 
 // ---------- site tabs
 const preview = new THREE.Group(); preview.position.set(0, 0, 6.5); preview.visible = false; scene.add(preview);
