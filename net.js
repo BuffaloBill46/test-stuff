@@ -121,8 +121,11 @@ function remoteAccounts() {
       if (!wallet.isConnected && wallet.connect) await wallet.connect();
       const { error } = await c.auth.signInWithWeb3({ chain: 'solana', statement: STATEMENT, wallet });
       if (error) throw new Error(error.message);
-      return rpc('ensure_profile');
+      return true; // the caller loads the profile, or redeems a pending link code instead
     },
+    logins: () => rpc('my_logins'),
+    createLinkCode: (want) => rpc('create_link_code', { p_want: want }),
+    redeem: (code) => rpc('redeem_link_code', { p_code: code }),
     async signInEmail(email) {
       const { error } = await c.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true } });
       if (error) throw new Error(error.message);
@@ -139,38 +142,64 @@ function remoteAccounts() {
   };
 }
 
-// Same-computer stand-in for tests: a pretend wallet and a local "database" that applies the same save rules.
+// Same-computer stand-in for tests: pretend wallet/email logins and a local "database"
+// that applies the same save and linking rules as the real one.
 function localAccounts(rules) {
-  const key = 'sq-local-accounts', get = () => { try { return JSON.parse(localStorage.getItem(key)) || {}; } catch { return {}; } };
+  const key = 'sq-local-db';
+  const get = () => { try { return JSON.parse(localStorage.getItem(key)) || { profiles: {}, logins: {}, codes: {}, inv: {} }; } catch { return { profiles: {}, logins: {}, codes: {}, inv: {} }; } };
   const put = (v) => { try { localStorage.setItem(key, JSON.stringify(v)); } catch {} };
   let me = null; try { me = sessionStorage.getItem('sq-local-me'); } catch {}
+  const setMe = (v) => { me = v; try { v ? sessionStorage.setItem('sq-local-me', v) : sessionStorage.removeItem('sq-local-me'); } catch {} };
+  const kind = () => (me && me.startsWith('email:') ? 'email' : 'wallet');
+  const walletOf = () => (kind() === 'wallet' ? me.slice(7) : null);
+  const kindsOf = (db, pid) => Object.values(db.logins).filter((l) => l.pid === pid).map((l) => l.kind).sort();
   return {
     async session() { return me ? { user: { id: me } } : null; },
-    async signIn() {
-      me = 'Loca1Wa11et' + Math.random().toString(36).slice(2, 10).replace(/[0lI]/g, 'x') + 'zzzzzzzzzzzzzzzz'.slice(0, 16);
-      try { sessionStorage.setItem('sq-local-me', me); } catch {}
-      return this.profile();
-    },
-    async signInEmail(email) {
-      me = 'email:' + email; try { sessionStorage.setItem('sq-local-me', me); } catch {}
-      return this.profile();
-    },
+    async signIn() { setMe('wallet:' + (window.__testWallet || 'LocaLWa11et' + Math.random().toString(36).slice(2, 10).replace(/[0lIO]/g, 'x') + 'zzzzzzzzzzzzzz')); return true; },
+    async signInEmail(email) { setMe('email:' + email.toLowerCase()); return true; },
     async profile() {
       if (!me) throw new Error('Sign in first');
-      const isEmail = me.startsWith('email:');
-      const db = get(); db[me] ||= { wallet: isEmail ? null : me, name: 'Player ' + (isEmail ? String(1000 + Object.keys(db).length) : me.slice(0, 4)), avatar: rules.DEFAULT_AVATAR, level: 1, xp: 0, rank_points: 0 }; put(db); return db[me];
+      const db = get(); const l = db.logins[me];
+      if (l) return db.profiles[l.pid];
+      const pid = 'p' + Math.random().toString(36).slice(2, 10), w = walletOf();
+      db.profiles[pid] = { id: pid, wallet: w, name: 'Player ' + (w ? w.slice(0, 4) : String(1000 + Object.keys(db.profiles).length)), avatar: rules.DEFAULT_AVATAR, level: 1, xp: 0, rank_points: 0 };
+      db.logins[me] = { pid, kind: kind() }; put(db); return db.profiles[pid];
     },
     async save(name, avatar) {
-      const db = get(), p = db[me]; if (!p) throw new Error('No profile yet');
+      const db = get(), l = db.logins[me], p = l && db.profiles[l.pid]; if (!p) throw new Error('No profile yet');
       const n = String(name || '').replace(/[\u0000-\u001f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, '').trim().slice(0, 14);
       if (!n) throw new Error("Name can't be empty");
-      const clean = {};
-      for (const s of rules.SLOTS) { const it = rules.BY_ID.get(avatar?.[s]); if (!it || it.slot !== s || !rules.usable(it, p.level)) throw new Error(`Item "${avatar?.[s]}" isn't unlocked for ${s}`); clean[s] = it.id; }
+      const owned = new Set(db.inv[l.pid] || []), clean = {};
+      for (const s of rules.SLOTS) { const it = rules.BY_ID.get(avatar?.[s]); if (!it || it.slot !== s || !rules.usable(it, p.level, owned)) throw new Error(`Item "${avatar?.[s]}" isn't unlocked for ${s}`); clean[s] = it.id; }
       p.name = n; p.avatar = clean; put(db); return p;
     },
-    async inventory() { return []; },
-    async leaderboard() { return Object.values(get()).sort((a, b) => b.rank_points - a.rank_points); },
-    async signOut() { me = null; try { sessionStorage.removeItem('sq-local-me'); } catch {} },
+    async logins() { const db = get(), l = db.logins[me]; return l ? kindsOf(db, l.pid) : []; },
+    async createLinkCode(want) {
+      const db = get(), l = db.logins[me]; if (!l) throw new Error('Sign in first');
+      if (kindsOf(db, l.pid).includes(want)) throw new Error('This account already has a linked ' + want);
+      const code = Math.random().toString(16).slice(2, 12).toUpperCase().padEnd(10, '0');
+      db.codes[code] = { pid: l.pid, want, exp: Date.now() + 15 * 60e3, used: false }; put(db); return code;
+    },
+    async redeem(raw) {
+      const db = get(), code = String(raw || '').trim().toUpperCase(), c = db.codes[code];
+      if (!me) throw new Error('Sign in first');
+      if (!c || c.used || c.exp < Date.now()) throw new Error('That link code is wrong or has expired. Make a new one.');
+      if (kind() !== c.want) throw new Error(`This code links a ${c.want}: sign in with a ${c.want} to use it`);
+      const mine = db.logins[me]?.pid;
+      if (mine === c.pid) return db.profiles[mine];
+      if (kindsOf(db, c.pid).includes(kind())) throw new Error('That account already has a linked ' + kind());
+      if (mine) {
+        const old = db.profiles[mine];
+        if (old.rank_points || old.xp || old.level > 1 || (db.inv[mine] || []).length) throw new Error(`This ${kind()} already has its own account with progress, so linking would erase it.`);
+        delete db.profiles[mine];
+      }
+      db.logins[me] = { pid: c.pid, kind: kind() };
+      if (kind() === 'wallet') db.profiles[c.pid].wallet = walletOf();
+      c.used = true; put(db); return db.profiles[c.pid];
+    },
+    async inventory() { const db = get(), l = db.logins[me]; return l ? db.inv[l.pid] || [] : []; },
+    async leaderboard() { return Object.values(get().profiles).sort((a, b) => b.rank_points - a.rank_points); },
+    async signOut() { setMe(null); },
   };
 }
 

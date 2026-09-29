@@ -236,6 +236,17 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 .way p { margin: 0 0 10px; color: #d6ddf0; }
 .way .row input { text-transform: none; font-family: var(--body); letter-spacing: 0; }
 #acctMsg { color: var(--lamp); margin: 6px 0 0; }
+.logins { list-style: none; margin: 4px 0 12px; padding: 0; display: grid; gap: 6px; }
+.logins li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 10px; background: var(--plaque-hi); border: 2px solid var(--ink); border-radius: 3px; }
+.logins li span { color: var(--dim); font-size: 14px; text-align: right; }
+.logins li.on span { color: #7fe0a0; font-family: var(--digits); font-size: 12px; }
+.logins li.on span::before { content: '✓ '; font-family: var(--body); }
+.linkbox { display: grid; gap: 10px; padding: 12px; margin: 0 0 12px; background: #141b36; border: 2px dashed var(--frost); border-radius: 3px; }
+.linkbox p { margin: 0; }
+.linkbox .code { font: 700 28px/1 var(--digits); color: var(--lamp); letter-spacing: 2px; user-select: all; -webkit-user-select: all; }
+.linkbox .row { align-items: center; }
+.linkbox .link { flex: 1; min-width: 0; }
+#acct .row { margin-bottom: 10px; }
 #acct { position: fixed; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 72px); width: min(440px, calc(100% - 32px)); max-height: calc(100% - 140px); overflow: auto; padding: 16px 18px 18px; }
 @media (max-width: 820px) {
   .modes3, .cols3, .packs { grid-template-columns: minmax(0, 1fr); }
