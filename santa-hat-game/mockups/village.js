@@ -37,6 +37,17 @@ export function buildNight(scene) {
   for (let i = 0; i < n; i++) tpos.push({ x: -90 + i * (180 / n) + tr() * 3, z: -16 - tr() * 10, s: 1.2 + tr() * 1.1, ry: tr() * 6 });
   scene.add(trees);
 
+  // foreground: snowbanks, fence posts and small pines rushing past closer to the camera
+  const bankGeo = build([part(new G.IcosahedronGeometry(1, 1), C.snow, { scale: [2.2, 0.55, 1.2], jit: 0.12 })]);
+  const postGeo = build([part(new G.BoxGeometry(0.18, 1.1, 0.18), C.woodDark, { pos: [0, 0.55, 0], jit: 0.02 }), part(new G.BoxGeometry(0.26, 0.14, 0.26), C.snow, { pos: [0, 1.14, 0] }),
+    part(new G.BoxGeometry(2.1, 0.12, 0.08), C.wood, { pos: [1.05, 0.75, 0] }), part(new G.BoxGeometry(2.1, 0.12, 0.08), C.wood, { pos: [1.05, 0.35, 0] })]);
+  const fg = [[bankGeo, 16, 0.03], [postGeo, 26, 0.02], [pineGeo(31), 7, 0.04]].map(([geo, count, ol]) => {
+    const im = toonInstanced(geo, count, ol); scene.add(im);
+    const fr = rng(count * 3);
+    const span = 110, items = Array.from({ length: count }, (_, i) => ({ x: -55 + (i / count) * span + fr() * 2, z: geo === postGeo ? 7 : 7.5 + fr() * 3, s: geo === postGeo ? 1 : 0.6 + fr() * 0.5, ry: geo === postGeo ? 0 : fr() * 6 }));
+    return { im, items, span };
+  });
+
   return {
     tick(dt, t, speed) {
       au.userData.tick(t);
@@ -46,6 +57,10 @@ export function buildNight(scene) {
         setInstance(trees, i, new V3(p.x, 0, p.z), p.ry, p.s);
       }
       trees.instanceMatrix.needsUpdate = true;
+      for (const L of fg) {
+        L.items.forEach((p, i) => { p.x -= speed * 1.25 * dt; if (p.x < -L.span / 2) p.x += L.span; setInstance(L.im, i, new V3(p.x, 0, p.z), p.ry, p.s); });
+        L.im.instanceMatrix.needsUpdate = true;
+      }
     },
   };
 }
