@@ -48,6 +48,34 @@ per player in the pot (bots included), bots can win, and bots play under player-
 8. **Ranked teams.** The lobby title says FFA only. Confirm there's no ranked TEAM mode for now.
 9. **Tournament details** (brackets, entry, prizes): later, when it comes off "Coming soon".
 
+## Economy (decided)
+
+- **All prices are set in US dollars and paid in SANTA** at the current SANTA price.
+- **Ranked tickets:** 50% burned, 50% to the treasury.
+- **Avatar items:** 50% burned, 50% to the treasury.
+- **Lottery:** 90% to winners, 10% burned.
+
+### How to make it work (proposals)
+- **One transaction does the whole split.** When a player buys, their wallet signs a single transaction
+  that burns their half directly from their own SANTA (a real burn that lowers total supply, not a send
+  to a dead address) and sends the other half to the treasury. Nothing sits with us in between, and
+  anyone can check it on a Solana explorer.
+- **Price quote.** Look up the SANTA price when the player taps Buy (for example from DexScreener or
+  Jupiter), lock it for about 60 seconds, and show "$0.50 ≈ 642 SANTA" before they sign.
+- **Server confirms before granting.** The server checks the transaction on-chain (Cody already has
+  Helius), then adds the item or tickets. A payment that doesn't confirm grants nothing.
+- **Lottery.** Entries go into a lottery wallet; the draw uses verifiable on-chain randomness (the site's
+  Advent draws already work this way); 90% is paid to winners and 10% burned in the same payout.
+- **Burn tracker.** A small public counter of total SANTA burned by the game, a nice trust signal.
+
+### More ways to spend or burn SANTA (ideas, answering "any other ideas?")
+- Name changes after the first free one.
+- Emote packs (new speech bubbles).
+- Snowball trails and hat-catch effects.
+- Clan banners or colors shown in matches.
+- A seasonal pass with a cosmetic reward track.
+- Extra daily-challenge rerolls.
+
 ## Technical notes for when this gets built
 
 - The live games list needs a server-side list of running rooms (a lobby channel or a database table
