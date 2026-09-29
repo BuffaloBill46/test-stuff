@@ -1,44 +1,63 @@
-// Santa Hat Slots rules: invariants asserted, plus the payback of the current (placeholder) paytable.
+// Santa Hat Slots rules: invariants asserted, plus the numbers a PAR sheet would list for the current (DRAFT) settings.
 // Run: node tests/slots.test.mjs
-import { PAYTABLE, MACHINES, REELS, SYMBOLS, STRIP_LEN, IN_PER_DOLLAR, MAX_FIXED, START_POOL, pull, readLine, stopsFor, pickResult } from '../mockups/slots.js';
+import { MACHINES, SYMBOLS, SYM, IN_PER_DOLLAR, START_POOL, MAX_FIXED, stats, gridFor, evaluate, pull, stopsShowing } from '../mockups/slots.js';
 import { rng } from './rng.mjs';
 
 const fail = (m) => { console.error('FAIL:', m); process.exit(1); };
 const rand = rng(12345);
 
-// Every reel has every symbol, and the strip length is right.
-REELS.forEach((r, i) => { if (r.length !== STRIP_LEN) fail(`reel ${i} length ${r.length}`); SYMBOLS.forEach((_, s) => { if (!r.includes(s)) fail(`reel ${i} missing ${SYMBOLS[s].id}`); }); });
-const totalP = PAYTABLE.reduce((s, r) => s + r.p, 0);
-if (totalP >= 1) fail('win chances add up to 100% or more');
-
-// Display always matches the result: 200k results, each turned into reel stops and read back.
-for (let i = 0; i < 200000; i++) {
-  const res = pickResult(rand()), shown = readLine(stopsFor(res, rand));
-  if ((res && res.sym) !== (shown && shown.sym)) fail(`result ${res && res.sym} displayed as ${shown && shown.sym}`);
+for (const m of Object.values(MACHINES)) {
+  // strips carry exactly the configured counts, on every reel
+  m.strips.forEach((strip, r) => {
+    for (const s of SYMBOLS) { const n = strip.filter((x) => x === SYM[s.id]).length; if (n !== (m.counts[s.id] || 0)) fail(`${m.id} reel ${r}: ${s.id} ×${n}, expected ${m.counts[s.id] || 0}`); }
+  });
+  if (m.lines.some((l) => l.length !== m.reels || l.some((row) => row < 0 || row >= m.rows))) fail(`${m.id}: a payline leaves the grid`);
+  // forced wins read back correctly on every line
+  m.lines.forEach((_, li) => {
+    for (let n = 3; n <= m.reels; n++) {
+      const g = gridFor(m, stopsShowing(m.id, li, 'snowball', n, rand)), w = evaluate(m, g).find((x) => x.line === li);
+      if (!w || w.count !== n || w.sym !== SYM.snowball) fail(`${m.id} line ${li}: forced ${n} snowballs read as ${JSON.stringify(w)}`);
+    }
+  });
 }
 
-// Fixed-win payback per $1 (jackpot pays back the rest over time).
-const fixedBack = PAYTABLE.filter((r) => r.x !== 'JACKPOT').reduce((s, r) => s + r.x * r.p, 0);
-const jpP = PAYTABLE.find((r) => r.x === 'JACKPOT').p;
-console.log(`placeholder paytable: wins ${(totalP * 100).toFixed(1)}% of pulls; fixed wins pay back ${(fixedBack * 100).toFixed(1)}¢ per $1; pool takes in ${(IN_PER_DOLLAR * 100).toFixed(2)}¢`);
+// Mini Hat: check EVERY possible set of reel stops against the exact PAR-sheet formula.
+{
+  const m = MACHINES.mini, L = m.stripLen; let total = 0, jack = 0;
+  for (let a = 0; a < L; a++) for (let b = 0; b < L; b++) for (let c = 0; c < L; c++) {
+    const w = evaluate(m, gridFor(m, [a, b, c])); total += w.reduce((s, x) => s + x.pay, 0); jack += w.filter((x) => x.jackpot).length;
+  }
+  const exact = total / L ** 3 / m.bet, s = stats(m);
+  if (Math.abs(exact - s.fixedPerDollar) > 1e-9) fail(`Mini Hat: all-stops payback ${exact} ≠ formula ${s.fixedPerDollar}`);
+  if (Math.abs(jack / L ** 3 - s.jackpotPerLine * s.lines) > 1e-12) fail('Mini Hat: jackpot line count mismatch');
+  console.log(`Mini Hat: all ${L ** 3} reel stops checked; fixed payback matches the formula exactly.`);
+}
 
-// Pool invariants over long runs of both machines (30% Big Hat pulls).
-let paused = 0, jackpots = 0; const ends = [];
-for (let run = 0; run < 400; run++) {
+// PAR-sheet numbers (exact) + per-pull numbers (simulated) for each machine.
+for (const m of Object.values(MACHINES)) {
+  const s = stats(m), N = 300000, st = { pool: 1e12 }; let hit = 0, ahead = 0, jp = 0, fixed = 0;
+  for (let i = 0; i < N; i++) { const r = pull(st, m.id, rand); if (r.wins.length) hit++; if (r.ahead) ahead++; if (r.jackpot) jp++; fixed += r.wins.reduce((a, w) => a + w.pay, 0); }
+  const sim = fixed / N / m.bet;
+  if (Math.abs(sim - s.fixedPerDollar) > 0.05) fail(`${m.name}: simulated payback ${sim} far from exact ${s.fixedPerDollar}`);
+  console.log(`${m.name} (${m.reels}×${m.rows}, ${s.lines} lines, $${m.bet.toFixed(2)}): fixed wins pay back ${(s.fixedPerDollar * 100).toFixed(1)}¢ per $1 (simulated ${(sim * 100).toFixed(1)}¢); ` +
+    `a win on ${(hit / N * 100).toFixed(1)}% of pulls, ahead on ${(ahead / N * 100).toFixed(1)}%; jackpot about 1 in ${Math.round(N / Math.max(1, jp)).toLocaleString()} pulls; biggest fixed line win $${MAX_FIXED(m).toFixed(2)}`);
+}
+
+// Shared pool: long runs of both machines (30% Big Hat pulls). Pool never negative; jackpot never beyond the pool.
+let paused = 0, capped = 0, jackpots = 0; const ends = [];
+for (let run = 0; run < 200; run++) {
   const st = { pool: START_POOL };
   for (let i = 0; i < 20000; i++) {
-    const mid = rand() < 0.3 ? 'big' : 'mini', before = st.pool;
-    const r = pull(st, mid, rand);
+    const mid = rand() < 0.3 ? 'big' : 'mini', before = st.pool, r = pull(st, mid, rand);
     if (r.paused) { paused++; continue; }
-    if (r.jackpot) { jackpots++; if (r.pay > before + MACHINES[mid].bet * IN_PER_DOLLAR + 1e-9) fail('jackpot paid more than the pool held'); }
+    if (r.capped) capped++;
+    if (r.jackpot) jackpots++;
+    if (r.pay > before + MACHINES[mid].bet * IN_PER_DOLLAR + 1e-9) fail('paid more than the pool held');
     if (st.pool < -1e-9) fail('pool went negative');
     if (Math.abs(r.received - r.pay * 0.97) > 1e-9) fail('winner should receive the pay minus 3%');
   }
   ends.push(st.pool);
 }
 ends.sort((a, b) => a - b);
-// Level-off: the pool settles where jackpots pay out exactly what fixed wins leave behind.
-const levelOff = (IN_PER_DOLLAR - fixedBack) / (jpP * MACHINES.big.jackpotPct / MACHINES.big.bet);
-console.log(`pool levels off near $${levelOff.toFixed(0)} (Big Hat jackpot there ≈ $${(levelOff * MACHINES.big.jackpotPct).toFixed(2)}, Mini Hat ≈ $${(levelOff * MACHINES.mini.jackpotPct).toFixed(2)})`);
-console.log(`400 runs × 20,000 pulls from $${START_POOL}: median end $${ends[200].toFixed(0)}, lowest $${ends[0].toFixed(0)}, ${jackpots} jackpots, ${paused} paused pulls (pool must cover ${MAX_FIXED}× the bet)`);
-console.log('OK: display always matched the result; the pool never went negative; no jackpot exceeded the pool');
+console.log(`Shared pool, 200 runs × 20,000 pulls from $${START_POOL}: median end $${ends[100].toFixed(0)}, lowest $${ends[0].toFixed(0)}; ${jackpots} jackpots; ${paused} paused pulls; ${capped} capped wins`);
+console.log('OK: strips, paylines, all-stops check, pool invariants');
