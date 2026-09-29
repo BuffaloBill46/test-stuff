@@ -138,6 +138,19 @@ $50 start). **The slots paytable is a placeholder** (spin's 1×–4× fixed wins
   Spin pool reaches $175, $25 goes to the treasury** (arrives as $24.25 after the tax), which puts it back at $150.
   Simulated in `tests/tax-split.mjs`: 2,000 runs × 5,000 spins from $50, zero pauses, and the pool never went below zero.
 
+**Built (demo, 2026-09-29):** the Games tab has the two machines, stacked: **Mini Hat** ($0.10) and **Big Hat** ($1.00).
+The **total Slots pool** shows under the Slots title. Each machine shows its **jackpot % of the pool and the current
+jackpot amount**, plus its jackpot odds and biggest fixed win (worked out from the paytable).
+- Each cabinet is a Santa hat: red cone body, fur brim base, and the pom-pom on the drooping tip is the lever.
+  The Big Hat is taller, with a gold hatband, a star and more marquee bulbs. The reels are 3D symbols: Santa Hat (jackpot),
+  Gold Star, Reindeer, Snowman, Present, Lantern, Pine Tree, Sleigh Bell, Snowball, Coal (dud). The Sleigh Bell replaced the
+  Pom-pom, which looked too much like the Snowball.
+- Each result is picked from the odds table first, then the reels land on it. **No staged near-misses.**
+- **Draft paytable in `mockups/slots.js`** (1 in 500 jackpot, top fixed win 20×; about 1 pull in 3.5 wins; fixed wins pay back
+  66.9¢ per $1). Draft jackpot %s: Mini 1%, Big 10% (the Mini's is a tenth because its bet is a tenth). Cody sets the real ones.
+- **Starting pool vs top prize:** with the draft's 20× top prize, a $50 start paused the Big Hat early in about 3% of
+  simulated runs; $100 never did. Recheck with Cody's paytable.
+
 **Proposals to confirm (Claude's picks):**
 1. **The jackpot scales with the bet:** a large hat ($1) wins the full %, a mini hat ($0.10) a tenth of it.
    Otherwise everyone would bet mini hat to chase the same prize.

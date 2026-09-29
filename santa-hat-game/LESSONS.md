@@ -54,6 +54,12 @@ Read this before starting new work on the game. Add to it whenever something rea
   arriving in the pool and overstated the level-off point by 60%. Caught by checking the formula against
   the worked example (87.59¢ per $1). The test now asserts that number.
 
+- **Class-name clash.** The avatar editor already used `.slots`, so the new Slots panel silently picked up its layout.
+  Check `grep` for a class name before reusing a short one. Also: a `@media` block placed *above* a base rule of the same
+  strength gets overridden; put responsive overrides after the rules they change.
+- **Check the test's arithmetic too.** A Slots check "failed" because the test expected $28.40; $9.90 − $1.00 + $19.40 is $28.30,
+  which the game showed. A red test needs checking in both directions.
+
 ## Multiplayer notes
 
 - This workspace can't open WebSockets (proxy limit), so live Supabase play can't be tested here.

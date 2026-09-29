@@ -1,0 +1,23 @@
+// Opens the PUBLISHED site's Games tab on a phone-sized screen and pulls the Mini Hat once.
+import { createRequire } from 'module'; import { execSync } from 'child_process'; import { mkdirSync, readFileSync } from 'fs'; import path from 'path'; import os from 'os';
+const require = createRequire(import.meta.url);
+const { chromium } = require(path.join(execSync('npm root -g').toString().trim(), 'playwright'));
+mkdirSync('out', { recursive: true });
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const page = await (await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true })).newPage();
+const errs = [], hdr = path.join(os.tmpdir(), 'h.txt');
+await page.context().route('**/*', async (route) => { const url = route.request().url();
+  if (/^https:\/\/(buffalobill46\.github\.io|cdn\.jsdelivr\.net|fonts\.googleapis\.com|fonts\.gstatic\.com)\//.test(url)) {
+    try { const out = execSync(`curl -sS -L -D ${hdr} -A "Mozilla/5.0 Chrome/120" "${url}"`, { maxBuffer: 1e8 });
+      const ct = (readFileSync(hdr, 'utf8').match(/content-type:\s*([^\r\n]+)/gi) || []).pop()?.split(':')[1]?.trim() || 'text/plain';
+      return route.fulfill({ body: out, contentType: ct }); } catch { return route.abort(); } }
+  return route.abort(); });
+page.on('pageerror', (e) => errs.push(e.message)); page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+await page.goto('https://buffalobill46.github.io/test-stuff/#games', { timeout: 60000 });
+await page.waitForFunction(() => window.__slots, null, { timeout: 90000 });
+await page.waitForTimeout(2000);
+await page.evaluate(() => document.querySelector('.machine[data-m="mini"] .pull').click());
+await page.waitForFunction(() => !document.querySelector('.machine[data-m="mini"] .pull').disabled, null, { timeout: 60000 });
+console.log('live pool:', await page.textContent('#slotPool'), '| balance:', await page.textContent('#demoBal'), '| result:', await page.textContent('.machine[data-m="mini"] .res'));
+await page.screenshot({ path: 'out/live-games.png' });
+console.log('errors:', errs.length ? errs : 'none'); await browser.close();

@@ -71,6 +71,7 @@ node tests/sim.test.mjs          # referee: 120 simulated matches, rule checks, 
 node tests/catalog-sql.mjs       # item catalog checks (and prints the SQL seed)
 node tests/tax-split.mjs         # SANTA 3% tax split examples and pool simulation
 node tests/jackpot-sim.mjs       # jackpot = % of pool: level-off point, never below zero
+node tests/slots.test.mjs        # Slots rules: reels always show the result, pool never negative, payback
 cd tests/browser && npm install  # once per fresh machine
 node lobby-test.mjs              # 3 browser windows: auto match, join from list, Watch now
 node tabs-test.mjs               # tabs, store, avatar editor, sign-in sheet
@@ -78,6 +79,8 @@ node link-test.mjs               # email + wallet account linking (local stand-i
 node mp.mjs                      # multiplayer room: join, host handover
 node idle.mjs                    # 3-minute idle and hidden-tab kicks
 node live.mjs                    # loads the PUBLISHED site on a phone-sized screen
+node games-test.mjs              # Games tab: Slots readouts, pulls, forced win and jackpot, money math
+node live-games.mjs              # pulls a lever on the PUBLISHED Games tab
 ```
 
 The browser tests need Playwright installed globally and use headless Chromium with software graphics
@@ -95,7 +98,8 @@ between two devices has never been tested from here. Cody and friends testing on
 
 **Last updated:** 2026-09-29.
 
-**Just finished (latest):** 3% SANTA tax notices (Play intro, Wager card, Lottery); decisions recorded:
+**Just finished (latest):** Games tab with the **Santa Hat Slots demo** (Mini Hat + Big Hat 3D machines, stacked, demo money,
+draft paytable), and the Spin pool rule ($25 to the treasury when it reaches $175). **Before that:** 3% SANTA tax notices (Play intro, Wager card, Lottery); decisions recorded:
 winners absorb the tax, a 2% price cushion, Spin/Slots pool wallets, and the lottery goes through Cody's own program. Spin and Slots
 are separate games with separate pools that keep all funds; only Slots has a jackpot (a % of the Slots pool); Spin unchanged (`tests/jackpot-sim.mjs`). **Before that:** unranked lobby (FFA/TEAM, Auto match into public rooms `PF1-5`/`PT1-5`, private code,
 practice), the FFA RANKED lobby layout (Tournament greyed out; Auto match shows "opening soon" and is off),
@@ -106,7 +110,8 @@ and the live games list with **Watch now** (max 4 watchers). Tested and publishe
    URL Configuration (Site URL `https://buffalobill46.github.io/test-stuff/`, Redirect `https://buffalobill46.github.io/test-stuff/**`).
 2. Custom email service (Resend) so friends get sign-in emails.
 3. The level table (points per level, what unlocks).
-4. The Slots paytable and 10 symbols. Cody is drafting; Claude checks the payback with a simulation.
+4. The Slots payouts: the machines are built with a draft paytable in `mockups/slots.js`. Cody sends the real one, then Claude
+   drops it in and runs `tests/slots.test.mjs`.
 5. Confirm the Games daily limit is **dollars** per game per day ($10 at level 1, +$10 per level).
 6. The treasury wallet's public address (Cody is making a new wallet), and when to create and fund the
    Spin pool and Slots pool wallets. That's real money, so wait for Cody's go.

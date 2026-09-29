@@ -10,7 +10,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Level table:** how many rank points reach each level, and which items unlock at each.
 - [ ] **Treasury wallet:** Cody is making a new one. Send Claude its public address (never the secret key or recovery phrase).
 - [ ] **Lottery program:** when ready, share where Cody's on-chain lottery lives (its repo, or its program address on devnet) so the Store's Lottery block can link to it or plug into it.
-- [ ] **Slots paytable and 10 reel symbols:** Cody drafting; Claude checks the payback % with a simulation.
+- [ ] **Slots payouts:** Cody deciding, now that the machines are built. Replace `PAYTABLE` (and the jackpot %s in `MACHINES`) in `mockups/slots.js`, then run `tests/slots.test.mjs`. The starting pool must suit the biggest fixed win: with the draft's 20× top prize, $50 paused the Big Hat early in about 3% of simulated runs, $100 in none.
 
 ## Next to build
 - [ ] **Turn on ranked Auto match:** the FFA RANKED lobby is built, but its Auto match button stays off ("opening soon") until tickets and the server below exist.
@@ -33,14 +33,13 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Buying needs a wallet:** email-only accounts must link one first (linking already works).
 
 ## Santa Hat Games tab
-- [ ] New **Games** tab next to Play / Store / Avatar / Ranks. All games here are **single-player**.
 - [ ] **Spin pool skim:** when the Spin pool reaches $175, the server sends $25 to the treasury (decided).
 - [ ] **Santa Hat Spin:** $0.10 and $1.00, its own Spin pool seeded with **$50**, the agreed odds (unchanged, no jackpot), a 400-slice wheel (5x = 2 slices, 4x = 4), pay per spin.
-- [ ] **Santa Hat Slots:** a visually stunning 3D reel with 10 symbols, $0.10 mini hat and $1.00 large hat bets, its own Slots pool seeded with **$50**, pay per spin.
-- [ ] **Slots jackpot = a % of the Slots pool** (decided; Slots only). Confirm Claude's picks in DESIGN_NOTES → Spin and Slots pools: scales with bet, 10%, top line, live jackpot display.
+- [ ] **Slots with real SANTA:** server-picked results (provably fair), payments and payouts. The demo already picks the result first and then shows it, so a server result plugs straight in.
+- [ ] **Slots jackpot %s:** built with a draft of 1% (Mini Hat) and 10% (Big Hat). Cody to confirm.
 - [ ] **Provably fair results** and a pool safety rule (a play only starts if the pool covers that game's biggest fixed win: Spin 5× the bet, Slots its top fixed prize).
 - [ ] **Entries split 90% to the pool, 10% burned** (after the 3% tax).
-- [ ] **3% SANTA tax notice at the top of the Spin and Slots descriptions** (winners receive 3% less).
+- [ ] **3% SANTA tax notice at the top of the Spin page** when it's built (the Games tab intro already has one).
 - [ ] **Daily spend limit per game:** $10 at level 1, +$10 per level.
 - [ ] **Simulate a million spins** to prove the payback % before launch.
 - [ ] More click games from the idea list (Hat Drop, Present Pick, Sleigh Climb, Advent Scratch, Naughty or Nice).
@@ -70,6 +69,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - Wallet or email sign-in, avatars bound to the account, and email + wallet linking.
 - Item catalog with 37 items, including the Gorilla, Snowman and Panda heads; save rules checked on the server.
 - Bots with player names and random outfits; ranking rules written on the Play tab.
+- **Games tab + Santa Hat Slots (demo)**: Mini Hat ($0.10) and Big Hat ($1.00) 3D machines shaped like Santa hats (pom-pom lever), stacked; total Slots pool under the title; each machine shows its jackpot % and amount; draft paytable; demo money only.
 - Price cushion decided: 60-second quote, a payment counts if within 2%.
 - 3% SANTA tax notice on the Play page intro, the Wager card and the Lottery block. Decided: winners absorb the tax.
 - Unranked lobby (FFA or TEAM, Auto match into public games, private room code, practice) and the FFA RANKED lobby layout (Tournament greyed out, Coming soon).
