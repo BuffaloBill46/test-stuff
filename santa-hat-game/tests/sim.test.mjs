@@ -1,0 +1,100 @@
+import { createSim, K, PTS, PHASES } from '../mockups/sim.js';
+
+let seed = 1;
+const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+const fail = (m, extra) => { console.error('FAIL:', m, extra ? JSON.stringify(extra).slice(0, 400) : ''); process.exit(1); };
+let maxBytes = 0, matches = 0;
+
+function checkInvariants(sim, tag) {
+  const S = sim.S;
+  const h = S.hat;
+  if (!['ped', 'head', 'air', 'ground'].includes(h.st)) fail(tag + ' bad hat state', h);
+  if (h.st === 'head' && !sim.byId(h.holder)) fail(tag + ' hat on missing head', h);
+  if (h.st !== 'head' && h.holder !== -1) fail(tag + ' holder set while not on head', h);
+  for (const e of S.ents) {
+    if (!Number.isInteger(e.score) || e.score < 0) fail(tag + ' bad score', e);
+    if (![e.x, e.z, e.vx, e.vz].every(Number.isFinite)) fail(tag + ' non-finite position', e);
+    if (Math.hypot(e.x, e.z) > K.ARENA + 1e-6) fail(tag + ' outside arena', e);
+  }
+  const humans = S.ents.filter((e) => !e.bot).length;
+  if (humans < K.MIN_BODIES && S.ents.length < K.MIN_BODIES) fail(tag + ' bots not filling', { n: S.ents.length });
+  if (S.mode === 'team') {
+    const n = [0, 1].map((t) => S.ents.filter((e) => e.team === t).length);
+    if (n[0] !== n[1]) fail(tag + ' unbalanced teams', n);
+  }
+  const bytes = JSON.stringify(sim.snapshot()).length;
+  maxBytes = Math.max(maxBytes, bytes);
+  if (bytes > 3800) fail(tag + ' snapshot too big: ' + bytes);
+}
+
+function runMatch(mode, humansStart, churn) {
+  const sim = createSim(rand);
+  let peers = Array.from({ length: humansStart }, (_, i) => 'p' + i), next = humansStart;
+  sim.syncRoster(peers);
+  const th = {};
+  const dt = 1 / 30;
+  // warm-up in lobby
+  for (let i = 0; i < 90; i++) { sim.step(dt); checkInvariants(sim, 'lobby'); }
+  sim.startMatch(mode);
+  const phases = [];
+  let t = 0, lastPhase = null, teamSnapshotsChecked = 0;
+  const holdTime = {};
+  while (true) {
+    // random-ish human input: wander, aim at someone, throw sometimes
+    for (const p of peers) {
+      th[p] = th[p] || 0; if (rand() < 0.15) th[p]++;
+      const tgt = sim.S.ents[Math.floor(rand() * sim.S.ents.length)];
+      sim.setInput(p, [rand() * 2 - 1, rand() * 2 - 1, tgt ? tgt.x : 0, tgt ? tgt.z : 0], th[p]);
+    }
+    if (churn && rand() < 0.01) {
+      if (rand() < 0.5 && peers.length > 1) peers.splice(Math.floor(rand() * peers.length), 1);
+      else if (peers.length < 10) peers.push('p' + next++);
+      sim.syncRoster(peers);
+    }
+    // host migration now and then: a fresh sim picks up from the snapshot
+    let simNow = sim;
+    if (rand() < 0.003) {
+      const snap = JSON.parse(JSON.stringify(sim.snapshot()));
+      const s2 = createSim(rand); if (!s2.load(snap)) fail('load failed');
+      const a = JSON.stringify({ ...s2.snapshot(), s: 0, c: 0 }), b = JSON.stringify({ ...snap, s: 0, c: 0 });
+      if (a !== b) { const A=JSON.parse(a),B=JSON.parse(b); for (const k in B) if (JSON.stringify(A[k])!==JSON.stringify(B[k])) { if (Array.isArray(B[k])) B[k].forEach((row,i)=>{ if (JSON.stringify(row)!==JSON.stringify(A[k][i])) console.log(k,i,'orig',JSON.stringify(row),'loaded',JSON.stringify(A[k][i])); }); else console.log(k,'orig',JSON.stringify(B[k]),'loaded',JSON.stringify(A[k])); } fail('snapshot round-trip differs'); }
+      Object.assign(sim, {}); // keep using the original; round trip equality is the check
+    }
+    const before = Object.fromEntries(simNow.S.ents.map((e) => [e.id, e.score]));
+    simNow.step(dt); t += dt;
+    if (simNow.S.phase !== lastPhase) { phases.push(simNow.S.phase); lastPhase = simNow.S.phase; }
+    checkInvariants(simNow, mode);
+    // point-rate sanity: nobody gains more than one big event + hat second in a single frame
+    for (const e of simNow.S.ents) { const g = e.score - (before[e.id] ?? e.score); if (g > PTS.header + PTS.knock + PTS.hit * 3 + PTS.hatSec) fail('score jump ' + g, e); }
+    if (mode === 'team' && !churn && simNow.S.phase === 'play') {
+      const sum = [0, 1].map((tm) => simNow.S.ents.filter((e) => e.team === tm).reduce((a, e) => a + e.score, 0));
+      if (sum[0] !== simNow.S.team[0] || sum[1] !== simNow.S.team[1]) fail('team total != sum of players', { sum, team: simNow.S.team });
+      teamSnapshotsChecked++;
+    }
+    if (simNow.S.phase === 'lobby' && phases.includes('end')) break;
+    if (t > K.ROUNDS * K.ROUND_TIME + (K.ROUNDS - 1) * K.BREAK_TIME + K.END_TIME + 5) fail('match never ended', { phases, t });
+  }
+  const want = ['play', 'break', 'play', 'break', 'play', 'end', 'lobby'];
+  if (JSON.stringify(phases) !== JSON.stringify(want)) fail('phase order', phases);
+  matches++;
+  return sim;
+}
+
+for (let i = 0; i < 40; i++) runMatch('ffa', 1 + (i % 8), false);
+for (let i = 0; i < 40; i++) runMatch('team', 1 + (i % 8), false);
+for (let i = 0; i < 40; i++) runMatch(i % 2 ? 'team' : 'ffa', 2 + (i % 7), true);
+
+// worst case size: 8 humans all throwing constantly
+{
+  const sim = createSim(rand); const peers = Array.from({ length: 8 }, (_, i) => 'k3v6q2rt7wacd4f' + i);
+  sim.syncRoster(peers); sim.startMatch('team'); let c = 0;
+  for (let i = 0; i < 3000; i++) { c++; peers.forEach((p) => sim.setInput(p, [1, 0, 0, 0], c)); sim.step(1 / 30); checkInvariants(sim, 'flood'); }
+}
+
+// hostile input is clamped
+{
+  const sim = createSim(rand); sim.syncRoster(['x']); sim.startMatch('ffa');
+  sim.setInput('x', [1e9, NaN, 'a', {}], 'zz'); for (let i = 0; i < 60; i++) sim.step(1 / 30);
+  const e = sim.S.ents.find((q) => q.peer === 'x'); if (!Number.isFinite(e.x) || Math.hypot(e.vx, e.vz) > K.HUMAN_SPEED + 0.01) fail('hostile input not clamped', e);
+}
+console.log(`OK: ${matches} full matches, invariants held every frame; largest snapshot ${maxBytes} bytes (limit 4096)`);

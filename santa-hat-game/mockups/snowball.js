@@ -3,7 +3,7 @@ import { THREE, C, character, animate, Snow, Burst, toon, part, build, glow } fr
 import { buildPlaza, makeHat, shadowBlob, ARENA } from './plaza.js';
 
 const V3 = THREE.Vector3;
-const ROUND = 90, BALL_G = 7, BALL_SPEED = 18, HAT_G = 16, HEAD_Y = 1.98;
+const ROUND = 90, BALL_G = 7, BALL_SPEED = 18, HAT_G = 16, HEAD_Y = 1.9;
 
 const intro = `<div class="eyebrow">Mockup A · Arena</div>
 <h2>Snowball Square</h2>
@@ -30,12 +30,12 @@ function create(ui) {
   const youRing = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.72, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: C.lantern, transparent: true, opacity: 0.85, depthWrite: false }));
   youRing.position.y = 0.05; scene.add(youRing);
 
-  const hat = { mesh: makeHat(0.62), state: 'pedestal', pos: new V3(), vel: new V3(), holder: null, last: null, cool: 0, bounces: 0, rest: 0, acc: 0 };
+  const hat = { mesh: makeHat(0.88), state: 'pedestal', pos: new V3(), vel: new V3(), holder: null, last: null, cool: 0, bounces: 0, rest: 0, acc: 0 };
   scene.add(hat.mesh);
   const hatShadow = shadowBlob(); scene.add(hatShadow);
   const landRing = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.86, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, depthWrite: false }));
   landRing.position.y = 0.06; scene.add(landRing);
-  const hatGlow = glow(0xffd29a, 2.4, 0.3); scene.add(hatGlow);
+  const hatGlow = glow(0xffd29a, 3.2, 0.3); scene.add(hatGlow);
   const landing = new V3();
 
   const balls = [];
@@ -270,7 +270,7 @@ function create(ui) {
       }
     }
     hat.mesh.position.copy(hat.pos);
-    hat.mesh.scale.setScalar(THREE.MathUtils.lerp(hat.mesh.scale.x, hat.state === 'pedestal' ? 1.8 : 1, Math.min(1, dt * 8)));
+    hat.mesh.scale.setScalar(THREE.MathUtils.lerp(hat.mesh.scale.x, hat.state === 'pedestal' ? 2.2 : 1, Math.min(1, dt * 8)));
     hatGlow.position.set(hat.pos.x, hat.pos.y + 0.4, hat.pos.z); hatGlow.material.opacity = 0.22 + Math.sin(t * 4) * 0.08;
 
     // camera
