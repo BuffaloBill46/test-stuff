@@ -3,17 +3,23 @@
 // stops; wins are read off the visible grid along paylines. The odds come ONLY from how many of each symbol are on each
 // strip, so payback is calculated exactly from the counts (see stats()). Symbol order on a strip doesn't change the odds.
 //
-//   Mini Hat: 3 reels × 3 rows, 5 paylines,  $0.10 a pull. 3 in a row on a line wins; 3 Santa Hats = Mini jackpot.
-//   Big Hat:  5 reels × 5 rows, 15 paylines, $1.00 a pull. 3, 4 or 5 in a row from the left wins; 5 Santa Hats = Big jackpot.
+//   Mini Hat: 3 reels × 3 rows, 5 paylines,  $0.10 a pull. 3 Santa Hats in a row on a line = 100× the price.
+//   Big Hat:  5 reels × 5 rows, 15 paylines, $1.00 a pull. 5 Santa Hats in a row on a line = 100× the price.
+//   Line wins count from the leftmost reel. Prizes are in "× the pull price" and every other prize scales down from the
+//   100×, with lots of small ("micro") wins. Target: line wins pay back about 75% of what's played.
 //
-// !! PAYS, STRIP COUNTS AND JACKPOT %s ARE DRAFTS. Cody decides the real ones. Change them in MACHINES below, then run
+//   POOL JACKPOT (separate): its own random draw each pull, at `poolJackpotOdds`. When it hits, every square on the
+//   grid shows a Santa Hat and the machine pays its % of the shared Slots pool. A full grid can't happen by accident
+//   (no strip has two Santa Hats next to each other), so the two jackpots never get mixed up.
+//
+// !! PAYS, STRIP COUNTS, ODDS AND JACKPOT %s ARE DRAFTS. Cody decides the real ones. Change them in MACHINES below, then run
 // tests/slots.test.mjs: it prints payback, hit rate and jackpot odds and checks the invariants.
 // Both machines share one Slots pool. Spin is a separate game with its own pool.
 
 export const FEE = 0.03;                       // SANTA's own transfer tax (read live from the token in the real version)
 export const BURN = 0.10;                      // Games tab: 10% burned, 90% to the pool, after the tax
 export const IN_PER_DOLLAR = (1 - BURN * (1 - FEE)) * (1 - FEE); // 87.59¢ of each $1 lands in the pool
-export const START_POOL = 50;
+export const START_POOL = 250; // demo. Must cover the Big Hat's 100× ($100) line; $250 never paused in simulation, $50 always did.
 
 export const SYMBOLS = [
   { id: 'hat', name: 'Santa Hat' }, { id: 'star', name: 'Gold Star' }, { id: 'reindeer', name: 'Reindeer' },
@@ -33,19 +39,23 @@ const LINES_5 = [
 ];
 
 // DRAFT. counts: how many of each symbol on EVERY reel strip of that machine (sum = strip length).
-// pays: [3 in a row, 4 in a row, 5 in a row] as multiples of the LINE bet (bet ÷ lines). 'JACKPOT' = that machine's % of the pool.
+// pays: { in-a-row count: × the pull price } for a line. Only the longest run on a line pays.
 export const MACHINES = {
   mini: {
-    id: 'mini', name: 'Mini Hat', bet: 0.10, reels: 3, rows: 3, lines: LINES_3, jackpotPct: 0.01,
-    counts: { hat: 2, star: 1, reindeer: 1, snowman: 2, present: 2, lantern: 3, pine: 5, bell: 6, snowball: 8, coal: 2 },
-    pays: { hat: ['JACKPOT'], star: [700], reindeer: [400], snowman: [200], present: [150], lantern: [75], pine: [40], bell: [25], snowball: [15] },
+    id: 'mini', name: 'Mini Hat', bet: 0.10, reels: 3, rows: 3, lines: LINES_3, jackpotPct: 0.01, poolJackpotOdds: 1 / 2500,
+    counts: { hat: 2, star: 1, reindeer: 1, snowman: 2, present: 2, lantern: 3, pine: 5, bell: 7, snowball: 9, coal: 1 },
+    pays: {
+      hat: { 3: 100 }, star: { 3: 45 }, reindeer: { 3: 23 }, snowman: { 3: 14 }, present: { 3: 9 }, lantern: { 3: 5.5 },
+      pine: { 3: 3.5, 2: 0.55 }, bell: { 3: 2.5, 2: 0.45 }, snowball: { 3: 2, 2: 0.25 },
+    },
   },
   big: {
-    id: 'big', name: 'Big Hat', bet: 1.00, reels: 5, rows: 5, lines: LINES_5, jackpotPct: 0.10,
-    counts: { hat: 4, star: 2, reindeer: 2, snowman: 3, present: 3, lantern: 4, pine: 6, bell: 7, snowball: 8, coal: 1 },
+    id: 'big', name: 'Big Hat', bet: 1.00, reels: 5, rows: 5, lines: LINES_5, jackpotPct: 0.10, poolJackpotOdds: 1 / 2500,
+    counts: { hat: 4, star: 1, reindeer: 2, snowman: 2, present: 2, lantern: 3, pine: 6, bell: 10, snowball: 14, coal: 1 },
     pays: {
-      hat: [100, 300, 'JACKPOT'], star: [80, 300, 450], reindeer: [60, 220, 400], snowman: [45, 170, 350], present: [35, 120, 300],
-      lantern: [30, 90, 250], pine: [24, 60, 170], bell: [20, 50, 140], snowball: [16, 40, 115],
+      hat: { 5: 100, 4: 35, 3: 5 }, star: { 5: 90, 4: 23, 3: 4 }, reindeer: { 5: 58, 4: 14, 3: 3 }, snowman: { 5: 35, 4: 9.5, 3: 2 },
+      present: { 5: 23, 4: 6, 3: 1.5 }, lantern: { 5: 14, 4: 3.5, 3: 0.95 }, pine: { 5: 9.5, 4: 2.5, 3: 0.7 },
+      bell: { 5: 7, 4: 2, 3: 0.45 }, snowball: { 5: 4.5, 4: 1.5, 3: 0.3 },
     },
   },
 };
@@ -82,32 +92,31 @@ export function evaluate(m, grid) {
   m.lines.forEach((rows, li) => {
     const first = grid[0][rows[0]]; let n = 1;
     while (n < m.reels && grid[n][rows[n]] === first) n++;
-    const p = m.pays[SYMBOLS[first].id]; if (!p) return;
-    const pay = p[n - 3]; if (n < 3 || pay === undefined) return;
-    wins.push({ line: li, sym: first, count: n, jackpot: pay === 'JACKPOT', pay: pay === 'JACKPOT' ? 0 : pay * m.lineBet });
+    const x = (m.pays[SYMBOLS[first].id] || {})[n]; if (x === undefined) return;
+    wins.push({ line: li, sym: first, count: n, x, pay: x * m.bet, top: first === SYM.hat && n === m.reels });
   });
   return wins;
 }
 
 // Exact numbers from the strip counts (what a PAR sheet lists). Per line, then × lines.
+// (Line wins only; the pool jackpot is paid from its own draw and grows with the pool.)
 export function stats(m) {
   const L = m.stripLen, f = (id) => (m.counts[id] || 0) / L;
-  let fixed = 0, lineHit = 0, jackLine = 0;
+  let back = 0, lineHit = 0, topLine = 0;
   for (const [id, p] of Object.entries(m.pays)) {
-    for (let n = 3; n <= m.reels; n++) {
-      const pay = p[n - 3]; if (pay === undefined) continue;
+    for (const [n, x] of Object.entries(p).map(([n, x]) => [+n, x])) {
       const prob = Math.pow(f(id), n) * (n < m.reels ? 1 - f(id) : 1);
-      lineHit += prob;
-      if (pay === 'JACKPOT') jackLine += prob; else fixed += prob * pay * m.lineBet;
+      lineHit += prob; back += prob * x;
+      if (id === 'hat' && n === m.reels) topLine += prob;
     }
   }
   const lines = m.lines.length;
-  return { fixedPerDollar: (fixed * lines) / m.bet, lineHitRate: lineHit, jackpotPerLine: jackLine, lines };
+  return { payback: back * lines, lineHitRate: lineHit, topPerLine: topLine, lines };
 }
 
-// Biggest single-line fixed prize in $. A pull only starts if the pool covers it (the pay is also capped at the pool,
-// and flagged `capped` if that ever happens, so it can't fail silently).
-export const MAX_FIXED = (m) => Math.max(...Object.values(m.pays).flat().filter((x) => x !== 'JACKPOT')) * m.lineBet;
+// Biggest fixed prize in $ (the 100× line). A pull only starts if the pool covers it; the pay is also capped at the pool
+// and flagged `capped` if that ever happens, so it can't fail silently.
+export const MAX_FIXED = (m) => Math.max(...Object.values(m.pays).flatMap((p) => Object.values(p))) * m.bet;
 
 // One pull. `rand` gives uniform numbers in [0,1) (server seeds in the real version). Changes state.pool.
 // forcedStops (tests only) sets the reel stops directly.
@@ -115,15 +124,21 @@ export function pull(state, machineId, rand = Math.random, forcedStops) {
   const m = MACHINES[machineId];
   if (state.pool < MAX_FIXED(m)) return { paused: true };
   state.pool += m.bet * IN_PER_DOLLAR;
+  // Pool jackpot: its own draw. When it hits, the whole grid shows Santa Hats and only the jackpot is paid.
+  const jackpot = forcedStops === 'JACKPOT' || (!forcedStops && rand() < m.poolJackpotOdds);
+  if (jackpot) {
+    const grid = Array.from({ length: m.reels }, () => Array(m.rows).fill(SYM.hat));
+    const pay = Math.min(jackpotAmount(machineId, state.pool), state.pool);
+    state.pool -= pay;
+    return { stops: null, grid, wins: [], pay, jackpot: true, capped: false, received: pay * (1 - FEE), ahead: pay > m.bet + 1e-9 };
+  }
   const stops = forcedStops || Array.from({ length: m.reels }, () => Math.floor(rand() * m.stripLen));
   const grid = gridFor(m, stops), wins = evaluate(m, grid);
-  const jackpot = wins.some((w) => w.jackpot); // at most one jackpot per pull, even on several lines
   let pay = wins.reduce((s, w) => s + w.pay, 0);
-  if (jackpot) pay += jackpotAmount(machineId, state.pool);
   const capped = pay > state.pool;
   pay = Math.min(pay, state.pool); // can never pay more than the pool holds
   state.pool -= pay;
-  return { stops, grid, wins, pay, jackpot, capped, received: pay * (1 - FEE), ahead: pay > m.bet + 1e-9 };
+  return { stops, grid, wins, pay, jackpot: false, capped, received: pay * (1 - FEE), ahead: pay > m.bet + 1e-9 };
 }
 
 // Tests/demo: reel stops that put `sym` on `count` reels of a given line (the rest random).

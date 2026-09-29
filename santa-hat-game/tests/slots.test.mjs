@@ -16,6 +16,7 @@ for (const m of Object.values(MACHINES)) {
   m.lines.forEach((_, li) => {
     for (let n = 3; n <= m.reels; n++) {
       const g = gridFor(m, stopsShowing(m.id, li, 'snowball', n, rand)), w = evaluate(m, g).find((x) => x.line === li);
+      if (!(n in m.pays.snowball)) continue;
       if (!w || w.count !== n || w.sym !== SYM.snowball) fail(`${m.id} line ${li}: forced ${n} snowballs read as ${JSON.stringify(w)}`);
     }
   });
@@ -23,24 +24,31 @@ for (const m of Object.values(MACHINES)) {
 
 // Mini Hat: check EVERY possible set of reel stops against the exact PAR-sheet formula.
 {
-  const m = MACHINES.mini, L = m.stripLen; let total = 0, jack = 0;
+  const m = MACHINES.mini, L = m.stripLen; let total = 0, top = 0, fullGrid = 0;
   for (let a = 0; a < L; a++) for (let b = 0; b < L; b++) for (let c = 0; c < L; c++) {
-    const w = evaluate(m, gridFor(m, [a, b, c])); total += w.reduce((s, x) => s + x.pay, 0); jack += w.filter((x) => x.jackpot).length;
+    const g = gridFor(m, [a, b, c]), w = evaluate(m, g); total += w.reduce((s, x) => s + x.pay, 0); top += w.filter((x) => x.top).length;
+    if (g.every((col) => col.every((x) => x === SYM.hat))) fullGrid++;
   }
   const exact = total / L ** 3 / m.bet, s = stats(m);
-  if (Math.abs(exact - s.fixedPerDollar) > 1e-9) fail(`Mini Hat: all-stops payback ${exact} ≠ formula ${s.fixedPerDollar}`);
-  if (Math.abs(jack / L ** 3 - s.jackpotPerLine * s.lines) > 1e-12) fail('Mini Hat: jackpot line count mismatch');
-  console.log(`Mini Hat: all ${L ** 3} reel stops checked; fixed payback matches the formula exactly.`);
+  if (Math.abs(exact - s.payback) > 1e-9) fail(`Mini Hat: all-stops payback ${exact} ≠ formula ${s.payback}`);
+  if (Math.abs(top / L ** 3 - s.topPerLine * s.lines) > 1e-12) fail('Mini Hat: 100× line count mismatch');
+  if (fullGrid) fail('Mini Hat: reel stops alone produced a full grid of hats (that must only come from the pool jackpot)');
+  console.log(`Mini Hat: all ${L ** 3} reel stops checked; payback matches the formula exactly; no full grid of hats from the reels.`);
 }
 
 // PAR-sheet numbers (exact) + per-pull numbers (simulated) for each machine.
 for (const m of Object.values(MACHINES)) {
-  const s = stats(m), N = 300000, st = { pool: 1e12 }; let hit = 0, ahead = 0, jp = 0, fixed = 0;
-  for (let i = 0; i < N; i++) { const r = pull(st, m.id, rand); if (r.wins.length) hit++; if (r.ahead) ahead++; if (r.jackpot) jp++; fixed += r.wins.reduce((a, w) => a + w.pay, 0); }
-  const sim = fixed / N / m.bet;
-  if (Math.abs(sim - s.fixedPerDollar) > 0.05) fail(`${m.name}: simulated payback ${sim} far from exact ${s.fixedPerDollar}`);
-  console.log(`${m.name} (${m.reels}×${m.rows}, ${s.lines} lines, $${m.bet.toFixed(2)}): fixed wins pay back ${(s.fixedPerDollar * 100).toFixed(1)}¢ per $1 (simulated ${(sim * 100).toFixed(1)}¢); ` +
-    `a win on ${(hit / N * 100).toFixed(1)}% of pulls, ahead on ${(ahead / N * 100).toFixed(1)}%; jackpot about 1 in ${Math.round(N / Math.max(1, jp)).toLocaleString()} pulls; biggest fixed line win $${MAX_FIXED(m).toFixed(2)}`);
+  const s = stats(m), N = 300000, st = { pool: 1e12 }; let hit = 0, ahead = 0, micro = 0, jp = 0, top = 0, fixed = 0;
+  for (let i = 0; i < N; i++) {
+    const r = pull(st, m.id, rand); if (r.jackpot) { jp++; if (!r.grid.flat().every((x) => x === SYM.hat)) fail('pool jackpot must show a full grid of hats'); continue; }
+    const pay = r.wins.reduce((a, w) => a + w.pay, 0); fixed += pay; if (r.wins.some((w) => w.top)) top++;
+    if (r.wins.length) hit++; if (pay > m.bet + 1e-9) ahead++; else if (pay > 0) micro++;
+  }
+  const sim = fixed / (N - jp) / m.bet;
+  if (Math.abs(sim - s.payback) > 0.05) fail(`${m.name}: simulated payback ${sim} far from exact ${s.payback}`);
+  console.log(`${m.name} (${m.reels}×${m.rows}, ${s.lines} lines, $${m.bet.toFixed(2)}): line wins pay back ${(s.payback * 100).toFixed(1)}% (simulated ${(sim * 100).toFixed(1)}%); ` +
+    `a win on ${(hit / N * 100).toFixed(1)}% of pulls (micro ${(micro / N * 100).toFixed(1)}%, ahead ${(ahead / N * 100).toFixed(1)}%); ` +
+    `100× line about 1 in ${Math.round(1 / (s.topPerLine * s.lines)).toLocaleString()}; pool jackpot about 1 in ${Math.round(N / Math.max(1, jp)).toLocaleString()} (set 1 in ${Math.round(1 / m.poolJackpotOdds).toLocaleString()})`);
 }
 
 // Shared pool: long runs of both machines (30% Big Hat pulls). Pool never negative; jackpot never beyond the pool.
