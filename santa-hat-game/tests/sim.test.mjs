@@ -1,4 +1,4 @@
-import { createSim, K, PTS, PHASES } from '../mockups/sim.js';
+import { createSim, K, PTS, PHASES, constrain } from '../mockups/sim.js';
 
 let seed = 1;
 const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
@@ -31,7 +31,7 @@ function runMatch(mode, humansStart, churn) {
   const sim = createSim(rand);
   let peers = Array.from({ length: humansStart }, (_, i) => 'p' + i), next = humansStart;
   sim.syncRoster(peers);
-  const th = {};
+  const clients = {};
   const dt = 1 / 30;
   // warm-up in lobby
   for (let i = 0; i < 90; i++) { sim.step(dt); checkInvariants(sim, 'lobby'); }
@@ -40,11 +40,16 @@ function runMatch(mode, humansStart, churn) {
   let t = 0, lastPhase = null, teamSnapshotsChecked = 0;
   const holdTime = {};
   while (true) {
-    // random-ish human input: wander, aim at someone, throw sometimes
+    // each human behaves like a real browser: moves itself, reports, follows respawns
     for (const p of peers) {
-      th[p] = th[p] || 0; if (rand() < 0.15) th[p]++;
+      const e = sim.S.ents.find((q) => q.peer === p); if (!e) continue;
+      const c = (clients[p] = clients[p] || { x: e.x, z: e.z, ep: e.ep, q: 0, t: 0, dx: 0, dz: 0 });
+      if (c.ep !== e.ep || e.stun > 0) { c.x = e.x; c.z = e.z; c.ep = e.ep; }
+      if (rand() < 0.05) { const a = rand() * 6.28; c.dx = Math.cos(a); c.dz = Math.sin(a); }
+      c.x += c.dx * K.HUMAN_SPEED * dt; c.z += c.dz * K.HUMAN_SPEED * dt; constrain(c);
+      if (rand() < 0.15) c.t++;
       const tgt = sim.S.ents[Math.floor(rand() * sim.S.ents.length)];
-      sim.setInput(p, [rand() * 2 - 1, rand() * 2 - 1, tgt ? tgt.x : 0, tgt ? tgt.z : 0], th[p]);
+      sim.setReport(p, { q: ++c.q, ep: c.ep, x: c.x, z: c.z, vx: c.dx * K.HUMAN_SPEED, vz: c.dz * K.HUMAN_SPEED, f: 0, t: c.t, ax: tgt ? tgt.x : 0, az: tgt ? tgt.z : 0 });
     }
     if (churn && rand() < 0.01) {
       if (rand() < 0.5 && peers.length > 1) peers.splice(Math.floor(rand() * peers.length), 1);
@@ -88,13 +93,23 @@ for (let i = 0; i < 40; i++) runMatch(i % 2 ? 'team' : 'ffa', 2 + (i % 7), true)
 {
   const sim = createSim(rand); const peers = Array.from({ length: 8 }, (_, i) => 'k3v6q2rt7wacd4f' + i);
   sim.syncRoster(peers); sim.startMatch('team'); let c = 0;
-  for (let i = 0; i < 3000; i++) { c++; peers.forEach((p) => sim.setInput(p, [1, 0, 0, 0], c)); sim.step(1 / 30); checkInvariants(sim, 'flood'); }
+  for (let i = 0; i < 3000; i++) { c++; peers.forEach((p) => { const e = sim.S.ents.find((q) => q.peer === p); sim.setReport(p, { q: c, ep: e.ep, x: e.x, z: e.z, vx: 0, vz: 0, t: c, ax: 0, az: 0 }); }); sim.step(1 / 30); checkInvariants(sim, 'flood'); }
 }
 
-// hostile input is clamped
+// hostile reports: garbage values, teleports, super speed, old spawns
 {
   const sim = createSim(rand); sim.syncRoster(['x']); sim.startMatch('ffa');
-  sim.setInput('x', [1e9, NaN, 'a', {}], 'zz'); for (let i = 0; i < 60; i++) sim.step(1 / 30);
-  const e = sim.S.ents.find((q) => q.peer === 'x'); if (!Number.isFinite(e.x) || Math.hypot(e.vx, e.vz) > K.HUMAN_SPEED + 0.01) fail('hostile input not clamped', e);
+  const e = sim.S.ents.find((q) => q.peer === 'x');
+  sim.setReport('x', { q: 1, ep: e.ep, x: 1e9, z: NaN, vx: 'a', vz: {}, t: 'zz' });
+  if (![e.x, e.z, e.vx, e.vz].every(Number.isFinite) || Math.hypot(e.x, e.z) > K.ARENA + 1e-6) fail('garbage report broke position', e);
+  sim.step(1); const before = { x: e.x, z: e.z };
+  sim.setReport('x', { q: 2, ep: e.ep, x: -before.x, z: -before.z, vx: 999, vz: 0, t: 0 });
+  const jumped = Math.hypot(e.x - before.x, e.z - before.z);
+  if (jumped > K.HUMAN_SPEED * 1.4 + 0.61) fail('teleport not limited: ' + jumped);
+  if (Math.hypot(e.vx, e.vz) > K.HUMAN_SPEED * 1.05 + 1e-6) fail('speed not clamped', e);
+  const at = { x: e.x, z: e.z }; sim.setReport('x', { q: 3, ep: e.ep - 1, x: 0, z: 5, t: 0 });
+  if (e.x !== at.x || e.z !== at.z) fail('report from an old spawn was accepted');
+  sim.setReport('x', { q: 2, ep: e.ep, x: 0, z: 5, t: 0 });
+  if (e.x !== at.x || e.z !== at.z) fail('out-of-order report was accepted');
 }
 console.log(`OK: ${matches} full matches, invariants held every frame; largest snapshot ${maxBytes} bytes (limit 4096)`);

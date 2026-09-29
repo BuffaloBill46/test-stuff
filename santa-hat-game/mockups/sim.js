@@ -38,10 +38,10 @@ export function createSim(rand = Math.random) {
 
   function mkEnt(peer, bot, team) {
     return { id: S.nextId++, peer, bot, team, x: 0, z: 0, vx: 0, vz: 0, face: 0, stun: 0, cool: bot ? 1 : 0, ammo: bot ? 4 : 6, max: bot ? 4 : 6,
-      regen: 0, score: 0, inp: { mx: 0, mz: 0, ax: 0, az: 0, th: 0 }, lastTh: null, wob: rand() * 9, throwT: 0 };
+      regen: 0, score: 0, lastTh: null, wob: rand() * 9, throwT: 0, ep: 0, since: 9, rq: -1 };
   }
   function spawn(e, i = Math.floor(rand() * 16), n = 16) {
-    const a = Math.PI / 2 + (i / n) * Math.PI * 2; e.x = Math.cos(a) * 9; e.z = Math.sin(a) * 9; e.vx = e.vz = 0; e.stun = 0; e.face = a + Math.PI;
+    const a = Math.PI / 2 + (i / n) * Math.PI * 2; e.x = Math.cos(a) * 9; e.z = Math.sin(a) * 9; e.vx = e.vz = 0; e.stun = 0; e.face = a + Math.PI; e.ep++; e.since = 9;
   }
   function addScore(e, p) {
     if (!scoring() || !e) return;
@@ -83,10 +83,22 @@ export function createSim(rand = Math.random) {
     return added;
   }
 
-  function setInput(peer, inp, th) {
-    const e = S.ents.find((x) => x.peer === peer); if (!e || !Array.isArray(inp)) return;
-    let mx = clamp(num(inp[0]), -1, 1), mz = clamp(num(inp[1]), -1, 1); const l = hyp(mx, mz); if (l > 1) { mx /= l; mz /= l; }
-    e.inp = { mx, mz, ax: clamp(num(inp[2]), -20, 20), az: clamp(num(inp[3]), -20, 20), th: Math.floor(num(th)) };
+  // Each player's own browser moves them and reports here. The referee checks it:
+  // no reports from an old spawn, none while knocked down, no faster-than-running jumps.
+  function setReport(peer, r) {
+    const e = S.ents.find((x) => x.peer === peer); if (!e || !r || typeof r !== 'object') return;
+    const q = num(r.q, -1); if (q <= e.rq) return; e.rq = q;
+    const th = Math.floor(num(r.t));
+    if (e.lastTh === null || th < e.lastTh) e.lastTh = th;
+    else if (th > e.lastTh) { e.lastTh = th; if (moving()) throwBall(e, clamp(num(r.ax), -20, 20), clamp(num(r.az), -20, 20)); }
+    if (num(r.ep) !== e.ep || e.stun > 0 || !moving()) return;
+    let vx = num(r.vx), vz = num(r.vz); const sp = hyp(vx, vz), top = K.HUMAN_SPEED * 1.05;
+    if (sp > top) { vx *= top / sp; vz *= top / sp; }
+    const tx = clamp(num(r.x, e.x), -K.ARENA, K.ARENA), tz = clamp(num(r.z, e.z), -K.ARENA, K.ARENA);
+    const dx = tx - e.x, dz = tz - e.z, d = hyp(dx, dz), max = K.HUMAN_SPEED * 1.4 * Math.min(e.since, 1) + 0.6;
+    if (d > max) { e.x += (dx / d) * max; e.z += (dz / d) * max; } else { e.x = tx; e.z = tz; }
+    e.vx = vx; e.vz = vz; e.face = num(r.f, e.face); e.since = 0;
+    constrain(e);
   }
 
   // ---------- flow
@@ -189,18 +201,12 @@ export function createSim(rand = Math.random) {
       const pile = nearestPile(e);
       e.regen += dt * (hyp(pile[0] - e.x, pile[1] - e.z) < 1.6 ? 9 : 1);
       if (e.regen > (e.bot ? 3 : 2.2) && e.ammo < e.max) { e.ammo++; e.regen = 0; }
-      let want = [0, 0];
-      if (moving()) {
-        if (e.bot) want = ai(e);
-        else {
-          want = [e.inp.mx, e.inp.mz];
-          if (e.lastTh === null) e.lastTh = e.inp.th;
-          else if (e.inp.th !== e.lastTh) { e.lastTh = e.inp.th; throwBall(e, e.inp.ax, e.inp.az); }
-        }
-      }
-      const top = (e.bot ? K.BOT_SPEED : K.HUMAN_SPEED) * (h.holder === e.id ? K.HOLD_SLOW : 1);
       if (e.stun > 0) { e.stun -= dt; const f = 1 - Math.min(1, dt * 4); e.vx *= f; e.vz *= f; }
-      else { const k = Math.min(1, dt * 10); e.vx += (want[0] * top - e.vx) * k; e.vz += (want[1] * top - e.vz) * k; }
+      else if (e.bot) {
+        const want = moving() ? ai(e) : [0, 0], top = K.BOT_SPEED * (h.holder === e.id ? K.HOLD_SLOW : 1), k = Math.min(1, dt * 10);
+        e.vx += (want[0] * top - e.vx) * k; e.vz += (want[1] * top - e.vz) * k;
+      } else if (!moving() || e.since > 0.4) { e.vx = 0; e.vz = 0; }
+      if (!e.bot) e.since += dt;
       e.x += e.vx * dt; e.z += e.vz * dt;
       const sp = hyp(e.vx, e.vz);
       if (sp > 0.5 && e.stun <= 0 && e.throwT <= 0) { let dd = Math.atan2(e.vx, e.vz) - e.face; dd = Math.atan2(Math.sin(dd), Math.cos(dd)); e.face += dd * Math.min(1, dt * 12); }
@@ -266,7 +272,7 @@ export function createSim(rand = Math.random) {
     const h = S.hat;
     return {
       s: ++S.seq, ph: PHASES.indexOf(S.phase), md: S.mode === 'team' ? 1 : 0, rd: S.round, tm: Math.round(S.time * 10) / 10, ts: S.team.slice(),
-      E: S.ents.map((e) => [e.id, e.peer || 0, e.bot ? 1 : 0, e.team, r2(e.x), r2(e.z), r2(e.vx), r2(e.vz), r2(e.face), e.stun > 0 ? 1 : 0, e.ammo, e.score, e.throwT > 0.5 ? 1 : 0]),
+      E: S.ents.map((e) => [e.id, e.peer || 0, e.bot ? 1 : 0, e.team, r2(e.x), r2(e.z), r2(e.vx), r2(e.vz), r2(e.face), e.stun > 0 ? 1 : 0, e.ammo, e.score, e.throwT > 0.5 ? 1 : 0, e.ep]),
       H: [HAT.indexOf(h.st), r2(h.x), r2(h.y), r2(h.z), r2(h.vx), r2(h.vy), r2(h.vz), h.holder, r2(S.landing.x), r2(S.landing.z)],
       B: S.balls.map((b) => [b.id, r2(b.x), r2(b.y), r2(b.z), r2(b.vx), r2(b.vy), r2(b.vz), b.owner]),
       V: S.ev.slice(-10),
@@ -280,7 +286,7 @@ export function createSim(rand = Math.random) {
     if (!snap || !Array.isArray(snap.E)) return false;
     S.phase = PHASES[snap.ph] || 'lobby'; S.mode = snap.md ? 'team' : 'ffa'; S.round = num(snap.rd); S.time = num(snap.tm);
     S.team = Array.isArray(snap.ts) ? [num(snap.ts[0]), num(snap.ts[1])] : [0, 0]; S.seq = num(snap.s);
-    S.ents = snap.E.map((r) => ({ ...mkEnt(r[1] || null, !!r[2], num(r[3])), id: num(r[0]), x: num(r[4]), z: num(r[5]), vx: num(r[6]), vz: num(r[7]), face: num(r[8]), stun: r[9] ? 0.5 : 0, ammo: num(r[10]), score: num(r[11]), throwT: r[12] ? 0.6 : 0 }));
+    S.ents = snap.E.map((r) => ({ ...mkEnt(r[1] || null, !!r[2], num(r[3])), id: num(r[0]), x: num(r[4]), z: num(r[5]), vx: num(r[6]), vz: num(r[7]), face: num(r[8]), stun: r[9] ? 0.5 : 0, ammo: num(r[10]), score: num(r[11]), throwT: r[12] ? 0.6 : 0, ep: num(r[13]) }));
     const H = snap.H || []; const h = S.hat;
     Object.assign(h, { st: HAT[H[0]] || 'ped', x: num(H[1]), y: num(H[2], K.PED_TOP), z: num(H[3]), vx: num(H[4]), vy: num(H[5]), vz: num(H[6]), holder: num(H[7], -1), acc: 0, cool: 0, bounces: 0, rest: 0 });
     if (h.st === 'head' && !byId(h.holder)) { h.st = 'ped'; h.holder = -1; }
@@ -293,5 +299,5 @@ export function createSim(rand = Math.random) {
     return true;
   }
 
-  return { S, step, syncRoster, setInput, startMatch, snapshot, load, byId };
+  return { S, step, syncRoster, setReport, startMatch, snapshot, load, byId };
 }
