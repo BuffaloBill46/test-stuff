@@ -60,6 +60,10 @@ Read this before starting new work on the game. Add to it whenever something rea
 - **Check the test's arithmetic too.** A Slots check "failed" because the test expected $28.40; $9.90 − $1.00 + $19.40 is $28.30,
   which the game showed. A red test needs checking in both directions.
 
+- **A pool that only its own game refills can lock itself.** With the Mini Hat gone, a Slots pool under the $100 top prize
+  refused every pull, so nothing could ever refill it: a silent permanent lock. Caught by simulating long runs and counting
+  paused pulls. Any pool with a "must cover the top prize" rule needs a refill path.
+
 ## Multiplayer notes
 
 - This workspace can't open WebSockets (proxy limit), so live Supabase play can't be tested here.

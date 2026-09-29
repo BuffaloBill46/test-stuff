@@ -138,7 +138,22 @@ $50 start). **The slots paytable is a placeholder** (spin's 1×–4× fixed wins
   Spin pool reaches $175, $25 goes to the treasury** (arrives as $24.25 after the tax), which puts it back at $150.
   Simulated in `tests/tax-split.mjs`: 2,000 runs × 5,000 spins from $50, zero pauses, and the pool never went below zero.
 
-**Built (demo, 2026-09-29):** the Games tab has the two machines, stacked: **Mini Hat** ($0.10) and **Big Hat** ($1.00).
+**Slots, current rules (decided by Cody, 2026-09-29; full numbers in `PAYTABLE.md`):**
+- **One machine: the Big Hat, $1.00 a pull, 5×5 grid, 15 paylines.** The Mini Hat is scrapped.
+- **Santa Hat is Wild** (stands in for any symbol except Coal). **5 Santa Hats in a row on a line = 100× the price ($100).**
+  All other prizes scale down from it, with lots of micro wins.
+- **Line wins pay back 74.7%** (target 75%). A win on about 54% of pulls: 36% micro wins (less than the $1 back), 18% ahead.
+- **Pool jackpot is separate:** its own draw (draft 1 in 2,500 pulls), pays 10% of the Slots pool, and **all 25 squares show
+  Santa Hats**. The reels alone can never make a full grid of hats.
+- **Slots pool skim:** when it reaches $325, $25 goes to the treasury. Demo start: $250 (must cover the $100 top prize).
+- Teasers happen naturally at their real odds (e.g. 4 hats then something else: about 1 in 1,260 pulls). Nothing is staged.
+- **Open, Cody:**
+  (1) Refill rule. Below $100 the game locks (only pulls refill the pool). Proposal: the treasury refills it to $250 when
+  it drops below $150. Simulated: never locked, the treasury still about $2,250 ahead per 20k pulls.
+  (2) The pool jackpot is only about $30 with the pool capped at $325; raise its % or the skim point?
+  (3) The "$500 threshold bonus" idea (switch a feature on when the pool has $500) needs the skim point moved above $500.
+
+**Built earlier (demo, 2026-09-29; now out of date, see TODO):** the Games tab has the two machines, stacked: **Mini Hat** ($0.10) and **Big Hat** ($1.00).
 The **total Slots pool** shows under the Slots title. Each machine shows its **jackpot % of the pool and the current
 jackpot amount**, plus its jackpot odds and biggest fixed win (worked out from the paytable).
 - Each cabinet is a Santa hat: red cone body, fur brim base, and the pom-pom on the drooping tip is the lever.

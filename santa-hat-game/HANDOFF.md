@@ -71,7 +71,9 @@ node tests/sim.test.mjs          # referee: 120 simulated matches, rule checks, 
 node tests/catalog-sql.mjs       # item catalog checks (and prints the SQL seed)
 node tests/tax-split.mjs         # SANTA 3% tax split examples and pool simulation
 node tests/jackpot-sim.mjs       # jackpot = % of pool: level-off point, never below zero
-node tests/slots.test.mjs        # Slots rules: reels always show the result, pool never negative, payback
+node tests/slots.test.mjs        # Slots rules: exact wild-aware payback, every line, pool never negative, skim
+node tests/paytable.mjs          # regenerates PAYTABLE.md (the full payout table) from mockups/slots.js
+node tests/slots-tune.mjs        # tuning helper: scales prizes to a payback target
 cd tests/browser && npm install  # once per fresh machine
 node lobby-test.mjs              # 3 browser windows: auto match, join from list, Watch now
 node tabs-test.mjs               # tabs, store, avatar editor, sign-in sheet
@@ -98,7 +100,9 @@ between two devices has never been tested from here. Cody and friends testing on
 
 **Last updated:** 2026-09-29.
 
-**Just finished (latest):** Games tab with the **Santa Hat Slots demo** (Mini Hat + Big Hat 3D machines, stacked, demo money,
+**In progress (latest):** Slots rules rebuilt as **one Big Hat machine** (5×5, 15 lines, Santa Hat wild, 100× line, 74.7% payback, full-grid pool jackpot, $25 skim at $325); full table in `PAYTABLE.md`. **The page code (`games.js`, `slots3d.js`) is out of date with these rules. Don't run `deploy-pages.sh` until it's rebuilt.** Next: rebuild the page (5×5 grid, full screen, winners list).
+
+**Just finished (before that):** Games tab with the **Santa Hat Slots demo** (Mini Hat + Big Hat 3D machines, stacked, demo money,
 draft paytable), and the Spin pool rule ($25 to the treasury when it reaches $175). **Before that:** 3% SANTA tax notices (Play intro, Wager card, Lottery); decisions recorded:
 winners absorb the tax, a 2% price cushion, Spin/Slots pool wallets, and the lottery goes through Cody's own program. Spin and Slots
 are separate games with separate pools that keep all funds; only Slots has a jackpot (a % of the Slots pool); Spin unchanged (`tests/jackpot-sim.mjs`). **Before that:** unranked lobby (FFA/TEAM, Auto match into public rooms `PF1-5`/`PT1-5`, private code,
