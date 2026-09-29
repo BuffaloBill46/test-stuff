@@ -70,6 +70,7 @@ cd santa-hat-game
 node tests/sim.test.mjs          # referee: 120 simulated matches, rule checks, cheating attempts
 node tests/catalog-sql.mjs       # item catalog checks (and prints the SQL seed)
 node tests/tax-split.mjs         # SANTA 3% tax split examples and pool simulation
+node tests/jackpot-sim.mjs       # jackpot = % of pool: level-off point, never below zero
 cd tests/browser && npm install  # once per fresh machine
 node lobby-test.mjs              # 3 browser windows: auto match, join from list, Watch now
 node tabs-test.mjs               # tabs, store, avatar editor, sign-in sheet
@@ -95,7 +96,8 @@ between two devices has never been tested from here. Cody and friends testing on
 **Last updated:** 2026-09-29.
 
 **Just finished (latest):** 3% SANTA tax notices (Play intro, Wager card, Lottery); decisions recorded:
-winners absorb the tax, a 2% price cushion, Spin/Slots pool wallets, and the lottery goes through Cody's own program. **Before that:** unranked lobby (FFA/TEAM, Auto match into public rooms `PF1-5`/`PT1-5`, private code,
+winners absorb the tax, a 2% price cushion, Spin/Slots pool wallets, and the lottery goes through Cody's own program. Pools keep all
+funds and the jackpot is a % of the pool (`tests/jackpot-sim.mjs`). **Before that:** unranked lobby (FFA/TEAM, Auto match into public rooms `PF1-5`/`PT1-5`, private code,
 practice), the FFA RANKED lobby layout (Tournament greyed out; Auto match shows "opening soon" and is off),
 and the live games list with **Watch now** (max 4 watchers). Tested and published.
 
@@ -110,6 +112,8 @@ and the live games list with **Watch now** (max 4 watchers). Tested and publishe
    Spin and Slots pool wallets. That's real money, so wait for Cody's go.
 7. Where Cody's on-chain lottery program lives (built, on devnet, from Cody's other Claude session). The
    lottery uses that or runs manually. Don't build a separate one.
+8. The jackpot details (DESIGN_NOTES → Jackpot pools): replaces 5×? scales with bet? what %? Claude's picks
+   are written there.
 
 **Next up (Claude can start without Cody):** see "Next to build" in `TODO.md`. The Santa Hat Games tab UI
 (Spin wheel with the agreed 400-slice odds) can be built as a free demo with no money attached. Anything

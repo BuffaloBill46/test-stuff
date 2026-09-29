@@ -77,7 +77,7 @@ per player in the pot (bots included), bots can win, and bots play under player-
 Paying a winner from a pool is a transfer, so 3% comes off. **Cody's call: the winner absorbs it** ("all SANTA
 holders know it"). A 2× win on $1 sends $2.00 and the player receives $1.94. Same for lottery prizes and wagers.
 - Players get back 72.3¢ per $1 spun on average; the pool keeps about 13.1¢. Simulated 5,000 × 3,000 $1 spins
-  from a $50 start: zero pauses. The "must cover the biggest win" rule stays at 5× the bet.
+  from a $50 start: zero pauses. *(These numbers are for the old fixed 5× top prize. See "Jackpot pools" below.)*
 - (Rejected: the pool tops up winners so they receive the full amount.)
 - **The tax must be written where players read about the game:** the Play page intro, and the top of every
   game description that pays out SANTA. Done: Play page intro, Wager card, Lottery block. To do: Spin and Slots
@@ -100,14 +100,47 @@ into it on mainnet, Claude recommends a security review of the program, since it
 How the pool wallets are controlled (options; Claude's pick marked):
 - **A. A plain wallet whose key lives only on our server (pick, for all three to start).** The server pays winners
   automatically, which instant spins need. Cheapest and quickest. Used for **Spin and Slots.** Risk: if the
-  server key leaked, that one pool could be drained. That's why the pools stay separate and small: anything above a set cap gets swept
-  to the treasury.
+  server key leaked, that one pool could be drained. *(The earlier idea of sweeping extra to the treasury is
+  dropped: Cody wants the pools to keep everything. See "Jackpot pools" below. The level-off point caps the risk instead.)*
 - **B. A shared-approval wallet (multisig, e.g. Squads).** Payouts need Cody's approval too. Too slow for spins,
   but workable for a payout once a day or week.
 - **C. A custom on-chain program (smart contract).** Rules enforced by code, most trustworthy, but it needs a
   security review before holding real money. **This is the lottery's route:** Cody's existing lottery program.
 Each wallet also needs a little SOL (Solana's own coin) to pay network fees. **Creating and funding them is a
 real-money step: not done, waits for Cody.** The keys never go in the website or the repo.
+
+### Jackpot pools (decided: the pools keep everything)
+**Cody's call:** the Spin and Slots pools hold all the money that comes in (nothing is swept out), and the
+**jackpot pays a percentage of whatever is in the pool.** It can never pay more than the pool holds, so the
+jackpot can never empty the pool. That's guaranteed by the math, not just seen in tests.
+
+What the simulation shows (`tests/jackpot-sim.mjs`: 2,000 runs × 20,000 spins, 30% $1 / 70% $0.10 bets, $50 start,
+jackpot at the old 5× odds of 0.5%, the fixed 1×–4× wins unchanged):
+- **The pool grows, then levels off by itself.** Money in and money out balance at one size. That size depends only
+  on the jackpot %, not on how busy the game is:
+  | Jackpot | Pool levels off near | Worst 1% of runs after 20k spins |
+  |---|---|---|
+  | 5% of pool | $624 | $372 |
+  | 10% of pool | $312 | $173 |
+  | 20% of pool | $156 | $68 |
+- **Once it levels off, a $1 jackpot averages about $31 whatever % is picked** (up from a flat $5 today). The %
+  only decides how much money sits in the pool, and how fast the jackpot rebuilds after a win.
+- **Everything that goes into the pool eventually goes back to players.** Once it levels off, players get back
+  about 87.6¢ of every $1 spun. The pool is a players' prize pot, not income. What the game "keeps" is the 10% burn.
+- **The level-off point also caps the risk** of keeping the key on our server: the pool never keeps growing.
+- Zero paused spins in every run. The pool never went below zero (checked on every spin as an assertion).
+- The 3% tax: winners absorb it (decided), including on jackpots.
+
+**Proposals to confirm (Claude's picks):**
+1. **The jackpot replaces the 5× result:** same 0.5% odds, the same 2 gold slices on the wheel. 1×–4× stay as fixed wins.
+2. **The jackpot scales with the bet:** a $1 spin wins the full %, a $0.10 spin wins a tenth of it. Otherwise
+   everyone would bet $0.10 to chase the same prize, and the pool would drain.
+3. **10% of the pool:** it levels off around $312, and a $1 jackpot averages about $31.
+4. **Show the live jackpot** on the Spin and Slots pages ("Jackpot now: $28.40"), so players can see it grow.
+5. **Slots works the same way:** the top line (three Santa hats) pays the jackpot %, and the rest are fixed wins.
+   Cody's paytable decides the details.
+6. **Safety rule becomes "the pool must cover the biggest *fixed* win (4× the bet)".** The jackpot can't
+   overdraw by design.
 
 ### How to make it work (proposals)
 - **One transaction does the whole split.** When a player buys, their wallet signs a single transaction
@@ -174,7 +207,8 @@ real-money step: not done, waits for Cody.** The keys never go in the website or
 ### Decided later (Cody)
 - **Starting pools: $100 total. $50 for Spin, $50 for Slots** (separate pools; each game's two bet sizes share its pool).
   Simulation: with $50 and the "must cover 5× the bet" rule, 5,000 busy runs of 3,000 spins never had to pause.
-  The pool typically grew to about $220, and the worst 1% ended around $155.
+  The pool typically grew to about $220, and the worst 1% ended around $155. *(Old fixed-5× design; with the
+  jackpot the pool levels off instead. See "Jackpot pools".)*
 - **Pay per spin:** each spin is its own wallet transaction. No deposited balances; we never hold player funds.
 - **Slots numbers:** Cody is drafting the paytable. Claude checks it (payback % and a million-spin simulation) before launch.
 - **Daily spend limit per game:** $10 a day at level 1, plus $10 for each level earned (level 2: $20, level 3: $30, …).

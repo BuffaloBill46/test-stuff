@@ -50,6 +50,10 @@ Read this before starting new work on the game. Add to it whenever something rea
 - **Test tools kept outside the repo vanish with the session.** The browser tests lived in a temporary
   scratch folder for weeks; a new Claude would have lost them. Anything worth rerunning goes in the repo.
 
+- **Burned money isn't pool income.** A first jackpot simulation counted the 10% burn as money
+  arriving in the pool and overstated the level-off point by 60%. Caught by checking the formula against
+  the worked example (87.59¢ per $1). The test now asserts that number.
+
 ## Multiplayer notes
 
 - This workspace can't open WebSockets (proxy limit), so live Supabase play can't be tested here.

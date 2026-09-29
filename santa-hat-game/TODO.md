@@ -23,7 +23,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 ## Before anything paid goes live
 - [ ] **Cheat-proof referee server:** today the host player's browser runs the match and could fake scores. Paid tickets and points need a server we control. Roughly $5–10/month, ask Cody before any spending.
 - [ ] **SANTA payments:** USD prices paid in SANTA at the live price, with a quote locked for about a minute.
-- [ ] **Set up the Spin and Slots pool wallets:** keys only on the server, a little SOL each for fees, balances above a cap swept to the treasury. Real money: Cody funds them ($50 Spin, $50 Slots). See DESIGN_NOTES → Pool wallets.
+- [ ] **Set up the Spin and Slots pool wallets:** keys only on the server, a little SOL each for fees. The pools keep everything (no sweeping); jackpots pay a % of the pool. Real money: Cody funds them ($50 Spin, $50 Slots). See DESIGN_NOTES → Pool wallets.
 - [ ] **Security review of Cody's lottery program** before real SANTA goes into it on mainnet.
 - [ ] **Apply SANTA's transfer tax in every payment:** read the live fee from the token; tax first, then burn, treasury, pool; last split gets the remainder; no in-between wallets.
 - [ ] **Split every payment on-chain:** tickets and avatar items 50% burned / 50% to treasury; lottery 90% to winners / 10% burned.
@@ -36,7 +36,8 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] New **Games** tab next to Play / Store / Avatar / Ranks. All games here are **single-player**.
 - [ ] **Santa Hat Spin:** $0.10 and $1.00, a shared pool seeded with **$50**, the agreed odds, a 400-slice wheel (5x = 2 slices, 4x = 4), pay per spin.
 - [ ] **Santa Hat Slots:** a visually stunning 3D reel with 10 symbols, $0.10 mini hat and $1.00 large hat bets, a shared pool seeded with **$50**, pay per spin.
-- [ ] **Provably fair results** and a pool safety rule (a spin only starts if the pool can cover 5× the bet).
+- [ ] **Jackpot = a % of the pool** (decided). Confirm Claude's picks in DESIGN_NOTES → Jackpot pools: replaces 5×, scales with bet, 10%, live jackpot display.
+- [ ] **Provably fair results** and a pool safety rule (a spin only starts if the pool can cover the biggest fixed win, 4× the bet).
 - [ ] **Entries split 90% to the pool, 10% burned** (after the 3% tax).
 - [ ] **3% SANTA tax notice at the top of the Spin and Slots descriptions** (winners receive 3% less).
 - [ ] **Daily spend limit per game:** $10 at level 1, +$10 per level.
