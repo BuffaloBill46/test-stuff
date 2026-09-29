@@ -1,30 +1,36 @@
-// Spin pool where the top result is a JACKPOT paying a % of the pool instead of a fixed 5x.
-// Invariant checked as an assertion every spin: the pool never goes below zero, and no spin starts
-// unless the pool covers the biggest FIXED win (4x the bet). Pool income is after the 3% tax and 10% burn.
+// ONE shared pool (one wallet) for Spin and Slots. Spin keeps its fixed odds (0x-5x). Slots has a JACKPOT that
+// pays a % of the whole pool. The slots paytable is Cody's and not final: PLACEHOLDER below = spin's fixed
+// 1x-4x table with the 0.5% top result as the jackpot. Swap in the real paytable when it arrives.
+// Invariants asserted every spin: the pool never goes below zero; no spin starts unless the pool covers that
+// game's biggest FIXED win. Pool income is after the 3% tax and the 10% burn; winners absorb the tax on payouts.
 const FEE = 0.03, IN_PER_DOLLAR = (1 - 0.10 * (1 - FEE)) * (1 - FEE); // 87.59c per $1 lands in the pool (burn is not pool income)
-if (Math.abs(IN_PER_DOLLAR - 0.8759) > 1e-4) throw new Error("pool income per $1 should be 87.59c, got " + IN_PER_DOLLAR);
-const FIXED = [[0, .505], [1, .33], [2, .10], [3, .05], [4, .01]], JP_ODDS = .005; // jackpot keeps the old 5x odds
-function run({ jpPct, spins, start = 50, mix }) {
-  let pool = start, paused = 0, jpWins = [], biggest = 0;
+if (Math.abs(IN_PER_DOLLAR - 0.8759) > 1e-4) throw new Error('pool income per $1 should be 87.59c, got ' + IN_PER_DOLLAR);
+const SPIN = [[0, .505], [1, .33], [2, .10], [3, .05], [4, .01], [5, .005]];
+const SLOTS_PLACEHOLDER = [[0, .505], [1, .33], [2, .10], [3, .05], [4, .01], ['JP', .005]];
+const back = (t) => t.reduce((s, [k, p]) => s + (k === 'JP' ? 0 : k * p), 0);
+const maxFixed = (t) => Math.max(...t.map(([k]) => (k === 'JP' ? 0 : k)));
+const pick = (t) => { let u = Math.random(); for (const [k, p] of t) if ((u -= p) < 0) return k; return t.at(-1)[0]; };
+function run({ jpPct, spins, slotsShare, start = 100, mix = 0.3 }) {
+  let pool = start, paused = 0, jpWins = [];
   for (let i = 0; i < spins; i++) {
-    const bet = Math.random() < mix ? 1 : 0.10;
-    if (pool < 4 * bet) { paused++; continue; }
+    const slots = Math.random() < slotsShare, t = slots ? SLOTS_PLACEHOLDER : SPIN, bet = Math.random() < mix ? 1 : 0.10;
+    if (pool < maxFixed(t) * bet) { paused++; continue; }
     pool += bet * IN_PER_DOLLAR;
-    let u = Math.random(), m = null;
-    for (const [k, p] of FIXED) { if ((u -= p) < 0) { m = k; break; } }
-    let pay = m === null ? pool * jpPct * bet : m * bet; // jackpot scales with bet: $1 wins the full %, $0.10 a tenth
-    if (m === null && bet === 1) jpWins.push(pay);
-    pool -= pay; biggest = Math.max(biggest, pay);
+    const k = pick(t), pay = k === 'JP' ? pool * jpPct * bet : k * bet; // jackpot scales with bet
+    if (k === 'JP' && bet === 1) jpWins.push(pay);
+    pool -= pay;
     if (pool < 0) throw new Error('INVARIANT BROKEN: pool went negative');
   }
-  return { pool, paused, jpWins, biggest };
+  return { pool, paused, jpWins };
 }
-const pct = (a, q) => a.slice().sort((x, y) => x - y)[Math.floor(q * (a.length - 1))];
-for (const jpPct of [0.05, 0.10, 0.20]) {
-  const ends = [], jps = [], pauses = [];
-  for (let r = 0; r < 2000; r++) { const o = run({ jpPct, spins: 20000, mix: 0.3 }); ends.push(o.pool); jps.push(...o.jpWins.slice(-20)); pauses.push(o.paused); }
-  // Level-off point: pool gain per $1 from fixed wins = income - fixed payback; jackpot takes jpPct of pool at 0.5%.
-  const fixedBack = FIXED.reduce((s, [k, p]) => s + k * p, 0), level = (IN_PER_DOLLAR - fixedBack) / (JP_ODDS * jpPct);
-  console.log(`jackpot ${jpPct * 100}% of pool: pool levels off near $${level.toFixed(0)} | after 20k spins median $${pct(ends, .5).toFixed(0)} (worst 1% $${pct(ends, .01).toFixed(0)}) | a $1 jackpot at level-off ≈ $${(jpPct * level).toFixed(2)}, late-run median $${pct(jps, .5).toFixed(2)} | spins paused (all runs) ${pauses.reduce((a, b) => a + b, 0)}`);
+const q = (a, f) => a.slice().sort((x, y) => x - y)[Math.floor(f * (a.length - 1))];
+console.log(`Spin: pays back ${(back(SPIN) * 100).toFixed(1)}c per $1, so the pool keeps ${((IN_PER_DOLLAR - back(SPIN)) * 100).toFixed(1)}c. Slots (placeholder) fixed wins keep ${((IN_PER_DOLLAR - back(SLOTS_PLACEHOLDER)) * 100).toFixed(1)}c; the jackpot pays the rest back.`);
+for (const slotsShare of [0.5, 0.2]) for (const jpPct of [0.05, 0.10, 0.20]) {
+  const ends = [], jps = []; let pauses = 0;
+  for (let r = 0; r < 1000; r++) { const o = run({ jpPct, spins: 20000, slotsShare }); ends.push(o.pool); jps.push(...o.jpWins.slice(-10)); pauses += o.paused; }
+  // Level-off: surplus from both games per $ played = jackpot paid per $ played.
+  const surplus = (1 - slotsShare) * (IN_PER_DOLLAR - back(SPIN)) + slotsShare * (IN_PER_DOLLAR - back(SLOTS_PLACEHOLDER));
+  const level = surplus / (slotsShare * 0.005 * jpPct);
+  console.log(`slots ${slotsShare * 100}% of play, jackpot ${jpPct * 100}%: levels off ~$${level.toFixed(0)}, $1 jackpot ~$${(level * jpPct).toFixed(0)} | after 20k spins median $${q(ends, .5).toFixed(0)}, worst 1% $${q(ends, .01).toFixed(0)} | paused ${pauses}`);
 }
 console.log('invariant held: pool never went negative in any run');
