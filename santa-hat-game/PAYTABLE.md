@@ -10,46 +10,49 @@
 | Grid | **5 reels × 5 rows** (25 squares) |
 | Paylines | **15** (listed at the bottom). Wins count from the leftmost reel. Only the longest run on a line pays; all winning lines add up. |
 | Top line prize | **5 Santa Hats in a row = 100× = $100.00**, about 1 in 12,014 pulls |
-| Line wins pay back | **74.7%** of what's played (exact, from the reel math) |
-| Any win | **54.0%** of pulls: 36.1% are micro wins (less than the $1 pull back), 17.9% come out ahead |
+| Pays back | **74.8%** of what's played: line prizes 63.7% + hat bonus 11.1% (exact, from the reel math) |
+| Hat bonus | **Every Santa Hat anywhere on the grid pays $0.05**, on top of line prizes (about 2.2 hats a pull on average) |
+| Pays something | **94.7%** of pulls: 76.8% are micro wins (less than the $1 pull back), 17.8% come out ahead |
 | Pool jackpot | Its own draw: **1 in 2,500 pulls**. Pays **10% of the Slots pool**; all 25 squares show Santa Hats |
 | Winners receive | The prize minus SANTA's **3% token tax** (a $100 prize arrives as $97.00) |
 
 ## Payout table
 
 Chance "per line" is for one payline; "per pull" is across all 15 lines (about 15× more likely).
-"Share of payback" is how much of the 74.7% each prize accounts for. Wild help is included.
+"Share of payback" is how much of the 74.8% each prize accounts for. Wild help is included.
+The hat bonus is listed at the bottom.
 
 | Symbol | Needs | Pays | $ on a $1 pull | Chance per line | Chance per pull | Share of payback |
 |---|---|---|---|---|---|---|
 | Santa Hat | 5 in a row | **100×** | $100.00 | 1 in 180,203 | 1 in 12,014 | 0.83% |
-| Santa Hat | 4 in a row | **12×** | $12.00 | 1 in 20,595 | 1 in 1,373 | 0.87% |
-| Santa Hat | 3 in a row | **1.5×** | $1.50 | 1 in 2,791 | 1 in 186 | 0.81% |
-| Gold Star | 5 in a row | **39×** | $39.00 | 1 in 11,692 | 1 in 779 | 5.00% |
-| Gold Star | 4 in a row | **7.5×** | $7.50 | 1 in 2,264 | 1 in 151 | 4.97% |
+| Santa Hat | 4 in a row | **10×** | $10.00 | 1 in 20,595 | 1 in 1,373 | 0.73% |
+| Santa Hat | 3 in a row | **1.5×** | $1.50 | 1 in 2,441 | 1 in 163 | 0.92% |
+| Gold Star | 5 in a row | **33×** | $33.00 | 1 in 11,692 | 1 in 779 | 4.23% |
+| Gold Star | 4 in a row | **6.5×** | $6.50 | 1 in 2,264 | 1 in 151 | 4.31% |
 | Gold Star | 3 in a row | **1.5×** | $1.50 | 1 in 387 | 1 in 26 | 5.82% |
-| Reindeer | 5 in a row | **19×** | $19.00 | 1 in 11,692 | 1 in 779 | 2.44% |
-| Reindeer | 4 in a row | **4.5×** | $4.50 | 1 in 2,264 | 1 in 151 | 2.98% |
-| Reindeer | 3 in a row | **0.95×** | $0.95 | 1 in 387 | 1 in 26 | 3.68% |
-| Snowman | 5 in a row | **12×** | $12.00 | 1 in 6,007 | 1 in 400 | 3.00% |
-| Snowman | 4 in a row | **3×** | $3.00 | 1 in 1,299 | 1 in 87 | 3.46% |
-| Snowman | 3 in a row | **0.6×** | $0.60 | 1 in 247 | 1 in 16 | 3.64% |
-| Present | 5 in a row | **7.5×** | $7.50 | 1 in 6,007 | 1 in 400 | 1.87% |
-| Present | 4 in a row | **2×** | $2.00 | 1 in 1,299 | 1 in 87 | 2.31% |
-| Present | 3 in a row | **0.45×** | $0.45 | 1 in 247 | 1 in 16 | 2.73% |
-| Lantern | 5 in a row | **4.5×** | $4.50 | 1 in 3,252 | 1 in 217 | 2.08% |
+| Reindeer | 5 in a row | **16×** | $16.00 | 1 in 11,692 | 1 in 779 | 2.05% |
+| Reindeer | 4 in a row | **4×** | $4.00 | 1 in 2,264 | 1 in 151 | 2.65% |
+| Reindeer | 3 in a row | **0.8×** | $0.80 | 1 in 387 | 1 in 26 | 3.10% |
+| Snowman | 5 in a row | **10×** | $10.00 | 1 in 6,007 | 1 in 400 | 2.50% |
+| Snowman | 4 in a row | **2.5×** | $2.50 | 1 in 1,299 | 1 in 87 | 2.89% |
+| Snowman | 3 in a row | **0.55×** | $0.55 | 1 in 247 | 1 in 16 | 3.33% |
+| Present | 5 in a row | **6.5×** | $6.50 | 1 in 6,007 | 1 in 400 | 1.62% |
+| Present | 4 in a row | **1.5×** | $1.50 | 1 in 1,392 | 1 in 93 | 1.62% |
+| Present | 3 in a row | **0.4×** | $0.40 | 1 in 247 | 1 in 16 | 2.43% |
+| Lantern | 5 in a row | **4×** | $4.00 | 1 in 3,252 | 1 in 217 | 1.85% |
 | Lantern | 4 in a row | **1×** | $1.00 | 1 in 856 | 1 in 57 | 1.75% |
-| Lantern | 3 in a row | **0.3×** | $0.30 | 1 in 171 | 1 in 11 | 2.63% |
-| Pine Tree | 5 in a row | **3×** | $3.00 | 1 in 1,894 | 1 in 126 | 2.38% |
-| Pine Tree | 4 in a row | **0.75×** | $0.75 | 1 in 563 | 1 in 38 | 2.00% |
-| Pine Tree | 3 in a row | **0.25×** | $0.25 | 1 in 125 | 1 in 8 | 3.00% |
-| Sleigh Bell | 5 in a row | **2.5×** | $2.50 | 1 in 1,166 | 1 in 78 | 3.22% |
-| Sleigh Bell | 4 in a row | **0.6×** | $0.60 | 1 in 389 | 1 in 26 | 2.31% |
+| Lantern | 3 in a row | **0.2×** | $0.20 | 1 in 171 | 1 in 11 | 1.75% |
+| Pine Tree | 5 in a row | **2.5×** | $2.50 | 1 in 1,894 | 1 in 126 | 1.98% |
+| Pine Tree | 4 in a row | **0.6×** | $0.60 | 1 in 563 | 1 in 38 | 1.60% |
+| Pine Tree | 3 in a row | **0.15×** | $0.15 | 1 in 125 | 1 in 8 | 1.80% |
+| Sleigh Bell | 5 in a row | **2×** | $2.00 | 1 in 1,166 | 1 in 78 | 2.57% |
+| Sleigh Bell | 4 in a row | **0.5×** | $0.50 | 1 in 389 | 1 in 26 | 1.93% |
 | Sleigh Bell | 3 in a row | **0.15×** | $0.15 | 1 in 95 | 1 in 6 | 2.36% |
 | Snowball | 5 in a row | **1.5×** | $1.50 | 1 in 770 | 1 in 51 | 2.92% |
-| Snowball | 4 in a row | **0.5×** | $0.50 | 1 in 280 | 1 in 19 | 2.68% |
-| Snowball | 3 in a row | **0.15×** | $0.15 | 1 in 75 | 1 in 5 | 3.01% |
-| **Total** | | | | | | **74.74%** |
+| Snowball | 4 in a row | **0.4×** | $0.40 | 1 in 280 | 1 in 19 | 2.14% |
+| Snowball | 3 in a row | **0.1×** | $0.10 | 1 in 75 | 1 in 5 | 2.01% |
+| Santa Hat bonus | each hat, anywhere | **0.05×** | $0.05 per hat | 8.9% per square | about 2.2 hats a pull | 11.11% |
+| **Total** | | | | | | **74.80%** |
 
 Coal pays nothing (it's the dud). Pool jackpot not included above (it's paid from the pool and grows with it).
 
@@ -87,7 +90,7 @@ Nothing is staged.
 |---|---|---|
 | 2 hats, then something else | 1 in 11 pulls | nothing on their own; as wilds they can still finish another symbol's line |
 | 3 hats, then something else | 1 in 119 pulls | 1.5× ($1.50), or more if they finish a better line |
-| 4 hats, then something else | 1 in 1,262 pulls | 12× ($12.00), or more if they finish a better line |
+| 4 hats, then something else | 1 in 1,262 pulls | 10× ($10.00), or more if they finish a better line |
 | 5 hats | 1 in 12,014 pulls | **100× ($100.00)** |
 
 ## Where each $1 goes
@@ -97,7 +100,7 @@ Nothing is staged.
 | SANTA token tax | $0.03 |
 | Burned | $0.10 |
 | Into the Slots pool (after the tax on the transfer) | $0.88 |
-| Paid back to players from line wins, on average | $0.75 |
+| Paid back to players (line prizes + hat bonus), on average | $0.75 |
 | Left in the pool for the pool jackpot and the treasury skim | $0.13 |
 
 ## Pool rules (draft)

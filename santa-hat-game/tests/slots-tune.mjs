@@ -15,14 +15,15 @@ const SHAPE = {
 };
 
 // Exact payback of a pay table for a reel mix, using the game's own (wild-aware) PAR-sheet math.
-function payback(m, counts, pays) { return stats({ ...m, counts, pays }).payback; }
+function payback(m, counts, pays) { return stats({ ...m, counts, pays }).linePayback; }
+const hatPart = (m, counts) => stats({ ...m, counts, pays: {} }).hatPayback; // the per-hat bonus, fixed by the reel mix
 export function tune(id, counts) {
   const m = MACHINES[id], top = { hat: { [m.reels]: 100 } };
-  const k = (TARGET - payback(m, counts, top)) / payback(m, counts, SHAPE[id]);
+  const k = (TARGET - hatPart(m, counts) - payback(m, counts, top)) / payback(m, counts, SHAPE[id]);
   const pays = {};
   for (const [s, p] of Object.entries(SHAPE[id])) for (const [n, x] of Object.entries(p)) (pays[s] ||= {})[n] = Math.min(tidy(x * k), 90);
   pays.hat = { ...(pays.hat || {}), [m.reels]: 100 };
-  return { pays, payback: payback(m, counts, pays), k };
+  return { pays, payback: payback(m, counts, pays) + hatPart(m, counts), k };
 }
 export function simulate(id, counts, pays, N = 150000) {
   const m = MACHINES[id], mm = { ...m, counts, pays };
@@ -31,9 +32,10 @@ export function simulate(id, counts, pays, N = 150000) {
   mm.stripLen = bag.length;
   let hit = 0, ahead = 0, micro = 0, back = 0;
   for (let i = 0; i < N; i++) {
-    const w = evaluate(mm, gridFor(mm, Array.from({ length: m.reels }, () => Math.floor(rand() * mm.stripLen))));
-    const pay = w.reduce((a, x) => a + x.pay, 0); back += pay;
-    if (w.length) hit++; if (pay > m.bet + 1e-9) ahead++; else if (pay > 0) micro++;
+    const g = gridFor(mm, Array.from({ length: m.reels }, () => Math.floor(rand() * mm.stripLen)));
+    const hatPay = g.flat().filter((x) => x === 0).length * (m.hatBonus || 0) * m.bet; // index 0 = Santa Hat
+    const pay = evaluate(mm, g).reduce((a, x) => a + x.pay, 0) + hatPay; back += pay;
+    if (pay > 0) hit++; if (pay > m.bet + 1e-9) ahead++; else if (pay > 0) micro++;
   }
   return { hit: hit / N, ahead: ahead / N, micro: micro / N, back: back / N / m.bet };
 }

@@ -142,7 +142,9 @@ $50 start). **The slots paytable is a placeholder** (spin's 1×–4× fixed wins
 - **One machine: the Big Hat, $1.00 a pull, 5×5 grid, 15 paylines.** The Mini Hat is scrapped.
 - **Santa Hat is Wild** (stands in for any symbol except Coal). **5 Santa Hats in a row on a line = 100× the price ($100).**
   All other prizes scale down from it, with lots of micro wins.
-- **Line wins pay back 74.7%** (target 75%). A win on about 54% of pulls: 36% micro wins (less than the $1 back), 18% ahead.
+- **Hat bonus: every Santa Hat anywhere on the grid pays 5¢** (Cody). About 2.2 hats a pull, so it's 11.1% of the payback.
+- **Pays back 74.8%** (target 75%): line prizes 63.7% + hat bonus 11.1%. **About 95% of pulls pay something**: 77% micro wins
+  (less than the $1 back), 18% ahead.
 - **Pool jackpot is separate:** its own draw (draft 1 in 2,500 pulls), pays 10% of the Slots pool, and **all 25 squares show
   Santa Hats**. The reels alone can never make a full grid of hats.
 - **Slots pool skim:** when it reaches $325, $25 goes to the treasury. Demo start: $250 (must cover the $100 top prize).

@@ -6,6 +6,7 @@
 //   Big Hat:  5 reels × 5 rows, 15 paylines, $1.00 a pull. 5 Santa Hats in a row on a line = 100× the price.
 //   WILD: the Santa Hat stands in for any symbol except Coal. A line pays the better of its Santa Hats alone or the
 //   symbol they help complete (e.g. Star, Hat, Star, Star = 4 Stars). 5 Santa Hats alone = the 100× top prize.
+//   HAT BONUS: every Santa Hat anywhere on the grid also pays `hatBonus` × the price (5¢ on the $1 Big Hat).
 //   Line wins count from the leftmost reel. Prizes are in "× the pull price" and every other prize scales down from the
 //   100×, with lots of small ("micro") wins. Target: line wins pay back about 75% of what's played.
 //
@@ -44,12 +45,12 @@ const LINES_5 = [
 // pays: { in-a-row count: × the pull price } for a line. Only the longest run on a line pays.
 export const MACHINES = {
   big: {
-    id: 'big', name: 'Big Hat', bet: 1.00, reels: 5, rows: 5, lines: LINES_5, jackpotPct: 0.10, poolJackpotOdds: 1 / 2500,
+    id: 'big', name: 'Big Hat', bet: 1.00, reels: 5, rows: 5, lines: LINES_5, jackpotPct: 0.10, poolJackpotOdds: 1 / 2500, hatBonus: 0.05,
     counts: { hat: 4, star: 3, reindeer: 3, snowman: 4, present: 4, lantern: 5, pine: 6, bell: 7, snowball: 8, coal: 1 },
     pays: {
-      hat: { 5: 100, 4: 12, 3: 1.5 }, star: { 5: 39, 4: 7.5, 3: 1.5 }, reindeer: { 5: 19, 4: 4.5, 3: 0.95 }, snowman: { 5: 12, 4: 3, 3: 0.6 },
-      present: { 5: 7.5, 4: 2, 3: 0.45 }, lantern: { 5: 4.5, 4: 1, 3: 0.3 }, pine: { 5: 3, 4: 0.75, 3: 0.25 },
-      bell: { 5: 2.5, 4: 0.6, 3: 0.15 }, snowball: { 5: 1.5, 4: 0.5, 3: 0.15 },
+      hat: { 5: 100, 4: 10, 3: 1.5 }, star: { 5: 33, 4: 6.5, 3: 1.5 }, reindeer: { 5: 16, 4: 4, 3: 0.8 }, snowman: { 5: 10, 4: 2.5, 3: 0.55 },
+      present: { 5: 6.5, 4: 1.5, 3: 0.4 }, lantern: { 5: 4, 4: 1, 3: 0.2 }, pine: { 5: 2.5, 4: 0.6, 3: 0.15 },
+      bell: { 5: 2, 4: 0.5, 3: 0.15 }, snowball: { 5: 1.5, 4: 0.4, 3: 0.1 },
     },
   },
 };
@@ -119,7 +120,9 @@ export function stats(m) {
   };
   walk(0, 1);
   const lines = m.lines.length;
-  return { payback: back * lines, lineHitRate: lineHit, topPerLine: topLine, lines, each };
+  // Hat bonus: each of the reels × rows squares shows a hat with chance f(hat), so the average is exact and linear.
+  const hatBack = (m.hatBonus || 0) * m.reels * m.rows * f[SYM.hat];
+  return { payback: back * lines + hatBack, linePayback: back * lines, hatPayback: hatBack, lineHitRate: lineHit, topPerLine: topLine, lines, each };
 }
 
 // Biggest fixed prize in $ (the 100× line). A pull only starts if the pool covers it; the pay is also capped at the pool
@@ -142,11 +145,12 @@ export function pull(state, machineId, rand = Math.random, forcedStops) {
   }
   const stops = forcedStops || Array.from({ length: m.reels }, () => Math.floor(rand() * m.stripLen));
   const grid = gridFor(m, stops), wins = evaluate(m, grid);
-  let pay = wins.reduce((s, w) => s + w.pay, 0);
+  const hats = grid.flat().filter((x) => x === SYM.hat).length, hatPay = hats * (m.hatBonus || 0) * m.bet;
+  let pay = wins.reduce((s, w) => s + w.pay, 0) + hatPay;
   const capped = pay > state.pool;
   pay = Math.min(pay, state.pool); // can never pay more than the pool holds
   state.pool -= pay;
-  return skim(state, { stops, grid, wins, pay, jackpot: false, capped, received: pay * (1 - FEE), ahead: pay > m.bet + 1e-9 });
+  return skim(state, { stops, grid, wins, hats, hatPay, pay, jackpot: false, capped, received: pay * (1 - FEE), ahead: pay > m.bet + 1e-9 });
 }
 
 // After each pull: if the pool has reached SKIM_AT, send SKIM to the treasury.

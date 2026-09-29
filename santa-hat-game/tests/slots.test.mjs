@@ -31,7 +31,7 @@ for (const m of Object.values(MACHINES)) {
   const L = m.stripLen; let total = 0;
   for (let a = 0; a < L; a++) for (let b = 0; b < L; b++) for (let c = 0; c < L; c++) total += evaluate(m, gridFor(m, [a, b, c])).reduce((s, x) => s + x.pay, 0);
   const exact = total / L ** 3 / m.bet, s = stats(m);
-  if (Math.abs(exact - s.payback) > 1e-9) fail(`3-reel check: all-stops payback ${exact} ≠ formula ${s.payback}`);
+  if (Math.abs(exact - s.linePayback) > 1e-9) fail(`3-reel check: all-stops line payback ${exact} ≠ formula ${s.linePayback}`);
   console.log(`Win reading: all ${(L ** 3).toLocaleString()} stops of a 3-reel test machine match the exact formula.`);
 }
 // No reel strip has two Santa Hats next to each other, so the reels alone can never show a full grid of hats.
@@ -42,12 +42,13 @@ for (const m of Object.values(MACHINES)) {
   const s = stats(m), N = 300000, st = { pool: 1e12 }; let hit = 0, ahead = 0, micro = 0, jp = 0, top = 0, fixed = 0;
   for (let i = 0; i < N; i++) {
     const r = pull(st, m.id, rand); if (r.jackpot) { jp++; if (!r.grid.flat().every((x) => x === SYM.hat)) fail('pool jackpot must show a full grid of hats'); continue; }
-    const pay = r.wins.reduce((a, w) => a + w.pay, 0); fixed += pay; if (r.wins.some((w) => w.top)) top++;
-    if (r.wins.length) hit++; if (pay > m.bet + 1e-9) ahead++; else if (pay > 0) micro++;
+    const pay = r.pay; fixed += pay; if (r.wins.some((w) => w.top)) top++;
+    if (Math.abs(r.hatPay - r.hats * m.hatBonus * m.bet) > 1e-12) fail('hat bonus should be 5¢ per Santa Hat on the grid');
+    if (pay > 0) hit++; if (pay > m.bet + 1e-9) ahead++; else if (pay > 0) micro++;
   }
   const sim = fixed / (N - jp) / m.bet;
   if (Math.abs(sim - s.payback) > 0.05) fail(`${m.name}: simulated payback ${sim} far from exact ${s.payback}`);
-  console.log(`${m.name} (${m.reels}×${m.rows}, ${s.lines} lines, $${m.bet.toFixed(2)}): line wins pay back ${(s.payback * 100).toFixed(1)}% (simulated ${(sim * 100).toFixed(1)}%); ` +
+  console.log(`${m.name} (${m.reels}×${m.rows}, ${s.lines} lines, $${m.bet.toFixed(2)}): pays back ${(s.payback * 100).toFixed(1)}% (lines ${(s.linePayback * 100).toFixed(1)}% + hat bonus ${(s.hatPayback * 100).toFixed(1)}%; simulated ${(sim * 100).toFixed(1)}%); ` +
     `a win on ${(hit / N * 100).toFixed(1)}% of pulls (micro ${(micro / N * 100).toFixed(1)}%, ahead ${(ahead / N * 100).toFixed(1)}%); ` +
     `100× line about 1 in ${Math.round(1 / (s.topPerLine * s.lines)).toLocaleString()}; pool jackpot about 1 in ${Math.round(N / Math.max(1, jp)).toLocaleString()} (set 1 in ${Math.round(1 / m.poolJackpotOdds).toLocaleString()})`);
 }

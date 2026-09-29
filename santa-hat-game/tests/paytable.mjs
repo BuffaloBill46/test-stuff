@@ -15,8 +15,8 @@ const N = 400000, st = { pool: 1e12, skimAt: Infinity }; let hit = 0, micro = 0,
 const tease = { 2: 0, 3: 0, 4: 0 };
 for (let i = 0; i < N; i++) {
   const r = pull(st, 'big', rand); if (r.jackpot) { jp++; continue; }
-  const pay = r.wins.reduce((a, w) => a + w.pay, 0); back += pay;
-  if (r.wins.length) hit++; if (pay > m.bet + 1e-9) ahead++; else if (pay > 0) micro++;
+  const pay = r.pay; back += pay;
+  if (pay > 0) hit++; if (pay > m.bet + 1e-9) ahead++; else if (pay > 0) micro++;
   // teasers: the longest run of Santa Hats from the left on any line, when it falls short of 5
   let best = 0; for (const rows of m.lines) { let n = 0; while (n < m.reels && r.grid[n][rows[n]] === 0) n++; best = Math.max(best, n); }
   if (best >= 2 && best < 5) tease[best]++;
@@ -45,8 +45,9 @@ const md = `# Big Hat slot machine: full payout table
 | Grid | **${m.reels} reels × ${m.rows} rows** (25 squares) |
 | Paylines | **${lines}** (listed at the bottom). Wins count from the leftmost reel. Only the longest run on a line pays; all winning lines add up. |
 | Top line prize | **5 Santa Hats in a row = 100× = ${usd(100 * m.bet)}**, about ${oneIn(s.topPerLine * lines)} pulls |
-| Line wins pay back | **${pct(s.payback)}** of what's played (exact, from the reel math) |
-| Any win | **${pct(hit / N)}** of pulls: ${pct(micro / N)} are micro wins (less than the $1 pull back), ${pct(ahead / N)} come out ahead |
+| Pays back | **${pct(s.payback)}** of what's played: line prizes ${pct(s.linePayback)} + hat bonus ${pct(s.hatPayback)} (exact, from the reel math) |
+| Hat bonus | **Every Santa Hat anywhere on the grid pays ${usd(m.hatBonus * m.bet)}**, on top of line prizes (about ${(25 * f('hat')).toFixed(1)} hats a pull on average) |
+| Pays something | **${pct(hit / N)}** of pulls: ${pct(micro / N)} are micro wins (less than the $1 pull back), ${pct(ahead / N)} come out ahead |
 | Pool jackpot | Its own draw: **${oneIn(m.poolJackpotOdds)} pulls**. Pays **${m.jackpotPct * 100}% of the Slots pool**; all 25 squares show Santa Hats |
 | Winners receive | The prize minus SANTA's **${FEE * 100}% token tax** (a $100 prize arrives as ${usd(100 * (1 - FEE))}) |
 
@@ -54,11 +55,13 @@ const md = `# Big Hat slot machine: full payout table
 
 Chance "per line" is for one payline; "per pull" is across all ${lines} lines (about ${lines}× more likely).
 "Share of payback" is how much of the ${pct(s.payback)} each prize accounts for. Wild help is included.
+The hat bonus is listed at the bottom.
 
 | Symbol | Needs | Pays | $ on a $1 pull | Chance per line | Chance per pull | Share of payback |
 |---|---|---|---|---|---|---|
 ${rowsOut.join('\n')}
-| **Total** | | | | | | **${pct(total, 2)}** |
+| Santa Hat bonus | each hat, anywhere | **${m.hatBonus}×** | ${usd(m.hatBonus * m.bet)} per hat | ${pct(f('hat'))} per square | about ${(25 * f('hat')).toFixed(1)} hats a pull | ${pct(s.hatPayback, 2)} |
+| **Total** | | | | | | **${pct(total + s.hatPayback, 2)}** |
 
 Coal pays nothing (it's the dud). Pool jackpot not included above (it's paid from the pool and grows with it).
 
@@ -97,7 +100,7 @@ Nothing is staged.
 | SANTA token tax | ${usd(FEE)} |
 | Burned | ${usd(BURN * (1 - FEE))} |
 | Into the Slots pool (after the tax on the transfer) | ${usd(IN_PER_DOLLAR)} |
-| Paid back to players from line wins, on average | ${usd(s.payback)} |
+| Paid back to players (line prizes + hat bonus), on average | ${usd(s.payback)} |
 | Left in the pool for the pool jackpot and the treasury skim | ${usd(IN_PER_DOLLAR - s.payback)} |
 
 ## Pool rules (draft)
