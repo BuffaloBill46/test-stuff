@@ -92,8 +92,10 @@ per player in the pot (bots included), bots can win, and bots play under player-
 - Short-term swings are real: in 2,000 simulated runs of 500 × $1 spins, a pool starting at $0 dipped as low as
   **−$24.50**. The pool needs a starting balance, plus a rule that a spin can only start if the pool can
   cover its biggest possible win (5× the bet).
-- **An honest wheel:** 800 thin slices, sized to the real odds: 0x 404, 1x 264, 2x 80, 3x 40, 4x 8, 5x 4.
-  Every outcome gets at least 4 slices spread around the wheel, and what you see matches the real chances.
+- **The wheel (decided): 400 slices matching the real odds exactly:** 0x 202, 1x 132, 2x 40, 3x 20, 4x **4**, 5x **2**.
+  To keep it readable, neighbouring slices of the same result merge into chunky segments, so the wheel shows
+  a couple dozen clear pieces. The 4x and 5x slices stay as thin glowing gold slivers spread around the rim,
+  easy to spot even though they're small.
 
 ### Proposals
 - **Provably fair results.** The server commits to a hidden seed before the spin, mixes in the player's own
@@ -115,11 +117,15 @@ per player in the pot (bots included), bots can win, and bots play under player-
   - **Naughty or Nice:** guess higher or lower on the next card.
   - **Free daily spin:** a small free spin once a day to bring people back.
 
-### Open questions
-1. How much SANTA goes into the pool at the start (a real-money decision).
-2. Per-spin wallet transactions, or a deposited balance?
-3. The slots' target payback %, and which 10 symbols.
-4. Daily spend limits per player?
+### Decided later (Cody)
+- **Starting pools: $100 total. $50 for Spin, $50 for Slots** (separate pools; each game's two bet sizes share its pool).
+  Simulation: with $50 and the "must cover 5× the bet" rule, 5,000 busy runs of 3,000 spins never had to pause.
+  The pool typically grew to about $220, and the worst 1% ended around $155.
+- **Pay per spin:** each spin is its own wallet transaction. No deposited balances; we never hold player funds.
+- **Slots numbers:** Cody is drafting the paytable. Claude checks it (payback % and a million-spin simulation) before launch.
+- **Daily spend limit per game:** $10 a day at level 1, plus $10 for each level earned (level 2: $20, level 3: $30, …).
+  *Assumed to be dollars of entries per game per day, not number of spins. Confirm.*
+- **More click games** from the idea list above are saved for later.
 
 ## Technical notes for when this gets built
 
