@@ -1,5 +1,10 @@
 # How Cody + Claude Build Games Together
 
+> **Current project: Santa Hat Arcade.** Before doing anything, read
+> `santa-hat-game/HANDOFF.md`. It says where everything is, how to test and
+> publish, what's waiting on Cody, and what's next. Update its "Where we are
+> right now" section at the end of every session.
+
 This is a working reference for how this team operates — paste this into any
 new project's CLAUDE.md so a fresh Claude instance picks up the same style,
 not just the same facts.

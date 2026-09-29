@@ -1,0 +1,11 @@
+<!doctype html><html><body style="margin:0;background:transparent">
+<canvas id="c" width="512" height="512"></canvas>
+<script type="module">
+import { THREE, hatGeo, toon, lights } from './kit.js';
+const r = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true, alpha: true, preserveDrawingBuffer: true });
+r.setClearColor(0x000000, 0);
+const scene = new THREE.Scene(); lights(scene, { hemi: 1.9, moonI: 1.8, sky: 0xdfe6ff, ground: 0x6a5a70 });
+const hat = toon(hatGeo({ scale: 1 }), 0.045); hat.rotation.set(0.12, 0.35, 0.05); scene.add(hat);
+const cam = new THREE.PerspectiveCamera(26, 1, 0.1, 50); cam.position.set(0.25, 1.15, 4.9); cam.lookAt(0.18, 0.46, 0);
+r.render(scene, cam); window.png = r.domElement.toDataURL('image/png');
+</script></body></html>

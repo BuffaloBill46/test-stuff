@@ -1,0 +1,15 @@
+import { createRequire } from 'module'; import { readFileSync, existsSync, writeFileSync } from 'fs'; import { execSync } from 'child_process'; import path from 'path';
+const require = createRequire(import.meta.url);
+const { chromium } = require(path.join(execSync('npm root -g').toString().trim(), 'playwright'));
+const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const p = await b.newPage({ viewport: { width: 512, height: 512 } });
+p.on('pageerror', (e) => console.log('ERR', e.message));
+await p.route('**/*', (route) => { const u = route.request().url();
+  if (u.includes('three@')) return route.fulfill({ body: readFileSync(path.resolve('node_modules/three/build', u.split('/build/')[1])), contentType: 'text/javascript' });
+  if (u.endsWith('logo.html')) return route.fulfill({ body: readFileSync('logo.html'), contentType: 'text/html' });
+  const f = path.join(new URL('../../mockups', import.meta.url).pathname, u.split('/').pop()); if (existsSync(f)) return route.fulfill({ body: readFileSync(f), contentType: 'text/javascript' });
+  return route.abort(); });
+await p.goto('http://local.test/logo.html'); await p.waitForFunction(() => window.png, null, { timeout: 60000 });
+const png = await p.evaluate(() => window.png);
+writeFileSync(new URL('../../mockups/hat-logo.png', import.meta.url).pathname, Buffer.from(png.split(',')[1], 'base64'));
+await b.close(); console.log('written');

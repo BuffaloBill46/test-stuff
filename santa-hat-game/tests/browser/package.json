@@ -1,0 +1,16 @@
+{
+  "name": "santa-hat-browser-tests",
+  "version": "1.0.0",
+  "description": "Headless browser checks for Santa Hat Arcade. Run from this folder after npm install.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
+    "three": "^0.186.1"
+  }
+}

@@ -6,7 +6,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Turn on Solana sign-in:** Supabase → Authentication → Sign In / Providers → Web3 Wallet → Solana.
 - [ ] **Set sign-in addresses:** Supabase → Authentication → URL Configuration. Site URL `https://buffalobill46.github.io/test-stuff/`, Redirect URL `https://buffalobill46.github.io/test-stuff/**`.
 - [ ] **Email service so friends get sign-in emails:** connect Resend (free tier) to one of Cody's GoDaddy domains, then paste its SMTP settings into Supabase. Until then, email sign-in only reaches Supabase team members.
-- [ ] **Send the new tab design** (the image didn't come through).
+- [ ] **Confirm the Games daily limit is in dollars** ($10 per game per day at level 1, +$10 per level), not number of spins.
 - [ ] **Level table:** how many rank points reach each level, and which items unlock at each.
 - [ ] **Slots paytable and 10 reel symbols:** Cody drafting; Claude checks the payback % with a simulation.
 
@@ -54,6 +54,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 ## Things to remember
 - The free Supabase project **pauses after about a week with nobody playing**. Un-pause it from the Supabase dashboard.
 - Publish updates with `santa-hat-game/deploy-pages.sh`.
+- Handing over to a new Claude: see `HANDOFF.md`. Keep its "Where we are right now" section current.
 
 ## Done
 - Four mockups; Snowball Square chosen and made multiplayer (rooms, codes, referee handover, idle kick).

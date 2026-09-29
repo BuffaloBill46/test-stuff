@@ -1,0 +1,13 @@
+import { createRequire } from 'module'; import { readFileSync, existsSync } from 'fs'; import { execSync } from 'child_process'; import path from 'path';
+const require = createRequire(import.meta.url);
+const { chromium } = require(path.join(execSync('npm root -g').toString().trim(), 'playwright'));
+const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const p = await b.newPage({ viewport: { width: 1400, height: 420 } });
+p.on('pageerror', (e) => console.log('ERR', e.message));
+await p.route('**/*', (route) => { const u = route.request().url();
+  if (u.includes('three@')) return route.fulfill({ body: readFileSync(path.resolve('node_modules/three/build', u.split('/build/')[1])), contentType: 'text/javascript' });
+  if (u.endsWith('faces.html')) return route.fulfill({ body: readFileSync('faces.html'), contentType: 'text/html' });
+  const f = path.join(new URL('../../mockups', import.meta.url).pathname, u.split('/').pop()); if (existsSync(f)) return route.fulfill({ body: readFileSync(f), contentType: 'text/javascript' });
+  return route.abort(); });
+await p.goto('http://local.test/faces.html'); await p.waitForFunction(() => window.done, null, { timeout: 60000 });
+await p.screenshot({ path: 'out/faces.png' }); await b.close();

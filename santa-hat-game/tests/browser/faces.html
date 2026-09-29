@@ -1,0 +1,15 @@
+<!doctype html><html><body style="margin:0;background:#1b2344">
+<canvas id="c" width="1400" height="420"></canvas>
+<script type="module">
+import { THREE, character, lights, hatGeo, toon } from './kit.js';
+const r = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x1b2344); lights(scene, { hemi: 1.6, moonI: 1.5 });
+const faces = ['dots', 'smile', 'wink', 'wow', 'shades', 'beard', 'mask', 'gorilla', 'snowman', 'panda'];
+faces.forEach((f, i) => {
+  const c = character({ shirt: f === 'panda' ? 0x1d1d22 : 0xcf3128, pants: 0x2d3a63, face: f, skin: 0xe8b894 });
+  c.position.x = (i - 4.5) * 1.1; c.rotation.y = -0.25; scene.add(c);
+  const h = toon(hatGeo({ scale: 0.88 }), 0.03); h.position.set(c.position.x, 2.05, 0); h.rotation.y = Math.PI / 2; scene.add(h);
+});
+const cam = new THREE.PerspectiveCamera(30, 1400 / 420, 0.1, 100); cam.position.set(0, 2.1, 8.2); cam.lookAt(0, 1.6, 0);
+r.render(scene, cam); window.done = true;
+</script></body></html>
