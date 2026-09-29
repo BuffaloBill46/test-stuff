@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Snowball Square Online</title>
+<meta name="description" content="Grab the Santa hat, keep it on your head, knock it off theirs. Up to 8 players.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@600;800&family=Alegreya+Sans:wght@400;500;700&family=Silkscreen:wght@400;700&display=swap">
+<style>
+/* Layout: the plaza fills the screen; UI floats on top as ink-outlined plaques, like the models. */
+:root {
+  color-scheme: dark;
+  --ink: #0c0f1a; --night: #121830; --plaque: #1b2344; --plaque-hi: #26305a; --frost: #b9cdf2;
+  --text: #eef2fb; --dim: #9aa6c7; --hat: #cf3128; --hat-dark: #8f1712; --brim: #f5f1e8; --lamp: #ffbe5c; --pine: #7fe0a0;
+  --display: 'Grenze Gotisch', 'Palatino Linotype', Georgia, serif;
+  --body: 'Alegreya Sans', 'Trebuchet MS', system-ui, sans-serif;
+  --digits: 'Silkscreen', 'Courier New', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--night); color: var(--text); overflow: hidden; }
+body { font-family: var(--body); font-size: 16px; touch-action: none; -webkit-user-select: none; user-select: none; }
+[hidden] { display: none !important; }
+#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+.plaque { background: var(--plaque); border: 2px solid var(--ink); box-shadow: inset 0 0 0 1px rgba(185,205,242,.18), 3px 3px 0 var(--ink); border-radius: 3px; }
+
+header.bar { position: fixed; left: 0; right: 0; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px; background: linear-gradient(var(--night), rgba(18,24,48,0)); pointer-events: none; }
+.brand { font: 800 30px/1 var(--display); color: var(--brim); letter-spacing: .5px; text-shadow: 2px 2px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
+.brand b { color: var(--hat); font-weight: 800; }
+#roomchip { pointer-events: auto; display: flex; align-items: baseline; gap: 8px; padding: 6px 10px 5px; }
+#roomchip i { font: 700 11px/1 var(--body); text-transform: uppercase; letter-spacing: 1.4px; color: var(--dim); font-style: normal; }
+#roomchip b { font: 700 18px/1 var(--digits); color: var(--lamp); user-select: text; -webkit-user-select: text; }
+#roomchip span { font-size: 13px; color: var(--dim); }
+#leave { margin-left: auto; pointer-events: auto; font: 700 14px/1 var(--body); color: var(--text); background: var(--plaque); border: 2px solid var(--ink); border-radius: 3px; padding: 8px 12px; box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
+
+#hud { position: fixed; z-index: 4; left: 16px; top: calc(env(safe-area-inset-top, 0px) + 64px); display: flex; gap: 8px; flex-wrap: wrap; pointer-events: none; max-width: calc(100% - 32px); }
+.stat { padding: 6px 10px 5px; min-width: 70px; }
+.stat i { display: block; font: 700 11px/1 var(--body); text-transform: uppercase; letter-spacing: 1.4px; color: var(--dim); font-style: normal; margin-bottom: 4px; }
+.stat b { font: 700 20px/1 var(--digits); font-variant-numeric: tabular-nums; color: var(--text); }
+.stat.nice b { color: var(--lamp); } .stat.naughty b { color: var(--pine); } .stat.warn b { color: #ff7a6e; }
+.pips { display: flex; gap: 4px; padding-top: 2px; }
+.pips u { width: 12px; height: 12px; border-radius: 50%; background: var(--brim); border: 2px solid var(--ink); }
+.pips u.off { background: transparent; border-color: #3a4570; }
+
+#board { position: fixed; z-index: 4; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 64px); width: 210px; padding: 8px 10px; pointer-events: none; }
+#board ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+#board li { display: flex; justify-content: space-between; gap: 8px; font-size: 15px; }
+#board li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#board li b { font: 700 14px/1.3 var(--digits); font-variant-numeric: tabular-nums; }
+#board li.me span { color: var(--lamp); }
+.teams { display: flex; justify-content: space-between; margin-bottom: 6px; font-weight: 700; }
+.teams b { font-family: var(--digits); }
+.t0 { color: var(--lamp); } .t1 { color: var(--pine); }
+
+#home, #panel { position: fixed; z-index: 6; left: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); width: min(430px, calc(100% - 32px)); padding: 16px 18px 18px; max-height: calc(100% - 120px); overflow: auto; }
+.eyebrow { font: 700 11px/1.3 var(--digits); letter-spacing: 1px; color: var(--frost); text-transform: uppercase; }
+h1, h2 { font: 800 38px/1 var(--display); margin: 6px 0 8px; color: var(--brim); text-wrap: balance; text-shadow: 2px 2px 0 var(--ink); }
+#home p, #panel p { margin: 0 0 10px; line-height: 1.4; color: #d6ddf0; }
+.dim { color: var(--dim) !important; font-size: 14px; }
+label { display: block; font: 700 11px/1 var(--body); text-transform: uppercase; letter-spacing: 1.4px; color: var(--dim); margin: 10px 0 5px; }
+input[type=text] { width: 100%; font: 500 17px/1.2 var(--body); color: var(--text); background: #0e1328; border: 2px solid var(--ink); box-shadow: inset 0 0 0 1px rgba(185,205,242,.2); border-radius: 3px; padding: 9px 10px; -webkit-user-select: text; user-select: text; }
+input[type=text]:focus-visible { outline: 3px solid var(--lamp); outline-offset: 1px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch; }
+.row > input { flex: 1; min-width: 0; text-transform: uppercase; font-family: var(--digits); letter-spacing: 2px; }
+.go { font: 800 24px/1 var(--display); letter-spacing: .5px; color: var(--brim); background: var(--hat); cursor: pointer;
+  border: 2px solid var(--ink); border-radius: 4px; padding: 10px 22px 16px; box-shadow: inset 0 -8px 0 var(--brim), inset 0 -10px 0 #d9d2c2, 3px 3px 0 var(--ink); text-shadow: 1px 1px 0 var(--hat-dark); }
+.go:hover { background: #dd3a30; } .go:active { transform: translate(2px, 2px); box-shadow: inset 0 -8px 0 var(--brim), 1px 1px 0 var(--ink); }
+.sec { font: 700 16px/1 var(--body); color: var(--text); background: var(--plaque-hi); border: 2px solid var(--ink); border-radius: 3px; padding: 10px 14px; box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
+.sec:hover { background: #2f3a6a; }
+button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
+.actions { display: grid; gap: 10px; margin-top: 14px; }
+#status { min-height: 1.3em; margin: 10px 0 0; color: var(--lamp) !important; }
+.link { font-family: var(--digits); font-size: 11px; color: var(--frost); word-break: break-all; user-select: text; -webkit-user-select: text; }
+.share b { font-family: var(--digits); color: var(--lamp); }
+.roster { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
+.roster li { padding: 6px 8px; background: var(--plaque-hi); border: 1px solid var(--ink); border-radius: 3px; }
+.roster em, .final em { font-style: normal; font: 700 10px/1 var(--digits); color: var(--lamp); margin-left: 4px; }
+.roster u { text-decoration: none; font-size: 12px; margin-left: 6px; }
+.roster u.t0 { color: var(--lamp); } .roster u.t1 { color: var(--pine); }
+.modes { display: flex; gap: 8px; margin: 6px 0 12px; flex-wrap: wrap; }
+.modes button { flex: 1; min-width: 140px; font: 700 15px/1.1 var(--body); color: var(--dim); background: var(--plaque-hi); border: 2px solid var(--ink); border-radius: 3px; padding: 10px; cursor: pointer; }
+.modes button[aria-checked="true"] { color: var(--ink); background: var(--brim); box-shadow: inset 0 -4px 0 #d9d2c2; }
+.wait b { color: var(--lamp); }
+.result { display: flex; gap: 8px; margin: 4px 0 10px; }
+.result .stat { background: var(--plaque-hi); }
+.verdict { font: 800 22px/1.1 var(--display); color: var(--lamp); margin-bottom: 8px; }
+.final { margin: 0 0 10px; padding-left: 22px; display: grid; gap: 3px; }
+.final li span { display: inline-block; min-width: 60%; }
+.final li b { font-family: var(--digits); }
+
+#tags { position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+.tag { position: absolute; left: 0; top: 0; font: 700 13px/1 var(--body); color: var(--brim); padding: 3px 6px; background: rgba(12,15,26,.55); border-radius: 3px; white-space: nowrap; }
+.tag.me { color: var(--lamp); }
+.tag.say { font: 800 17px/1 var(--display); color: var(--ink); background: var(--brim); border: 2px solid var(--ink); padding: 4px 8px 5px; }
+#pops { position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+.pop { position: absolute; transform: translate(-50%, -50%); font: 700 18px/1 var(--digits); color: var(--lamp); white-space: nowrap;
+  text-shadow: 2px 0 0 var(--ink), -2px 0 0 var(--ink), 0 2px 0 var(--ink), 0 -2px 0 var(--ink); animation: rise 1s ease-out forwards; }
+.pop.bad { color: #ff7a6e; } .pop.green { color: var(--pine); } .pop.big { font-size: 26px; color: var(--brim); } .pop.white { color: var(--brim); }
+@keyframes rise { from { opacity: 1; margin-top: 0; } 70% { opacity: 1; } to { opacity: 0; margin-top: -54px; } }
+#banner { position: fixed; z-index: 5; left: 50%; top: 32%; transform: translate(-50%, -50%); font: 800 54px/1 var(--display); color: var(--brim); text-shadow: 3px 3px 0 var(--ink), -2px -2px 0 var(--ink); pointer-events: none; white-space: nowrap; }
+#banner.show { animation: slam .45s cubic-bezier(.2,1.4,.4,1); }
+@keyframes slam { from { transform: translate(-50%, -50%) scale(1.6); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+#emotes { position: fixed; z-index: 4; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: 50%; }
+#emotes button { font: 700 14px/1 var(--body); color: var(--ink); background: var(--brim); border: 2px solid var(--ink); border-radius: 3px; padding: 7px 9px; box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
+#joy { position: fixed; z-index: 4; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; border: 2px solid rgba(245,241,232,.5); background: rgba(12,15,26,.25); pointer-events: none; }
+#joy::after { content: ''; position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(245,241,232,.75); border: 2px solid var(--ink); transform: translate(var(--jx, 0px), var(--jy, 0px)); }
+#loading { position: fixed; inset: 0; display: grid; place-items: center; font: 800 28px var(--display); color: var(--dim); }
+@media (max-width: 640px) {
+  .brand { font-size: 22px; }
+  #board { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 60px); width: 170px; font-size: 14px; }
+  #hud { top: calc(env(safe-area-inset-top, 0px) + 96px); gap: 6px; }
+  .stat { min-width: 0; padding: 5px 8px 4px; } .stat b { font-size: 17px; }
+  h1, h2 { font-size: 30px; }
+  #home, #panel { padding: 12px 14px 14px; }
+  #emotes { max-width: 100%; left: 16px; justify-content: flex-start; }
+  #emotes button { padding: 6px 7px; font-size: 12px; }
+  #banner { font-size: 38px; }
+}
+@media (prefers-reduced-motion: reduce) { .pop, #banner.show { animation-duration: .01s; } }
+</style>
+</head>
+<body>
+<canvas id="stage" aria-label="Snowball Square"></canvas>
+<div id="loading">Lighting the lanterns…</div>
+<div id="tags"></div>
+<div id="pops"></div>
+<div id="banner" hidden></div>
+<header class="bar">
+  <div class="brand"><b>Snowball</b> Square</div>
+  <div id="roomchip" class="plaque" hidden></div>
+  <button id="leave" hidden>Leave</button>
+</header>
+<div id="hud" aria-live="polite"></div>
+<aside id="board" class="plaque" hidden></aside>
+<section id="home" class="plaque">
+  <div class="eyebrow">Online · up to 8 players</div>
+  <h1>Snowball Square</h1>
+  <p>Grab the Santa hat and keep it on your head: every second earns points. Knock it off everyone else with snowballs, and catch it on your head when it flies. Three rounds; most points wins.</p>
+  <label for="name">Your name</label>
+  <input id="name" type="text" maxlength="14" autocomplete="off" spellcheck="false">
+  <div class="actions">
+    <button class="go" id="quick">Quick play</button>
+    <div class="row"><input id="code" type="text" maxlength="6" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code"><button class="sec" id="joinBtn">Join room</button></div>
+    <div class="row"><button class="sec" id="create">Create private room</button><button class="sec" id="practice">Practice vs bots</button></div>
+  </div>
+  <p id="status" role="status"></p>
+  <p class="dim"><b>WASD</b> move · <b>Click</b> throw · <b>Space</b> auto-aim · <b>1–4</b> emotes. Phone: drag the left side to move, tap the right side to throw.</p>
+</section>
+<section id="panel" class="plaque" hidden></section>
+<div id="emotes" hidden></div>
+<div id="joy" hidden></div>
+<script type="module" src="./online.js"></script>
+</body>
+</html>
