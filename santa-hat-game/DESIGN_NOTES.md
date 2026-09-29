@@ -55,6 +55,33 @@ per player in the pot (bots included), bots can win, and bots play under player-
 - **Avatar items:** 50% burned, 50% to the treasury.
 - **Lottery:** 90% to winners, 10% burned.
 
+### SANTA's 3% tax (decided; checked on the real token)
+- **The token itself takes 3% on every transfer.** Checked on-chain: SANTA (mint
+  `3c7mmVSyEH8jfZXgxvpLsETtko1Y16DyRJ5XYB4snhGt`) is a Token-2022 token with a 300 basis point (3%)
+  transfer fee. The fee comes out of what *arrives*, not on top of what's sent. The token team's key can
+  change the fee, so **the game must read the live fee from the token every time, never assume 3%.**
+- **Order of every payment:** 3% tax first, then burn %, then treasury %, then pool %. The percentages
+  apply to what's left after the tax. **The last split gets the remainder** (amounts never divide exactly).
+- **What the player pays** is the total that leaves their wallet: a $1.00 spin means $1.00 of SANTA out of
+  their wallet at the quoted price, with a small cushion for price moves.
+- **How it works on the chain:** burning isn't a transfer, so the burn part pays no tax. That leaves a little
+  extra, which lands on the last split through the remainder rule. Worked examples (from `tests/tax-split.mjs`):
+  - **$1.00 spin (10% burn / 90% pool):** 9.70¢ burned, 90.30¢ sent to the pool, 87.59¢ arrives.
+  - **$1.00 ticket (50% burn / 50% treasury):** 48.50¢ burned, 51.50¢ sent, 49.95¢ arrives in the treasury.
+- **Never route a payment through an in-between wallet.** Each hop costs another 3%. The player's single
+  transaction burns directly and sends straight to each final wallet.
+- **Moving our own SANTA is taxed too:** seeding a $50 pool takes about $51.55 sent.
+
+#### Open question for Cody: winners' payouts are taxed too
+Paying a winner from the pool is a transfer, so 3% comes off. Two ways (both keep the pool healthy;
+simulated 5,000 × 3,000 $1 spins from a $50 start, zero pauses either way):
+- **A. Winner absorbs it:** a 2× win sends $2.00, the player receives $1.94. Players get back 72.3¢ per $1 on
+  average; the pool keeps 13.1¢.
+- **B. Pool tops it up (Claude's pick):** the pool sends $2.06 so the player receives the full $2.00, matching
+  what the wheel shows. Players get back 74.5¢ per $1; the pool keeps 10.8¢. The "must cover the biggest win"
+  rule then needs 5.16× the bet, not 5×.
+The same choice applies to lottery prizes.
+
 ### How to make it work (proposals)
 - **One transaction does the whole split.** When a player buys, their wallet signs a single transaction
   that burns their half directly from their own SANTA (a real burn that lowers total supply, not a send
@@ -88,7 +115,7 @@ per player in the pot (bots included), bots can win, and bots play under player-
   bets, one shared pool. The reel needs 10 symbols.
 
 ### Checked math (spin)
-- Average paid back per $1 spin: **$0.745**. The pool takes in $0.90, so it gains about **$0.155 per $1** over time.
+- Average paid back per $1 spin: **$0.745**. *(Before the 3% tax was known this said the pool takes in $0.90 and gains $0.155 per $1. With the tax the pool takes in $0.876 and gains 10.8–13.1¢; see "SANTA's 3% tax" above.)*
 - Short-term swings are real: in 2,000 simulated runs of 500 × $1 spins, a pool starting at $0 dipped as low as
   **−$24.50**. The pool needs a starting balance, plus a rule that a spin can only start if the pool can
   cover its biggest possible win (5× the bet).

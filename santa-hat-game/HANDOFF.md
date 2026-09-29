@@ -57,6 +57,7 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
 - To change the database you need the **Supabase connector** on Cody's Claude account (it was used for
   everything so far). GitHub access comes through the Claude GitHub app.
 - The free project **pauses after about a week unused.** Un-pause it from the Supabase dashboard.
+- **SANTA has a 3% transfer tax** built into the token. Every payment design must account for it (DESIGN_NOTES → SANTA's 3% tax).
 - Money: nothing paid is live. No wallet has ever been charged. Keep it that way until Cody signs off.
 
 ## How to test (run these before you call anything done)
@@ -65,6 +66,7 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
 cd santa-hat-game
 node tests/sim.test.mjs          # referee: 120 simulated matches, rule checks, cheating attempts
 node tests/catalog-sql.mjs       # item catalog checks (and prints the SQL seed)
+node tests/tax-split.mjs         # SANTA 3% tax split examples and pool simulation
 cd tests/browser && npm install  # once per fresh machine
 node lobby-test.mjs              # 3 browser windows: auto match, join from list, Watch now
 node tabs-test.mjs               # tabs, store, avatar editor, sign-in sheet
@@ -100,6 +102,8 @@ and the live games list with **Watch now** (max 4 watchers). Tested and publishe
 3. The level table (points per level, what unlocks).
 4. The Slots paytable and 10 symbols. Cody is drafting; Claude checks the payback with a simulation.
 5. Confirm the Games daily limit is **dollars** per game per day ($10 at level 1, +$10 per level).
+6. Winners' payouts and the 3% SANTA tax: winner absorbs it, or pool tops it up (see DESIGN_NOTES).
+7. The price cushion (proposal: 60-second quote, accept within 2%).
 
 **Next up (Claude can start without Cody):** see "Next to build" in `TODO.md`. The Santa Hat Games tab UI
 (Spin wheel with the agreed 400-slice odds) can be built as a free demo with no money attached. Anything

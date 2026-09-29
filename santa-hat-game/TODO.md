@@ -8,6 +8,8 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Email service so friends get sign-in emails:** connect Resend (free tier) to one of Cody's GoDaddy domains, then paste its SMTP settings into Supabase. Until then, email sign-in only reaches Supabase team members.
 - [ ] **Confirm the Games daily limit is in dollars** ($10 per game per day at level 1, +$10 per level), not number of spins.
 - [ ] **Level table:** how many rank points reach each level, and which items unlock at each.
+- [ ] **Winners' payouts and the 3% tax:** winner absorbs it, or the pool tops it up so they get the full amount (Claude's pick). See DESIGN_NOTES → SANTA's 3% tax.
+- [ ] **Price cushion:** proposal: the price quote is locked for 60 seconds and a payment is accepted if it's within 2% of the quoted amount.
 - [ ] **Slots paytable and 10 reel symbols:** Cody drafting; Claude checks the payback % with a simulation.
 
 ## Next to build
@@ -21,6 +23,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 ## Before anything paid goes live
 - [ ] **Cheat-proof referee server:** today the host player's browser runs the match and could fake scores. Paid tickets and points need a server we control. Roughly $5–10/month, ask Cody before any spending.
 - [ ] **SANTA payments:** USD prices paid in SANTA at the live price, with a quote locked for about a minute.
+- [ ] **Apply SANTA's transfer tax in every payment:** read the live fee from the token; tax first, then burn, treasury, pool; last split gets the remainder; no in-between wallets.
 - [ ] **Split every payment on-chain:** tickets and avatar items 50% burned / 50% to treasury; lottery 90% to winners / 10% burned.
 - [ ] **Confirm payments on the server** (via Helius) before granting tickets or items.
 - [ ] **Ticket refill limit:** 10 extra per 24 hours.

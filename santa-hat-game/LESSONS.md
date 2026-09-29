@@ -8,6 +8,9 @@ Read this before starting new work on the game. Add to it whenever something rea
 >   first drafts that could never end (see below). Force the losing state in a test; don't assume it.
 > - **Check lighting and glow with the scene fully populated**, never a sparse demo.
 > - **No wallet, token or GP payouts without Cody's explicit sign-off.** That's real money.
+> - **SANTA has a transfer tax (3% today, changeable by the token team).** Read the live fee from the token;
+>   never hardcode it. Tax first, then burn, treasury, pool; the last split gets the remainder. Never route
+>   SANTA through an in-between wallet (each hop costs the tax again).
 > - **Linking logins never erases progress.** A login with its own points, level or items is refused, not merged.
 
 ## Bug classes seen (and how they were caught)
