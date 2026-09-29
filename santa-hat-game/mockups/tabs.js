@@ -60,7 +60,7 @@ export function initTabs(app) {
     $('#rankchip b').textContent = p ? String(p.rank_points) : '—';
     const btn = $('#signin');
     btn.textContent = p ? p.name : 'Sign in'; btn.classList.toggle('in', !!p);
-    btn.title = p ? `Signed in as ${p.wallet}. Click to sign out.` : 'Sign in with your Solana wallet';
+    btn.title = p ? (p.wallet ? `Signed in with wallet ${p.wallet}` : 'Signed in with email') : 'Sign in with a wallet or email';
   }
   async function afterSignIn(p) {
     app.profile = p; app.setIdentity(p.name, cleanAvatar(p.avatar));
@@ -69,22 +69,44 @@ export function initTabs(app) {
     if (state.tab === 'ranks') renderRanks();
     if (state.tab === 'store') renderStore(true);
   }
-  $('#signin').addEventListener('click', async () => {
-    const btn = $('#signin');
-    if (app.profile) {
-      await app.accounts.signOut(); app.profile = null; state.owned = new Set();
-      app.setIdentity(store.get('sq_name') || app.me.n, cleanAvatar(safeJSON(store.get('sq_avatar'))));
-      renderWho(); show(state.tab); return;
+  // ---------- sign-in sheet: wallet (can buy) or email (plays and ranks, can't buy)
+  const acctMsg = (t) => { $('#acctMsg').textContent = t; };
+  function openAcct() {
+    const p = app.profile;
+    $('#acctOut').hidden = !!p; $('#acctIn').hidden = !p; acctMsg('');
+    if (p) {
+      $('#acctIn').innerHTML = `<div class="eyebrow">Signed in</div><h2>${esc(p.name)}</h2>
+        <p>${p.wallet ? `Wallet <b>${esc(short(p.wallet))}</b>. Your avatar is bound to this wallet.` : 'Email account. Your avatar is bound to this email. Buying items needs a wallet sign-in.'}</p>
+        <button class="sec" id="signOut">Sign out</button>`;
+      $('#signOut').addEventListener('click', async () => {
+        await app.accounts.signOut(); app.profile = null; state.owned = new Set();
+        app.setIdentity(store.get('sq_name') || app.me.n, cleanAvatar(safeJSON(store.get('sq_avatar'))));
+        renderWho(); $('#acct').hidden = true; show(state.tab);
+      });
     }
-    btn.disabled = true; btn.textContent = 'Check your wallet…';
-    try { await afterSignIn(await app.accounts.signIn()); }
+    $('#acct').hidden = false;
+  }
+  $('#signin').addEventListener('click', openAcct);
+  $('#acctClose').addEventListener('click', () => { $('#acct').hidden = true; });
+  $('#walletBtn').addEventListener('click', async () => {
+    const btn = $('#walletBtn'); btn.disabled = true; acctMsg('Check your wallet to approve the sign-in…');
+    try { await afterSignIn(await app.accounts.signIn()); $('#acct').hidden = true; }
     catch (e) {
-      renderWho();
-      const msg = e.message === 'NO_WALLET'
-        ? "No Solana wallet found. Install Phantom (or open this page inside the Phantom app's browser on your phone), then try again."
-        : `Sign-in didn't finish: ${e.message}`;
-      toast(msg);
+      acctMsg(e.message === 'NO_WALLET'
+        ? "No Solana wallet found. Install Phantom, or on a phone open this page inside the Phantom app's browser, then try again."
+        : `Sign-in didn't finish: ${e.message}`);
     } finally { btn.disabled = false; }
+  });
+  $('#emailBtn').addEventListener('click', async () => {
+    const email = $('#email').value.trim(), btn = $('#emailBtn');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { acctMsg('That email doesn\'t look right.'); return; }
+    btn.disabled = true; acctMsg('Sending…');
+    try {
+      const p = await app.accounts.signInEmail(email);
+      if (p) { await afterSignIn(p); $('#acct').hidden = true; }
+      else acctMsg(`Sent. Open the link in the email to ${email} on this device to finish signing in.`);
+    } catch (e) { acctMsg(`Couldn't send the email: ${e.message}`); }
+    finally { btn.disabled = false; }
   });
   function toast(t) { const s = $('#avmsg'); if (state.tab === 'avatar' && s) s.textContent = t; else alertBar(t); }
   function alertBar(t) {
@@ -118,7 +140,7 @@ export function initTabs(app) {
   // ---------- avatar editor
   function renderAvatar() {
     const d = state.draft, lvl = app.profile ? app.profile.level : 1;
-    $('#avwho').textContent = app.profile ? `Saved to wallet ${short(app.profile.wallet)}` : 'Guest · sign in to save to your wallet';
+    $('#avwho').textContent = app.profile ? (app.profile.wallet ? `Bound to wallet ${short(app.profile.wallet)}` : 'Bound to your email account') : 'Guest · sign in to keep your look';
     const nm = $('#avname'); if (document.activeElement !== nm) nm.value = d.name;
     $('#avslots').innerHTML = SLOTS.map((s) => `<button role="tab" data-slot="${s}" aria-selected="${s === state.slot}">${SLOT_NAMES[s]}</button>`).join('');
     $('#avgrid').innerHTML = ITEMS.filter((i) => i.slot === state.slot).map((i) => {
@@ -141,13 +163,13 @@ export function initTabs(app) {
     const name = d.name.trim().slice(0, 14) || app.me.n;
     if (!app.profile) {
       store.set('sq_name', name); store.set('sq_avatar', JSON.stringify(d.a)); app.setIdentity(name, cleanAvatar(d.a));
-      msg.textContent = 'Saved on this device. Sign in to keep it with your wallet.'; return;
+      msg.textContent = 'Saved on this device. Sign in to keep it everywhere.'; return;
     }
     btn.disabled = true; msg.textContent = 'Saving…';
     try {
       const p = await app.accounts.save(name, d.a);
       app.profile = p; app.setIdentity(p.name, cleanAvatar(p.avatar)); renderWho();
-      msg.textContent = 'Saved to your wallet.';
+      msg.textContent = app.profile.wallet ? 'Saved to your wallet.' : 'Saved to your account.';
     } catch (e) { msg.textContent = e.message; }
     finally { btn.disabled = false; }
   });
@@ -156,11 +178,11 @@ export function initTabs(app) {
   async function renderRanks() {
     const p = app.profile;
     $('#mycard').innerHTML = p
-      ? `<div class="eyebrow">You</div><h2>${esc(p.name)}</h2><p class="dim">${esc(short(p.wallet))} · Level ${p.level}</p>
+      ? `<div class="eyebrow">You</div><h2>${esc(p.name)}</h2><p class="dim">${p.wallet ? esc(short(p.wallet)) : 'Email account'} · Level ${p.level}</p>
          <div class="stats"><div><i>Rank points</i><b>${p.rank_points}</b></div><div><i>Level</i><b>${p.level}</b></div>
          <div><i>Ranked matches</i><b>0</b></div><div><i>Podiums</i><b>0</b></div></div>
          <p class="dim">Match history and podiums start counting when ranked opens.</p>`
-      : `<div class="eyebrow">You</div><h2>Not signed in</h2><p>Sign in with your Solana wallet to get a rank, keep your look, and appear on the leaderboard.</p><button class="go" id="rankSign">Sign in</button>`;
+      : `<div class="eyebrow">You</div><h2>Not signed in</h2><p>Sign in with a wallet or email to get a rank, keep your look, and appear on the leaderboard.</p><button class="go" id="rankSign">Sign in</button>`;
     $('#rankSign')?.addEventListener('click', () => $('#signin').click());
     const lb = $('#lb');
     try {

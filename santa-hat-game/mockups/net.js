@@ -16,7 +16,7 @@ function listeners() {
 }
 
 let client = null;
-const sb = () => client || (client = createClient(SB_URL, SB_KEY, { auth: { persistSession: true, storageKey: 'sq-auth' }, realtime: { params: { eventsPerSecond: 30 } } }));
+const sb = () => client || (client = createClient(SB_URL, SB_KEY, { auth: { persistSession: true, storageKey: 'sq-auth', flowType: 'pkce', detectSessionInUrl: true }, realtime: { params: { eventsPerSecond: 30 } } }));
 
 function subscribe(ch) {
   return new Promise((res, rej) => {
@@ -123,6 +123,11 @@ function remoteAccounts() {
       if (error) throw new Error(error.message);
       return rpc('ensure_profile');
     },
+    async signInEmail(email) {
+      const { error } = await c.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true } });
+      if (error) throw new Error(error.message);
+      return null; // finishes when they tap the link in their email and land back here
+    },
     profile: () => rpc('ensure_profile'),
     save: (name, avatar) => rpc('save_profile', { p_name: name, p_avatar: avatar }),
     async inventory() { const { data, error } = await c.from('inventory').select('item_id'); if (error) throw new Error(error.message); return data.map((r) => r.item_id); },
@@ -146,9 +151,14 @@ function localAccounts(rules) {
       try { sessionStorage.setItem('sq-local-me', me); } catch {}
       return this.profile();
     },
+    async signInEmail(email) {
+      me = 'email:' + email; try { sessionStorage.setItem('sq-local-me', me); } catch {}
+      return this.profile();
+    },
     async profile() {
       if (!me) throw new Error('Sign in first');
-      const db = get(); db[me] ||= { wallet: me, name: 'Player ' + me.slice(0, 4), avatar: rules.DEFAULT_AVATAR, level: 1, xp: 0, rank_points: 0 }; put(db); return db[me];
+      const isEmail = me.startsWith('email:');
+      const db = get(); db[me] ||= { wallet: isEmail ? null : me, name: 'Player ' + (isEmail ? String(1000 + Object.keys(db).length) : me.slice(0, 4)), avatar: rules.DEFAULT_AVATAR, level: 1, xp: 0, rank_points: 0 }; put(db); return db[me];
     },
     async save(name, avatar) {
       const db = get(), p = db[me]; if (!p) throw new Error('No profile yet');

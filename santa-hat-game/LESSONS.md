@@ -37,6 +37,12 @@ Read this before starting new work on the game. Add to it whenever something rea
   (including paid ones) were invisible in-game. Caught by rendering all faces side by side with the
   hat on. Any change to the hat or head must be checked against the face lineup.
 
+- **New overlay panel sat behind the page.** The sign-in panel had no fixed position, so it rendered
+  under the tab pages and its buttons couldn't be clicked. Caught only because the test clicks for real.
+  Every new overlay: give it a position and z-order, and click it in a test.
+- **Built-in email only reaches the Supabase team.** Friends' sign-in emails fail until a custom SMTP
+  service (e.g. Resend) is connected.
+
 ## Multiplayer notes
 
 - This workspace can't open WebSockets (proxy limit), so live Supabase play can't be tested here.

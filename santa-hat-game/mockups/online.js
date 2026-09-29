@@ -1,5 +1,5 @@
 // Snowball Square Online: lobby, rooms, referee hand-off, smoothing, HUD.
-import { THREE, C, character, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo } from './kit.js';
+import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo } from './kit.js';
 import { buildPlaza, makeHat, shadowBlob } from './plaza.js';
 import { createSim, K, PHASES, constrain } from './sim.js';
 import { openRoom, accounts } from './net.js';
@@ -14,8 +14,22 @@ const LOCAL = params.get('net') === 'local';
 const snapMs = (humans) => (humans <= 4 ? 125 : humans <= 6 ? 170 : 220);
 const REP_MIN_MS = 160, REP_MOVING_MS = 350, REP_IDLE_MS = 1000; // the referee stops extrapolating after 400 ms
 const EMOTES = ['Ho ho ho!', 'Nice throw!', 'Gimme the hat!', 'Oops!'];
-const BOT_NAMES = ['Nib', 'Pip', 'Tink', 'Jolly', 'Snig', 'Holly', 'Pud', 'Ember'];
-const SHIRTS = [0xcf3128, 0x3d6fb8, 0xe0a030, 0x7a4fa3, 0x2f8f8a, 0xd76aa0, 0x8a5a36, 0xf5f1e8];
+// Bots look and sound like players so nobody can pick them out and farm them.
+const BOT_NAMES = ['frostbyte', 'Kaylee_x', 'mikey2012', 'NoScopeNate', 'ghostpepper', 'jollyroger7', 'TannerB', 'lil_snowcone',
+  'Ricky.D', 'sn0wday', 'Brooke_22', 'pinecone_pete', 'Icicle', 'BigTay', 'zoe.plays', 'Marcus_77', 'hat_hunter', 'tobiasz',
+  'coco.bean', 'SleighDrip', 'justjess', 'DannyDoes', 'yeti_mode', 'Bexxie', 'owen_s', 'crumbsy', 'LunaLux', 'Mr_Mittens',
+  'jayjay41', 'nikki.k', 'Frosty_Fin', 'ThatGuyAl', 'kringle', 'Wiggs', 'ellie_b', 'soup_dog', 'TreyTheGreat', 'maple_mo',
+  'Gus_G', 'aurora.b', 'Sam_Plays', 'dustin_t', 'mochi', 'Rae', 'krispy_k', 'BenjiBoo', 'noodle_arms', 'Quinn.Z'];
+const botHash = (id) => { let h = (id * 2654435761) >>> 0; h ^= h >>> 15; return Math.imul(h, 2246822519) >>> 0; };
+const botAvatars = new Map();
+function botAvatar(id) {
+  if (!botAvatars.has(id)) {
+    let h = botHash(id + 7); const a = {};
+    for (const s of SLOTS) { const opts = [...BY_ID.values()].filter((i) => i.slot === s && !(s === 'face' && i.face === 'beard')); a[s] = opts[h % opts.length].id; h = Math.imul(h ^ (h >>> 13), 1103515245) >>> 0; }
+    botAvatars.set(id, a);
+  }
+  return botAvatars.get(id);
+}
 const TEAM_SHIRT = [0xcf3128, C.elf], TEAM_RING = [0xffbe5c, 0x7fe0a0], TEAM_NAME = ['Nice', 'Naughty'];
 
 const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
@@ -68,7 +82,7 @@ function decode(s) {
 }
 
 const inRoom = () => !!room || practice;
-const nameOf = (e) => (e.bot ? 'Elf ' + BOT_NAMES[e.id % BOT_NAMES.length] : (e.peer === me.id ? me.n : names.get(e.peer)) || 'Player');
+const nameOf = (e) => (e.bot ? BOT_NAMES[botHash(e.id) % BOT_NAMES.length] : (e.peer === me.id ? me.n : names.get(e.peer)) || 'Player');
 
 // ---------- referee hand-off
 function becomeHost() {
@@ -261,25 +275,24 @@ function sendEmote(i) {
 }
 
 // ---------- entity meshes
-function shirtFor(e, v) { return v.mode === 'team' ? TEAM_SHIRT[e.team] ?? C.elf : e.bot ? C.elf : SHIRTS[e.id % SHIRTS.length]; }
 function avatarOf(e) {
+  if (e.bot) return botAvatar(e.id);
   if (e.peer === me.id) return me.a;
   const p = room?.peers().find((q) => q.id === e.peer);
   return cleanAvatar(p && p.a);
 }
 const ballMats = new Map();
 function ballMat(color) { let m = ballMats.get(color); if (!m) { m = TOON.clone(); m.color = new THREE.Color(color); ballMats.set(color, m); } return m; }
-const snowColor = (ent) => (!ent || ent.bot ? 0xf5f1e8 : BY_ID.get(avatarOf(ent).snow).color);
+const snowColor = (ent) => (!ent ? 0xf5f1e8 : BY_ID.get(avatarOf(ent).snow).color);
 function syncViews(v) {
   const seen = new Set();
   for (const e of v.ents) {
     seen.add(e.id);
-    const key = `${e.bot}|${shirtFor(e, v)}|${e.peer === me.id}|${e.bot ? '' : JSON.stringify(avatarOf(e))}`;
+    const key = `${v.mode === 'team' ? e.team : ''}|${e.peer === me.id}|${JSON.stringify(avatarOf(e))}`;
     let w = views.get(e.id);
     if (w && w.key !== key) { scene.remove(w.mesh, w.ring); w.label.remove(); views.delete(e.id); w = null; }
     if (!w) {
-      const mesh = e.bot ? character({ shirt: shirtFor(e, v), pants: 0x3b2a1f, ears: true, skin: 0xf0c7a0, seed: e.id })
-        : avatarCharacter(avatarOf(e), v.mode === 'team' ? { shirt: TEAM_SHIRT[e.team] ?? C.elf } : {});
+      const mesh = avatarCharacter(avatarOf(e), v.mode === 'team' ? { shirt: TEAM_SHIRT[e.team] ?? C.elf } : {});
       const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, depthWrite: false }));
       ring.position.y = 0.05; scene.add(mesh, ring);
       const label = document.createElement('div'); label.className = 'tag'; $('#tags').appendChild(label);
@@ -393,7 +406,7 @@ function draw(v, dt, t) {
     animate(w.mesh, dt, e.stun ? 0 : w.speed, isMe ? ctl.throwT : e.thr ? 0.8 : 0);
     w.mesh.position.set(x, 0, z); w.mesh.rotation.y = face; w.mesh.rotation.z = e.stun ? Math.sin(t * 28) * 0.18 : 0;
     w.ring.position.set(x, 0.05, z);
-    w.ring.material.color.set(isMe ? C.lantern : v.mode === 'team' ? TEAM_RING[e.team] : e.bot ? 0x5f7a66 : 0xdfe6f5);
+    w.ring.material.color.set(isMe ? C.lantern : v.mode === 'team' ? TEAM_RING[e.team] : 0xdfe6f5);
     w.ring.scale.setScalar(isMe ? 1.15 : 0.9);
     const p = toScreen(tmp.set(x, 2.85, z), camera, W, H), b = bubbles.get(e.peer);
     const say = b && b.until > performance.now() ? b.text : '';
@@ -491,7 +504,7 @@ function frame() {
 // ---------- home screen wiring
 $('#name').value = me.n;
 const preset = cleanCode(params.get('room'));
-if (preset) { $('#code').value = preset; $('#joinBtn').textContent = 'Join room ' + preset; }
+if (preset) { $('#code').value = preset; $('#joinBtn').textContent = 'Join room ' + preset; $('#home').hidden = false; }
 $('#quick').addEventListener('click', () => enterRoom('', true));
 $('#create').addEventListener('click', () => enterRoom(rid(4).toUpperCase().replace(/[^A-Z0-9]/g, 'X'), false));
 $('#joinBtn').addEventListener('click', () => { const c = cleanCode($('#code').value); if (c.length < 3) { status('Type the room code your friend shared.'); return; } enterRoom(c, false); });
