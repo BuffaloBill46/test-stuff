@@ -98,7 +98,7 @@ So **this game doesn't build its own lottery.** It links to or plugs into Cody's
 into it on mainnet, Claude recommends a security review of the program, since it would hold real money.
 
 How the pool wallets are controlled (options; Claude's pick marked):
-- **A. A plain wallet whose key lives only on our server (pick, for all three to start).** The server pays winners
+- **A. A plain wallet whose key lives only on our server (pick, for Spin and Slots).** The server pays winners
   automatically, which instant spins need. Cheapest and quickest. Used for **Spin and Slots.** Risk: if the
   server key leaked, that one pool could be drained. *(The earlier idea of sweeping extra to the treasury is
   dropped: Cody wants the pools to keep everything. See "Jackpot pools" below. The level-off point caps the risk instead.)*
