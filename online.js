@@ -144,7 +144,7 @@ function leaveRoom(reason) {
 }
 
 // Idle players still cost messages every second, so they're sent home.
-const IDLE_MS = 180000, IDLE_WARN_MS = 20000, HIDDEN_MS = 60000;
+const IDLE_MS = 180000, IDLE_WARN_MS = 20000, HIDDEN_MS = 180000;
 let lastInput = performance.now(), hiddenTimer = 0;
 const active = () => { lastInput = performance.now(); };
 ['keydown', 'pointerdown', 'pointermove', 'wheel'].forEach((ev) => addEventListener(ev, active, { passive: true }));
@@ -156,7 +156,7 @@ document.addEventListener('visibilitychange', () => {
 function idleCheck(now) {
   if (!room) return 0;
   const left = IDLE_MS - (now - lastInput);
-  if (left <= 0) { leaveRoom('idle'); return 0; }
+  if (left <= 0) { leaveRoom(document.hidden ? 'hidden' : 'idle'); return 0; }
   return left <= IDLE_WARN_MS ? Math.ceil(left / 1000) : 0;
 }
 let idleLeft = 0;
