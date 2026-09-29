@@ -41,7 +41,7 @@ export function initTabs(app) {
 
   // ---------- tabs
   function show(tab) {
-    if (!['play', 'store', 'avatar', 'ranks'].includes(tab)) tab = 'play';
+    if (!['play', 'games', 'store', 'avatar', 'ranks'].includes(tab)) tab = 'play';
     state.tab = tab;
     document.querySelectorAll('#nav .tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
     document.querySelectorAll('#pages .page').forEach((p) => { p.hidden = p.id !== 'tab-' + tab; });

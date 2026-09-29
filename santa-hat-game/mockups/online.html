@@ -177,6 +177,62 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 p.taxnote { margin: 12px 0 0; line-height: 1.6; font-size: 16px; color: #e8ecf7; max-width: 56ch; text-shadow: 1px 1px 0 var(--ink), 0 0 6px var(--ink); }
 p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; font: 700 11px/1 var(--digits); color: var(--ink); background: var(--lamp); border: 2px solid var(--ink); padding: 5px 7px; text-transform: uppercase; }
 .lottery p.taxnote { flex-basis: 100%; order: 3; margin: 0; }
+.slotshead { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; margin-bottom: 14px; }
+.slotshead h2 { margin: 0 0 4px; }
+.pool i, .jp small { display: block; font: 700 11px/1.3 var(--body); text-transform: uppercase; letter-spacing: 1.4px; color: var(--dim); font-style: normal; }
+.pool b { font: 700 34px/1.1 var(--digits); color: var(--lamp); font-variant-numeric: tabular-nums; text-shadow: 2px 2px 0 var(--ink); }
+.slotshead .demo { display: flex; gap: 12px; align-items: center; }
+.slotshead .demo .stamp { margin: 0; }
+.slotshead .demo p { margin: 0; font-size: 14px; color: var(--dim); }
+.slotshead .demo b { font: 700 15px/1 var(--digits); color: var(--text); margin-right: 6px; }
+.slotshead .demo .sec { padding: 6px 10px; font-size: 13px; }
+.machines { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+
+.machine { background: linear-gradient(#141b35, #1b2344 70%); border: 2px solid var(--ink); border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(185,205,242,.14); padding: 12px 14px 14px; display: flex; flex-direction: column; min-width: 0; }
+.machine header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.machine h3 { font: 800 30px/1 var(--display); margin: 0; color: var(--brim); text-shadow: 2px 2px 0 var(--ink); }
+.machine header em { font: 700 12px/1 var(--digits); color: var(--lamp); font-style: normal; text-transform: uppercase; }
+.jp { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding: 8px 12px; background: var(--ink); border: 2px solid #c98a1b; border-radius: 3px; }
+.jp > span { font: 800 20px/1 var(--display); color: var(--brim); }
+.jp small b { color: var(--lamp); font-family: var(--digits); letter-spacing: 0; }
+.jp .amt { font: 700 26px/1 var(--digits); color: var(--lamp); font-variant-numeric: tabular-nums; text-shadow: 0 0 10px rgba(255,190,92,.45); }
+.machine canvas { width: 100%; aspect-ratio: 1 / 1; display: block; cursor: pointer; margin: 4px 0; }
+.machine .pull { flex: none; }
+.machine .screen { position: relative; }
+.machine .flash { position: absolute; left: 0; right: 0; top: 4%; text-align: center; font: 800 46px/1 var(--display); color: var(--brim); pointer-events: none; opacity: 0;
+  text-shadow: 3px 3px 0 var(--ink), -2px -2px 0 var(--ink), 2px -2px 0 var(--ink), -2px 2px 0 var(--ink); transform: rotate(-4deg); }
+.machine.jackpot .flash { font-size: 68px; color: var(--lamp); text-shadow: 4px 4px 0 var(--hat-dark), -2px -2px 0 var(--ink), 2px -2px 0 var(--ink), -2px 2px 0 var(--ink), 0 0 24px rgba(255,190,92,.6); }
+.machine .flash.show { animation: stamp 2.4s ease-out forwards; }
+.machine.jackpot .flash.show { animation-duration: 4.2s; }
+@keyframes stamp { 0% { opacity: 0; transform: scale(1.9) rotate(-4deg); } 10% { opacity: 1; transform: scale(1) rotate(-4deg); } 80% { opacity: 1; } 100% { opacity: 0; transform: scale(1) rotate(-4deg); } }
+.machine .pullrow { display: flex; gap: 12px; align-items: center; }
+.machine .res { font-size: 15px; color: #d6ddf0; min-height: 2.6em; display: flex; align-items: center; }
+.machine .res b { color: var(--lamp); margin-right: 4px; }
+.machine.won .jp { border-color: var(--lamp); }
+.machine.jackpot .jp { animation: jpflash .35s steps(2) 10; }
+@keyframes jpflash { 50% { background: var(--hat); } }
+@media (min-width: 821px) { /* stacked games; on wide screens each machine sits beside its readouts */
+  .machine { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); grid-template-rows: auto auto auto 1fr; column-gap: 24px; align-items: start; }
+  .machine .screen { grid-column: 1; grid-row: 1 / span 4; }
+  .machine canvas { margin: 0; }
+  .machine header, .machine .jp, .machine .facts, .machine .pullrow { grid-column: 2; }
+  .machine .facts { grid-row: 3; } .machine .pullrow { grid-row: 4; }
+  .machine .jp { margin-top: 14px; }
+  .machine .pullrow { align-self: end; margin-bottom: 8px; }
+}.machine .facts { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
+.machine .facts li { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; color: #d6ddf0; border-bottom: 1px dashed rgba(185,205,242,.18); padding-bottom: 5px; }
+.machine .facts b { font: 700 14px/1.3 var(--digits); color: var(--text); text-align: right; }
+@media (max-width: 820px) { .machine .facts { margin-bottom: 4px; } }
+.paytable { margin-top: 14px; }
+.paytable summary { cursor: pointer; font: 800 22px/1.2 var(--display); color: var(--brim); }
+.paytable ol { list-style: none; margin: 10px 0; padding: 0; display: grid; gap: 4px; }
+.paytable li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto 3.5em; gap: 12px; align-items: center; padding: 3px 8px; background: rgba(12,15,26,.35); border-radius: 3px; }
+.paytable li b { font: 700 14px/1 var(--digits); color: var(--lamp); }
+.paytable .jpword { color: var(--hat); text-transform: uppercase; }
+.paytable .three img { width: 30px; height: 30px; vertical-align: middle; background: #f5f1e8; border: 1px solid var(--ink); border-radius: 2px; margin-right: 2px; }
+.paytable li .dim { text-align: right; font-size: 12px; }
+@media (max-width: 820px) { .paytable li { grid-template-columns: auto minmax(0, 1fr) auto; } .paytable li > :last-child { display: none; } }
+@media (prefers-reduced-motion: reduce) { .machine.jackpot .jp, .machine .flash.show { animation: none; opacity: 1; transform: rotate(-4deg); } }
 .stamp { margin-left: auto; font: 700 13px/1 var(--digits); color: var(--hat); border: 3px solid var(--hat); padding: 8px 10px; transform: rotate(-4deg); text-transform: uppercase; }
 .carousel { margin: 0 0 16px; }
 .carousel h4 { margin: 0 0 8px; }
@@ -299,6 +355,7 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
   <div class="brand"><img src="hat-logo.png" alt=""><span><b>Santa</b> Hat</span></div>
   <div class="tabs" role="tablist" aria-label="Sections">
     <button role="tab" id="t-play" data-tab="play" aria-selected="true">Play</button>
+    <button role="tab" id="t-games" data-tab="games" aria-selected="false">Games</button>
     <button role="tab" id="t-store" data-tab="store" aria-selected="false">Store</button>
     <button role="tab" id="t-avatar" data-tab="avatar" aria-selected="false">Avatar</button>
     <button role="tab" id="t-ranks" data-tab="ranks" aria-selected="false">Ranks</button>
@@ -375,6 +432,37 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
           <tr><td>1st</td><td class="up">+30</td></tr><tr><td>2nd, 3rd</td><td class="down">−5 each</td></tr></tbody></table>
       </div>
     </section>
+  </section>
+
+  <section id="tab-games" class="page" role="tabpanel" aria-labelledby="t-games" hidden>
+    <div class="hero"><div class="eyebrow">Santa Hat Games · single player</div><h1>Santa Hat Games</h1>
+      <p>Quick games you play on your own. Every entry: 10% burned, 90% into that game's prize pool.</p>
+      <p class="taxnote"><b>3% SANTA tax</b> Winnings are paid in SANTA and arrive 3% lighter; the token does that, not this game.</p></div>
+    <section class="block plaque slotsbox fur" id="slots">
+      <div class="slotshead">
+        <div><h2>Slots</h2><div class="pool"><i>Total pool</i><b id="slotPool">$50.00</b></div></div>
+        <div class="demo"><span class="stamp">Demo</span><p>Play money only; payments open later.<br>Demo balance <b id="demoBal">$10.00</b> <button class="sec" id="demoReset">Reset</button></p></div>
+      </div>
+      <div class="machines">
+        <article class="machine" data-m="mini">
+          <header><h3>Mini Hat</h3><em>$0.10 a pull</em></header>
+          <div class="jp"><span>Jackpot<small><b class="pct">1%</b> of the pool</small></span><b class="amt">$0.50</b></div>
+          <div class="screen"><canvas aria-label="Mini Hat slot machine"></canvas><div class="flash" aria-hidden="true"></div></div>
+          <div class="pullrow"><button class="go pull">Pull</button><output class="res" aria-live="polite">Pull the pom-pom, or tap the machine.</output></div>
+          <ul class="facts"></ul>
+        </article>
+        <article class="machine big" data-m="big">
+          <header><h3>Big Hat</h3><em>$1.00 a pull</em></header>
+          <div class="jp"><span>Jackpot<small><b class="pct">10%</b> of the pool</small></span><b class="amt">$5.00</b></div>
+          <div class="screen"><canvas aria-label="Big Hat slot machine"></canvas><div class="flash" aria-hidden="true"></div></div>
+          <div class="pullrow"><button class="go pull">Pull</button><output class="res" aria-live="polite">Pull the pom-pom, or tap the machine.</output></div>
+          <ul class="facts"></ul>
+        </article>
+      </div>
+      <details class="paytable"><summary>Paytable <span class="dim">· draft, payouts not final</span></summary><div id="payRows"></div>
+        <p class="dim">Wins count on the middle line. Both machines share the one Slots pool; each machine's jackpot is its own share of it.</p></details>
+    </section>
+    <section class="block plaque lottery"><h2>Santa Hat Spin</h2><p>The prize wheel. $0.10 or $1.00 a spin.</p><span class="stamp">Coming soon</span></section>
   </section>
 
   <section id="tab-store" class="page" role="tabpanel" aria-labelledby="t-store" hidden>
