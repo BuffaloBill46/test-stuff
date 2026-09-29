@@ -19,7 +19,7 @@ else
 fi
 
 cp "$SRC/online.html" "$OUT/index.html"
-cp "$SRC"/{kit,plaza,sim,net,online}.js "$OUT/"
+cp "$SRC"/{kit,plaza,sim,net,online,catalog,tabs}.js "$OUT/"
 mkdir -p "$OUT/mockups"
 cp "$SRC"/{kit,plaza,village,snowball,bethehat,sleigh,hatchase}.js "$OUT/mockups/"
 { printf '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>\n'

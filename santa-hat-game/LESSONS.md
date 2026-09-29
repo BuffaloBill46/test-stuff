@@ -33,6 +33,10 @@ Read this before starting new work on the game. Add to it whenever something rea
   8 players at the first-draft rates was about 190 messages/second against a limit of 100. Do the
   multiplication before shipping any network change, and send on change, not on a timer.
 
+- **Bigger hat hid every face.** Enlarging the hat put its brim over the eyes, so face items
+  (including paid ones) were invisible in-game. Caught by rendering all faces side by side with the
+  hat on. Any change to the hat or head must be checked against the face lineup.
+
 ## Multiplayer notes
 
 - This workspace can't open WebSockets (proxy limit), so live Supabase play can't be tested here.

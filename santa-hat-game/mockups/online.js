@@ -1,8 +1,10 @@
 // Snowball Square Online: lobby, rooms, referee hand-off, smoothing, HUD.
-import { THREE, C, character, animate, Snow, Burst, toon, part, build, glow, toScreen } from './kit.js';
+import { THREE, C, character, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo } from './kit.js';
 import { buildPlaza, makeHat, shadowBlob } from './plaza.js';
 import { createSim, K, PHASES, constrain } from './sim.js';
-import { openRoom } from './net.js';
+import { openRoom, accounts } from './net.js';
+import { SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable } from './catalog.js';
+import { initTabs, avatarCharacter } from './tabs.js';
 
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
@@ -43,7 +45,8 @@ function resize() { W = innerWidth; H = innerHeight; renderer.setSize(W, H, fals
 addEventListener('resize', resize); resize();
 
 // ---------- state
-const me = { id: rid(10), n: cleanName(store.get('sq_name')) || 'Player ' + (100 + Math.floor(Math.random() * 900)), j: 0 };
+const me = { id: rid(10), n: cleanName(store.get('sq_name')) || 'Player ' + (100 + Math.floor(Math.random() * 900)), j: 0, a: cleanAvatar((() => { try { return JSON.parse(store.get('sq_avatar')); } catch { return null; } })()) };
+let profile = null; // signed-in wallet profile, if any
 let room = null, roomCode = '', practice = false, isHost = false, sim = null, joinedAt = 0;
 let lastRaw = null, curHost = null, snaps = [], lastEv = 0, lastSnapSent = 0, lastSnapAt = 0;
 let bg = createSim(); bg.syncRoster([]); // attract-mode plaza behind the home screen
@@ -102,7 +105,7 @@ function election(now) {
 // ---------- rooms
 async function enterRoom(code, quick) {
   status('Connecting…');
-  me.n = cleanName($('#name')?.value) || me.n; store.set('sq_name', me.n);
+  if (!profile) { me.n = cleanName($('#name')?.value) || me.n; store.set('sq_name', me.n); }
   for (let attempt = 0; attempt < (quick ? 5 : 1); attempt++) {
     const c = quick ? 'PUBLIC' + (attempt + 1) : code;
     me.j = Date.now();
@@ -126,7 +129,7 @@ async function enterRoom(code, quick) {
 }
 
 function startPractice() {
-  me.n = cleanName($('#name')?.value) || me.n; store.set('sq_name', me.n);
+  if (!profile) { me.n = cleanName($('#name')?.value) || me.n; store.set('sq_name', me.n); }
   practice = true; room = null; roomCode = ''; isHost = true; sim = createSim(); me.j = Date.now(); ctl.ep = -1; snaps = []; lastEv = 0;
   $('#home').hidden = true; renderChrome();
 }
@@ -136,7 +139,7 @@ function leaveRoom(reason) {
   room?.leave(); room = null; practice = false; isHost = false; sim = null; snaps = []; lastRaw = null; curHost = null;
   bg = createSim(); bg.syncRoster([]);
   try { history.replaceState(null, '', location.pathname + (LOCAL ? '?net=local' : '')); } catch {}
-  $('#home').hidden = false; ui.lastBoard = ''; renderChrome();
+  $('#home').hidden = !(reason === 'idle' || reason === 'hidden'); ui.lastBoard = ''; renderChrome();
   if ((reason === 'idle' || reason === 'hidden') && was) {
     $('#code').value = was; $('#joinBtn').textContent = 'Join room ' + was;
     status(reason === 'idle' ? `You left room ${was} after 3 minutes without playing. Tap Join to hop back in.` : `You left room ${was} while the game was in the background. Tap Join to hop back in.`);
@@ -191,7 +194,7 @@ function tryThrow(tx, tz) {
   ctl.t++; ctl.ax = tx; ctl.az = tz; ctl.cool = K.HUMAN_COOL; ctl.throwT = 1; ctl.dirty = true;
   const dx = tx - ctl.x, dz = tz - ctl.z, l = Math.hypot(dx, dz) || 1; ctl.face = Math.atan2(dx, dz);
   if (!isHost) { // show my own snowball instantly; the referee's copy of it is hidden on my screen
-    const dist = Math.max(1.5, l), tt = dist / K.BALL_SPEED, mesh = toon(ballGeo, 0.02); scene.add(mesh);
+    const dist = Math.max(1.5, l), tt = dist / K.BALL_SPEED, mesh = toon(ballGeo, 0.02); mesh.material = ballMat(BY_ID.get(me.a.snow).color); scene.add(mesh);
     localBalls.push({ mesh, x: ctl.x + (dx / l) * 0.45, y: 1.6, z: ctl.z + (dz / l) * 0.45, vx: (dx / l) * K.BALL_SPEED, vy: (1.15 - 1.6) / tt + 0.5 * K.BALL_G * tt, vz: (dz / l) * K.BALL_SPEED, life: 2 });
   }
 }
@@ -259,15 +262,24 @@ function sendEmote(i) {
 
 // ---------- entity meshes
 function shirtFor(e, v) { return v.mode === 'team' ? TEAM_SHIRT[e.team] ?? C.elf : e.bot ? C.elf : SHIRTS[e.id % SHIRTS.length]; }
+function avatarOf(e) {
+  if (e.peer === me.id) return me.a;
+  const p = room?.peers().find((q) => q.id === e.peer);
+  return cleanAvatar(p && p.a);
+}
+const ballMats = new Map();
+function ballMat(color) { let m = ballMats.get(color); if (!m) { m = TOON.clone(); m.color = new THREE.Color(color); ballMats.set(color, m); } return m; }
+const snowColor = (ent) => (!ent || ent.bot ? 0xf5f1e8 : BY_ID.get(avatarOf(ent).snow).color);
 function syncViews(v) {
   const seen = new Set();
   for (const e of v.ents) {
     seen.add(e.id);
-    const key = `${e.bot}|${shirtFor(e, v)}|${e.peer === me.id}`;
+    const key = `${e.bot}|${shirtFor(e, v)}|${e.peer === me.id}|${e.bot ? '' : JSON.stringify(avatarOf(e))}`;
     let w = views.get(e.id);
     if (w && w.key !== key) { scene.remove(w.mesh, w.ring); w.label.remove(); views.delete(e.id); w = null; }
     if (!w) {
-      const mesh = character({ shirt: shirtFor(e, v), pants: e.bot ? 0x3b2a1f : 0x2d3a63, ears: e.bot, skin: e.bot ? 0xf0c7a0 : [C.skin, 0xc58c63, 0x8d5a3b, 0xf0c7a0][e.id % 4], seed: e.id });
+      const mesh = e.bot ? character({ shirt: shirtFor(e, v), pants: 0x3b2a1f, ears: true, skin: 0xf0c7a0, seed: e.id })
+        : avatarCharacter(avatarOf(e), v.mode === 'team' ? { shirt: TEAM_SHIRT[e.team] ?? C.elf } : {});
       const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, depthWrite: false }));
       ring.position.y = 0.05; scene.add(mesh, ring);
       const label = document.createElement('div'); label.className = 'tag'; $('#tags').appendChild(label);
@@ -314,6 +326,8 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s; re
 function renderChrome() {
   const v = currentView;
   $('#roomchip').hidden = !inRoom(); $('#emotes').hidden = !inRoom(); $('#leave').hidden = !inRoom();
+  $('#nav').hidden = inRoom(); $('#pages').hidden = inRoom(); $('#gamebar').hidden = !inRoom(); $('#tags').hidden = !inRoom();
+  preview.visible = !inRoom() && tabs?.tab === 'avatar';
   if (inRoom()) {
     const count = practice ? 1 : room.peers().length;
     $('#roomchip').innerHTML = practice ? '<i>Practice</i><b>vs bots</b>' : `<i>Room</i><b>${esc(roomCode)}</b><span>${idleLeft ? `<em class="idle">Still there? Leaving in ${idleLeft}s</em>` : `${count} online${isHost ? ' · you referee' : ''}`}</span>`;
@@ -410,7 +424,7 @@ function draw(v, dt, t) {
     if (!isHost && mine && b.owner === mine.id) continue;
     const y = b.y + b.vy * a - 0.5 * K.BALL_G * a * a; if (y < 0.05) continue;
     if (!drawBalls[n]) { drawBalls[n] = toon(ballGeo, 0.02); scene.add(drawBalls[n]); }
-    const m = drawBalls[n++];
+    const m = drawBalls[n++]; m.material = ballMat(snowColor(v.ents.find((q) => q.id === b.owner)));
     m.visible = true; m.position.set(b.x + b.vx * a, y, b.z + b.vz * a);
   }
   for (let i = localBalls.length - 1; i >= 0; i--) {
@@ -424,7 +438,13 @@ function draw(v, dt, t) {
     const portrait = H > W * 1.1; camera.fov = portrait ? 62 : 50; camera.updateProjectionMatrix();
     camPos.lerp(tmp.copy(camTarget).add(portrait ? new V3(0, 21, 15) : new V3(0, 14, 12.5)), Math.min(1, dt * 3));
     camera.position.copy(camPos); camera.lookAt(camTarget.x, 0.6, camTarget.z - 1.2);
+  } else if (tabs?.tab === 'avatar') {
+    const narrow = W < 820; camera.fov = narrow ? 44 : 34; camera.updateProjectionMatrix();
+    camTarget.set(0, 0, 6.5);
+    camera.position.set(narrow ? 0 : 1.1, narrow ? 0.9 : 1.75, 12.2); camera.lookAt(narrow ? 0 : 1.1, narrow ? -0.2 : 1.2, 6.5);
+    preview.rotation.y = Math.sin(t * 0.5) * 0.5; animate(preview.userData.ch, dt, 0);
   } else {
+    if (camera.fov !== 50) { camera.fov = 50; camera.updateProjectionMatrix(); }
     const ang = t * 0.07; camTarget.set(0, 0, 0); camPos.set(Math.sin(ang) * 23, 13, Math.cos(ang) * 23);
     camera.position.copy(camPos); camera.lookAt(0, 1, 0);
   }
@@ -476,10 +496,31 @@ $('#quick').addEventListener('click', () => enterRoom('', true));
 $('#create').addEventListener('click', () => enterRoom(rid(4).toUpperCase().replace(/[^A-Z0-9]/g, 'X'), false));
 $('#joinBtn').addEventListener('click', () => { const c = cleanCode($('#code').value); if (c.length < 3) { status('Type the room code your friend shared.'); return; } enterRoom(c, false); });
 $('#practice').addEventListener('click', startPractice);
+$('#playUnranked').addEventListener('click', () => { $('#home').hidden = false; status(''); $('#name').focus(); });
+$('#homeClose').addEventListener('click', () => { $('#home').hidden = true; });
 $('#leave').addEventListener('click', () => leaveRoom());
 $('#emotes').innerHTML = EMOTES.map((e, i) => `<button data-e="${i}" title="Key ${i + 1}">${esc(e)}</button>`).join('');
 $('#emotes').addEventListener('click', (e) => { const b = e.target.closest('[data-e]'); if (b) sendEmote(+b.dataset.e); });
 addEventListener('pagehide', () => room?.leave());
+
+// ---------- site tabs
+const preview = new THREE.Group(); preview.position.set(0, 0, 6.5); preview.visible = false; scene.add(preview);
+const previewHat = toon(hatGeo({ scale: 0.88 }), 0.03);
+function setPreview(a) {
+  if (preview.userData.ch) preview.remove(preview.userData.ch);
+  const ch = avatarCharacter(a); preview.userData.ch = ch; preview.add(ch);
+  previewHat.position.set(0, K.HEAD_Y, 0); previewHat.rotation.y = Math.PI / 2; preview.add(previewHat);
+}
+setPreview(me.a);
+const acct = accounts({ local: LOCAL, rules: { SLOTS, BY_ID, usable, DEFAULT_AVATAR } });
+const app = {
+  me, accounts: acct,
+  get profile() { return profile; }, set profile(p) { profile = p; },
+  setIdentity(name, a) { me.n = cleanName(name) || me.n; me.a = cleanAvatar(a); $('#name').value = me.n; $('#name').readOnly = !!profile; setPreview(me.a); },
+  preview: (a) => setPreview(a),
+  onTab: () => { ui.lastBoard = ''; },
+};
+const tabs = initTabs(app);
 $('#loading')?.remove();
 frame();
 
