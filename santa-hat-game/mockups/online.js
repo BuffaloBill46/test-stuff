@@ -2,7 +2,7 @@
 import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo } from './kit.js';
 import { buildPlaza, makeHat, shadowBlob } from './plaza.js';
 import { createSim, K, PHASES, constrain } from './sim.js';
-import { openRoom, accounts } from './net.js';
+import { openRoom, accounts, findWallet } from './net.js';
 import { SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable } from './catalog.js';
 import { initTabs, avatarCharacter } from './tabs.js';
 
@@ -528,6 +528,7 @@ setPreview(me.a);
 const acct = accounts({ local: LOCAL, rules: { SLOTS, BY_ID, usable, DEFAULT_AVATAR } });
 const app = {
   me, accounts: acct,
+  hasWallet: () => LOCAL || !!findWallet(),
   get profile() { return profile; }, set profile(p) { profile = p; },
   setIdentity(name, a) { me.n = cleanName(name) || me.n; me.a = cleanAvatar(a); $('#name').value = me.n; $('#name').readOnly = !!profile; setPreview(me.a); },
   preview: (a) => setPreview(a),

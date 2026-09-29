@@ -5,7 +5,7 @@ import { ITEMS, BY_ID, SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable } 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
 const short = (w) => (w ? w.slice(0, 4) + '…' + w.slice(-4) : '');
-const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} }, del(k) { try { localStorage.removeItem(k); } catch {} } };
 
 // ---------- item thumbnails: each item rendered once on the real model, cached as an image
 let thumbR = null;
@@ -69,28 +69,89 @@ export function initTabs(app) {
     if (state.tab === 'ranks') renderRanks();
     if (state.tab === 'store') renderStore(true);
   }
-  // ---------- sign-in sheet: wallet (can buy) or email (plays and ranks, can't buy)
+  // ---------- sign-in sheet: wallet (can buy) or email (plays and ranks, can't buy); link both to one account
   const acctMsg = (t) => { $('#acctMsg').textContent = t; };
-  function openAcct() {
+  let linkBox = null; // { want, code } while showing a fresh link code
+
+  // Every sign-in lands here. A pending link code (from a link made on another login) is redeemed
+  // instead of creating a new account, so both logins open the same one.
+  async function afterAuth() {
+    const pending = store.get('sq_link');
+    let p, note = '';
+    if (pending) {
+      store.del('sq_link');
+      try { p = await app.accounts.redeem(pending); note = 'Linked! Your email and wallet now open this same account.'; }
+      catch (e) { note = `Couldn't link: ${e.message}`; p = await app.accounts.profile(); }
+    } else p = await app.accounts.profile();
+    await afterSignIn(p);
+    if (note) { openAcct(); acctMsg(note); }
+  }
+
+  async function openAcct() {
     const p = app.profile;
     $('#acctOut').hidden = !!p; $('#acctIn').hidden = !p; acctMsg('');
+    if (store.get('sq_link') && !p) acctMsg('Sign in with the wallet or email you want to add to your account to finish linking.');
     if (p) {
-      $('#acctIn').innerHTML = `<div class="eyebrow">Signed in</div><h2>${esc(p.name)}</h2>
-        <p>${p.wallet ? `Wallet <b>${esc(short(p.wallet))}</b>. Your avatar is bound to this wallet.` : 'Email account. Your avatar is bound to this email. Buying items needs a wallet sign-in.'}</p>
+      let kinds = [];
+      try { kinds = await app.accounts.logins(); } catch { kinds = [p.wallet ? 'wallet' : 'email']; }
+      const has = (k) => kinds.includes(k);
+      const code = linkBox ? `${linkBox.code.slice(0, 5)}-${linkBox.code.slice(5)}` : '';
+      const url = linkBox ? `${location.origin}${location.pathname}?link=${linkBox.code}` : '';
+      $('#acctIn').innerHTML = `<div class="eyebrow">Signed in · your avatar is bound to this account</div><h2>${esc(p.name)}</h2>
+        <ul class="logins">
+          <li class="${has('email') ? 'on' : ''}"><b>Email</b><span>${has('email') ? 'Linked' : 'Not linked'}</span></li>
+          <li class="${has('wallet') ? 'on' : ''}"><b>Wallet</b><span>${has('wallet') ? esc(short(p.wallet)) : 'Not linked · needed to buy'}</span></li>
+        </ul>
+        ${linkBox ? `<div class="linkbox">
+            <p>${linkBox.want === 'wallet'
+              ? 'Open this link wherever your wallet is (Phantom\'s browser on a phone, or a browser with the Phantom extension), then connect the wallet. Works for 15 minutes.'
+              : 'Sign in with the email you want to add. Use this browser, or open this link on the device where you read that email. Works for 15 minutes.'}</p>
+            <div class="code">${esc(code)}</div>
+            <div class="row"><span class="link">${esc(url)}</span><button class="sec" id="copyLink">Copy link</button></div>
+            ${linkBox.want === 'wallet' && app.hasWallet() ? '<button class="go" id="linkHere">Connect wallet here</button>' : ''}
+            ${linkBox.want === 'email' ? '<div class="row"><input id="linkEmail" type="text" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-label="Email to link"><button class="sec" id="linkEmailBtn">Email me a link</button></div>' : ''}
+          </div>`
+          : `<div class="row">${!has('wallet') ? '<button class="go" id="mkWallet">Link a wallet</button>' : ''}${!has('email') ? '<button class="sec" id="mkEmail">Link an email</button>' : ''}</div>`}
+        <p class="dim">Linked logins all open this same account: same look, points and items.</p>
         <button class="sec" id="signOut">Sign out</button>`;
+      const make = async (want) => {
+        try { linkBox = { want, code: await app.accounts.createLinkCode(want) }; await openAcct(); }
+        catch (e) { acctMsg(e.message); }
+      };
+      $('#mkWallet')?.addEventListener('click', () => make('wallet'));
+      $('#mkEmail')?.addEventListener('click', () => make('email'));
+      $('#copyLink')?.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(url); acctMsg('Link copied.'); }
+        catch { acctMsg('Copy didn\'t work here; press and hold the link to copy it.'); }
+      });
+      $('#linkHere')?.addEventListener('click', async () => {
+        store.set('sq_link', linkBox.code); linkBox = null; acctMsg('Check your wallet to approve…');
+        try { await app.accounts.signIn(); await afterAuth(); }
+        catch (e) { store.del('sq_link'); acctMsg(e.message === 'NO_WALLET' ? 'No Solana wallet found in this browser.' : `Didn't finish: ${e.message}`); }
+      });
+      $('#linkEmailBtn')?.addEventListener('click', async () => {
+        const email = $('#linkEmail').value.trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { acctMsg('That email doesn\'t look right.'); return; }
+        store.set('sq_link', linkBox.code);
+        try {
+          const now = await app.accounts.signInEmail(email);
+          if (now) { linkBox = null; await afterAuth(); }
+          else acctMsg(`Sent. Open the link in the email to ${email} in this browser to finish linking.`);
+        } catch (e) { store.del('sq_link'); acctMsg(`Couldn't send the email: ${e.message}`); }
+      });
       $('#signOut').addEventListener('click', async () => {
-        await app.accounts.signOut(); app.profile = null; state.owned = new Set();
+        await app.accounts.signOut(); app.profile = null; state.owned = new Set(); linkBox = null;
         app.setIdentity(store.get('sq_name') || app.me.n, cleanAvatar(safeJSON(store.get('sq_avatar'))));
         renderWho(); $('#acct').hidden = true; show(state.tab);
       });
     }
     $('#acct').hidden = false;
   }
-  $('#signin').addEventListener('click', openAcct);
+  $('#signin').addEventListener('click', () => { linkBox = null; openAcct(); });
   $('#acctClose').addEventListener('click', () => { $('#acct').hidden = true; });
   $('#walletBtn').addEventListener('click', async () => {
     const btn = $('#walletBtn'); btn.disabled = true; acctMsg('Check your wallet to approve the sign-in…');
-    try { await afterSignIn(await app.accounts.signIn()); $('#acct').hidden = true; }
+    try { await app.accounts.signIn(); await afterAuth(); if (!$('#acctMsg').textContent.startsWith('Linked') && !$('#acctMsg').textContent.startsWith("Couldn't")) $('#acct').hidden = true; }
     catch (e) {
       acctMsg(e.message === 'NO_WALLET'
         ? "No Solana wallet found. Install Phantom, or on a phone open this page inside the Phantom app's browser, then try again."
@@ -102,12 +163,19 @@ export function initTabs(app) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { acctMsg('That email doesn\'t look right.'); return; }
     btn.disabled = true; acctMsg('Sending…');
     try {
-      const p = await app.accounts.signInEmail(email);
-      if (p) { await afterSignIn(p); $('#acct').hidden = true; }
+      const now = await app.accounts.signInEmail(email);
+      if (now) { await afterAuth(); if (!$('#acctMsg').textContent.startsWith('Linked') && !$('#acctMsg').textContent.startsWith("Couldn't")) $('#acct').hidden = true; }
       else acctMsg(`Sent. Open the link in the email to ${email} on this device to finish signing in.`);
     } catch (e) { acctMsg(`Couldn't send the email: ${e.message}`); }
     finally { btn.disabled = false; }
   });
+
+  // Arriving from a "link a wallet/email" link: remember the code until the player signs in here.
+  const incoming = new URLSearchParams(location.search).get('link');
+  if (incoming && /^[0-9A-Fa-f]{10}$/.test(incoming)) {
+    store.set('sq_link', incoming.toUpperCase());
+    try { const u = new URL(location.href); u.searchParams.delete('link'); history.replaceState(null, '', u.pathname + u.search + u.hash); } catch {}
+  }
   function toast(t) { const s = $('#avmsg'); if (state.tab === 'avatar' && s) s.textContent = t; else alertBar(t); }
   function alertBar(t) {
     let el = $('#toast'); if (!el) { el = document.createElement('div'); el.id = 'toast'; el.className = 'plaque'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
@@ -196,8 +264,9 @@ export function initTabs(app) {
 
   // ---------- start
   (async () => {
-    try { const s = await app.accounts.session(); if (s) await afterSignIn(await app.accounts.profile()); } catch { /* signed out */ }
+    try { const s = await app.accounts.session(); if (s) await afterAuth(); } catch { /* signed out */ }
     renderWho();
+    if (store.get('sq_link') && !app.profile) openAcct();
   })();
   renderWho();
   show((location.hash || '#play').slice(1));

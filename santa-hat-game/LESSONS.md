@@ -8,6 +8,7 @@ Read this before starting new work on the game. Add to it whenever something rea
 >   first drafts that could never end (see below). Force the losing state in a test; don't assume it.
 > - **Check lighting and glow with the scene fully populated**, never a sparse demo.
 > - **No wallet, token or GP payouts without Cody's explicit sign-off.** That's real money.
+> - **Linking logins never erases progress.** A login with its own points, level or items is refused, not merged.
 
 ## Bug classes seen (and how they were caught)
 
@@ -51,6 +52,13 @@ Read this before starting new work on the game. Add to it whenever something rea
   option for friends without Claude.
 - GitHub Pages turned on by itself when the `gh-pages` branch was pushed (the repo is public).
   Republish with `santa-hat-game/deploy-pages.sh`.
+
+## Accounts
+
+- One account (profile) can be opened by an email login and a wallet login (`logins` table).
+  Link codes last 15 minutes and must be created on one login and redeemed on the other.
+- Email accounts can play and rank but can't buy; buying needs a linked wallet.
+- Player emails are never stored on profiles or shown anywhere.
 
 ## Engine and pipeline notes
 
