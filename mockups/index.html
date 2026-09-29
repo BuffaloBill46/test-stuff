@@ -1,0 +1,187 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
+<title>Santa Hat Arcade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@600;800&family=Alegreya+Sans:wght@400;500;700&family=Silkscreen:wght@400;700&display=swap">
+<style>
+/* Layout: the game fills the screen; UI floats on top as ink-outlined plaques, like the models. */
+:root {
+  color-scheme: dark;
+  --ink: #0c0f1a;
+  --night: #121830;
+  --plaque: #1b2344;
+  --plaque-hi: #26305a;
+  --frost: #b9cdf2;
+  --text: #eef2fb;
+  --dim: #9aa6c7;
+  --hat: #cf3128;
+  --hat-dark: #8f1712;
+  --brim: #f5f1e8;
+  --lamp: #ffbe5c;
+  --pine: #3f9a66;
+  --display: 'Grenze Gotisch', 'Palatino Linotype', Georgia, serif;
+  --body: 'Alegreya Sans', 'Trebuchet MS', system-ui, sans-serif;
+  --digits: 'Silkscreen', 'Courier New', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; background: var(--night); color: var(--text); overflow: hidden; }
+body { font-family: var(--body); font-size: 16px; touch-action: none; -webkit-user-select: none; user-select: none; }
+#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: var(--night); }
+
+.plaque { background: var(--plaque); border: 2px solid var(--ink); box-shadow: inset 0 0 0 1px rgba(185,205,242,.18), 3px 3px 0 var(--ink); border-radius: 3px; }
+
+header.bar { position: fixed; left: 0; right: 0; top: 0; z-index: 5; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px; background: linear-gradient(var(--night), rgba(18,24,48,.0)); pointer-events: none; }
+.brand { font-family: var(--display); font-weight: 800; font-size: 30px; line-height: 1; color: var(--brim); letter-spacing: .5px;
+  text-shadow: 2px 2px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink); }
+.brand b { color: var(--hat); font-weight: 800; }
+nav.tabs { display: flex; gap: 8px; pointer-events: auto; flex-wrap: wrap; }
+nav.tabs button { font: 700 14px/1 var(--body); color: var(--dim); background: var(--plaque); border: 2px solid var(--ink); border-radius: 3px;
+  padding: 8px 12px 7px; box-shadow: 2px 2px 0 var(--ink); cursor: pointer; letter-spacing: .3px; }
+nav.tabs button span { font-family: var(--digits); font-size: 10px; margin-right: 6px; color: var(--frost); }
+nav.tabs button[aria-selected="true"] { color: var(--ink); background: var(--brim); box-shadow: 2px 2px 0 var(--ink), inset 0 -4px 0 #d9d2c2; }
+nav.tabs button[aria-selected="true"] span { color: var(--hat); }
+nav.tabs button:focus-visible, .go:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
+
+#hud { position: fixed; z-index: 4; left: 16px; top: calc(env(safe-area-inset-top, 0px) + 64px); display: flex; gap: 8px; flex-wrap: wrap; pointer-events: none; max-width: calc(100% - 32px); }
+.stat { padding: 6px 10px 5px; min-width: 76px; }
+.stat i { display: block; font: 700 11px/1 var(--body); text-transform: uppercase; letter-spacing: 1.4px; color: var(--dim); font-style: normal; margin-bottom: 4px; }
+.stat b { font: 700 20px/1 var(--digits); font-variant-numeric: tabular-nums; color: var(--text); }
+.stat.nice b { color: var(--lamp); } .stat.naughty b { color: #7fe0a0; } .stat.warn b { color: #ff7a6e; }
+.pips { display: flex; gap: 4px; padding-top: 2px; }
+.pips u { width: 12px; height: 12px; border-radius: 50%; background: var(--brim); border: 2px solid var(--ink); }
+.pips u.off { background: transparent; border-color: #3a4570; }
+.meter { width: 120px; height: 10px; border: 2px solid var(--ink); background: #0e1328; margin-top: 3px; }
+.meter > div { height: 100%; background: linear-gradient(90deg, var(--hat), var(--lamp)); }
+
+#card { position: fixed; z-index: 6; left: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); width: min(420px, calc(100% - 32px)); padding: 16px 18px 18px; }
+#card[hidden] { display: none !important; }
+.eyebrow { font: 700 11px/1 var(--digits); letter-spacing: 1px; color: var(--frost); text-transform: uppercase; }
+#card h2 { font: 800 38px/1 var(--display); margin: 6px 0 8px; color: var(--brim); text-wrap: balance; text-shadow: 2px 2px 0 var(--ink); }
+#card p { margin: 0 0 10px; line-height: 1.4; color: #d6ddf0; max-width: 62ch; }
+#card ul { margin: 0 0 12px; padding-left: 18px; line-height: 1.4; color: #d6ddf0; }
+#card li::marker { color: var(--hat); }
+#card .keys { font-size: 14px; color: var(--dim); margin-bottom: 14px; }
+#card .keys kbd { font: 700 11px/1 var(--digits); color: var(--text); background: var(--plaque-hi); border: 1px solid var(--ink); border-bottom-width: 3px; border-radius: 3px; padding: 2px 5px; }
+.result { display: flex; gap: 8px; margin: 4px 0 12px; flex-wrap: wrap; }
+.result .stat { background: var(--plaque-hi); }
+.verdict { font: 800 22px/1.1 var(--display); color: var(--lamp); margin-bottom: 8px; }
+.go { font: 800 24px/1 var(--display); letter-spacing: .5px; color: var(--brim); background: var(--hat); cursor: pointer;
+  border: 2px solid var(--ink); border-radius: 4px; padding: 10px 26px 16px; position: relative;
+  box-shadow: inset 0 -8px 0 var(--brim), inset 0 -10px 0 #d9d2c2, 3px 3px 0 var(--ink); text-shadow: 1px 1px 0 var(--hat-dark); }
+.go:hover { background: #dd3a30; } .go:active { transform: translate(2px, 2px); box-shadow: inset 0 -8px 0 var(--brim), 1px 1px 0 var(--ink); }
+
+#pops { position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+.pop { position: absolute; transform: translate(-50%, -50%); font: 700 18px/1 var(--digits); color: var(--lamp); white-space: nowrap;
+  text-shadow: 2px 0 0 var(--ink), -2px 0 0 var(--ink), 0 2px 0 var(--ink), 0 -2px 0 var(--ink), 2px 2px 0 var(--ink); animation: rise 1s ease-out forwards; }
+.pop.bad { color: #ff7a6e; } .pop.green { color: #7fe0a0; } .pop.big { font-size: 26px; color: var(--brim); } .pop.white { color: var(--brim); }
+@keyframes rise { from { opacity: 1; margin-top: 0; } 70% { opacity: 1; } to { opacity: 0; margin-top: -54px; } }
+
+#joy { position: fixed; z-index: 4; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; border: 2px solid rgba(245,241,232,.5); background: rgba(12,15,26,.25); pointer-events: none; }
+#joy::after { content: ''; position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(245,241,232,.75); border: 2px solid var(--ink); transform: translate(var(--jx, 0px), var(--jy, 0px)); }
+#loading { position: fixed; inset: 0; display: grid; place-items: center; font: 800 28px var(--display); color: var(--dim); z-index: 1; }
+
+@media (max-width: 560px) {
+  .brand { font-size: 24px; }
+  header.bar { gap: 8px; }
+  nav.tabs { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; padding-bottom: 4px; scrollbar-width: none; }
+  nav.tabs button { flex: none; padding: 7px 9px 6px; font-size: 13px; }
+  #hud { top: calc(env(safe-area-inset-top, 0px) + 94px); gap: 6px; }
+  .stat { min-width: 0; padding: 5px 8px 4px; }
+  .stat b { font-size: 17px; }
+  .pips u { width: 10px; height: 10px; }
+  #card h2 { font-size: 30px; }
+  #card { padding: 12px 14px 14px; }
+  #card ul { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .pop { animation-duration: .01s; } }
+</style>
+
+<canvas id="stage" aria-label="Game view"></canvas>
+<div id="loading">Lighting the lanterns…</div>
+<header class="bar">
+  <div class="brand"><b>Santa Hat</b> Arcade</div>
+  <nav class="tabs" role="tablist" aria-label="Mockups">
+    <button role="tab" id="tab-snowball" data-game="snowball" aria-selected="true"><span>A</span>Snowball Square</button>
+    <button role="tab" id="tab-bethehat" data-game="bethehat" aria-selected="false"><span>B</span>Be the Hat</button>
+    <button role="tab" id="tab-sleigh" data-game="sleigh" aria-selected="false"><span>C</span>Sleigh Night</button>
+    <button role="tab" id="tab-hatchase" data-game="hatchase" aria-selected="false"><span>D</span>Hat Chase</button>
+  </nav>
+</header>
+<div id="hud" aria-live="polite"></div>
+<div id="pops"></div>
+<div id="joy" hidden></div>
+<section id="card" class="plaque" hidden></section>
+
+<script type="module">
+import { THREE, toScreen } from './kit.js';
+const GAMES = {
+  snowball: () => import('./snowball.js'),
+  bethehat: () => import('./bethehat.js'),
+  sleigh: () => import('./sleigh.js'),
+  hatchase: () => import('./hatchase.js'),
+};
+const canvas = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const $ = (s) => document.querySelector(s);
+
+const input = { keys: new Set(), hit: new Set() };
+addEventListener('keydown', (e) => {
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code) && e.target === document.body) e.preventDefault();
+  if (!e.repeat) input.hit.add(e.code); input.keys.add(e.code);
+});
+addEventListener('keyup', (e) => input.keys.delete(e.code));
+addEventListener('blur', () => input.keys.clear());
+
+let game = null, W = 1, H = 1;
+const ui = {
+  canvas, input, joy: $('#joy'),
+  hud(html) { $('#hud').innerHTML = html; },
+  pop(v, text, cls = '') {
+    if (!game) return;
+    const p = toScreen(v, game.camera, W, H); if (p.behind) return;
+    const el = document.createElement('div'); el.className = 'pop ' + cls; el.textContent = text;
+    el.style.left = p.x + 'px'; el.style.top = p.y + 'px'; $('#pops').appendChild(el);
+    setTimeout(() => el.remove(), 1000);
+  },
+  card(html, onGo) {
+    const c = $('#card'); c.innerHTML = html; c.hidden = false;
+    const b = c.querySelector('.go'); if (b) b.onclick = () => { c.hidden = true; onGo?.(); canvas.focus?.(); };
+  },
+  hideCard() { $('#card').hidden = true; },
+};
+
+function resize() {
+  W = innerWidth; H = innerHeight; renderer.setSize(W, H, false);
+  if (game) { game.camera.aspect = W / H; game.camera.updateProjectionMatrix(); game.resize?.(W, H); }
+}
+addEventListener('resize', resize);
+
+let loadSeq = 0;
+async function load(id) {
+  const seq = ++loadSeq;
+  document.querySelectorAll('nav.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.game === id)));
+  const mod = await GAMES[id]();
+  if (seq !== loadSeq) return;
+  game?.dispose?.(); $('#pops').innerHTML = ''; ui.hud(''); ui.hideCard(); ui.joy.hidden = true; input.keys.clear();
+  game = mod.default.create(ui);
+  try { history.replaceState(null, '', '#' + id); } catch {}
+  resize();
+}
+document.querySelectorAll('nav.tabs button').forEach((b) => b.addEventListener('click', () => load(b.dataset.game)));
+
+let t = 0, last = performance.now();
+function frame() {
+  const now = performance.now(), dt = Math.min((now - last) / 1000, 1 / 20); last = now; t += dt;
+  if (game) { game.update(dt, t); renderer.render(game.scene, game.camera); }
+  input.hit.clear();
+  requestAnimationFrame(frame);
+}
+await load(GAMES[location.hash.slice(1)] ? location.hash.slice(1) : 'snowball');
+$('#loading').remove();
+frame();
+window.__arcade = { get game() { return game; }, renderer, load };
+</script>
+
+</body></html>
