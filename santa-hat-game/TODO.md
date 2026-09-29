@@ -11,12 +11,10 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Slots paytable and 10 reel symbols:** Cody drafting; Claude checks the payback % with a simulation.
 
 ## Next to build
-- [ ] **Unranked lobby:** pick FFA or TEAM, then Auto match, Private room (code), Practice vs bots, and the live games list with Watch now.
-- [ ] **FFA RANKED lobby:** Auto match, Tournament (greyed out, Coming soon), and the live games list with Watch now.
+- [ ] **Turn on ranked Auto match:** the FFA RANKED lobby is built, but its Auto match button stays off ("opening soon") until tickets and the server below exist.
 - [ ] **Auto match by rank points:** close ranks, then wider, then any real players, then bots at 30 seconds. At least 2 real players; 1–3 bots; 3–8 total.
 - [ ] **Ranked tickets:** 10 free a day (reset every 24 hours), spent when the match starts, refunded if you leave before.
 - [ ] **Ranked payouts on the server:** 10 points per player in the pot (bots too); 3 or fewer players pays 1st only; 4+ pays 60/20/20; not placing costs −5; bots can win.
-- [ ] **Watch now (spectating):** viewers receive the game but send nothing; cap about 4 per game on the free plan.
 - [ ] **Match history and stats:** ranked matches, podiums, and the Today / This week / Events leaderboard tabs.
 - [ ] **Levels from rank points,** with items unlocking by level (needs the level table).
 
@@ -63,3 +61,5 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - Wallet or email sign-in, avatars bound to the account, and email + wallet linking.
 - Item catalog with 37 items, including the Gorilla, Snowman and Panda heads; save rules checked on the server.
 - Bots with player names and random outfits; ranking rules written on the Play tab.
+- Unranked lobby (FFA or TEAM, Auto match into public games, private room code, practice) and the FFA RANKED lobby layout (Tournament greyed out, Coming soon).
+- Live games list with Watch now: up to 4 watchers per game, who see the match but never play or count as players.

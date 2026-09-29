@@ -1,6 +1,6 @@
 # Design notes: lobbies, matchmaking, watching
 
-Status: **ideas written down, not built yet.** "Decided" is what Cody asked for. "Open questions" are gaps
+Status: **lobbies and Watch now are built** (unranked works today; ranked Auto match waits for tickets and the server). "Decided" is what Cody asked for. "Open questions" are gaps
 Claude filled in as proposals; nothing there is final until Cody picks.
 
 ## Decided
@@ -134,3 +134,10 @@ per player in the pot (bots included), bots can win, and bots play under player-
 - Matchmaking by rank points should run on the server (with the cheat-proof referee), so players
   can't pick their own opponents or fake their points.
 - Spectators join a room as watchers: they receive snapshots but send nothing, and never count as players.
+
+## How it was built (unranked, today)
+- Auto match joins one of 5 public FFA rooms or 5 public TEAM rooms: the first with a free seat.
+- A public room starts by itself: 15 seconds after 2+ real players are in, or 25 seconds with just 1 (bots fill in).
+- Each room's host publishes a one-line summary every 3 seconds to a shared "games board" channel; the lobby lists these.
+- Watchers are capped at 4 per game, have no emotes, can't become host, and aren't kicked for being idle.
+- Temporary until the server exists: the host browser publishes the summary, so the list is only as honest as the host.
