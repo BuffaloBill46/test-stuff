@@ -143,17 +143,21 @@ $50 start). **The slots paytable is a placeholder** (spin's 1×–4× fixed wins
 - **Santa Hat is Wild** (stands in for any symbol except Coal). **5 Santa Hats in a row on a line = 100× the price ($100).**
   All other prizes scale down from it, with lots of micro wins.
 - **Hat bonus: every Santa Hat anywhere on the grid pays 5¢** (Cody). About 2.2 hats a pull, so it's 11.1% of the payback.
-- **Pays back 74.8%** (target 75%): line prizes 63.7% + hat bonus 11.1%. **About 95% of pulls pay something**: 77% micro wins
-  (less than the $1 back), 18% ahead.
+- **Every line prize is more than the $1 pull** (smallest: 3 Snowballs or 3 Bells = $1.10). Cody: fine to win more than $1
+  only every 3–4 pulls. Reels carry 20 Coal each so line wins come less often.
+- **Pays back 74.9%** (target 75%): line prizes 65.2% + hat bonus 9.6%. **A win over $1 on 29% of pulls (about 1 in 3.5)**;
+  90% of pulls pay something (the rest are hat-bonus nickels). 100× line about 1 in 24,750 pulls.
 - **Pool jackpot is separate:** its own draw (draft 1 in 2,500 pulls), pays 10% of the Slots pool, and **all 25 squares show
   Santa Hats**. The reels alone can never make a full grid of hats.
-- **Slots pool skim:** when it reaches $325, $25 goes to the treasury. Demo start: $250 (must cover the $100 top prize).
+- **Slots pool skim (Cody): when it reaches $1,025, $25 goes to the treasury.** Demo start: $250 (must cover the $100 top prize).
+  Simulated: no refused pulls; pools settle around $1,000; the pool jackpot is typically about $97; the treasury gets about
+  $1,070 per 20,000 pulls. Lowest point seen: about $150, early while the pool builds from $250.
 - Teasers happen naturally at their real odds (e.g. 4 hats then something else: about 1 in 1,260 pulls). Nothing is staged.
 - **Open, Cody:**
-  (1) Refill rule. Below $100 the game locks (only pulls refill the pool). Proposal: the treasury refills it to $250 when
-  it drops below $150. Simulated: never locked, the treasury still about $2,250 ahead per 20k pulls.
-  (2) The pool jackpot is only about $30 with the pool capped at $325; raise its % or the skim point?
-  (3) The "$500 threshold bonus" idea (switch a feature on when the pool has $500) needs the skim point moved above $500.
+  (1) Refill safety net. Below $100 the game would lock (only pulls refill the pool). With the $1,025 skim it never
+  happened in simulation, but early on (pool building from $250) it came within $50. Proposal: the treasury refills
+  the pool to $250 if it ever drops below $150.
+  (2) The "$500 threshold bonus" idea: still open (which feature switches on at $500?).
 
 **Built earlier (demo, 2026-09-29; now out of date, see TODO):** the Games tab has the two machines, stacked: **Mini Hat** ($0.10) and **Big Hat** ($1.00).
 The **total Slots pool** shows under the Slots title. Each machine shows its **jackpot % of the pool and the current

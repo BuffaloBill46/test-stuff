@@ -22,6 +22,16 @@ for (let i = 0; i < N; i++) {
   if (best >= 2 && best < 5) tease[best]++;
 }
 
+// Pool over time, with the real skim rule: lowest point, refused pulls, jackpot size, treasury income.
+const POOL_RUNS = 60; let poolLow = Infinity, poolPaused = 0; const poolEnds = [], jps = []; let treasury = 0;
+for (let run = 0; run < POOL_RUNS; run++) {
+  const ps = { pool: START_POOL, treasury: 0 };
+  for (let i = 0; i < 20000; i++) { const r = pull(ps, 'big', rand); if (r.paused) { poolPaused++; continue; } if (r.jackpot) jps.push(r.pay); poolLow = Math.min(poolLow, ps.pool); }
+  poolEnds.push(ps.pool); treasury += ps.treasury;
+}
+poolEnds.sort((a, b) => a - b); jps.sort((a, b) => a - b);
+const poolMedianEnd = poolEnds[POOL_RUNS >> 1], jpMedian = jps[jps.length >> 1] || 0, treasuryPer20k = treasury / POOL_RUNS;
+
 const rowsOut = [];
 let total = 0;
 for (const sym of SYMBOLS) {
@@ -107,10 +117,11 @@ Nothing is staged.
 
 - Starts at **${usd(START_POOL)}** in the demo. A pull only starts if the pool can cover the biggest line prize (${usd(MAX_FIXED(m))}).
 - When the pool reaches **${usd(SKIM_AT)}**, **${usd(SKIM)}** goes to the treasury (arrives as ${usd(SKIM * (1 - FEE))}).
-- With the pool capped at ${usd(SKIM_AT)}, a ${m.jackpotPct * 100}% pool jackpot is only about $25–32 (less than the $100 line prize).
-- **Needs a decision:** if the pool drops under ${usd(MAX_FIXED(m))}, pulls can't start and nothing refills it, so the game
-  locks. Proposal: the treasury tops the pool back up to $250 whenever it falls below $150. Simulated with the skim: never
-  locked, and the treasury still came out about $2,250 ahead per 20,000 pulls (worst run +$1,400).
+- Simulated ${POOL_RUNS} runs × 20,000 pulls from ${usd(START_POOL)}: the pool's lowest point in any run was **${usd(poolLow)}**;
+  **${poolPaused} pulls were refused** (pool too low); pools settled around **${usd(poolMedianEnd)}**; the pool jackpot's typical
+  size was **${usd(jpMedian)}**; the treasury received about **${usd(treasuryPer20k)} per 20,000 pulls**.
+- If the pool ever did drop under ${usd(MAX_FIXED(m))}, pulls would stop and nothing would refill it; a treasury refill rule
+  (e.g. top it back up to $250) is the safety net. With the $${SKIM_AT} skim point this hasn't happened in simulation.
 
 ## Paylines
 

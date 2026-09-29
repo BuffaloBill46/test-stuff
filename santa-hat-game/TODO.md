@@ -11,7 +11,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Treasury wallet:** Cody is making a new one. Send Claude its public address (never the secret key or recovery phrase).
 - [ ] **Lottery program:** when ready, share where Cody's on-chain lottery lives (its repo, or its program address on devnet) so the Store's Lottery block can link to it or plug into it.
 - [ ] **Rebuild the Slots page for the new rules** (Big Hat only, 5×5, Santa Hat wild, paylines drawn, full-grid pool jackpot) plus **full-screen buttons**, a **past winners list** at the bottom of the Games page (shared by every game: name, amount, +%, game icon), and a reel slow-down when hats are lining up. **Do not republish until done:** `games.js` / `slots3d.js` still expect the old two-machine rules.
-- [ ] **Slots pool refill rule** (real money, Cody): proposal: the treasury refills the pool to $250 when it drops below $150.
+- [ ] **Slots pool refill safety net** (real money, Cody): proposal: the treasury refills the pool to $250 if it ever drops below $150. Rarely needed with the $1,025 skim, but possible while the pool builds up.
 - [ ] **Slots payouts:** Cody deciding, now that the machines are built. Replace `PAYTABLE` (and the jackpot %s in `MACHINES`) in `mockups/slots.js`, then run `tests/slots.test.mjs`. The starting pool must suit the biggest fixed win: with the draft's 20× top prize, $50 paused the Big Hat early in about 3% of simulated runs, $100 in none.
 
 ## Next to build
