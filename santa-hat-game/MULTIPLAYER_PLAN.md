@@ -14,6 +14,11 @@ What changed from the plan below while building:
   **never charges**. Over the limit, it warns and pauses the live service instead. That's roughly 6+ hours
   of full-room play per month.
 - The free project pauses after about a week with no activity; un-pause it from the Supabase dashboard.
+- Idle players are sent home to save messages: after 3 minutes with no input (with a 20-second
+  "still there?" countdown), or after 1 minute with the game in the background. The room code
+  stays filled in, so rejoining is one tap.
+- **Agreed scaling path:** when real traffic arrives, move to our own game server (roughly $5–10/month,
+  no per-message billing, and it becomes the cheat-proof referee). Ask Cody before any spending.
 - Phase 3 is partly done: Quick Play, room codes and share links, names, and 4 emotes are built.
 
 > **Money rules for this plan**
