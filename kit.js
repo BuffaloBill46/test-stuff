@@ -344,21 +344,69 @@ export function giftGeo(color, ribbon = C.gold, s = 0.5) {
   ]);
 }
 
+// Faces sit on the front of the head (head centre y=1.82, front z≈0.26).
+function faceParts(face) {
+  const eye = (x, h = 0.08) => part(new G.BoxGeometry(0.06, h, 0.04), C.ink, { pos: [x, 1.86, 0.25] });
+  const bit = (w, h, x, y, color = C.ink, rz = 0) => part(new G.BoxGeometry(w, h, 0.04), color, { pos: [x, y, 0.255], rot: [0, 0, rz] });
+  const smile = [bit(0.05, 0.035, -0.07, 1.75, C.ink, -0.5), bit(0.08, 0.035, 0, 1.735), bit(0.05, 0.035, 0.07, 1.75, C.ink, 0.5)];
+  switch (face) {
+    case 'smile': return [eye(-0.1), eye(0.1), ...smile];
+    case 'wink': return [eye(-0.1), bit(0.08, 0.025, 0.1, 1.86), ...smile];
+    case 'wow': return [eye(-0.1, 0.1), eye(0.1, 0.1), bit(0.07, 0.08, 0, 1.73)];
+    case 'shades': return [bit(0.34, 0.09, 0, 1.86, 0x15151c), bit(0.07, 0.025, -0.1, 1.885, 0x6b7390), bit(0.4, 0.025, 0, 1.9, 0x15151c)];
+    case 'beard': return [eye(-0.1), eye(0.1),
+      part(new G.IcosahedronGeometry(0.26, 0), C.brim, { pos: [0, 1.66, 0.12], scale: [1.1, 1.0, 0.8], jit: 0.04, seed: 9 }),
+      part(new G.BoxGeometry(0.62, 0.1, 0.4), C.brim, { pos: [0, 1.52, 0.02] })];
+    case 'mask': return [eye(-0.1), eye(0.1), part(new G.BoxGeometry(0.5, 0.16, 0.44), C.hat, { pos: [0, 1.72, 0.03], jit: 0.02 }),
+      part(new G.BoxGeometry(0.12, 0.26, 0.06), C.hatDark, { pos: [0.16, 1.58, 0.22], rot: [0.2, 0, 0.2] })];
+    default: return [eye(-0.1), eye(0.1)];
+  }
+}
+
+// Full-head faces replace the whole head (and tint the hands to match).
+const HEADS = {
+  gorilla: { hands: 0x3a3a41, parts: () => [
+    part(new G.IcosahedronGeometry(0.3, 1), 0x3d3d45, { pos: [0, 1.82, 0], scale: [1.08, 1.02, 1], jit: 0.03, seed: 31 }),
+    part(new G.BoxGeometry(0.44, 0.09, 0.14), 0x2a2a30, { pos: [0, 1.91, 0.21], rot: [0.25, 0, 0], jit: 0.015 }),
+    part(new G.IcosahedronGeometry(0.17, 0), 0x5d5864, { pos: [0, 1.73, 0.19], scale: [1.35, 0.85, 0.85], jit: 0.02, seed: 32 }),
+    part(new G.BoxGeometry(0.07, 0.035, 0.04), 0xf2efe8, { pos: [-0.1, 1.85, 0.265] }), part(new G.BoxGeometry(0.035, 0.035, 0.04), C.ink, { pos: [-0.09, 1.85, 0.27] }),
+    part(new G.BoxGeometry(0.07, 0.035, 0.04), 0xf2efe8, { pos: [0.1, 1.85, 0.265] }), part(new G.BoxGeometry(0.035, 0.035, 0.04), C.ink, { pos: [0.09, 1.85, 0.27] }),
+    part(new G.BoxGeometry(0.035, 0.03, 0.03), C.ink, { pos: [-0.045, 1.77, 0.335] }), part(new G.BoxGeometry(0.035, 0.03, 0.03), C.ink, { pos: [0.045, 1.77, 0.335] }),
+    part(new G.BoxGeometry(0.05, 0.03, 0.03), C.ink, { pos: [-0.07, 1.67, 0.32], rot: [0, 0, 0.45] }), part(new G.BoxGeometry(0.07, 0.03, 0.03), C.ink, { pos: [0, 1.685, 0.325] }),
+    part(new G.BoxGeometry(0.05, 0.03, 0.03), C.ink, { pos: [0.07, 1.67, 0.32], rot: [0, 0, -0.45] }),
+  ] },
+  snowman: { hands: 0x6b4a2e, parts: () => [
+    part(new G.IcosahedronGeometry(0.31, 1), 0xf2f4f8, { pos: [0, 1.82, 0], jit: 0.025, seed: 41 }),
+    part(new G.IcosahedronGeometry(0.045, 0), C.coal, { pos: [-0.1, 1.88, 0.27] }), part(new G.IcosahedronGeometry(0.045, 0), C.coal, { pos: [0.1, 1.88, 0.27] }),
+    part(new G.ConeGeometry(0.055, 0.24, 5), C.carrot, { pos: [0, 1.8, 0.4], rot: [Math.PI / 2, 0, 0] }),
+    part(new G.TorusGeometry(0.25, 0.075, 4, 9), C.hat, { pos: [0, 1.56, 0], rot: [Math.PI / 2, 0, 0], jit: 0.02 }),
+    part(new G.BoxGeometry(0.12, 0.34, 0.06), C.hat, { pos: [0.14, 1.4, 0.25], rot: [0.15, 0, 0.12], jit: 0.01 }),
+  ] },
+  panda: { hands: 0x1d1d22, parts: () => [
+    part(new G.IcosahedronGeometry(0.31, 1), 0xf4f4f2, { pos: [0, 1.82, 0], scale: [1.06, 1, 1], jit: 0.025, seed: 51 }),
+    part(new G.IcosahedronGeometry(0.1, 0), 0x1d1d22, { pos: [-0.27, 2.0, -0.02] }), part(new G.IcosahedronGeometry(0.1, 0), 0x1d1d22, { pos: [0.27, 2.0, -0.02] }),
+    part(new G.IcosahedronGeometry(0.075, 0), 0x1d1d22, { pos: [-0.11, 1.85, 0.25], scale: [1.1, 1.35, 0.5], rot: [0, 0, 0.45] }),
+    part(new G.IcosahedronGeometry(0.075, 0), 0x1d1d22, { pos: [0.11, 1.85, 0.25], scale: [1.1, 1.35, 0.5], rot: [0, 0, -0.45] }),
+    part(new G.BoxGeometry(0.03, 0.03, 0.03), 0xf4f4f2, { pos: [-0.1, 1.86, 0.29] }), part(new G.BoxGeometry(0.03, 0.03, 0.03), 0xf4f4f2, { pos: [0.1, 1.86, 0.29] }),
+    part(new G.TetrahedronGeometry(0.05), 0x1d1d22, { pos: [0, 1.76, 0.31], rot: [0.6, 0.8, 0] }),
+    part(new G.BoxGeometry(0.12, 0.05, 0.03), 0x2b1f24, { pos: [0, 1.69, 0.29] }), part(new G.BoxGeometry(0.06, 0.02, 0.03), 0xd9606a, { pos: [0, 1.675, 0.3] }),
+  ] },
+};
+export const HEAD_FACES = Object.keys(HEADS);
+
 // Blocky character with separate limbs for a walk cycle.
 export function character(o = {}) {
+  const fullHead = HEADS[o.face];
   const shirt = o.shirt ?? C.hat, pants = o.pants ?? 0x34405e, skin = o.skin ?? C.skin, seed = o.seed ?? 1;
   const g = new G.Group();
   const bodyParts = [
     part(new G.BoxGeometry(0.62, 0.72, 0.38), shirt, { pos: [0, 1.2, 0], jit: 0.03, seed }),
     part(new G.BoxGeometry(0.64, 0.1, 0.4), C.woodDark, { pos: [0, 0.9, 0] }),
     part(new G.BoxGeometry(0.12, 0.1, 0.05), C.gold, { pos: [0, 0.9, 0.21] }),
-    part(new G.IcosahedronGeometry(0.28, 0), skin, { pos: [0, 1.82, 0], scale: [1, 1.08, 1], jit: 0.03, seed: seed + 2 }),
-    part(new G.BoxGeometry(0.06, 0.08, 0.04), C.ink, { pos: [-0.1, 1.86, 0.25] }),
-    part(new G.BoxGeometry(0.06, 0.08, 0.04), C.ink, { pos: [0.1, 1.86, 0.25] }),
+    ...(fullHead ? fullHead.parts() : [
+      part(new G.IcosahedronGeometry(0.28, 0), skin, { pos: [0, 1.82, 0], scale: [1, 1.08, 1], jit: 0.03, seed: seed + 2 }),
+      ...faceParts(o.face || (o.beard ? 'beard' : 'dots'))]),
   ];
-  if (o.beard) bodyParts.push(
-    part(new G.IcosahedronGeometry(0.26, 0), C.brim, { pos: [0, 1.66, 0.12], scale: [1.1, 1.0, 0.8], jit: 0.04, seed: seed + 5 }),
-    part(new G.BoxGeometry(0.62, 0.1, 0.4), C.brim, { pos: [0, 1.52, 0.02] }));
   if (o.ears) bodyParts.push(
     part(new G.ConeGeometry(0.08, 0.34, 4), skin, { pos: [-0.3, 1.9, 0], rot: [0, 0, 1.25] }),
     part(new G.ConeGeometry(0.08, 0.34, 4), skin, { pos: [0.3, 1.9, 0], rot: [0, 0, -1.25] }));
@@ -371,8 +419,9 @@ export function character(o = {}) {
     const geo = build([part(new G.BoxGeometry(w, h, w), color, { pos: [0, -h / 2, 0], jit: 0.02 }), ...extra]);
     const m = toon(geo, 0.028); m.position.set(x, y, 0); g.add(m); return m;
   };
-  const armL = limb(0.2, 0.66, shirt, -0.42, 1.52, [part(new G.BoxGeometry(0.2, 0.14, 0.2), skin, { pos: [0, -0.72, 0] })]);
-  const armR = limb(0.2, 0.66, shirt, 0.42, 1.52, [part(new G.BoxGeometry(0.2, 0.14, 0.2), skin, { pos: [0, -0.72, 0] })]);
+  const hands = fullHead ? fullHead.hands : skin;
+  const armL = limb(0.2, 0.66, shirt, -0.42, 1.52, [part(new G.BoxGeometry(0.2, 0.14, 0.2), hands, { pos: [0, -0.72, 0] })]);
+  const armR = limb(0.2, 0.66, shirt, 0.42, 1.52, [part(new G.BoxGeometry(0.2, 0.14, 0.2), hands, { pos: [0, -0.72, 0] })]);
   const legL = limb(0.24, 0.84, pants, -0.16, 0.86, [part(new G.BoxGeometry(0.26, 0.14, 0.34), C.woodDark, { pos: [0, -0.8, 0.05] })]);
   const legR = limb(0.24, 0.84, pants, 0.16, 0.86, [part(new G.BoxGeometry(0.26, 0.14, 0.34), C.woodDark, { pos: [0, -0.8, 0.05] })]);
   g.userData = { armL, armR, legL, legR, body, phase: Math.random() * 6 };

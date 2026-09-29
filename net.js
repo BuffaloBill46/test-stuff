@@ -16,7 +16,7 @@ function listeners() {
 }
 
 let client = null;
-const sb = () => client || (client = createClient(SB_URL, SB_KEY, { auth: { persistSession: false }, realtime: { params: { eventsPerSecond: 30 } } }));
+const sb = () => client || (client = createClient(SB_URL, SB_KEY, { auth: { persistSession: true, storageKey: 'sq-auth' }, realtime: { params: { eventsPerSecond: 30 } } }));
 
 function subscribe(ch) {
   return new Promise((res, rej) => {
@@ -35,7 +35,7 @@ async function supabaseRoom(code, me) {
   const main = c.channel(base, { config: { broadcast: { self: false }, presence: { key: me.id } } });
   main.on('presence', { event: 'sync' }, () => {
     const st = main.presenceState();
-    peers = Object.entries(st).map(([id, metas]) => ({ id, n: String(metas?.[0]?.n ?? '').slice(0, 14), j: Number(metas?.[0]?.j) || 0 }));
+    peers = Object.entries(st).map(([id, metas]) => ({ id, n: String(metas?.[0]?.n ?? '').slice(0, 14), j: Number(metas?.[0]?.j) || 0, a: metas?.[0]?.a }));
     L.fire('peers', peers); refreshHostChans();
   });
   main.on('broadcast', { event: 'snap' }, ({ payload }) => L.fire('snap', payload));
@@ -43,7 +43,7 @@ async function supabaseRoom(code, me) {
   const mine = c.channel(base + '-u-' + me.id, { config: { broadcast: { self: false } } });
   try {
     await subscribe(main);
-    await main.track({ n: me.n, j: me.j });
+    await main.track({ n: me.n, j: me.j, a: me.a });
     await subscribe(mine);
   } catch (e) { // don't leave the client retrying in the background
     c.removeChannel(main); c.removeChannel(mine); throw e;
@@ -79,7 +79,7 @@ async function localRoom(code, me) {
   const recompute = () => {
     const now = Date.now();
     for (const [id, p] of seen) if (now - p.at > 3500) seen.delete(id);
-    peers = [{ id: me.id, n: me.n, j: me.j }, ...[...seen.values()].map(({ id, n, j }) => ({ id, n, j }))];
+    peers = [{ id: me.id, n: me.n, j: me.j, a: me.a }, ...[...seen.values()].map(({ id, n, j, a }) => ({ id, n, j, a }))];
     L.fire('peers', peers);
   };
   bc.onmessage = ({ data: m }) => {
@@ -106,3 +106,62 @@ async function localRoom(code, me) {
 export function openRoom(code, me, { local = false } = {}) {
   return local ? localRoom(code, me) : supabaseRoom(code, me);
 }
+
+// ---------- accounts: Solana wallet sign-in (Supabase Web3 auth) and profiles
+const STATEMENT = 'Sign in to Snowball Square. This only proves you own this wallet: it sends no transaction and costs nothing.';
+export const findWallet = () => window.phantom?.solana || window.solflare || window.backpack?.solana || window.solana || null;
+
+function remoteAccounts() {
+  const c = sb();
+  const rpc = async (fn, args) => { const { data, error } = await c.rpc(fn, args); if (error) throw new Error(error.message); return data; };
+  return {
+    async session() { const { data } = await c.auth.getSession(); return data.session; },
+    async signIn() {
+      const wallet = findWallet(); if (!wallet) throw new Error('NO_WALLET');
+      if (!wallet.isConnected && wallet.connect) await wallet.connect();
+      const { error } = await c.auth.signInWithWeb3({ chain: 'solana', statement: STATEMENT, wallet });
+      if (error) throw new Error(error.message);
+      return rpc('ensure_profile');
+    },
+    profile: () => rpc('ensure_profile'),
+    save: (name, avatar) => rpc('save_profile', { p_name: name, p_avatar: avatar }),
+    async inventory() { const { data, error } = await c.from('inventory').select('item_id'); if (error) throw new Error(error.message); return data.map((r) => r.item_id); },
+    async leaderboard() {
+      const { data, error } = await c.from('profiles').select('name, wallet, avatar, level, rank_points').order('rank_points', { ascending: false }).order('created_at').limit(50);
+      if (error) throw new Error(error.message); return data;
+    },
+    async signOut() { await c.auth.signOut(); },
+  };
+}
+
+// Same-computer stand-in for tests: a pretend wallet and a local "database" that applies the same save rules.
+function localAccounts(rules) {
+  const key = 'sq-local-accounts', get = () => { try { return JSON.parse(localStorage.getItem(key)) || {}; } catch { return {}; } };
+  const put = (v) => { try { localStorage.setItem(key, JSON.stringify(v)); } catch {} };
+  let me = null; try { me = sessionStorage.getItem('sq-local-me'); } catch {}
+  return {
+    async session() { return me ? { user: { id: me } } : null; },
+    async signIn() {
+      me = 'Loca1Wa11et' + Math.random().toString(36).slice(2, 10).replace(/[0lI]/g, 'x') + 'zzzzzzzzzzzzzzzz'.slice(0, 16);
+      try { sessionStorage.setItem('sq-local-me', me); } catch {}
+      return this.profile();
+    },
+    async profile() {
+      if (!me) throw new Error('Sign in first');
+      const db = get(); db[me] ||= { wallet: me, name: 'Player ' + me.slice(0, 4), avatar: rules.DEFAULT_AVATAR, level: 1, xp: 0, rank_points: 0 }; put(db); return db[me];
+    },
+    async save(name, avatar) {
+      const db = get(), p = db[me]; if (!p) throw new Error('No profile yet');
+      const n = String(name || '').replace(/[\u0000-\u001f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, '').trim().slice(0, 14);
+      if (!n) throw new Error("Name can't be empty");
+      const clean = {};
+      for (const s of rules.SLOTS) { const it = rules.BY_ID.get(avatar?.[s]); if (!it || it.slot !== s || !rules.usable(it, p.level)) throw new Error(`Item "${avatar?.[s]}" isn't unlocked for ${s}`); clean[s] = it.id; }
+      p.name = n; p.avatar = clean; put(db); return p;
+    },
+    async inventory() { return []; },
+    async leaderboard() { return Object.values(get()).sort((a, b) => b.rank_points - a.rank_points); },
+    async signOut() { me = null; try { sessionStorage.removeItem('sq-local-me'); } catch {} },
+  };
+}
+
+export function accounts({ local = false, rules } = {}) { return local ? localAccounts(rules) : remoteAccounts(); }

@@ -3,7 +3,7 @@ import { THREE, C, character, animate, Snow, Burst, toon, part, build, glow } fr
 import { buildPlaza, makeHat, shadowBlob, ARENA } from './plaza.js';
 
 const V3 = THREE.Vector3;
-const ROUND = 90, BALL_G = 7, BALL_SPEED = 18, HAT_G = 16, HEAD_Y = 1.9;
+const ROUND = 90, BALL_G = 7, BALL_SPEED = 18, HAT_G = 16, HEAD_Y = 2.05;
 
 const intro = `<div class="eyebrow">Mockup A · Arena</div>
 <h2>Snowball Square</h2>
