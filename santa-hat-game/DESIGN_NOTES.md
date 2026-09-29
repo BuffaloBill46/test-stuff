@@ -63,7 +63,8 @@ per player in the pot (bots included), bots can win, and bots play under player-
 - **Order of every payment:** 3% tax first, then burn %, then treasury %, then pool %. The percentages
   apply to what's left after the tax. **The last split gets the remainder** (amounts never divide exactly).
 - **What the player pays** is the total that leaves their wallet: a $1.00 spin means $1.00 of SANTA out of
-  their wallet at the quoted price, with a small cushion for price moves.
+  their wallet at the quoted price, with a small cushion for price moves. **Cushion (decided): 2%.** The price
+  quote is locked for 60 seconds, and a payment counts if it's within 2% of the quoted SANTA amount.
 - **How it works on the chain:** burning isn't a transfer, so the burn part pays no tax. That leaves a little
   extra, which lands on the last split through the remainder rule. Worked examples (from `tests/tax-split.mjs`):
   - **$1.00 spin (10% burn / 90% pool):** 9.70¢ burned, 90.30¢ sent to the pool, 87.59¢ arrives.
@@ -86,19 +87,25 @@ holders know it"). A 2× win on $1 sends $2.00 and the player receives $1.94. Sa
 Cody wants only 2–3 to start:
 1. **Spin pool.** Takes 90% of spin entries after the tax; pays spin winners.
 2. **Slots pool.** Same for slots.
-3. **Lottery pool.** Holds SANTA lottery entries; pays the draw winners.
+3. **Lottery.** Handled differently from the other two (see below).
 Burns need no wallet (they're destroyed straight from the player's wallet). The **treasury** is a separate
-wallet that only receives. Which wallet that is, is Cody's call (see TODO).
+wallet that only receives. **Cody is making a new wallet for it** and will send its public address.
+
+**Lottery (Cody's plan):** either run manually by Cody, or use **Cody's own on-chain lottery program**
+(a smart contract, so it's trustless: the rules run on Solana and nobody can take the pot). It's already
+built and running on devnet (Solana's free test network) in Cody's main Claude Code session, outside this repo.
+So **this game doesn't build its own lottery.** It links to or plugs into Cody's. Before real SANTA goes
+into it on mainnet, Claude recommends a security review of the program, since it would hold real money.
 
 How the pool wallets are controlled (options; Claude's pick marked):
 - **A. A plain wallet whose key lives only on our server (pick, for all three to start).** The server pays winners
-  automatically, which instant spins need. Cheapest and quickest. Risk: if the server key leaked, that one
-  pool could be drained. That's why the pools stay separate and small: anything above a set cap gets swept
+  automatically, which instant spins need. Cheapest and quickest. Used for **Spin and Slots.** Risk: if the
+  server key leaked, that one pool could be drained. That's why the pools stay separate and small: anything above a set cap gets swept
   to the treasury.
 - **B. A shared-approval wallet (multisig, e.g. Squads).** Payouts need Cody's approval too. Too slow for spins,
-  but workable for the lottery (a payout once a day or week). A good upgrade for the lottery later.
+  but workable for a payout once a day or week.
 - **C. A custom on-chain program (smart contract).** Rules enforced by code, most trustworthy, but it needs a
-  professional security audit, which costs real money and time. Only if the game grows big.
+  security review before holding real money. **This is the lottery's route:** Cody's existing lottery program.
 Each wallet also needs a little SOL (Solana's own coin) to pay network fees. **Creating and funding them is a
 real-money step: not done, waits for Cody.** The keys never go in the website or the repo.
 
@@ -111,8 +118,8 @@ real-money step: not done, waits for Cody.** The keys never go in the website or
   Jupiter), lock it for about 60 seconds, and show "$0.50 ≈ 642 SANTA" before they sign.
 - **Server confirms before granting.** The server checks the transaction on-chain (Cody already has
   Helius), then adds the item or tickets. A payment that doesn't confirm grants nothing.
-- **Lottery.** Entries go into a lottery wallet; the draw uses verifiable on-chain randomness (the site's
-  Advent draws already work this way); 90% is paid to winners and 10% burned in the same payout.
+- **Lottery.** Superseded: Cody's own on-chain lottery program (or manual draws). See "Pool wallets" above.
+  The split stays 90% to winners and 10% burned.
 - **Burn tracker.** A small public counter of total SANTA burned by the game, a nice trust signal.
 
 ### More ways to spend or burn SANTA (ideas, answering "any other ideas?")
