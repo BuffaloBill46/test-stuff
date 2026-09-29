@@ -1,5 +1,5 @@
 // Mockup B: Be the Hat. You are the hat. Bounce head to head; never touch the snow.
-import { THREE, C, character, animate, Snow, Burst, toon, part, build, glow, snowmanGeo, rng } from './kit.js';
+import { THREE, C, character, animate, Snow, Burst, toon, part, build, glow, snowmanGeo, reindeerGeo, rng } from './kit.js';
 import { buildPlaza, makeHat, shadowBlob, ARENA } from './plaza.js';
 
 const V3 = THREE.Vector3, G = THREE;
@@ -19,26 +19,6 @@ const intro = `<div class="eyebrow">Mockup B · Bouncer</div>
 <ul><li>Chain different heads to build your combo; landing on the same head twice resets it</li><li>Grab the floating gold stars mid-air for bonus points</li><li>The crowd speeds up the longer you stay airborne</li></ul>
 <div class="keys"><kbd>WASD</kbd> or <kbd>Arrows</kbd> steer · Phone: drag anywhere to steer</div>
 <button class="go">Hop on</button>`;
-
-function reindeerGeo() {
-  const b = 0x8a5a36, d = 0x5e3b22, ant = 0xe7d3a8;
-  const ps = [
-    part(new G.BoxGeometry(0.55, 0.55, 1.3), b, { pos: [0, 1.15, 0], jit: 0.04 }),
-    part(new G.BoxGeometry(0.5, 0.2, 0.5), C.brim, { pos: [0, 1.12, -0.62], jit: 0.03 }),
-    part(new G.BoxGeometry(0.3, 0.6, 0.3), b, { pos: [0, 1.5, 0.62], rot: [0.5, 0, 0] }),
-    part(new G.BoxGeometry(0.34, 0.34, 0.56), b, { pos: [0, 1.82, 0.85], jit: 0.03 }),
-    part(new G.BoxGeometry(0.16, 0.14, 0.12), C.coal, { pos: [0, 1.78, 1.15] }),
-    part(new G.BoxGeometry(0.28, 0.12, 0.1), C.hat, { pos: [0, 1.5, 0.78], rot: [0.5, 0, 0] }),
-  ];
-  for (const x of [-0.18, 0.18]) for (const z of [-0.5, 0.5]) ps.push(part(new G.BoxGeometry(0.14, 0.9, 0.14), d, { pos: [x, 0.45, z] }));
-  for (const s of [-1, 1]) {
-    ps.push(part(new G.BoxGeometry(0.07, 0.5, 0.07), ant, { pos: [s * 0.14, 2.15, 0.78], rot: [0, 0, -s * 0.35] }));
-    ps.push(part(new G.BoxGeometry(0.07, 0.3, 0.07), ant, { pos: [s * 0.32, 2.28, 0.78], rot: [0, 0, -s * 1.0] }));
-    ps.push(part(new G.BoxGeometry(0.07, 0.26, 0.07), ant, { pos: [s * 0.26, 2.36, 0.9], rot: [0.6, 0, -s * 0.2] }));
-    ps.push(part(new G.ConeGeometry(0.08, 0.2, 4), b, { pos: [s * 0.22, 1.98, 0.7], rot: [0, 0, -s * 1.2] }));
-  }
-  return build(ps);
-}
 
 function create(ui) {
   const scene = new THREE.Scene();

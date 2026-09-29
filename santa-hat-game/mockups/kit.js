@@ -132,7 +132,7 @@ export function glow(color, size, opacity = 0.55) {
   s.scale.set(size, size, 1); return s;
 }
 
-export function glowMat(color) { return new THREE.MeshBasicMaterial({ color }); }
+export function glowMat(color) { return new THREE.MeshBasicMaterial({ color, fog: false }); }
 
 export function skyTexture(top = '#0b1024', mid = '#1c2548', bottom = '#3b3f6a') {
   return canvasTex(4, 256, (x, w, h) => {
@@ -294,7 +294,7 @@ export function cottage(seed = 1, o = {}) {
   const win = [];
   for (const x of [-w * 0.3, w * 0.3]) win.push(part(new G.BoxGeometry(0.5, 0.55, 0.08), C.glass, { pos: [x, h * 0.45 + 0.3, d / 2 + 0.03] }));
   win.push(part(new G.BoxGeometry(0.08, 0.5, 0.45), C.glass, { pos: [w / 2 + 0.03, h * 0.5 + 0.3, 0] }));
-  return { body: build(ps), windows: build(win), chimney: new V3(cx, cy + 0.8, 0.1) };
+  return { body: build(ps), windows: build(win), chimney: new V3(cx, cy + 0.8, 0.1), ridge: h + 0.33 + 1.4 };
 }
 
 export function snowmanGeo(seed = 1) {
@@ -311,6 +311,27 @@ export function snowmanGeo(seed = 1) {
     part(new G.CylinderGeometry(0.03, 0.04, 0.9, 4), C.woodDark, { pos: [0.75, 1.6, 0], rot: [0, 0, -1.0] }),
     part(new G.CylinderGeometry(0.03, 0.04, 0.9, 4), C.woodDark, { pos: [-0.75, 1.6, 0], rot: [0, 0, 1.0] }),
   ]);
+}
+
+// Built facing +z, standing on y=0.
+export function reindeerGeo() {
+  const b = 0x8a5a36, d = 0x5e3b22, ant = 0xe7d3a8;
+  const ps = [
+    part(new G.BoxGeometry(0.55, 0.55, 1.3), b, { pos: [0, 1.15, 0], jit: 0.04 }),
+    part(new G.BoxGeometry(0.5, 0.2, 0.5), C.brim, { pos: [0, 1.12, -0.62], jit: 0.03 }),
+    part(new G.BoxGeometry(0.3, 0.6, 0.3), b, { pos: [0, 1.5, 0.62], rot: [0.5, 0, 0] }),
+    part(new G.BoxGeometry(0.34, 0.34, 0.56), b, { pos: [0, 1.82, 0.85], jit: 0.03 }),
+    part(new G.BoxGeometry(0.16, 0.14, 0.12), C.coal, { pos: [0, 1.78, 1.15] }),
+    part(new G.BoxGeometry(0.28, 0.12, 0.1), C.hat, { pos: [0, 1.5, 0.78], rot: [0.5, 0, 0] }),
+  ];
+  for (const x of [-0.18, 0.18]) for (const z of [-0.5, 0.5]) ps.push(part(new G.BoxGeometry(0.14, 0.9, 0.14), d, { pos: [x, 0.45, z] }));
+  for (const s of [-1, 1]) {
+    ps.push(part(new G.BoxGeometry(0.07, 0.5, 0.07), ant, { pos: [s * 0.14, 2.15, 0.78], rot: [0, 0, -s * 0.35] }));
+    ps.push(part(new G.BoxGeometry(0.07, 0.3, 0.07), ant, { pos: [s * 0.32, 2.28, 0.78], rot: [0, 0, -s * 1.0] }));
+    ps.push(part(new G.BoxGeometry(0.07, 0.26, 0.07), ant, { pos: [s * 0.26, 2.36, 0.9], rot: [0.6, 0, -s * 0.2] }));
+    ps.push(part(new G.ConeGeometry(0.08, 0.2, 4), b, { pos: [s * 0.22, 1.98, 0.7], rot: [0, 0, -s * 1.2] }));
+  }
+  return build(ps);
 }
 
 export function giftGeo(color, ribbon = C.gold, s = 0.5) {
@@ -335,6 +356,9 @@ export function character(o = {}) {
     part(new G.BoxGeometry(0.06, 0.08, 0.04), C.ink, { pos: [-0.1, 1.86, 0.25] }),
     part(new G.BoxGeometry(0.06, 0.08, 0.04), C.ink, { pos: [0.1, 1.86, 0.25] }),
   ];
+  if (o.beard) bodyParts.push(
+    part(new G.IcosahedronGeometry(0.26, 0), C.brim, { pos: [0, 1.66, 0.12], scale: [1.1, 1.0, 0.8], jit: 0.04, seed: seed + 5 }),
+    part(new G.BoxGeometry(0.62, 0.1, 0.4), C.brim, { pos: [0, 1.52, 0.02] }));
   if (o.ears) bodyParts.push(
     part(new G.ConeGeometry(0.08, 0.34, 4), skin, { pos: [-0.3, 1.9, 0], rot: [0, 0, 1.25] }),
     part(new G.ConeGeometry(0.08, 0.34, 4), skin, { pos: [0.3, 1.9, 0], rot: [0, 0, -1.25] }));
