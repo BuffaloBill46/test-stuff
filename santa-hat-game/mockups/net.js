@@ -40,10 +40,14 @@ async function supabaseRoom(code, me) {
   });
   main.on('broadcast', { event: 'snap' }, ({ payload }) => L.fire('snap', payload));
   main.on('broadcast', { event: 'emote' }, ({ payload }) => L.fire('emote', payload));
-  await subscribe(main);
-  await main.track({ n: me.n, j: me.j });
   const mine = c.channel(base + '-u-' + me.id, { config: { broadcast: { self: false } } });
-  await subscribe(mine);
+  try {
+    await subscribe(main);
+    await main.track({ n: me.n, j: me.j });
+    await subscribe(mine);
+  } catch (e) { // don't leave the client retrying in the background
+    c.removeChannel(main); c.removeChannel(mine); throw e;
+  }
 
   function refreshHostChans() {
     const want = hosting ? new Set(peers.map((p) => p.id).filter((id) => id !== me.id)) : new Set();

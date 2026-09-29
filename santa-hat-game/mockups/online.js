@@ -8,7 +8,9 @@ const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
 const LOCAL = params.get('net') === 'local';
-const SNAP_MS = 125, INTERP_MS = 170;
+// Free-plan budget is 100 messages/second and every receiver counts, so fuller rooms send snapshots less often.
+const snapMs = (humans) => (humans <= 4 ? 125 : humans <= 6 ? 170 : 220);
+const REP_MIN_MS = 160, REP_MOVING_MS = 350, REP_IDLE_MS = 1000; // the referee stops extrapolating after 400 ms
 const EMOTES = ['Ho ho ho!', 'Nice throw!', 'Gimme the hat!', 'Oops!'];
 const BOT_NAMES = ['Nib', 'Pip', 'Tink', 'Jolly', 'Snig', 'Holly', 'Pud', 'Ember'];
 const SHIRTS = [0xcf3128, 0x3d6fb8, 0xe0a030, 0x7a4fa3, 0x2f8f8a, 0xd76aa0, 0x8a5a36, 0xf5f1e8];
@@ -154,12 +156,10 @@ function controls(dt, v) {
   if (w.length() > 1) w.normalize();
   if (!canMove) w.set(0, 0, 0);
   const top = K.HUMAN_SPEED * (v.hat.st === 'head' && v.hat.holder === e.id ? K.HOLD_SLOW : 1), kk = Math.min(1, dt * 10);
-  const pvx = ctl.vx, pvz = ctl.vz;
   ctl.vx += (w.x * top - ctl.vx) * kk; ctl.vz += (w.z * top - ctl.vz) * kk;
   ctl.x += ctl.vx * dt; ctl.z += ctl.vz * dt; constrain(ctl);
   const sp = Math.hypot(ctl.vx, ctl.vz);
   if (sp > 0.5 && ctl.throwT <= 0) { let d = Math.atan2(ctl.vx, ctl.vz) - ctl.face; d = Math.atan2(Math.sin(d), Math.cos(d)); ctl.face += d * Math.min(1, dt * 12); }
-  if (Math.abs(pvx - ctl.vx) + Math.abs(pvz - ctl.vz) > 0.3) ctl.dirty = true;
 }
 
 function tryThrow(tx, tz) {
@@ -179,7 +179,7 @@ function report() { return { q: ++ctl.q, ep: ctl.ep, x: +ctl.x.toFixed(2), z: +c
 let currentView = null;
 function interpolated(now) {
   if (!snaps.length) return null;
-  const rt = now - INTERP_MS, last = snaps[snaps.length - 1];
+  const last = snaps[snaps.length - 1], rt = now - (snapMs(last.v.ents.filter((e) => !e.bot).length) + 60);
   let a = null, b = null;
   for (let i = snaps.length - 1; i > 0; i--) if (snaps[i - 1].at <= rt && snaps[i].at >= rt) { a = snaps[i - 1]; b = snaps[i]; break; }
   const v = { ...last.v, ents: last.v.ents.map((e) => ({ ...e })), age: (now - last.at) / 1000 };
@@ -425,12 +425,15 @@ function frame() {
       sim.step(dt);
       const s = sim.snapshot(); s.hid = me.id; s.hj = me.j;
       lastRaw = s;
-      if (room && now - lastSnapSent >= SNAP_MS) { room.sendSnap(s); lastSnapSent = now; }
+      if (room && now - lastSnapSent >= snapMs(sim.S.ents.filter((e) => !e.bot).length)) { room.sendSnap(s); lastSnapSent = now; }
       v = decode(s); v.age = 0; handleEvents(v);
     } else {
       v = interpolated(now);
-      if (v && ctl.ep >= 0 && room && (ctl.dirty || now - ctl.lastSent > 1000) && now - ctl.lastSent > 90) { room.sendRep(report()); ctl.lastSent = now; ctl.dirty = false; }
-      if (v && Math.hypot(ctl.vx, ctl.vz) > 0.2 && now - ctl.lastSent > 110) ctl.dirty = true;
+      // Only report when the referee's guess (last report + velocity) would be off, plus a heartbeat.
+      const ls = ctl.lastRep, since = Math.min((now - ctl.lastSent) / 1000, 0.4);
+      if (ls && (Math.hypot(ls.x + ls.vx * since - ctl.x, ls.z + ls.vz * since - ctl.z) > 0.35 || Math.hypot(ls.vx - ctl.vx, ls.vz - ctl.vz) > 1.2)) ctl.dirty = true;
+      if (v && Math.hypot(ctl.vx, ctl.vz) > 0.2 && now - ctl.lastSent > REP_MOVING_MS) ctl.dirty = true;
+      if (v && ctl.ep >= 0 && room && (ctl.dirty || now - ctl.lastSent > REP_IDLE_MS) && now - ctl.lastSent > REP_MIN_MS) { const r = report(); room.sendRep(r); ctl.lastRep = r; ctl.lastSent = now; ctl.dirty = false; }
     }
   }
   currentView = v;

@@ -1,6 +1,20 @@
 # Snowball Square Multiplayer: plan
 
-Status: **plan only. Nothing created yet.** No Supabase project exists for this; Cody approves before it's made.
+Status: **Phases 1–2 built and live for friends to test** at https://buffalobill46.github.io/test-stuff/
+(free Supabase project `santa-hat-arcade`, free GitHub Pages hosting). Tested with 3 browser windows on one
+computer; **not yet tested between real devices** (this workspace can't open live connections).
+
+What changed from the plan below while building:
+- Each player's own browser moves them (no input lag). The referee checks every report: speed limit,
+  no teleporting, nothing from an old respawn, nothing while knocked down.
+- Each player's moves go on their own channel that only the referee listens to, and are sent only when
+  they change direction or drift, plus a heartbeat. Snapshots slow down as the room fills.
+  Estimated full 8-player room: roughly 90 messages/second, just under the free limit of 100.
+- Supabase counts every delivery (confirmed). The free plan has 2 million messages a month and
+  **never charges**. Over the limit, it warns and pauses the live service instead. That's roughly 6+ hours
+  of full-room play per month.
+- The free project pauses after about a week with no activity; un-pause it from the Supabase dashboard.
+- Phase 3 is partly done: Quick Play, room codes and share links, names, and 4 emotes are built.
 
 > **Money rules for this plan**
 > - Everything below runs on Supabase's **free plan ($0)**. The one known paid step is

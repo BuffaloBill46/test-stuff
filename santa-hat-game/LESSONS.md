@@ -26,6 +26,22 @@ Read this before starting new work on the game. Add to it whenever something rea
 - **Padding overflow on phones.** The published page has no global `box-sizing: border-box`,
   so padded cards spilled off-screen. Now set explicitly.
 
+- **Referee handover dropped state.** Loading a snapshot on a new host silently reset "knocked
+  down" timers and the hat's landing spot. Caught by a round-trip test: snapshot, load, and
+  snapshot again must match exactly.
+- **Message budget blew past the free limit on paper.** Every receiver counts on Supabase, so
+  8 players at the first-draft rates was about 190 messages/second against a limit of 100. Do the
+  multiplication before shipping any network change, and send on change, not on a timer.
+
+## Multiplayer notes
+
+- This workspace can't open WebSockets (proxy limit), so live Supabase play can't be tested here.
+  Use `?net=local` (tabs on one computer share a room) for automated tests, and a real device for the live check.
+- The page's built-in live "room" feature only works for signed-in Claude users, so it's not an
+  option for friends without Claude.
+- GitHub Pages turned on by itself when the `gh-pages` branch was pushed (the repo is public).
+  Republish with `santa-hat-game/deploy-pages.sh`.
+
 ## Engine and pipeline notes
 
 - Low-poly "jitter" must offset vertices **by position**, not by index, or faces crack apart.
