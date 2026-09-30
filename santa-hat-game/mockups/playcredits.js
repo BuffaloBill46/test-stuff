@@ -59,8 +59,6 @@ export function initCredits(opts) {
   $('[data-proof="big"]').addEventListener('click', () => showProof('big'));
   $('[data-proof="spin"]').addEventListener('click', () => showProof(spinKind));
   $('#proofClose').addEventListener('click', () => $('#proofDlg').close?.());
-  $('#myPlayList')?.addEventListener('click', (e) => { const b = e.target.closest('[data-hist]'); if (b) showProofOf(history_[+b.dataset.hist].proof); });
-  if (serverMode) loadHistory();
   $('#proofCheck').addEventListener('click', recheck);
   if (serverMode) syncCredits();
   window.__credits = { ledger, house, get last() { return last; }, give(kind, n) { buy(ledger, pools, kind, n, 'test-' + newSeed(8)); store.set(ledger); changed(); } };
@@ -71,19 +69,6 @@ export async function syncCredits() {
   if (r.credits) { for (const k of Object.keys(ledger.credits)) ledger.credits[k] = 0; for (const c of r.credits) ledger.credits[c.kind] = +c.left_n; refresh(); }
   return r;
 }
-// Server mode: "My plays", the player's own recent plays, each re-checkable.
-const GAME_LABEL = { spin10: 'Spin 10¢', spin100: 'Spin $1', big: 'Big Hat' };
-export async function loadHistory() {
-  if (!serverMode) return;
-  const r = await call('history'); const box = $('#myPlays'), list = $('#myPlayList');
-  if (!box || !Array.isArray(r.plays)) return;
-  box.hidden = false; history_ = r.plays;
-  list.innerHTML = r.plays.length ? r.plays.map((p, i) => {
-    const what = p.result?.jackpot ? 'pool jackpot' : p.result?.mult !== undefined ? `${p.result.mult}×` : p.pay > 0 ? 'win' : 'no win';
-    return `<li><span>${GAME_LABEL[p.kind] || ''} <small>#${p.proof.playNo} · ${new Date(p.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · ${what}</small></span><b>${p.pay > 0 ? money(p.pay) : '—'}</b><button class="sec" type="button" data-hist="${i}">Check</button></li>`;
-  }).join('') : '<li><small>No plays yet.</small></li>';
-}
-let history_ = [];
 export function resetCredits() { Object.assign(ledger, newLedger()); last = {}; store.set(ledger); refresh(); }
 
 // ---- the buy counter ----
@@ -141,7 +126,7 @@ export async function play(kind, forced) {
       await syncCredits();
       if (!s.r) return s.error ? { failed: true, why: s.error } : s;
       if (s.proof.commit !== o.commit) return { failed: true, why: 'the server changed its locked fingerprint' }; // never trust, check
-      last[kind] = s.proof; refresh(); loadHistory();
+      last[kind] = s.proof; refresh();
       return { r: s.r, proof: s.proof, commit: o.commit, poolUsd: s.poolUsd, server: true };
     } catch (e) { refresh(); return { failed: true, why: 'the game server can\'t be reached' }; }
   }

@@ -150,7 +150,7 @@ between two devices has never been tested from here. Cody and friends testing on
 **Pre-hand-over pass (2026-09-30, evening):** an audit (`AUDIT.md`: 9 findings, all fixed or handed over, incl. skims that only
 happened on paper, price manipulation, and equal payouts silently lost as duplicate transactions), a 100-player focus group
 (`FOCUS_GROUP.md`: real game math + 10 real browser walkthroughs; opinions simulated), a **dress rehearsal of the devnet test**
-(`tests/solana/rehearsal.mjs`: books = wallets to the unit), the admin screen (`admin.html`), and "My plays". Cody's open
+(`tests/solana/rehearsal.mjs`: books = wallets to the unit), the admin screen (`admin.html`). ("My plays" was removed on 2026-09-30 at Cody's call: players don't need it; every play stays in the backend `plays` table.) Cody's open
 economy questions from the focus group (payback level, Spin dry runs, top-offs: decided, Cody pays them himself) are in FOCUS_GROUP.md and
 FOR_MAIN_CLAUDE.md.
 

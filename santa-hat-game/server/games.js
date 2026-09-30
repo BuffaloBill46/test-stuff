@@ -151,13 +151,6 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
         note: w.result?.jackpot ? 'pool jackpot' : w.result?.mult ? `${w.result.mult}×` : '', big: pay >= 10 * bet }; });
     winnersCache = { at: Date.now(), list }; return list;
   }
-  // The player's own recent plays, each with everything needed to re-check it (secrets only for settled plays).
-  async function history(profile, limit = 20) {
-    const rows = await db.query(`select id, kind, play_no, commit, secret, player_seed, result, pay, settled_at, settings_version from public.plays
-      where profile_id = $1 and state = 'settled' order by id desc limit $2`, [profile, limit]);
-    return rows.map((r) => ({ ticket: String(r.id), kind: r.kind, pay: +r.pay, at: new Date(r.settled_at).getTime(), result: r.result,
-      proof: { kind: r.kind, commit: r.commit, secret: r.secret, playerSeed: r.player_seed, playNo: +r.play_no, settingsVersion: +r.settings_version } }));
-  }
   // Public pool status (for the admin screen, and for anyone who wants to check): balances, settings, pending transfers, log.
   async function pools() {
     const ps = await db.query('select game, santa_raw, rules, updated_at from public.pools order by game');
@@ -173,5 +166,5 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   }
   // Called when Cody publishes new settings, so the very next play uses them (no 15-second wait).
   const settingsChanged = () => { latest = { at: 0, version: 0 }; };
-  return { quote, buy, open, settle, tidy, winners, history, pools, settings, settingsChanged };
+  return { quote, buy, open, settle, tidy, winners, pools, settings, settingsChanged };
 }

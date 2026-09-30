@@ -433,9 +433,6 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
 .stamp { color: #ff7a6e; border-color: #ff7a6e; }
 /* The result line and credits stop above the bottom tab bar when scrolled into view (focus-group finding). */
 .machine .res, .credrow { scroll-margin-bottom: 96px; }
-.myplays ol { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
-.myplays li { display: flex; gap: 10px; align-items: center; padding: 6px 8px; background: rgba(12,15,26,.35); border-radius: 3px; }
-.myplays li span { margin-right: auto; } .myplays li b { font: 700 14px/1 var(--digits); color: var(--lamp); } .myplays li small { color: var(--dim); }
 /* Phones (Cody's Galaxy S22+, 2026-09-30). Upright, in a match: the game's name gives way so the room chip, sound and Leave
    fit on one row and the stats sit right under them. */
 @media (max-width: 640px) and (orientation: portrait) {
@@ -677,11 +674,6 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
       <h2>Recent winners</h2>
       <p class="dim" id="winNote">Every Santa Hat game. Demo: wins from this browser only; once payouts are real this shows everyone's.</p>
       <ol id="winList"></ol>
-    </section>
-    <section class="block plaque myplays" id="myPlays" hidden>
-      <h2>My plays</h2>
-      <p class="dim">Your last 20 plays. Every one can be re-checked, any time.</p>
-      <ol id="myPlayList"></ol>
     </section>
   </section>
 

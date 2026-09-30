@@ -4,7 +4,6 @@
 //   quote  { kind, n }         → a 60-second SANTA price quote      settle { ticket, seed }    → result + revealed secret
 //   buy    { quote, signature }→ checks the finalized payment, adds credits
 //   winners                    → the shared Recent winners list (public, no sign-in)
-//   history                    → your own recent plays, each re-checkable
 //   settings { version? }      → public game settings (prices, odds, prizes); any version, for re-checking old plays
 //   pools                      → public pool status: balances, settings, pending transfers, change log (admin screen)
 // Only signed-in players (a Supabase login token); only our own website may call it from a browser.
@@ -49,7 +48,6 @@ export function makeHandler(deps) {
       let out;
       switch (body?.action) {
         case 'credits': out = { credits: await deps.credits(profile) }; break;
-        case 'history': out = { plays: await s.history(profile) }; break;
         case 'quote': out = await s.quote(profile, String(body.kind), Number(body.n)); break;
         case 'buy': out = await s.buy(profile, String(body.quote), String(body.signature)); break;
         case 'open': out = await s.open(profile, String(body.kind)); break;
