@@ -118,7 +118,7 @@ and the live games list with **Watch now** (max 4 watchers). Tested and publishe
 3. The level table (points per level, what unlocks).
 4. The Slots payouts: the machines are built with a draft paytable in `mockups/slots.js`. Cody sends the real one, then Claude
    drops it in and runs `tests/slots.test.mjs`.
-5. Confirm the Games daily limit is **dollars** per game per day ($10 at level 1, +$10 per level).
+5. (Done: Cody removed the Games daily play limit.)
 6. The treasury wallet's public address (Cody is making a new wallet), and when to create and fund the
    Spin pool and Slots pool wallets. That's real money, so wait for Cody's go.
 7. Where Cody's on-chain lottery program lives (built, on devnet, from Cody's other Claude session). The

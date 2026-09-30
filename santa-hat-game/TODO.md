@@ -6,7 +6,6 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Turn on Solana sign-in:** Supabase → Authentication → Sign In / Providers → Web3 Wallet → Solana.
 - [ ] **Set sign-in addresses:** Supabase → Authentication → URL Configuration. Site URL `https://buffalobill46.github.io/test-stuff/`, Redirect URL `https://buffalobill46.github.io/test-stuff/**`.
 - [ ] **Email service so friends get sign-in emails:** connect Resend (free tier) to one of Cody's GoDaddy domains, then paste its SMTP settings into Supabase. Until then, email sign-in only reaches Supabase team members.
-- [ ] **Confirm the Games daily limit is in dollars** ($10 per game per day at level 1, +$10 per level), not number of spins.
 - [ ] **Level table:** how many rank points reach each level, and which items unlock at each.
 - [ ] **Treasury wallet:** Cody is making a new one. Send Claude its public address (never the secret key or recovery phrase).
 - [ ] **Lottery program:** when ready, share where Cody's on-chain lottery lives (its repo, or its program address on devnet) so the Store's Lottery block can link to it or plug into it.
@@ -48,7 +47,6 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Provably fair results** and a pool safety rule (a play only starts if the pool covers that game's biggest fixed win: Spin 5× the bet, Slots its top fixed prize).
 - [ ] **Entries split 90% to the pool, 10% burned** (after the 3% tax).
 - [ ] **3% SANTA tax notice at the top of the Spin page** when it's built (the Games tab intro already has one).
-- [ ] **Daily spend limit per game:** $10 at level 1, +$10 per level.
 - [ ] **Simulate a million spins** to prove the payback % before launch.
 - [ ] More click games from the idea list (Hat Drop, Present Pick, Sleigh Climb, Advent Scratch, Naughty or Nice).
 
