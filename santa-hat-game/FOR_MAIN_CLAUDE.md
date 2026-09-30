@@ -23,8 +23,10 @@ Tick items off here as they're done. Order is roughly the order to do them in fo
 - [ ] **Real wallet signing in the browser:** the buy counter must build ONE transaction (burn + transferCheckedWithFee, exactly as
       `tests/solana/split.test.mjs`) from the server's quote, have Phantom sign and send it, then call `buy` with the signature
       once it's finalized. The instruction layout is proven; the wallet popup isn't (no wallet here).
-- [ ] **Payout sending with real keys:** see "Payout worker" in HANDOFF/TODO. The pool wallet's key lives only in the worker's
-      secrets, never the site or repo.
+- [ ] **Run the payout worker live:** `server/payouts.js` is built and proven on the real token program (never pays twice, even
+      when it crashes before or after sending; `tests/solana/payouts.test.mjs`). Still needed: the live chain adapter (a Solana
+      RPC: getLatestBlockhash, sendTransaction, getSignatureStatuses + isBlockhashValid; same shape as the test's), the pool
+      wallets' keys in the worker's secrets only (never the site or repo), and a schedule (e.g. a Supabase cron every minute).
 - [ ] **Two real devices** playing a multiplayer match; **a real phone** for feel, frame rate and sound.
 
 ## Checked here, re-check live

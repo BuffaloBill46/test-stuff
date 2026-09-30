@@ -76,8 +76,10 @@ create table public.payouts (
   id bigserial primary key, play_id bigint not null unique references public.plays (id),
   to_wallet text not null, amount_usd numeric(12, 2) not null check (amount_usd > 0),
   amount_raw bigint not null check (amount_raw > 0), price_usd numeric not null check (price_usd > 0),  -- SANTA fixed at the settle price
-  status text not null default 'queued' check (status in ('queued', 'held', 'sent', 'failed')),
-  tx text, created_at timestamptz not null default now()
+  -- queued → sending (signed; its signature saved BEFORE it's sent) → sent. 'held' waits for Cody. Never paid twice:
+  -- a 'sending' payout is re-signed only after its old transaction's blockhash has expired (it can then never land).
+  status text not null default 'queued' check (status in ('queued', 'held', 'sending', 'sent', 'failed')),
+  tx text, blockhash text, attempts int not null default 0, created_at timestamptz not null default now()
 );
 
 alter table public.quotes enable row level security;   alter table public.payments enable row level security;

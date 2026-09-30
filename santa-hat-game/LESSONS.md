@@ -84,6 +84,10 @@ Read this before starting new work on the game. Add to it whenever something rea
 - **The publish script now refuses a build with a missing file** (any `./x.js` a page imports must be copied). A forgotten file
   would otherwise break the live site with no warning.
 
+- **A crash test must really crash.** The payout worker's "crash after sending" scenario was absorbed by the worker's own error
+  handling, so the test passed even with the recovery check deleted. Fixed by making the fake crash escape the worker; now
+  deleting the check fails the test (double payment caught). Always break the code on purpose once to see the test go red.
+
 ## Multiplayer notes
 
 - This workspace can't open WebSockets (proxy limit), so live Supabase play can't be tested here.
