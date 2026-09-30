@@ -22,7 +22,7 @@ await noThrow('buy junk quote', () => server.buy(me, "' or 1=1 --", '5'.repeat(8
 // 3. An account with no wallet can't start a play (its winnings would have nowhere to go).
 const emailOnly = (await db.query('insert into auth.users default values returning id'))[0].id; // 003 lets email-only profiles have no wallet
 await db.query(`insert into public.profiles (id, wallet, name, avatar) values ($1, null, 'Emma', '{}')`, [emailOnly]);
-await db.query(`insert into public.credits (profile_id, kind, left_n, bought) values ($1, 'big', 1, 1)`, [emailOnly]);
+await db.query(`insert into public.credits (profile_id, kind, bet, left_n, bought) values ($1, 'big', 1, 1, 1)`, [emailOnly]);
 assert.match((await server.open(emailOnly, 'big')).error, /needs a linked wallet/);
 assert.equal((await db.query(`select left_n from public.credits where profile_id = $1`, [emailOnly]))[0].left_n, 1, 'credit untouched');
 // 4. Quote spam stops at the hourly limit.

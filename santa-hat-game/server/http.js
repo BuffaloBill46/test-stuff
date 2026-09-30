@@ -5,6 +5,7 @@
 //   buy    { quote, signature }→ checks the finalized payment, adds credits
 //   winners                    → the shared Recent winners list (public, no sign-in)
 //   history                    → your own recent plays, each re-checkable
+//   settings { version? }      → public game settings (prices, odds, prizes); any version, for re-checking old plays
 //   pools                      → public pool status: balances, settings, pending transfers, change log (admin screen)
 // Only signed-in players (a Supabase login token); only our own website may call it from a browser.
 export const ALLOWED_ORIGINS = ['https://buffalobill46.github.io', 'http://localhost'];
@@ -33,6 +34,9 @@ export function makeHandler(deps) {
     let body; try { body = await req.json(); } catch { return reply(origin, 400, { error: 'send JSON' }); }
     if (body?.action === 'pools') { // public: pool balances, settings, pending transfers and the change log
       try { return reply(origin, 200, await deps.server.pools()); } catch (e) { console.error('pools error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
+    }
+    if (body?.action === 'settings') { // public: the game settings (prices, odds, prizes) by version
+      try { return reply(origin, 200, await deps.server.settings(Number.isInteger(body.version) ? body.version : undefined)); } catch (e) { return reply(origin, 400, { error: 'unknown settings version' }); }
     }
     if (body?.action === 'winners') { // public: the shared Recent winners list (names and amounts only)
       try { return reply(origin, 200, { winners: await deps.server.winners() }); } catch (e) { console.error('winners error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }

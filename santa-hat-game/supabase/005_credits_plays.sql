@@ -31,11 +31,23 @@ create table public.payments (
 create table public.credits (
   profile_id uuid not null references public.profiles (id) on delete cascade,
   kind text not null check (kind in ('spin10', 'spin100', 'big')),
+  bet numeric(10, 2) not null check (bet > 0),           -- the price each of these credits was bought at (a play pays on it)
   left_n int not null default 0 check (left_n >= 0),
   bought int not null default 0, used int not null default 0,
-  primary key (profile_id, kind),
+  primary key (profile_id, kind, bet),                   -- credits bought at different prices are kept apart
   check (bought = used + left_n)
 );
+
+-- Game settings (Cody's admin screen): prices, odds, prizes, store. Every change is a new signed version; version 0 is the
+-- built-in game (mockups/settings.js). Public: anyone can see the odds every play ran on.
+create table public.game_settings (
+  version int primary key check (version > 0), settings jsonb not null,
+  by_wallet text not null, nonce text not null unique, message text not null, signature text not null,
+  created_at timestamptz not null default now()
+);
+alter table public.game_settings enable row level security;
+create policy game_settings_read on public.game_settings for select using (true);
+revoke insert, update, delete on public.game_settings from anon, authenticated;
 
 -- Plays, in Cody's order: 'spent' (credit taken, no secret yet) → 'open' (secret locked, fingerprint shown)
 -- → 'settled' (result paid, secret revealed) or 'refunded' (credit given back). A play can't skip a step.
@@ -50,6 +62,8 @@ create table public.plays (
   player_seed text,
   result jsonb,
   pay numeric(12, 2),
+  bet numeric(10, 2),                                  -- the price paid for this play's credit
+  settings_version int not null default 0,             -- the game settings (odds, prizes) this play ran on
   price_usd numeric,                                   -- the live SANTA price the play was settled at
   spent_at timestamptz not null default now(), opened_at timestamptz, settled_at timestamptz,
   unique (profile_id, play_no),
@@ -128,8 +142,8 @@ begin
   insert into public.payments (signature, quote_id, profile_id, kind, n, paid_raw, burned_raw, arrived_raw)
     values (p_signature, q.id, q.profile_id, q.kind, q.n, p_paid, p_burned, p_arrived);  -- a reused signature fails here
   update public.quotes set used_by = p_signature where id = q.id;
-  insert into public.credits (profile_id, kind, left_n, bought) values (q.profile_id, q.kind, q.n, q.n)
-    on conflict (profile_id, kind) do update set left_n = public.credits.left_n + q.n, bought = public.credits.bought + q.n
+  insert into public.credits (profile_id, kind, bet, left_n, bought) values (q.profile_id, q.kind, round(q.usd / q.n, 2), q.n, q.n)
+    on conflict (profile_id, kind, bet) do update set left_n = public.credits.left_n + q.n, bought = public.credits.bought + q.n
     returning left_n into left_now;
   -- the SANTA that arrived reaches that game's pool now
   update public.pools set santa_raw = santa_raw + p_arrived, updated_at = now() where game = case when q.kind = 'big' then 'slots' else 'spin' end;
@@ -138,17 +152,20 @@ end $$;
 
 -- Step 2 of the order: take one credit (only if there is one; the row lock makes two taps safe) and start the play.
 -- Returns the play id, null when there's no credit, or -1 when another play of this player isn't finished yet.
-create function public.spend_credit(p_profile uuid, p_kind text) returns bigint
+create function public.spend_credit(p_profile uuid, p_kind text, p_version int default 0) returns bigint
 language plpgsql security definer set search_path = '' as $$
-declare next_no bigint; play_id bigint;
+declare next_no bigint; play_id bigint; b numeric;
 begin
   -- One play at a time per player (anti-flood): a per-player lock, then refuse while another play is unfinished.
   perform pg_advisory_xact_lock(hashtext(p_profile::text));
   if exists (select 1 from public.plays where profile_id = p_profile and state in ('spent', 'open')) then return -1; end if;
-  update public.credits set left_n = left_n - 1, used = used + 1 where profile_id = p_profile and kind = p_kind and left_n > 0;
-  if not found then return null; end if;
+  -- the oldest-priced credits first; the play remembers that price and the settings version it runs on
+  update public.credits set left_n = left_n - 1, used = used + 1
+    where (profile_id, kind, bet) = (select profile_id, kind, bet from public.credits where profile_id = p_profile and kind = p_kind and left_n > 0 order by bet limit 1)
+    returning bet into b;
+  if b is null then return null; end if;
   select coalesce(max(play_no), 0) + 1 into next_no from public.plays where profile_id = p_profile;
-  insert into public.plays (profile_id, kind, play_no) values (p_profile, p_kind, next_no) returning id into play_id;
+  insert into public.plays (profile_id, kind, play_no, bet, settings_version) values (p_profile, p_kind, next_no, b, p_version) returning id into play_id;
   return play_id;
 end $$;
 
@@ -187,7 +204,7 @@ declare pl public.plays;
 begin
   update public.plays set state = 'refunded' where id = p_play and state in ('spent', 'open') returning * into pl;
   if pl.id is null then raise exception 'play % cannot be refunded', p_play; end if;
-  update public.credits set left_n = left_n + 1, used = used - 1 where profile_id = pl.profile_id and kind = pl.kind;
+  update public.credits set left_n = left_n + 1, used = used - 1 where profile_id = pl.profile_id and kind = pl.kind and bet = pl.bet;
 end $$;
 
 revoke execute on function public.buy_credits, public.spend_credit, public.lock_play, public.settle_play, public.refund_play from public, anon, authenticated;

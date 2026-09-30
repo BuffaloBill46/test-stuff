@@ -34,7 +34,7 @@ const logs = async () => (await db.query('select count(*)::int as n from public.
 // Emergency stop: the game server refuses plays (credits untouched), then resumes.
 const me = (await db.query('insert into auth.users default values returning id'))[0].id;
 await db.query(`insert into public.profiles (id, wallet, name, avatar) values ($1, 'PLAYERwa11et111111111111111111111111111111', 'P', '{}')`, [me]);
-await db.query(`insert into public.credits (profile_id, kind, left_n, bought) values ($1, 'big', 1, 1)`, [me]);
+await db.query(`insert into public.credits (profile_id, kind, bet, left_n, bought) values ($1, 'big', 1, 1, 1)`, [me]);
 const server = createGameServer({ db, chain: {}, livePrice: async () => ({ usd: 0.00085 }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: {} });
 const pause = await signed(cody, { action: 'pause', game: 'slots' });
 assert.deepEqual(await admin.run(pause), { ok: true, game: 'slots', rules: { paused: true } });

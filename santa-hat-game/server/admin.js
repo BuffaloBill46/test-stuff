@@ -7,8 +7,9 @@
 // NOT here (needs the pool key; FOR_MAIN_CLAUDE.md): the emergency withdrawal transfer itself.
 import { POOL_RULES } from '../mockups/slots.js';
 import { SPIN_RULES } from '../mockups/spin.js';
+import { check as checkSettings } from '../mockups/settings.js';
 
-export const ACTIONS = ['pause', 'resume', 'set-rules'];
+export const ACTIONS = ['pause', 'resume', 'set-rules', 'set-settings']; // set-settings: prices, odds, prizes, store (game 'all')
 export const FRESH_SECONDS = 300;
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 export function b58decode(s) {
@@ -59,9 +60,10 @@ export function createAdmin({ db, adminWallets, now = () => Date.now() }) {
     if (!adminWallets.includes(wallet)) return { error: 'not an admin wallet' };
     if (!(await signatureOk(wallet, message, signature || ''))) return { error: 'signature doesn\'t match the wallet' };
     if (!(Math.abs(now() - Date.parse(m.at)) <= FRESH_SECONDS * 1000)) return { error: 'message too old (sign a fresh one)' };
-    if (!ACTIONS.includes(m.action) || !['spin', 'slots'].includes(m.game)) return { error: 'unknown action or game' };
+    if (!ACTIONS.includes(m.action) || !(m.action === 'set-settings' ? m.game === 'all' : ['spin', 'slots'].includes(m.game))) return { error: 'unknown action or game' };
     if (!/^[0-9a-f]{16,64}$/.test(m.nonce)) return { error: 'bad one-time number' };
     if (m.action === 'set-rules') { const bad = checkRules(m.game, m.settings); if (bad.length) return { error: bad.join('; ') }; }
+    if (m.action === 'set-settings') return saveSettings(m, wallet, message, signature);
     return db.tx(async (t) => {
       if ((await t.query('select 1 from public.pool_log where nonce = $1', [m.nonce])).length) return { error: 'this signed message was already used' };
       const [p] = await t.query('select * from public.pools where game = $1 for update', [m.game]); // waits for any play being settled
@@ -75,6 +77,22 @@ export function createAdmin({ db, adminWallets, now = () => Date.now() }) {
       } catch (e) { if (/duplicate|unique/.test(e.message)) return { error: 'this signed message was already used' }; throw e; }
       await t.query('update public.pools set rules = $2, updated_at = now() where game = $1', [m.game, JSON.stringify(rules)]);
       return { ok: true, game: m.game, rules };
+    });
+  }
+  // A new game-settings version: checked by the guard rails against each pool's current rules, then stored (new plays use it;
+  // plays already started keep theirs). Returns what the change does (payback, real-win rate, top prize) for the screen.
+  async function saveSettings(m, wallet, message, signature) {
+    const pools = Object.fromEntries((await db.query('select game, rules from public.pools')).map((p) => [p.game, p.rules || {}]));
+    const s = { ...m.settings, version: undefined };
+    const c = checkSettings(s, { spin: { ...SPIN_RULES, ...(pools.spin || {}) }, slots: { ...POOL_RULES, ...(pools.slots || {}) } });
+    if (!c.ok) return { error: c.problems.join('; ') };
+    return db.tx(async (t) => {
+      if ((await t.query('select 1 from public.pool_log where nonce = $1 union all select 1 from public.game_settings where nonce = $1', [m.nonce])).length) return { error: 'this signed message was already used' };
+      const version = +(await t.query('select coalesce(max(version), 0) + 1 as v from public.game_settings'))[0]?.v || 1;
+      delete s.version;
+      await t.query('insert into public.game_settings (version, settings, by_wallet, nonce, message, signature) values ($1, $2, $3, $4, $5, $6)', [version, JSON.stringify(s), wallet, m.nonce, message, signature]);
+      await t.query(`insert into public.pool_log (game, what, by_wallet, nonce, details) values ('all', $1, $2, $3, $4)`, [`settings v${version}`, wallet, m.nonce, JSON.stringify({ after: c.report })]);
+      return { ok: true, version, report: c.report };
     });
   }
   return { run };

@@ -91,7 +91,7 @@ for (let i = 0; i < 9; i++) { const o = await server.open(me, 'big'); moved += (
 const others = [];
 // fake wallet addresses must be valid base58: no 0, O, I or l
 for (let i = 0; i < 10; i++) { const w = 'PLAYR' + 'abcdefghjk'[i].repeat(3) + 'wa11et'.padEnd(34, '1'); const id = await mk(w);
-  await db.query(`insert into public.credits (profile_id, kind, left_n, bought) values ($1, 'big', 1, 1)`, [id]); others.push(id); }
+  await db.query(`insert into public.credits (profile_id, kind, bet, left_n, bought) values ($1, 'big', 1, 1, 1)`, [id]); others.push(id); }
 const opened = await Promise.all(others.map((id) => server.open(id, 'big')));
 assert.equal(opened.filter((o) => o.ticket).length, 10);
 const settled = await Promise.all(opened.map((o, i) => server.settle(others[i], o.ticket, newSeed(16))));

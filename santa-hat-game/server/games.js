@@ -4,7 +4,8 @@
 //   buy    → check the finalized payment, add credits     settle → player's number in, draw, pay, reveal the secret
 // `db` = { query(sql, params) → rows, tx(fn) } on a direct Postgres connection (a transaction holds the pool row lock).
 // `chain.getTransaction(sig)` = Solana getTransaction (jsonParsed, finalized). Keys and secrets never leave the server.
-import { KINDS, costOf } from '../mockups/credits.js';
+import { KINDS } from '../mockups/credits.js';
+import { DEFAULT_SETTINGS, build } from '../mockups/settings.js';
 import { spin, canSpin } from '../mockups/spin.js';
 import { pull, canPull, FEE } from '../mockups/slots.js';
 import * as fair from '../mockups/fair.js';
@@ -23,6 +24,20 @@ const DEC = 1e6;
 // mint: which token is SANTA here (defaults to real SANTA; set to the test token on devnet, e.g. the SANTA_MINT secret).
 export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f = fair, mint = MINT }) {
   const row = async (q, p) => (await db.query(q, p))[0];
+  // Game settings (Cody's admin screen): the newest version for new plays; each play settles on the version it started with.
+  const built = new Map(); let latest = { at: 0, version: 0 };
+  async function settingsVersion() {
+    if (Date.now() - latest.at > 15_000) latest = { at: Date.now(), version: +((await row('select coalesce(max(version), 0) as v from public.game_settings')).v) };
+    return latest.version;
+  }
+  async function cfgFor(version) {
+    if (!built.has(version)) {
+      const s = version === 0 ? DEFAULT_SETTINGS : (await row('select settings from public.game_settings where version = $1', [version]))?.settings;
+      if (!s) throw new Error('unknown settings version ' + version);
+      built.set(version, { settings: s, ...build(s) });
+    }
+    return built.get(version);
+  }
   const walletOf = async (profile) => (await row('select wallet from public.profiles where id = $1', [profile]))?.wallet;
   // Pools hold SANTA (Cody): the game rules work in dollars, so a pool is valued at the live price for each decision.
   const poolState = (r, price) => ({ pool: (+r.santa_raw / DEC) * price, treasury: 0, rules: r.rules, prepaid: true });
@@ -32,7 +47,8 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     if (!isKind(kind) || !Number.isInteger(n) || n < 1 || n > 10) return { error: 'buy 1 to 10' };
     const recent = (await row(`select count(*)::int as n from public.quotes where profile_id = $1 and created_at > now() - interval '1 hour'`, [profile])).n;
     if (recent >= QUOTES_PER_HOUR) return { error: 'too many price quotes; try again in a little while' };
-    const price = await livePrice(), usd = costOf(kind, n), santaRaw = Math.round((usd / price.usd) * DEC);
+    const cfg = await cfgFor(await settingsVersion());
+    const price = await livePrice(), usd = Math.round(cfg.prices[kind] * n * 100) / 100, santaRaw = Math.round((usd / price.usd) * DEC);
     const q = await row(`insert into public.quotes (profile_id, kind, n, usd, santa_raw, price_usd) values ($1, $2, $3, $4, $5, $6) returning id, created_at`,
       [profile, kind, n, usd, santaRaw, price.usd]);
     // where to pay: the page builds the one transaction from this (mockups/pay.js); the live tax so its fee matches the token
@@ -80,9 +96,10 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     await tidy(profile);
     const p = await row('select * from public.pools where game = $1', [K.game]);
     let price; try { price = (await livePrice()).usd; } catch (e) { return { failed: true, why: 'no live SANTA price right now' }; }
-    const can = K.game === 'spin' ? canSpin(poolState(p, price), K.bet) : canPull(poolState(p, price), kind);
+    const version = await settingsVersion(), cfg = await cfgFor(version), bet = cfg.prices[kind];
+    const can = K.game === 'spin' ? canSpin(poolState(p, price), bet, cfg.wheel) : canPull(poolState(p, price), { ...cfg.machine, bet });
     if (!can.ok) return { refused: true, stopped: !!can.stopped };                       // 1. pool check: credit untouched
-    const playId = (await row('select public.spend_credit($1, $2) as id', [profile, kind])).id; // 2. spend one credit
+    const playId = (await row('select public.spend_credit($1, $2, $3) as id', [profile, kind, version])).id; // 2. spend one credit
     if (!playId) return { noCredit: true };
     if (+playId === -1) return { busy: true }; // one play at a time per player
     try {                                                                                 // 3. only now: the secret
@@ -108,7 +125,8 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
         if (!price) throw new Error('no live SANTA price right now');
         state = poolState(p, price);
         const rand = fair.randFrom(await f.numbers(pl.secret, playerSeed, +pl.play_no, NUMS));  // 4. the player's number goes in
-        r = K.game === 'spin' ? spin(state, K.bet, rand) : pull(state, pl.kind, rand);
+        const cfg = await cfgFor(+pl.settings_version), bet = +pl.bet;                         // the play's own settings and price
+        r = K.game === 'spin' ? spin(state, bet, rand, undefined, cfg.wheel) : pull(state, { ...cfg.machine, bet }, rand);
       } catch (e) { await t.query('select public.refund_play($1)', [pl.id]); return { failed: true, why: e.message }; }
       if (r.paused) { await t.query('select public.refund_play($1)', [pl.id]); return { refused: true, stopped: !!r.stopped }; }
       const cap = r.jackpot ? r.pay : PAYOUT_CAP; // jackpots are expected to be big; still logged and paid through the queue
@@ -119,26 +137,26 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
       const result = K.game === 'spin' ? { slice: r.slice, mult: r.mult } : { stops: r.stops, jackpot: r.jackpot, wins: r.wins.length, hats: r.hats };
       await t.query('select public.settle_play($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',  // skims/top-offs queued as real transfers
         [pl.id, playerSeed, JSON.stringify(result), Math.round(r.pay * 100) / 100, payRaw, price, poolDelta, treasuryDelta, wallet, cap, skimRaw, topRaw]);
-      return { r, payRaw, poolDelta, price, poolUsd: state.pool, proof: { kind: pl.kind, commit: pl.commit, secret: pl.secret, playerSeed, playNo: +pl.play_no } };  // 5. revealed
+      return { r, payRaw, poolDelta, price, poolUsd: state.pool, proof: { kind: pl.kind, commit: pl.commit, secret: pl.secret, playerSeed, playNo: +pl.play_no, settingsVersion: +pl.settings_version } };  // 5. revealed
     });
   }
   // Recent winners for everyone: settled plays that paid more than they cost (display names only, never wallets).
   let winnersCache = { at: 0, list: null };
   async function winners(limit = 30) {
     if (winnersCache.list && Date.now() - winnersCache.at < 10_000) return winnersCache.list; // public: cached 10 s
-    const rows = await db.query(`select pr.name, pl.kind, pl.pay, pl.settled_at, pl.result from public.plays pl join public.profiles pr on pr.id = pl.profile_id
-      where pl.state = 'settled' and pl.pay > case pl.kind when 'spin10' then 0.10 else 1 end order by pl.settled_at desc, pl.id desc limit $1`, [limit]);
-    const list = rows.map((w) => { const bet = KINDS[w.kind].bet, pay = +w.pay;
+    const rows = await db.query(`select pr.name, pl.kind, pl.pay, pl.bet, pl.settled_at, pl.result from public.plays pl join public.profiles pr on pr.id = pl.profile_id
+      where pl.state = 'settled' and pl.pay > pl.bet order by pl.settled_at desc, pl.id desc limit $1`, [limit]);
+    const list = rows.map((w) => { const bet = +w.bet || KINDS[w.kind].bet, pay = +w.pay;
       return { game: w.kind === 'big' ? 'slots' : w.kind, name: w.name, amount: pay, gainPct: ((pay - bet) / bet) * 100, at: new Date(w.settled_at).getTime(),
         note: w.result?.jackpot ? 'pool jackpot' : w.result?.mult ? `${w.result.mult}×` : '', big: pay >= 10 * bet }; });
     winnersCache = { at: Date.now(), list }; return list;
   }
   // The player's own recent plays, each with everything needed to re-check it (secrets only for settled plays).
   async function history(profile, limit = 20) {
-    const rows = await db.query(`select id, kind, play_no, commit, secret, player_seed, result, pay, settled_at from public.plays
+    const rows = await db.query(`select id, kind, play_no, commit, secret, player_seed, result, pay, settled_at, settings_version from public.plays
       where profile_id = $1 and state = 'settled' order by id desc limit $2`, [profile, limit]);
     return rows.map((r) => ({ ticket: String(r.id), kind: r.kind, pay: +r.pay, at: new Date(r.settled_at).getTime(), result: r.result,
-      proof: { kind: r.kind, commit: r.commit, secret: r.secret, playerSeed: r.player_seed, playNo: +r.play_no } }));
+      proof: { kind: r.kind, commit: r.commit, secret: r.secret, playerSeed: r.player_seed, playNo: +r.play_no, settingsVersion: +r.settings_version } }));
   }
   // Public pool status (for the admin screen, and for anyone who wants to check): balances, settings, pending transfers, log.
   async function pools() {
@@ -148,5 +166,10 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     return { pools: ps.map((p) => ({ game: p.game, santaRaw: +p.santa_raw, rules: p.rules || {}, updatedAt: p.updated_at })),
       pending, log: log.map((l) => ({ game: l.game, what: l.what, by: l.by_wallet, at: l.at, after: l.details?.after })) };
   }
-  return { quote, buy, open, settle, tidy, winners, history, pools };
+  // Public: the settings new plays use (and any older version, so a play can be re-checked on the odds it ran on).
+  async function settings(version) {
+    const v = Number.isInteger(version) && version >= 0 ? version : await settingsVersion(), c = await cfgFor(v);
+    return { version: v, settings: c.settings };
+  }
+  return { quote, buy, open, settle, tidy, winners, history, pools, settings };
 }
