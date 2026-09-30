@@ -6,8 +6,8 @@ assert.deepEqual(WAYS, [1, 8, 28, 56, 70, 56, 28, 8, 1]);
 assert.equal(WAYS.reduce((a, b) => a + b, 0), TOTAL, 'every path lands in exactly one bin');
 assert.equal(PAYS.length, BINS);
 assert.deepEqual(PAYS, [...PAYS].reverse(), 'prizes are mirror-image');
-assert.equal(payback(), 193.2 / 256, 'pays back 75.47%');
-assert.ok(payback() > 0.745 && payback() < 0.755, 'inside the 74.5–75.5% band Spin uses');
+assert.ok(Math.abs(payback() - 204.4 / 256) < 1e-12, 'pays back 79.84%');
+assert.ok(payback() > 0.79 && payback() < 0.81, 'around 80%, like Spin and Big Hat (Cody)');
 assert.equal(realWin(), 74 / 256, 'more back than it cost: 1.2×, 2× and 5× bins');
 assert.equal(odds(0) + odds(8), 2 / 256, '5× either edge: 1 in 128');
 

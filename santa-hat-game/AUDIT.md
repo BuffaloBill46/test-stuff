@@ -39,7 +39,7 @@ errors. The page downloads about 2.5 MB (mostly the 3D engine and fonts).
 
 ## Money math and docs
 
-- `PAYTABLE.md` regenerated from the code: unchanged, so the published odds match the game (Big Hat 75.5%, Spin 74.5%). Spin later became two wheels at 75.0% (2026-09-30, Cody's option A).
+- `PAYTABLE.md` regenerated from the code: unchanged, so the published odds match the game (Big Hat 75.5%, Spin 74.5%). Spin later became two wheels, and every game was set to about 80% (both 2026-09-30, Cody).
 - All 20+ test suites pass (the list is in HANDOFF).
 
 ## Not checked here (can't be, from this workspace)

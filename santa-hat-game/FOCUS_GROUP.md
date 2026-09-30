@@ -61,12 +61,13 @@ floors 85–92%. That's Cody's economy call; it's here so it's made knowingly (s
 
 ## Decisions for Cody (not changed; they're economy and tone calls)
 
-1. **Payback level.** 74.5–75.5% is low next to real slots (85–97%). Options: (a) keep it (the pools grow faster, more is burned);
+1. **Payback level. Decided (Cody, 2026-09-30): about 80% on every game** (Spin 80.0%, Big Hat ≈ 79.5% with the jackpot).
+   The original note: 74.5–75.5% is low next to real slots (85–97%). Options: (a) keep it (the pools grow faster, more is burned);
    (b) raise it toward 85–90% (players last longer and win more often; pools grow slower); (c) keep the rate but add more small
    real wins. Claude's view: (b) or (c) will feel much better to players; the pool math would need re-running either way.
-2. **Spin's dry runs.** 50.5% of spins pay nothing and 33% pay back exactly the stake; a real win is 1 in 6. Moving a few
+2. **Spin's dry runs** (eased: the 80% wheel has 20 no-win segments of 40 and a real win 1 spin in 5). 50.5% of spins pay nothing and 33% pay back exactly the stake; a real win is 1 in 6. Moving a few
    "no win" slices to 2× would shorten dry runs noticeably (and raise payback).
-3. **A "What's SANTA?" line** for newcomers: the wording and where to send them to buy.
+3. **A "What's SANTA?" line** for newcomers: drafted in `WHATS_SANTA.md`, waiting on Cody's wording.
 4. **Free daily spin** (still open): the numbers say it would help the newcomer and daily types most.
 
 ## Re-running it

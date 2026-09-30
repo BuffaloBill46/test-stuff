@@ -10,18 +10,18 @@ const count = (list, m) => list.filter((x) => x === m).length;
 
 // The decided wheels, exactly: every segment the same size, so the counts ARE the odds.
 if (MAIN.length !== MAIN_SLICES || BONUS.length !== BONUS_SLICES) fail('wheel sizes');
-for (const [m, n] of [[0, 21], [1, 12], [2, 4], [STAR, 3]]) if (count(MAIN, m) !== n) fail(`main wheel: ${m} should have ${n} segments`);
+for (const [m, n] of [[0, 20], [1, 12], [2, 5], [STAR, 3]]) if (count(MAIN, m) !== n) fail(`main wheel: ${m} should have ${n} segments`);
 for (const [m, n] of [[3, 9], [4, 2], [5, 1]]) if (count(BONUS, m) !== n) fail(`bonus wheel: ${m}× should have ${n} segments`);
 // exact chances (in 480ths: 40 main segments × 12 bonus segments)
-const want = { 0: 252, 1: 144, 2: 48, 3: 27, 4: 6, 5: 3 }, o = odds();
+const want = { 0: 240, 1: 144, 2: 60, 3: 27, 4: 6, 5: 3 }, o = odds();
 for (const [m, n] of Object.entries(want)) if (Math.abs(o[m] * 480 - n) > 1e-9) fail(`${m}×: ${o[m] * 480}/480, should be ${n}/480`);
-if (Math.abs(payback() - 0.75) > 1e-12) fail(`payback ${payback()} should be 75.0%`);
+if (Math.abs(payback() - 0.80) > 1e-12) fail(`payback ${payback()} should be 80.0% (Cody: around 80%)`);
 if (MAX_MULT !== 5) fail('top prize 5×');
 // stars spread out (never side by side, and not bunched)
 const starAt = MAIN.map((m, i) => (m === STAR ? i : -1)).filter((i) => i >= 0);
 starAt.forEach((a, k) => { const gap = (starAt[(k + 1) % starAt.length] - a + MAIN_SLICES) % MAIN_SLICES; if (gap < 10) fail(`stars bunched: ${starAt}`); });
 // the layout ignores the order the counts are listed in (a database may reorder keys)
-if (layout({ 0: 21, 1: 12, 2: 4, star: 3 }, 40).join() !== layout({ star: 3, 2: 4, 1: 12, 0: 21 }, 40).join()) fail('layout depends on key order');
+if (layout({ 0: 20, 1: 12, 2: 5, star: 3 }, 40).join() !== layout({ star: 3, 2: 5, 1: 12, 0: 20 }, 40).join()) fail('layout depends on key order');
 
 // Every path, fed in: main segment i (and bonus segment j on a star) gives exactly the segment's result.
 {
@@ -38,7 +38,7 @@ if (layout({ 0: 21, 1: 12, 2: 4, star: 3 }, 40).join() !== layout({ star: 3, 2: 
   const st = { pool: 1e12, rules: { skimAt: Infinity } }, seen = {}, N = 2_000_000; let back = 0;
   for (let i = 0; i < N; i++) { const r = spin(st, 1, rand); seen[r.mult] = (seen[r.mult] || 0) + 1; back += r.pay; }
   for (const [m, n] of Object.entries(want)) { const got = (seen[m] || 0) / N, exp = n / 480; if (Math.abs(got - exp) > 4 * Math.sqrt(exp * (1 - exp) / N) + 1e-4) fail(`${m}×: ${got} vs ${exp}`); }
-  console.log(`2,000,000 spins: payback ${(back / N * 100).toFixed(2)}% (exact 75.00%); ` + Object.keys(want).map((m) => `${m}× ${((seen[m] || 0) / N * 100).toFixed(2)}%`).join(', '));
+  console.log(`2,000,000 spins: payback ${(back / N * 100).toFixed(2)}% (exact 80.00%); ` + Object.keys(want).map((m) => `${m}× ${((seen[m] || 0) / N * 100).toFixed(2)}%`).join(', '));
 }
 
 // Pool over time (mixed 10¢ / $1 spins): never negative, skims $25 at $175, never locks, never pays past the pool.

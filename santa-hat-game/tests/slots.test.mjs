@@ -41,7 +41,7 @@ for (const m of Object.values(MACHINES)) {
   if (!(m.hatBonus > 0)) fail(`${m.id}: hat bonus is missing or zero`);
   if (!(m.poolJackpotOdds > 0) || !(m.jackpotPct > 0)) fail(`${m.id}: pool jackpot settings missing`);
   const s = stats(m); if (!(s.hatPayback > 0)) fail(`${m.id}: hat bonus contributes nothing`);
-  if (s.payback < 0.70 || s.payback > 0.80) fail(`${m.id}: payback ${(s.payback * 100).toFixed(1)}% is outside 70–80%`);
+  if (s.payback < 0.76 || s.payback > 0.83) fail(`${m.id}: payback ${(s.payback * 100).toFixed(1)}% is outside 76–83% (Cody, 2026-09-30: around 80%)`);
 }
 // No reel strip has two Santa Hats next to each other, so the reels alone can never show a full grid of hats.
 for (const m of Object.values(MACHINES)) m.strips.forEach((st, r) => st.forEach((x, i) => { if (x === SYM.hat && st[(i + 1) % st.length] === SYM.hat) fail(`${m.id} reel ${r}: two hats in a row at ${i}`); }));
@@ -52,7 +52,7 @@ for (const m of Object.values(MACHINES)) {
   for (let i = 0; i < N; i++) {
     const r = pull(st, m.id, rand); if (r.jackpot) { jp++; if (!r.grid.flat().every((x) => x === SYM.hat)) fail('pool jackpot must show a full grid of hats'); continue; }
     const pay = r.pay; fixed += pay; if (r.wins.some((w) => w.top)) top++;
-    if (Math.abs(r.hatPay - r.hats * m.hatBonus * m.bet) > 1e-12) fail('hat bonus should be 5¢ per Santa Hat on the grid');
+    if (Math.abs(r.hatPay - r.hats * m.hatBonus * m.bet) > 1e-12) fail('hat bonus should be hatBonus × the price per Santa Hat on the grid');
     if (pay > 0) hit++; if (pay > m.bet + 1e-9) ahead++; else if (pay > 0) micro++;
   }
   const sim = fixed / (N - jp) / m.bet;

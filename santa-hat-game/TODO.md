@@ -16,7 +16,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
   - Only Cody can do these, confirmed with his wallet signature (not just a password). Every change and withdrawal is logged (what, when, amount, transaction) so players can trust the pools.
   - Prize and odds changes should be announced, and never happen mid-pull.
 - [x] **Slots pool top-off** (Cody liked it): below $150 the treasury tops the pool up to $500, checked before and after every pull, so the game can't lock. Built and tested in the game logic; the real treasury transfer needs the server.
-- [x] **Slots payouts decided** (Big Hat, 11 straight/diagonal lines, 100× top line, 5¢ hat bonus, 75.5% payback). The live numbers are always in `PAYTABLE.md`; regenerate it with `node tests/paytable.mjs` after any change.
+- [x] **Slots payouts decided** (Big Hat, 11 straight/diagonal lines, 100× top line, 6¢ hat bonus, 78.1% payback + the pool jackpot ≈ 80%: Cody's target, 2026-09-30). The live numbers are always in `PAYTABLE.md`; regenerate it with `node tests/paytable.mjs` after any change.
 
 ## Next to build
 - [ ] **Turn on ranked Auto match:** the FFA RANKED lobby is built, but its Auto match button stays off ("opening soon") until tickets and the server below exist.
@@ -44,7 +44,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 
 ## Santa Hat Games tab
 - [ ] **Spin pool skim:** when the Spin pool reaches $175, the server sends $25 to the treasury (decided).
-- [x] **Santa Hat Spin (demo built, 2026-09-30):** 3D prize wheel (pine-wreath rim, gold pegs, candy-cane flapper, Santa hat hub), 10¢/$1 chips, **two wheels since 2026-09-30 (Cody's option A): main 40 equal segments with 3 gold stars → bonus wheel of 12 (3×/4×/5×), pays back 75.0%**, own $50 pool with $25 skim at $175 and a top-off below $10, tap-to-land, 1× shown as "money back", celebrations for 2×+, odds legend, last-spins strip, full screen, wins feed the shared Recent winners list. Tests: `tests/spin.test.mjs`, `tests/browser/spin-test.mjs`. Real SANTA needs the server.
+- [x] **Santa Hat Spin (demo built, 2026-09-30):** 3D prize wheel (pine-wreath rim, gold pegs, candy-cane flapper, Santa hat hub), 10¢/$1 chips, **two wheels since 2026-09-30 (Cody's option A): main 40 equal segments with 3 gold stars → bonus wheel of 12 (3×/4×/5×), pays back 80.0%** (Cody's ~80% target), own $50 pool with $25 skim at $175 and a top-off below $10, tap-to-land, 1× shown as "money back", celebrations for 2×+, odds legend, last-spins strip, full screen, wins feed the shared Recent winners list. Tests: `tests/spin.test.mjs`, `tests/browser/spin-test.mjs`. Real SANTA needs the server.
 - [ ] **Slots with real SANTA:** server-picked reel stops (provably fair), payments and payouts. The game rules already take the random numbers from outside (`pull(state, 'big', rand)`), so server seeds plug straight in.
 - [ ] **Slots pool jackpot %:** 25% (Cody) gives about $360–430 on a full pool; about 14% would give about $250. Cody to confirm.
 - [x] **Provably fair results, in Cody's order (built, 2026-09-30):** `fair.js` + `house.js` (demo) and `server/games.js` (server). "Check this result" on the page. The pool safety rule (a play only starts if the pool covers that game's biggest fixed win: Spin 5× the bet, Slots its top fixed prize).

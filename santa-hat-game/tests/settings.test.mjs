@@ -10,7 +10,7 @@ const b0 = build(S());
 assert.deepEqual(b0.machine.strips, MACHINES.big.strips, 'identical reel strips');
 assert.deepEqual(b0.wheel, { main: MAIN, bonus: BONUS }, 'identical wheels');
 const c0 = check(S()); assert.ok(c0.ok, c0.problems.join('; '));
-assert.ok(Math.abs(c0.report.big.payback - stats(MACHINES.big).payback) < 1e-12 && Math.abs(c0.report.spin.payback - 0.75) < 1e-9);
+assert.ok(Math.abs(c0.report.big.payback - stats(MACHINES.big).payback) < 1e-12 && Math.abs(c0.report.spin.payback - 0.80) < 1e-9);
 console.log(`today: Big Hat pays back ${(c0.report.big.payback * 100).toFixed(1)}% (real win ${(c0.report.big.realWin * 100).toFixed(0)}% of pulls); Spin ${(c0.report.spin.payback * 100).toFixed(1)}% (real win ${(c0.report.spin.realWin * 100).toFixed(1)}%)`);
 
 // Refused: anything that drains a pool, locks a game, or is nonsense.

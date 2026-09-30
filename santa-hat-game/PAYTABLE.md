@@ -10,8 +10,8 @@
 | Grid | **5 reels × 5 rows** (25 squares) |
 | Paylines | **11**, straight or diagonal, always starting on the first reel (listed at the bottom; short diagonals are 3 or 4 squares). Only the longest run on a line pays; all winning lines add up. |
 | Top line prize | **5 Santa Hats in a row = 100× = $100.00**, about 1 in 11,054 pulls |
-| Pays back | **75.5%** of what's played: line prizes 62.3% + hat bonus 13.2% (exact, from the reel math) |
-| Hat bonus | **Every Santa Hat anywhere on the grid pays $0.05**, on top of line prizes (about 2.6 hats a pull on average) |
+| Pays back | **78.1%** of what's played: line prizes 62.3% + hat bonus 15.8% (exact, from the reel math) |
+| Hat bonus | **Every Santa Hat anywhere on the grid pays $0.06**, on top of line prizes (about 2.6 hats a pull on average) |
 | Pays something | **95.9%** of pulls: 62.1% are micro wins (less than the $1 pull back), 33.8% come out ahead |
 | Pool jackpot | Its own draw: **1 in 25,000 pulls**. Pays **25% of the Slots pool**; all 25 squares show Santa Hats |
 | Winners receive | The prize minus SANTA's **3% token tax** (a $100 prize arrives as $97.00) |
@@ -19,7 +19,7 @@
 ## Payout table
 
 Chance "per pull" counts all 11 lines (5 in a row can only happen on the 7 full-length lines).
-"Share of payback" is how much of the 75.5% each prize accounts for. Wild help is included.
+"Share of payback" is how much of the 78.1% each prize accounts for. Wild help is included.
 The hat bonus is listed at the bottom.
 
 | Symbol | Needs | Pays | $ on a $1 pull | Chance per pull | Share of payback |
@@ -51,14 +51,14 @@ The hat bonus is listed at the bottom.
 | Snowball | 5 in a row | **25×** | $25.00 | 1 in 357 | 7.01% |
 | Snowball | 4 in a row | **1.2×** | $1.20 | 1 in 77 | 1.55% |
 | Snowball | 3 in a row | **1.05×** | $1.05 | 1 in 13 | 7.81% |
-| Santa Hat bonus | each hat, anywhere | **0.05×** | $0.05 per hat | about 2.6 hats a pull (10.5% of squares) | 13.16% |
-| **Total** | | | | | **75.47%** |
+| Santa Hat bonus | each hat, anywhere | **0.06×** | $0.06 per hat | about 2.6 hats a pull (10.5% of squares) | 15.79% |
+| **Total** | | | | | **78.11%** |
 
 Coal pays nothing (it's the dud). Pool jackpot not included above (it's paid from the pool and grows with it).
 
 ## What a normal pull pays (pool jackpot not included)
 
-Simulated 399,983 pulls. Biggest normal pull seen: **$102.85** (several lines at once can pass $100).
+Simulated 399,983 pulls. Biggest normal pull seen: **$102.93** (several lines at once can pass $100).
 
 | A pull pays | How often |
 |---|---|
@@ -66,8 +66,8 @@ Simulated 399,983 pulls. Biggest normal pull seen: **$102.85** (several lines at
 | 5¢ to 99¢ (hat nickels, less than the pull back) | 62.10% (1 in 2) |
 | $1 to $1.99 | 24.66% (1 in 4) |
 | $2 to $4.99 | 8.37% (1 in 12) |
-| $5 to $9.99 | 0.39% (1 in 260) |
-| $10 to $24.99 | 0.04% (1 in 2,367) |
+| $5 to $9.99 | 0.40% (1 in 253) |
+| $10 to $24.99 | 0.04% (1 in 2,353) |
 | $25 to $49.99 | 0.27% (1 in 364) |
 | $50 to $99.99 | 0.04% (1 in 2,703) |
 | $100 and up | 0.01% (1 in 11,111) |
@@ -118,16 +118,16 @@ Nothing is staged.
 | SANTA token tax | $0.03 |
 | Burned | $0.10 |
 | Into the Slots pool (after the tax on the transfer) | $0.88 |
-| Paid back to players (line prizes + hat bonus), on average | $0.75 |
-| Left in the pool for the pool jackpot and the treasury skim | $0.12 |
+| Paid back to players (line prizes + hat bonus), on average | $0.78 |
+| Left in the pool for the pool jackpot and the treasury skim | $0.09 |
 
 ## Pool rules (draft)
 
 - Starts at **$500.00** in the demo. A pull only starts if the pool can cover the biggest line prize ($100.00).
 - When the pool reaches **$1775.00**, **$25.00** goes to the treasury (arrives as $24.25).
-- Simulated 60 runs × 20,000 pulls from $500.00: the pool's lowest point in any run was **$404.36**;
-  **0 pulls were refused** (pool too low); pools settled around **$1750.15**; the pool jackpot's typical
-  size was **$389.76**; the treasury received about **$954.64 per 20,000 pulls**.
+- Simulated 60 runs × 20,000 pulls from $500.00: the pool's lowest point in any run was **$384.18**;
+  **0 pulls were refused** (pool too low); pools settled around **$1744.66**; the pool jackpot's typical
+  size was **$316.29**; the treasury received about **$474.49 per 20,000 pulls**.
 - **Top-off:** if the pool is ever below **$150.00** (before or after a pull), the treasury tops it back up
   to **$500.00**. That's above the $100.00 top prize, so the game can't lock.
 - **Emergency stop:** Cody can pause the pool: no pulls and no top-offs, so funds can be withdrawn safely.

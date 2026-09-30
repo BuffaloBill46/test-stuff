@@ -147,14 +147,21 @@ $50 start). **The slots paytable is a placeholder** (spin's 1×–4× fixed wins
   Spin pool reaches $175, $25 goes to the treasury** (arrives as $24.25 after the tax), which puts it back at $150.
   Simulated in `tests/tax-split.mjs`: 2,000 runs × 5,000 spins from $50, zero pauses, and the pool never went below zero.
 
+**Payback target (decided, Cody 2026-09-30): about 80% on every game.** "We need it set at around 80%, remember we lose 16%
+to fees" (10% burn + 3% tax in + 3% tax out). The pool receives about 87.6¢ of each $1, so at 80% it still gains about 7.6¢.
+Spin 80.0% (main wheel 0× 20 · 1× 12 · 2× 5 · star 3; a real win 1 in 5), Big Hat 78.1% + pool jackpot ≈ 79.5% (hat bonus
+6¢), Snowball Drop preview 79.8%. Pool simulations after the change: no refusals or pauses; the treasury's skim income falls
+(Spin about $1,017 → $573 per 20,000 spins; Big Hat about $949 → $483 per 20,000 pulls). Big Hat at 7¢ (82% with the
+jackpot) was tried and rejected: the treasury got only about $123 per 20,000 pulls.
+
 **Slots, current rules (decided by Cody, 2026-09-30; full numbers in `PAYTABLE.md`, always regenerate it after changes):**
 - **One machine: the Big Hat, $1.00 a pull, 5×5 grid, 11 paylines: straight or diagonal only, always starting on the first
   reel** (Cody, 2026-09-30; the bent V and zig-zag lines were removed). Short diagonals are 3 or 4 squares long. The Mini Hat is scrapped.
 - **Santa Hat is Wild** (stands in for any symbol except Coal). **5 Santa Hats in a row on a line = 100× ($100), about
   1 in 11,000 pulls** (Cody asked for about 1 in 10,000; only the 7 full-length lines can hold 5). **5 Stars = 50×, 5 Snowballs = 25×** (Cody).
-- **Hat bonus: every Santa Hat anywhere on the grid pays 5¢** (Cody). About 2.6 hats a pull, 13.2% of the payback.
+- **Hat bonus: every Santa Hat anywhere on the grid pays 6¢** (was 5¢; raised 2026-09-30 for the 80% target below). About 2.6 hats a pull, 15.8% of the payback.
 - **Every line prize is more than the $1 pull** (smallest: 3 Snowballs, Bells or Pine Trees = $1.05).
-- **Pays back 75.5%**: line prizes 62.3% + hat bonus 13.2%. **A win over $1 on about 34% of pulls (1 in 3)**; about 96% of pulls
+- **Pays back 78.1%, about 80% with the pool jackpot** (simulated 79.5%): line prizes 62.3% + hat bonus 15.8%. **A win over $1 on about 34% of pulls (1 in 3)**; about 96% of pulls
   pay something. Reels: 8 Santa Hats and 25 Coal each (strip of 76). Normal pulls range from $0 to about $205 (several lines at once).
 - **Pool jackpot is separate:** its own draw, **1 in 25,000 pulls** (harder than the 100× line), **pays 25% of the Slots pool**,
   and **all 25 squares show Santa Hats**. The reels alone can never make a full grid of hats. Typical size about $360–430.
@@ -235,9 +242,9 @@ jackpot amount**, plus its jackpot odds and biggest fixed win (worked out from t
 - ~~The wheel: 400 slices, 4x and 5x as thin slivers.~~ **Replaced (Cody, 2026-09-30: "you can't even see half the
   prizes on the wheel bc slivers are to small"; he picked option A):**
 - **The wheels (decided): a main wheel and a bonus wheel, every segment the same size, so the segments ARE the odds.**
-  Main, 40 segments: 0x 21, 1x 12, 2x 4, **gold star 3**. A star turns the wheel round to its bonus face, 12 segments:
-  3x 9, 4x 2, 5x 1. Final odds: 0x 52.5% · 1x 30% · 2x 10% · 3x 5.625% · 4x 1.25% · 5x 0.625%. **Pays back 75.0%**
-  (was 74.5%); a real win (2x+) 1 spin in 5.7 (was 6.1). One fair number picks the main segment, the next the bonus
+  Main, 40 segments: 0x **20**, 1x 12, 2x **5**, **gold star 3** (was 21 / 4 at 75%; changed for the 80% target). A star turns the wheel round to its bonus face, 12 segments:
+  3x 9, 4x 2, 5x 1. Final odds: 0x 50% · 1x 30% · 2x 12.5% · 3x 5.625% · 4x 1.25% · 5x 0.625%. **Pays back 80.0%**
+  (the old wheel 74.5%); a real win (2x+) 1 spin in 5 (was 6.1). One fair number picks the main segment, the next the bonus
   segment; "Check this result" replays both. Options weighed: bonus wheel (picked), Plinko (built as a separate preview,
   `plinko.html`), labels outside the rim, unequal segments that don't match the odds (rejected: misleading).
 

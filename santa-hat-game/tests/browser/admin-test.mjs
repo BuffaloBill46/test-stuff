@@ -51,7 +51,7 @@ check((await rules()).paused === false, 'Resume');
 check((await db.query('select count(*)::int as n from public.pool_log'))[0].n === 3, 'three signed changes in the public log');
 // Game settings editor: the preview updates; an unsafe change can't be published; a safe one is signed and saved; a new item.
 await p.waitForFunction(() => /pays back/.test(document.querySelector('#gsPreview').textContent), null, { timeout: 15000 });
-check(/Spin pays back 75\.0%/.test(await p.textContent('#gsPreview')) && /Big Hat pays back 75\.5%/.test(await p.textContent('#gsPreview')), 'preview shows today\'s payback: ' + (await p.textContent('#gsPreview')).slice(0, 120));
+check(/Spin pays back 80\.0%/.test(await p.textContent('#gsPreview')) && /Big Hat pays back 78\.1%/.test(await p.textContent('#gsPreview')), 'preview shows today\'s payback: ' + (await p.textContent('#gsPreview')).slice(0, 120));
 await p.fill('[data-gs="main.0"]', '30'); await p.waitForTimeout(700);
 check(await p.evaluate(() => document.querySelector('#gsSave').disabled) && /exactly 40 segments/.test(await p.textContent('#gsPreview')), 'a main wheel that isn\'t 40 segments can\'t be published');
 await p.fill('[data-gs="main.0"]', '18'); await p.fill('[data-gs="main.2"]', '6'); await p.fill('[data-gs="main.star"]', '4');
