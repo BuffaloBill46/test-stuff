@@ -269,6 +269,26 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
 .example h4 { margin: 8px 0 2px; font: 700 15px/1.3 var(--body); color: var(--text); text-transform: none; letter-spacing: 0; }
 .example p { margin: 0; font-size: 13px; color: var(--dim); }
 .example b.pay { font: 700 15px/1 var(--digits); color: var(--lamp); }
+.wheelcard .bets { display: flex; gap: 10px; margin-top: 12px; }
+.wheelcard .bets button { flex: 1; display: grid; gap: 3px; padding: 10px 12px; background: var(--ink); color: var(--text); border: 2px solid #3a4570; border-radius: 3px; cursor: pointer; text-align: left; }
+.wheelcard .bets button b { font: 700 24px/1 var(--digits); color: var(--brim); }
+.wheelcard .bets button small { font-size: 12px; color: var(--dim); }
+.wheelcard .bets button[aria-checked="true"] { border-color: var(--lamp); box-shadow: 0 0 0 2px rgba(255,190,92,.25), inset 0 -4px 0 var(--hat); }
+.wheelcard .bets button[aria-checked="true"] b { color: var(--lamp); }
+.oddslist { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.oddslist li { display: flex; gap: 8px; align-items: center; padding: 5px 8px; background: rgba(12,15,26,.35); border-radius: 3px; font-size: 13px; color: #d6ddf0; }
+.oddslist i { width: 16px; height: 16px; border: 2px solid var(--ink); border-radius: 2px; flex: none; }
+.oddslist b { font: 700 14px/1 var(--digits); color: var(--text); }
+.history ol { list-style: none; margin: 6px 0 0; padding: 0; display: flex; gap: 5px; flex-wrap: wrap; min-height: 30px; }
+.history li { min-width: 34px; padding: 5px 6px; text-align: center; font: 700 12px/1 var(--digits); border: 2px solid var(--ink); border-radius: 3px; }
+.history li.empty { border: 0; min-width: 0; font: 400 13px/1.4 var(--body); color: var(--dim); padding: 0; }
+.oddsbox h4, .history h4 { margin: 14px 0 0; }
+@media (min-width: 821px) {
+  .wheelcard { grid-template-rows: auto auto auto auto auto 1fr; }
+  .wheelcard .screen { grid-row: 1 / span 6; }
+  .wheelcard .bets { grid-column: 2; grid-row: 2; } .wheelcard .pullrow { grid-column: 2; grid-row: 3; align-self: start; margin: 14px 0 0; }
+  .wheelcard .oddsbox { grid-column: 2; grid-row: 4; } .wheelcard .history { grid-column: 2; grid-row: 5; }
+}
 .paytable { margin-top: 14px; }
 .paytable summary { cursor: pointer; font: 800 22px/1.2 var(--display); color: var(--brim); }
 .paytable ol { list-style: none; margin: 10px 0; padding: 0; display: grid; gap: 4px; }
@@ -503,7 +523,24 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
         <h4>The 11 paylines: straight or diagonal, from the first reel</h4><div id="payLines"></div>
         <p class="dim">Wins count from the leftmost reel. A Santa Hat is wild: it stands in for any symbol except Coal. Every Santa Hat anywhere also pays 5¢. All winning lines add up. Winnings arrive 3% lighter (SANTA's token tax).</p></details>
     </section>
-    <section class="block plaque lottery"><h2>Santa Hat Spin</h2><p>The prize wheel. $0.10 or $1.00 a spin.</p><span class="stamp">Coming soon</span></section>
+    <section class="block plaque slotsbox fur" id="spin">
+      <div class="slotshead">
+        <div><h2>Santa Hat Spin</h2><div class="pool"><i>Spin pool</i><b id="spinPool">$50.00</b></div></div>
+        <div class="demo"><span class="stamp">Demo</span><p>Same demo balance as Slots.<br>Its own prize pool (not the Slots pool).</p></div>
+      </div>
+      <article class="machine wheelcard">
+        <header><h3>Prize Wheel</h3><em>10¢ or $1 a spin · up to 5×</em>
+          <button class="sec fsbtn" id="spinFs" aria-pressed="false" title="Full screen"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M1 5V1h4M11 1h4v4M15 11v4h-4M5 15H1v-4" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Full screen</span></button></header>
+        <div class="bets" role="radiogroup" aria-label="Spin size">
+          <button class="chip10" role="radio" aria-checked="true" data-bet="0.1"><b>10¢</b><small>win up to 50¢</small></button>
+          <button class="chip100" role="radio" aria-checked="false" data-bet="1"><b>$1</b><small>win up to $5</small></button>
+        </div>
+        <div class="screen"><canvas aria-label="Santa Hat prize wheel"></canvas><div class="flash" aria-hidden="true"></div></div>
+        <div class="pullrow"><button class="go spinbtn">Spin</button><output class="res" aria-live="polite">Pick 10¢ or $1, then spin. Tap again to land it early.</output></div>
+        <div class="oddsbox"><h4>What's on the wheel</h4><ul class="oddslist" id="oddsList"></ul></div>
+        <div class="history"><h4>Your last spins</h4><ol id="spinHistory"></ol></div>
+      </article>
+    </section>
     <dialog id="howDlg" class="plaque howdlg" aria-labelledby="howTitle">
       <div class="howhead"><div><div class="eyebrow">Big Hat · $1.00 a pull</div><h2 id="howTitle">How to win</h2></div>
         <button class="sec" id="howClose" type="button">Close</button></div>
