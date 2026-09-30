@@ -7,6 +7,7 @@ import { initCredits, ready, play, short, refresh as refreshCredits, resetCredit
 import { livePrice, liveFee, santaFor, fmtSanta } from './market.js';
 import { FEE } from './slots.js';
 import { play as sfx } from './sfx.js';
+import { SERVER, call } from './gameserver.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -115,7 +116,14 @@ function renderWinners() {
   }).join('');
 }
 // Shared by every Santa Hat game: `game` is 'slots', 'spin10' or 'spin100'.
+// Server mode: the list is everyone's recent wins, from the server.
+async function loadWinners() {
+  if (!SERVER) return;
+  const r = await call('winners').catch(() => ({}));
+  if (Array.isArray(r.winners)) { state.winners = r.winners.slice(0, MAX_WINNERS); renderWinners(); }
+}
 export function addWinner(game, amount, bet, note) {
+  if (SERVER) { loadWinners(); return; } // the server already recorded it; refresh the shared list
   state.winners.unshift({ game, name: nameOf(), amount, gainPct: ((amount - bet) / bet) * 100, at: Date.now(), note, big: amount >= 10 * bet });
   state.winners.length = Math.min(state.winners.length, MAX_WINNERS);
   store.set(state); renderWinners();
@@ -194,6 +202,7 @@ export function initGames(opts = {}) {
   initCredits({ wallet, pools: { slots: state, spin: spinState() }, onChange: () => { shownPool = state.pool; store.set(state); render(); refreshSpin(); } });
   refreshCredits();
   showMarket();
+  loadWinners();
   window.__slots = { state, view, test, get shownPool() { return shownPool; }, get busy() { return busy; } };
 }
 
