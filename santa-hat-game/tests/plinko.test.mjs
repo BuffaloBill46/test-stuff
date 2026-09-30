@@ -6,10 +6,11 @@ assert.deepEqual(WAYS, [1, 8, 28, 56, 70, 56, 28, 8, 1]);
 assert.equal(WAYS.reduce((a, b) => a + b, 0), TOTAL, 'every path lands in exactly one bin');
 assert.equal(PAYS.length, BINS);
 assert.deepEqual(PAYS, [...PAYS].reverse(), 'prizes are mirror-image');
-assert.ok(Math.abs(payback() - 204.4 / 256) < 1e-12, 'pays back 79.84%');
-assert.ok(payback() > 0.79 && payback() < 0.81, 'around 80%, like Spin and Big Hat (Cody)');
-assert.equal(realWin(), 74 / 256, 'more back than it cost: 1.2×, 2× and 5× bins');
-assert.equal(odds(0) + odds(8), 2 / 256, '5× either edge: 1 in 128');
+assert.deepEqual(PAYS, [10, 5, 1, 0.5, 0, 0.5, 1, 5, 10], "Cody's prizes, edges to middle");
+assert.equal(payback(), 212 / 256, 'pays back 82.81%');
+assert.ok(payback() < 0.876 - 0.04, 'the pool keeps at least 4¢ of each $1 (it receives about 87.6¢)');
+assert.equal(realWin(), 18 / 256, 'more back than it cost: the 10× and 5× presents, 1 in 14.2');
+assert.equal(odds(0) + odds(8), 2 / 256, '10× either edge: 1 in 128');
 
 // Every one of the 256 paths, fed in as the random numbers: each lands in the bin its rights count says, exactly WAYS times.
 const seen = Array(BINS).fill(0);
@@ -25,4 +26,4 @@ assert.deepEqual(seen, WAYS, 'all 256 paths, counted by bin');
 let paid = 0; const N = 400_000; for (let i = 0; i < N; i++) paid += drop(1).pay;
 assert.ok(Math.abs(paid / N - payback()) < 0.01, `400k drops paid back ${(paid / N * 100).toFixed(2)}%`);
 assert.throws(() => drop(0.37), /unknown bet/);
-console.log(`OK: Snowball Drop: exact odds (all 256 paths), pays back ${(payback() * 100).toFixed(2)}%, real win 1 in ${(1 / realWin()).toFixed(2)}, 5× 1 in 128`);
+console.log(`OK: Snowball Drop: exact odds (all 256 paths), pays back ${(payback() * 100).toFixed(2)}%, real win 1 in ${(1 / realWin()).toFixed(2)}, 10× 1 in 128`);

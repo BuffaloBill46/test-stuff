@@ -164,9 +164,9 @@ FOR_MAIN_CLAUDE.md.
 - **Spin is now two wheels** (Cody's option A): main 40 equal segments incl. 3 gold stars → bonus wheel 12 (3×/4×/5×),
   every segment readable.
 - **Payback set to about 80% on every game** (Cody: "we lose 16% to fees"): Spin 80.0%, Big Hat 6¢ hat bonus ≈ 79.5% with
-  the jackpot, Plinko 79.8%. Pools still never refuse or pause in the simulations; the treasury's skims are smaller. Re-check replays both draws.
+  the jackpot, Plinko 82.8% (Cody picked its prizes: 10×, 5×, 1×, 0.5×, 0× edges to middle). Pools still never refuse or pause in the simulations; the treasury's skims are smaller. Re-check replays both draws.
 - **Snowball Drop (Plinko) preview** at `/plinko.html` (not linked from the game; Cody asked to see it): 8 rows of fair
-  50/50 bounces, equal-width presents, 79.8% payback. Rules `mockups/plinko.js`, tests `tests/plinko.test.mjs`,
+  50/50 bounces, equal-width presents, prizes 10× · 5× · 1× · 0.5× · 0× (edges to middle), 82.8% payback. Rules `mockups/plinko.js`, tests `tests/plinko.test.mjs`,
   `tests/browser/plinko-test.mjs`. Not wired into credits or the server: waiting on Cody's verdict.
 - **"What's SANTA?" draft copy** in `WHATS_SANTA.md` (short + long, from santahat.gold and on-chain facts): Cody to edit.
 

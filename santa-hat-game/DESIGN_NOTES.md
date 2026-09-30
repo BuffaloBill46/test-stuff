@@ -150,7 +150,7 @@ $50 start). **The slots paytable is a placeholder** (spin's 1×–4× fixed wins
 **Payback target (decided, Cody 2026-09-30): about 80% on every game.** "We need it set at around 80%, remember we lose 16%
 to fees" (10% burn + 3% tax in + 3% tax out). The pool receives about 87.6¢ of each $1, so at 80% it still gains about 7.6¢.
 Spin 80.0% (main wheel 0× 20 · 1× 12 · 2× 5 · star 3; a real win 1 in 5), Big Hat 78.1% + pool jackpot ≈ 79.5% (hat bonus
-6¢), Snowball Drop preview 79.8%. Pool simulations after the change: no refusals or pauses; the treasury's skim income falls
+6¢), Snowball Drop preview 82.8% (Cody chose its prizes 10× · 5× · 1× · 0.5× · 0×, edges to middle; his first orders paid 154% and 96.5%, over what the pool receives). Pool simulations after the change: no refusals or pauses; the treasury's skim income falls
 (Spin about $1,017 → $573 per 20,000 spins; Big Hat about $949 → $483 per 20,000 pulls). Big Hat at 7¢ (82% with the
 jackpot) was tried and rejected: the treasury got only about $123 per 20,000 pulls.
 

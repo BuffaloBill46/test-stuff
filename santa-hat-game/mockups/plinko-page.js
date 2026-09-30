@@ -15,8 +15,8 @@ const hat = new Image(); hat.src = 'hat-logo.png';
 const flakes = Array.from({ length: 70 }, () => ({ x: Math.random() * W, y: Math.random() * H, r: 0.6 + Math.random() * 1.8, v: 8 + Math.random() * 18 }));
 
 // Colours per prize: the rare 5× presents are Santa-hat red with a white brim; 2× pine; 1.2× frost; the rest plain plaque.
-const TIER = (m) => (m >= 5 ? { box: '#cf3128', rib: '#f5f1e8', text: '#f5f1e8' } : m >= 2 ? { box: '#3f9e6a', rib: '#ffbe5c', text: '#0c0f1a' }
-  : m > 1 ? { box: '#6f8fd0', rib: '#f5f1e8', text: '#0c0f1a' } : { box: '#2e3a6e', rib: '#b9cdf2', text: '#b9cdf2' });
+const TIER = (m) => (m >= 10 ? { box: '#cf3128', rib: '#f5f1e8', text: '#f5f1e8' } : m >= 2 ? { box: '#c98a1b', rib: '#fff6c8', text: '#0c0f1a' } : m === 0 ? { box: '#151a30', rib: '#26305a', text: '#6f7ba8' }
+  : m >= 1 ? { box: '#6f8fd0', rib: '#f5f1e8', text: '#0c0f1a' } : { box: '#2e3a6e', rib: '#b9cdf2', text: '#b9cdf2' });
 
 function fit() {
   const dpr = Math.min(3, devicePixelRatio || 1), w = cv.clientWidth;
@@ -36,10 +36,11 @@ function newBall() {
 function landed(b) {
   const r = b.r; log.push(r); bal = Math.round((bal + r.pay) * 100) / 100; renderBal(); binHit[r.bin] = performance.now();
   recent.unshift(r); recent.length = Math.min(recent.length, 14);
-  $('#res').innerHTML = r.mult >= 5 ? `<b>5×!</b> <span class="up">+${money(r.pay)}</span> off the very edge. 1 in 128.`
+  $('#res').innerHTML = r.mult >= 10 ? `<b>10×!</b> <span class="up">+${money(r.pay)}</span> off the very edge. 1 in 128.`
+    : r.mult === 0 ? `<b>0×</b> Nothing this time.` : r.mult === 1 ? `<b>1×</b> Money back: ${money(r.pay)}.`
     : r.ahead ? `<b>${r.mult}×</b> <span class="up">+${money(r.pay)}</span> back on a ${money(r.bet)} drop.`
     : `<b>${r.mult}×</b> ${money(r.pay)} back on a ${money(r.bet)} drop.`;
-  $('#strip').innerHTML = recent.map((x) => `<span class="${x.mult >= 5 ? 'top' : x.ahead ? 'win' : ''}">${x.mult}×</span>`).join('');
+  $('#strip').innerHTML = recent.map((x) => `<span class="${x.mult >= 10 ? 'top' : x.ahead ? 'win' : ''}">${x.mult}×</span>`).join('');
 }
 const renderBal = () => { $('#bal').textContent = money(bal); };
 
@@ -68,12 +69,12 @@ function present(k, now) {
   ctx.fillStyle = '#0c0f1a'; ctx.fillRect(x + 3, y + 3, w, BIN_H);
   ctx.fillStyle = c.box; ctx.fillRect(x, y, w, BIN_H);
   ctx.fillStyle = c.rib; ctx.fillRect(binX(k) - 4, y, 8, BIN_H);                      // ribbon
-  if (m >= 5) { ctx.fillStyle = '#f5f1e8'; ctx.fillRect(x, y, w, 12); ctx.fillStyle = '#d9d2c2'; ctx.fillRect(x, y + 9, w, 3); } // the hat's brim
+  if (m >= 10) { ctx.fillStyle = '#f5f1e8'; ctx.fillRect(x, y, w, 12); ctx.fillStyle = '#d9d2c2'; ctx.fillRect(x, y + 9, w, 3); } // the hat's brim
   ctx.lineWidth = 2; ctx.strokeStyle = '#0c0f1a'; ctx.strokeRect(x, y, w, BIN_H);
   if (since < 0.9) { ctx.fillStyle = `rgba(255,226,168,${0.5 * (1 - since / 0.9)})`; ctx.fillRect(x, y, w, BIN_H); }
   // the prize, big and dark on the snow bank under its present (readable at phone size)
-  ctx.font = `800 ${m >= 5 ? 26 : 22}px 'Alegreya Sans', sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = m >= 5 ? '#cf3128' : m >= 2 ? '#2c7a4f' : m > 1 ? '#34539a' : '#5a6485';
+  ctx.font = `800 ${m >= 10 ? 26 : 22}px 'Alegreya Sans', sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = m >= 10 ? '#cf3128' : m >= 2 ? '#9a6510' : m >= 1 ? '#34539a' : '#5a6485';
   ctx.fillText(`${m}×`, binX(k), LABEL_Y - (since < 0.5 ? pop : 0));
 }
 function draw(now, dt) {
@@ -117,6 +118,6 @@ document.querySelectorAll('[data-bet]').forEach((b) => b.addEventListener('click
 }));
 // Odds legend, from the same numbers the game uses
 const groups = [...new Set(PAYS)].sort((a, b) => b - a).map((m) => ({ m, ways: PAYS.reduce((a, p, k) => a + (p === m ? WAYS[k] : 0), 0) }));
-$('#oddsTable').innerHTML = groups.map((g) => `<tr><td>${g.m}×</td><td>${g.m >= 5 ? 'an edge present' : g.m > 1 ? 'more back than it cost' : 'part of it back'}</td><td>1 in ${(TOTAL / g.ways).toFixed(g.ways * 10 >= TOTAL ? 1 : 0)}</td></tr>`).join('');
-$('#oddsNote').textContent = `Pays back ${(payback() * 100).toFixed(1)}% over time (the same range as Spin). About 1 drop in ${(1 / realWin()).toFixed(1)} gives back more than it cost. Winnings are paid in SANTA, and SANTA's 3% tax comes off on the way.`;
+$('#oddsTable').innerHTML = groups.map((g) => `<tr><td>${g.m}×</td><td>${g.m >= 10 ? 'an edge present' : g.m > 1 ? 'more back than it cost' : g.m === 1 ? 'money back' : g.m > 0 ? 'half back' : 'nothing'}</td><td>1 in ${(TOTAL / g.ways).toFixed(g.ways * 10 >= TOTAL ? 1 : 0)}</td></tr>`).join('');
+$('#oddsNote').textContent = `Pays back ${(payback() * 100).toFixed(1)}% over time. About 1 drop in ${(1 / realWin()).toFixed(1)} gives back more than it cost. Winnings are paid in SANTA, and SANTA's 3% tax comes off on the way.`;
 window.__drop = { newBall, get bal() { return bal; }, get flying() { return balls.length; }, get recent() { return recent; }, get log() { return log; }, get dropped() { return dropped; } };
