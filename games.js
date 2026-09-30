@@ -3,7 +3,9 @@
 import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount } from './slots.js';
 import { createMachine, symbolImages } from './slots3d.js';
 import { initSpin, showSpin, resetSpin, spinState, refreshSpin } from './spinui.js';
-import { initCredits, ready, play, short, refresh as refreshCredits, resetCredits } from './playcredits.js';
+import { initCredits, ready, play, short, refresh as refreshCredits, resetCredits, setPrice } from './playcredits.js';
+import { livePrice, liveFee, santaFor, fmtSanta } from './market.js';
+import { FEE } from './slots.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -187,7 +189,23 @@ export function initGames(opts = {}) {
   // Play credits: buying moves the entry money into that game's pool straight away, so the pool readouts update on purchase.
   initCredits({ wallet, pools: { slots: state, spin: spinState() }, onChange: () => { shownPool = state.pool; store.set(state); render(); refreshSpin(); } });
   refreshCredits();
+  showMarket();
   window.__slots = { state, view, test, get shownPool() { return shownPool; }, get busy() { return busy; } };
+}
+
+// Live SANTA price and the token's live tax (read-only lookups). Refreshed every minute while the page is open.
+async function showMarket() {
+  const el = $('#liveMarket');
+  const [p, f] = await Promise.allSettled([livePrice(), liveFee()]);
+  const bits = [];
+  if (p.status === 'fulfilled') { setPrice(p.value); bits.push(`1 SANTA = <b>$${p.value.usd.toPrecision(3)}</b> · $1 ≈ <b>${fmtSanta(santaFor(1, p.value))} SANTA</b>`); }
+  if (f.status === 'fulfilled') {
+    const pct = f.value.bps / 100;
+    bits.push(`token tax <b>${pct}%</b> (read live from the token)`);
+    if (Math.abs(f.value.bps / 10000 - FEE) > 1e-9) bits.push(`<span class="warn">The tax changed: the demo math still assumes ${FEE * 100}%.</span>`);
+  }
+  el.innerHTML = bits.length ? bits.join(' · ') : 'Live SANTA price unavailable right now.';
+  setTimeout(showMarket, 60000);
 }
 
 export function showGames(on, opts) {
