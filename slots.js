@@ -3,7 +3,7 @@
 // stops; wins are read off the visible grid along paylines. The odds come ONLY from how many of each symbol are on each
 // strip, so payback is calculated exactly from the counts (see stats()). Symbol order on a strip doesn't change the odds.
 //
-//   Big Hat:  5 reels × 5 rows, 15 paylines, $1.00 a pull. 5 Santa Hats in a row on a line = 100× the price.
+//   Big Hat:  5 reels × 5 rows, 11 paylines (straight or diagonal, from the first reel), $1.00 a pull. 5 Santa Hats in a row on a line = 100× the price.
 //   WILD: the Santa Hat stands in for any symbol except Coal. A line pays the better of its Santa Hats alone or the
 //   symbol they help complete (e.g. Star, Hat, Star, Star = 4 Stars). 5 Santa Hats alone = the 100× top prize.
 //   HAT BONUS: every Santa Hat anywhere on the grid also pays `hatBonus` × the price (5¢ on the $1 Big Hat).
@@ -39,12 +39,13 @@ export const SYMBOLS = [
 ];
 export const SYM = Object.fromEntries(SYMBOLS.map((s, i) => [s.id, i]));
 
-// Paylines: for each reel (left to right), which row the line passes through (0 = top).
+// Paylines (Cody: straight or diagonal only, always starting on the first reel): for each reel from the left, which row
+// the line passes through (0 = top). Short diagonals stop at the grid's edge, so they are 3 or 4 squares long.
 const LINES_5 = [
-  [2, 2, 2, 2, 2], [1, 1, 1, 1, 1], [3, 3, 3, 3, 3], [0, 0, 0, 0, 0], [4, 4, 4, 4, 4], // rows
-  [0, 1, 2, 3, 4], [4, 3, 2, 1, 0],                                                   // diagonals
-  [0, 1, 2, 1, 0], [4, 3, 2, 3, 4], [1, 2, 3, 2, 1], [3, 2, 1, 2, 3],                 // V shapes
-  [1, 0, 1, 0, 1], [3, 4, 3, 4, 3], [2, 1, 2, 1, 2], [2, 3, 2, 3, 2],                 // zigzags
+  [2, 2, 2, 2, 2], [1, 1, 1, 1, 1], [3, 3, 3, 3, 3], [0, 0, 0, 0, 0], [4, 4, 4, 4, 4], // straight rows
+  [0, 1, 2, 3, 4], [4, 3, 2, 1, 0],                                                   // corner-to-corner diagonals
+  [1, 2, 3, 4], [3, 2, 1, 0],                                                         // 4-square diagonals
+  [2, 3, 4], [2, 1, 0],                                                               // 3-square diagonals
 ];
 
 // DRAFT. counts: how many of each symbol on EVERY reel strip of that machine (sum = strip length).
@@ -53,7 +54,7 @@ export const MACHINES = {
   big: {
     // poolJackpotOdds: Cody wants the pool jackpot harder to hit than the 100× line.
     id: 'big', name: 'Big Hat', bet: 1.00, reels: 5, rows: 5, lines: LINES_5, jackpotPct: 0.25, poolJackpotOdds: 1 / 25000, hatBonus: 0.05,
-    counts: { hat: 8, star: 3, reindeer: 3, snowman: 4, present: 4, lantern: 5, pine: 7, bell: 9, snowball: 8, coal: 34 },
+    counts: { hat: 8, star: 3, reindeer: 3, snowman: 4, present: 4, lantern: 5, pine: 7, bell: 9, snowball: 8, coal: 25 },
     pays: { // every line prize is more than the $1 pull; Cody: 5 Stars = 50×, 5 Snowballs = 25×, 100× about 1 in 10,000
       hat: { 5: 100, 4: 5, 3: 1.4 }, star: { 5: 50, 4: 3.5, 3: 1.4 }, reindeer: { 5: 10, 4: 3, 3: 1.3 }, snowman: { 5: 7, 4: 2.5, 3: 1.2 },
       present: { 5: 5, 4: 2, 3: 1.15 }, lantern: { 5: 4, 4: 1.6, 3: 1.1 }, pine: { 5: 3, 4: 1.4, 3: 1.05 },
@@ -116,17 +117,22 @@ export function lineWin(m, cells) {
 // Exact numbers from the strip counts (what a PAR sheet lists). With a wild there's no simple formula, so this walks
 // every symbol combination on one line (10^reels of them) weighted by its chance, then × lines.
 // (Line wins only; the pool jackpot is paid from its own draw and grows with the pool.)
+// Lines can be 3, 4 or 5 squares long, so each length is worked out once and counted for every line that long.
+// Returned per-line figures (each, topPerLine, lineHitRate) are averages over all lines; × lines gives per pull.
 export function stats(m) {
   const L = Object.values(m.counts).reduce((a, b) => a + b, 0), f = SYMBOLS.map((x) => (m.counts[x.id] || 0) / L);
-  const K = SYMBOLS.length, cells = new Array(m.reels);
-  let back = 0, lineHit = 0, topLine = 0; const each = {}; // each['sym:count'] = chance per line of exactly that win
-  const walk = (r, p) => {
-    if (p === 0) return;
-    if (r === m.reels) { const w = lineWin(m, cells); if (w) { lineHit += p; back += p * w.x; if (w.top) topLine += p; const k = SYMBOLS[w.sym].id + ':' + w.count; each[k] = (each[k] || 0) + p; } return; }
-    for (let k = 0; k < K; k++) { cells[r] = k; walk(r + 1, p * f[k]); }
-  };
-  walk(0, 1);
-  const lines = m.lines.length;
+  const K = SYMBOLS.length, lines = m.lines.length;
+  let back = 0, lineHit = 0, topLine = 0; const each = {}; // each['sym:count'] = average chance per line of exactly that win
+  const byLen = {}; m.lines.forEach((l) => { byLen[l.length] = (byLen[l.length] || 0) + 1; });
+  for (const [len, nLines] of Object.entries(byLen).map(([a, b]) => [+a, b])) {
+    const cells = new Array(len), wgt = nLines / lines;
+    const walk = (r, p) => {
+      if (p === 0) return;
+      if (r === len) { const w = lineWin(m, cells); if (w) { lineHit += p * wgt; back += p * w.x * wgt; if (w.top) topLine += p * wgt; const k = SYMBOLS[w.sym].id + ':' + w.count; each[k] = (each[k] || 0) + p * wgt; } return; }
+      for (let k = 0; k < K; k++) { cells[r] = k; walk(r + 1, p * f[k]); }
+    };
+    walk(0, 1);
+  }
   // Hat bonus: each of the reels × rows squares shows a hat with chance f(hat), so the average is exact and linear.
   const hatBack = (m.hatBonus || 0) * m.reels * m.rows * f[SYM.hat];
   return { payback: back * lines + hatBack, linePayback: back * lines, hatPayback: hatBack, lineHitRate: lineHit, topPerLine: topLine, lines, each };
@@ -185,6 +191,7 @@ function topOff(state) {
 export function stopsShowing(machineId, lineIdx, sym, count, rand = Math.random) {
   const m = MACHINES[machineId], rows = m.lines[lineIdx];
   return Array.from({ length: m.reels }, (_, r) => {
+    if (r >= rows.length) return Math.floor(rand() * m.stripLen); // past the end of a short line: anything
     const idxs = []; m.strips[r].forEach((s, i) => { if (r < count ? s === SYM[sym] : s !== SYM[sym] && s !== SYM.hat) idxs.push(i); }); // after the run: not the symbol, not a wild
     const i = idxs[Math.floor(rand() * idxs.length)];
     return (i - rows[r] + m.stripLen) % m.stripLen;
