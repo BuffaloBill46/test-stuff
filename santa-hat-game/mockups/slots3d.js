@@ -189,7 +189,7 @@ export function createMachine(canvas) {
       (info.wins || []).forEach((w, i) => { // the line itself, through the whole row path, plus frames on its winning squares
         const col = LINE_COLORS[w.line % LINE_COLORS.length], rows = M.lines[w.line];
         octx.strokeStyle = 'rgba(12,15,26,.85)'; octx.lineWidth = 11; octx.lineJoin = 'round'; octx.beginPath();
-        rows.forEach((row, r) => (r ? octx.lineTo(cx(r), cy(row)) : octx.moveTo(cx(r) - cw / 2, cy(row)))); octx.lineTo(cx(R - 1) + cw / 2, cy(rows[R - 1])); octx.stroke();
+        rows.forEach((row, r) => (r ? octx.lineTo(cx(r), cy(row)) : octx.moveTo(cx(r) - cw / 2, cy(row)))); octx.lineTo(cx(rows.length - 1) + cw / 2, cy(rows[rows.length - 1])); octx.stroke(); // short diagonals end at the grid edge
         octx.strokeStyle = col; octx.lineWidth = 6; octx.stroke();
         octx.lineWidth = 5; for (let r = 0; r < w.count; r++) octx.strokeRect(cx(r) - cw / 2 + 4, cy(rows[r]) - cw / 2 + 4, cw - 8, cw - 8);
       });
@@ -251,7 +251,7 @@ export function createMachine(canvas) {
   // Honest anticipation: once 3+ reels have landed, if a payline shows Santa Hats on every landed reel, the rest slow down.
   function checkAnticipation(landed) {
     if (anticipating || landed < 3 || landed >= R || !info || !info.grid) return;
-    const hatsSoFar = M.lines.some((rows) => rows.slice(0, landed).every((row, r) => info.grid[r][row] === SYM.hat));
+    const hatsSoFar = M.lines.some((rows) => rows.length > landed && rows.slice(0, landed).every((row, r) => info.grid[r][row] === SYM.hat)); // only lines that can still grow
     if (hatsSoFar) { anticipating = true; reels.forEach((r, i) => { if (i >= landed && !r.slam) r.stopAt += 0.9 + (i - landed) * 0.35; }); }
   }
   function tick(dt) {

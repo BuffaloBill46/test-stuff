@@ -42,10 +42,10 @@ for (const sym of SYMBOLS) {
   const p = m.pays[sym.id]; if (!p) continue;
   for (const n of Object.keys(p).map(Number).sort((a, b) => b - a)) {
     const x = p[n], pl = s.each[sym.id + ':' + n] || 0, contrib = pl * x * lines; total += contrib;
-    rowsOut.push(`| ${sym.name} | ${n} in a row | **${x}×** | ${usd(x * m.bet)} | ${oneIn(pl)} | ${oneIn(pl * lines)} | ${pct(contrib, 2)} |`);
+    rowsOut.push(`| ${sym.name} | ${n} in a row | **${x}×** | ${usd(x * m.bet)} | ${oneIn(pl * lines)} | ${pct(contrib, 2)} |`);
   }
 }
-const grid = (rows) => Array.from({ length: m.rows }, (_, r) => rows.map((rr) => (rr === r ? '■' : '·')).join(' ')).join('<br>');
+const grid = (rows) => Array.from({ length: m.rows }, (_, r) => Array.from({ length: m.reels }, (_, i) => (rows[i] === r ? '■' : '·')).join(' ')).join('<br>'); // always the full 5×5, even for short diagonals
 
 const md = `# Big Hat slot machine: full payout table
 
@@ -57,7 +57,7 @@ const md = `# Big Hat slot machine: full payout table
 |---|---|
 | Price | **${usd(m.bet)} a pull**, paid in SANTA |
 | Grid | **${m.reels} reels × ${m.rows} rows** (25 squares) |
-| Paylines | **${lines}** (listed at the bottom). Wins count from the leftmost reel. Only the longest run on a line pays; all winning lines add up. |
+| Paylines | **${lines}**, straight or diagonal, always starting on the first reel (listed at the bottom; short diagonals are 3 or 4 squares). Only the longest run on a line pays; all winning lines add up. |
 | Top line prize | **5 Santa Hats in a row = 100× = ${usd(100 * m.bet)}**, about ${oneIn(s.topPerLine * lines)} pulls |
 | Pays back | **${pct(s.payback)}** of what's played: line prizes ${pct(s.linePayback)} + hat bonus ${pct(s.hatPayback)} (exact, from the reel math) |
 | Hat bonus | **Every Santa Hat anywhere on the grid pays ${usd(m.hatBonus * m.bet)}**, on top of line prizes (about ${(25 * f('hat')).toFixed(1)} hats a pull on average) |
@@ -67,15 +67,15 @@ const md = `# Big Hat slot machine: full payout table
 
 ## Payout table
 
-Chance "per line" is for one payline; "per pull" is across all ${lines} lines (about ${lines}× more likely).
+Chance "per pull" counts all ${lines} lines (5 in a row can only happen on the 7 full-length lines).
 "Share of payback" is how much of the ${pct(s.payback)} each prize accounts for. Wild help is included.
 The hat bonus is listed at the bottom.
 
-| Symbol | Needs | Pays | $ on a $1 pull | Chance per line | Chance per pull | Share of payback |
-|---|---|---|---|---|---|---|
+| Symbol | Needs | Pays | $ on a $1 pull | Chance per pull | Share of payback |
+|---|---|---|---|---|---|
 ${rowsOut.join('\n')}
-| Santa Hat bonus | each hat, anywhere | **${m.hatBonus}×** | ${usd(m.hatBonus * m.bet)} per hat | ${pct(f('hat'))} per square | about ${(25 * f('hat')).toFixed(1)} hats a pull | ${pct(s.hatPayback, 2)} |
-| **Total** | | | | | | **${pct(total + s.hatPayback, 2)}** |
+| Santa Hat bonus | each hat, anywhere | **${m.hatBonus}×** | ${usd(m.hatBonus * m.bet)} per hat | about ${(25 * f('hat')).toFixed(1)} hats a pull (${pct(f('hat'))} of squares) | ${pct(s.hatPayback, 2)} |
+| **Total** | | | | | **${pct(total + s.hatPayback, 2)}** |
 
 Coal pays nothing (it's the dud). Pool jackpot not included above (it's paid from the pool and grows with it).
 

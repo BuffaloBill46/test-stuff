@@ -11,10 +11,12 @@ for (const m of Object.values(MACHINES)) {
   m.strips.forEach((strip, r) => {
     for (const s of SYMBOLS) { const n = strip.filter((x) => x === SYM[s.id]).length; if (n !== (m.counts[s.id] || 0)) fail(`${m.id} reel ${r}: ${s.id} ×${n}, expected ${m.counts[s.id] || 0}`); }
   });
-  if (m.lines.some((l) => l.length !== m.reels || l.some((row) => row < 0 || row >= m.rows))) fail(`${m.id}: a payline leaves the grid`);
+  if (m.lines.some((l) => l.length < 3 || l.length > m.reels || l.some((row) => row < 0 || row >= m.rows))) fail(`${m.id}: a payline leaves the grid or is too short`);
+  // Cody's rule: every line is straight or diagonal (each step moves the same way: 0, +1 or −1 rows)
+  m.lines.forEach((l, i) => { const d = l[1] - l[0]; if (Math.abs(d) > 1 || l.some((row, r) => r && row - l[r - 1] !== d)) fail(`${m.id}: line ${i + 1} is not straight or diagonal`); });
   // forced wins read back correctly on every line
   m.lines.forEach((_, li) => {
-    for (let n = 3; n <= m.reels; n++) {
+    for (let n = 3; n <= m.lines[li].length; n++) { // short diagonals only reach 3 or 4
       const g = gridFor(m, stopsShowing(m.id, li, 'snowball', n, rand)), w = evaluate(m, g).find((x) => x.line === li);
       if (!(n in m.pays.snowball)) continue;
       if (!w || w.count !== n || w.sym !== SYM.snowball) fail(`${m.id} line ${li}: forced ${n} snowballs read as ${JSON.stringify(w)}`);

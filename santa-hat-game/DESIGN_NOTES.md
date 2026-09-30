@@ -139,13 +139,14 @@ $50 start). **The slots paytable is a placeholder** (spin's 1×–4× fixed wins
   Simulated in `tests/tax-split.mjs`: 2,000 runs × 5,000 spins from $50, zero pauses, and the pool never went below zero.
 
 **Slots, current rules (decided by Cody, 2026-09-30; full numbers in `PAYTABLE.md`, always regenerate it after changes):**
-- **One machine: the Big Hat, $1.00 a pull, 5×5 grid, 15 paylines.** The Mini Hat is scrapped.
+- **One machine: the Big Hat, $1.00 a pull, 5×5 grid, 11 paylines: straight or diagonal only, always starting on the first
+  reel** (Cody, 2026-09-30; the bent V and zig-zag lines were removed). Short diagonals are 3 or 4 squares long. The Mini Hat is scrapped.
 - **Santa Hat is Wild** (stands in for any symbol except Coal). **5 Santa Hats in a row on a line = 100× ($100), about
-  1 in 9,000 pulls** (Cody asked for about 1 in 10,000). **5 Stars = 50×, 5 Snowballs = 25×** (Cody).
-- **Hat bonus: every Santa Hat anywhere on the grid pays 5¢** (Cody). About 2.4 hats a pull, 11.8% of the payback.
+  1 in 11,000 pulls** (Cody asked for about 1 in 10,000; only the 7 full-length lines can hold 5). **5 Stars = 50×, 5 Snowballs = 25×** (Cody).
+- **Hat bonus: every Santa Hat anywhere on the grid pays 5¢** (Cody). About 2.6 hats a pull, 13.2% of the payback.
 - **Every line prize is more than the $1 pull** (smallest: 3 Snowballs, Bells or Pine Trees = $1.05).
-- **Pays back 75.5%**: line prizes 63.8% + hat bonus 11.8%. **A win over $1 on about 28% of pulls (1 in 3.5)**; about 93% of pulls
-  pay something. Normal pulls range from $0 to about $205 (several lines at once).
+- **Pays back 75.5%**: line prizes 62.3% + hat bonus 13.2%. **A win over $1 on about 34% of pulls (1 in 3)**; about 96% of pulls
+  pay something. Reels: 8 Santa Hats and 25 Coal each (strip of 76). Normal pulls range from $0 to about $205 (several lines at once).
 - **Pool jackpot is separate:** its own draw, **1 in 25,000 pulls** (harder than the 100× line), **pays 25% of the Slots pool**,
   and **all 25 squares show Santa Hats**. The reels alone can never make a full grid of hats. Typical size about $360–430.
 - **Slots pool skim (Cody): when it reaches $1,775, $25 goes to the treasury** (helps cover the tax on winnings).
