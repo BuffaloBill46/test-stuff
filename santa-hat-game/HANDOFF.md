@@ -102,38 +102,33 @@ between two devices has never been tested from here. Cody and friends testing on
 
 *(Update this section at the end of every session.)*
 
-**Last updated:** 2026-09-29.
+**Last updated:** 2026-09-30. Branch `claude/test-stuff-section-egujzy`; everything committed, pushed and published.
 
-**Just finished (latest, 2026-09-30): Santa Hat Spin demo** on the Games tab (see TODO → Santa Hat Games tab). **Before that:** the Games tab's **Big Hat slot machine** rebuilt for the decided rules (5×5, 11 straight/diagonal lines,
-Santa Hat wild, 5¢ hat bonus, 100× line about 1 in 9,000, full-grid pool jackpot 1 in 25,000 at 25%, skim $25 at $1,775,
-top-off below $150 back to $500, emergency stop), with full screen, drawn paylines, and a shared Recent winners list. Numbers
-in `PAYTABLE.md`. Tested (`tests/slots.test.mjs`, `tests/browser/games-test.mjs`) and published.
-
-**Just finished (before that):** Games tab with the **Santa Hat Slots demo** (Mini Hat + Big Hat 3D machines, stacked, demo money,
-draft paytable), and the Spin pool rule ($25 to the treasury when it reaches $175). **Before that:** 3% SANTA tax notices (Play intro, Wager card, Lottery); decisions recorded:
-winners absorb the tax, a 2% price cushion, Spin/Slots pool wallets, and the lottery goes through Cody's own program. Spin and Slots
-are separate games with separate pools that keep all funds; only Slots has a jackpot (a % of the Slots pool); Spin unchanged (`tests/jackpot-sim.mjs`). **Before that:** unranked lobby (FFA/TEAM, Auto match into public rooms `PF1-5`/`PT1-5`, private code,
-practice), the FFA RANKED lobby layout (Tournament greyed out; Auto match shows "opening soon" and is off),
-and the live games list with **Watch now** (max 4 watchers). Tested and published.
+**Built and live (all demo, no real money):**
+- **Play tab:** Snowball Square multiplayer (rooms, bots, idle kicks), unranked lobby (FFA/TEAM, Auto match, private code,
+  practice), FFA RANKED lobby layout (Auto match off until tickets + server exist), live games list with Watch now.
+- **Store / Avatar / Ranks tabs:** item catalog, avatar editor, wallet or email sign-in with linking, leaderboard.
+- **Games tab:**
+  - **Big Hat slots:** 5×5, 11 straight/diagonal lines from the first reel, Santa Hat wild, 5¢ per hat, 100× line about
+    1 in 11,000, pool jackpot 1 in 25,000 at 25%, "How to win" panel, full screen.
+  - **Santa Hat Spin:** 3D prize wheel, 10¢/$1, the agreed odds, own pool, full screen.
+  - A shared Recent winners list.
+  - Numbers for both games are in `PAYTABLE.md` and `mockups/spin.js`. Pool rules (skim, top-off, emergency stop) are
+    adjustable settings: `POOL_RULES` and `SPIN_RULES`.
 
 **Waiting on Cody** (don't build around these; ask if still open):
-1. Turn on Solana sign-in in Supabase (Authentication → Sign In / Providers → Web3 Wallet → Solana) and set
-   URL Configuration (Site URL `https://buffalobill46.github.io/test-stuff/`, Redirect `https://buffalobill46.github.io/test-stuff/**`).
-2. Custom email service (Resend) so friends get sign-in emails.
+1. Supabase: turn on Solana sign-in, set URL Configuration (Site URL `https://buffalobill46.github.io/test-stuff/`,
+   Redirect `https://buffalobill46.github.io/test-stuff/**`), and connect an email service (Resend) for sign-in emails.
+2. Real-device testing with friends (multiplayer over the internet, Phantom sign-in, phone feel).
 3. The level table (points per level, what unlocks).
-4. The Slots payouts: the machines are built with a draft paytable in `mockups/slots.js`. Cody sends the real one, then Claude
-   drops it in and runs `tests/slots.test.mjs`.
-5. (Done: Cody removed the Games daily play limit.)
-6. The treasury wallet's public address (Cody is making a new wallet), and when to create and fund the
-   Spin pool and Slots pool wallets. That's real money, so wait for Cody's go.
-7. Where Cody's on-chain lottery program lives (built, on devnet, from Cody's other Claude session). The
-   lottery uses that or runs manually. Don't build a separate one.
-8. The Slots jackpot details (DESIGN_NOTES → Spin and Slots pools): scales with bet? what %? Claude's picks are written
-   there. Spin is final as is, with no jackpot.
+4. The treasury wallet's public address, and the real starting amounts for the Spin and Slots pools (real money).
+5. Where Cody's on-chain lottery program lives.
+6. The Slots pool jackpot %: 25% gives about $360–430 on a full pool, and ~14% would give about $250.
+7. Whether to build a free daily spin (it costs real money from the Spin pool).
 
-**Next up (Claude can start without Cody):** see "Next to build" in `TODO.md`. The Santa Hat Games tab UI
-(Spin wheel with the agreed 400-slice odds) can be built as a free demo with no money attached. Anything
-that moves SANTA, or a paid server, needs Cody's OK first.
+**Next big step (needs Cody's OK, costs about $5–10/month):** the game server. It's needed for real SANTA in Slots and Spin
+(provably fair results, payments, payouts, escrow admin controls), ranked tickets and payouts, and a shared winners list.
+See TODO → "Before anything paid goes live", "Slots server: protect it from bots", and "Escrow admin controls".
 
 ## Handing over (for Cody)
 
