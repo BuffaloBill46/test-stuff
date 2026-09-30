@@ -81,6 +81,7 @@ export function initSpin(opts) {
   document.addEventListener('fullscreenchange', () => { const c = card(), b = $('#spinFs'), on = document.fullscreenElement === c || c.classList.contains('max');
     b.setAttribute('aria-pressed', String(on)); $('span', b).textContent = on ? 'Exit full screen' : 'Full screen'; });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') card().classList.remove('max'); });
+  setBet(+document.querySelector('#spin .bets [aria-checked="true"]').dataset.bet); // the chosen size's price (settings may change it)
   odds_(); render();
   window.__spin = { st, view, test, get busy() { return busy; }, get shownPool() { return shownPool; }, SLICES };
 }

@@ -59,16 +59,17 @@ export function createHouse(ledger, pools, f = fair) {
 }
 
 // What a play's numbers must produce, worked out from the numbers alone (anyone can re-run this).
-export function outcomeFrom(kind, nums) {
+// cfg (optional): the settings the play ran on (settings.js build()); without it, the built-in game.
+export function outcomeFrom(kind, nums, cfg = null) {
   const K = KINDS[kind];
-  if (K.game === 'spin') { const slice = Math.floor(nums[0] * SLICES); return { slice, mult: SLICE_MULT[slice] }; }
-  const m = MACHINES[kind];
+  if (K.game === 'spin') { const slice = Math.floor(nums[0] * SLICES); return { slice, mult: (cfg?.wheel.sliceMult || SLICE_MULT)[slice] }; }
+  const m = cfg?.machine || MACHINES[kind];
   if (nums[0] < m.poolJackpotOdds) return { jackpot: true };
   return { stops: nums.slice(1, 1 + m.reels).map((x) => Math.floor(x * m.stripLen)) };
 }
 // "Check this result": does the secret match the fingerprint shown before the play, and what do its numbers give?
-export async function check(proof) {
+export async function check(proof, cfg = null) {
   const matches = (await fair.fingerprint(proof.secret)) === proof.commit;
   const nums = await fair.numbers(proof.secret, proof.playerSeed, proof.playNo, NUMS);
-  return { matches, outcome: outcomeFrom(proof.kind, nums) };
+  return { matches, outcome: outcomeFrom(proof.kind, nums, cfg) };
 }

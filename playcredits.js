@@ -20,7 +20,8 @@ const saved = store.get();
 ledger = saved && saved.credits && saved.bought ? { ...newLedger(), ...saved } : newLedger();
 
 export const creditsOf = (kind) => ledger.credits[kind];
-export const spinKindFor = (bet) => (bet >= 1 ? 'spin100' : 'spin10');
+// Which spin size a price belongs to (prices can change in the settings, so compare with the small spin's price).
+export const spinKindFor = (bet) => (Math.abs(bet - KINDS.spin10.bet) < 1e-9 ? 'spin10' : 'spin100');
 export function setSpinKind(kind) { spinKind = kind; refresh(); }
 // The readouts under each play button.
 export function refresh() {
@@ -170,9 +171,15 @@ function showProofOf(p) {
   $('#proofOut').textContent = p.forced ? 'This was a test play: its result was set by a test, so the check below won\'t match it.' : '';
   const d = $('#proofDlg'); if (d.showModal) d.showModal(); else d.setAttribute('open', '');
 }
+// Server mode: re-check on the settings (odds) this play ran on, fetched by version (public), not today's.
+async function cfgForProof(p) {
+  if (!serverMode || p.settingsVersion === undefined) return null;
+  const r = await call('settings', { version: p.settingsVersion }); if (!r?.settings) return null;
+  const { build } = await import('./settings.js'); return build(r.settings);
+}
 async function recheck() {
   const p = shown; if (!p) return;
-  const c = await check(p), K = KINDS[p.kind];
+  const c = await check(p, await cfgForProof(p)), K = KINDS[p.kind];
   let what;
   if (K.game === 'spin') what = `slice ${c.outcome.slice} of 400, a ${c.outcome.mult}× result`;
   else if (c.outcome.jackpot) what = 'the pool jackpot (all 25 squares Santa Hats)';

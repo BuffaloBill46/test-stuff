@@ -29,14 +29,15 @@ export const odds = () => Object.fromEntries(MULTS.map((x) => [x, SLICE_MULT.fil
 export const payback = () => SLICE_MULT.reduce((a, m) => a + m, 0) / SLICES;
 
 // One spin. `rand` gives uniform numbers in [0,1) (server seeds in the real version). forcedSlice is for tests.
-export function spin(state, bet, rand = Math.random, forcedSlice) {
-  const R = { ...SPIN_RULES, ...(state.rules || {}) };
-  if (!BETS.includes(bet)) throw new Error('unknown bet ' + bet);
+// wheel (optional): a settings-built wheel { sliceMult } (Cody's admin settings); without it, the built-in wheel.
+export function spin(state, bet, rand = Math.random, forcedSlice, wheel = null) {
+  const R = { ...SPIN_RULES, ...(state.rules || {}) }, SM = wheel?.sliceMult || SLICE_MULT, top = wheel ? Math.max(...SM) : MAX_MULT;
+  if (!wheel && !BETS.includes(bet)) throw new Error('unknown bet ' + bet); // with settings, prices come from the settings
   if (R.paused) return { paused: true, stopped: true };
   const before = topOff(state, R);
-  if (state.pool < MAX_MULT * bet) return { paused: true, topOff: before }; // must cover the biggest prize
+  if (state.pool < top * bet) return { paused: true, topOff: before }; // must cover the biggest prize
   if (!state.prepaid) state.pool += bet * IN_PER_DOLLAR; // with play credits the entry already reached the pool at purchase
-  const slice = forcedSlice ?? Math.floor(rand() * SLICES), mult = SLICE_MULT[slice], pay = mult * bet;
+  const slice = forcedSlice ?? Math.floor(rand() * SLICES), mult = SM[slice], pay = mult * bet;
   state.pool -= pay;
   const res = { slice, mult, bet, pay, received: pay * (1 - FEE), ahead: pay > bet + 1e-9 };
   if (state.pool >= R.skimAt) { state.pool -= R.skim; res.skim = R.skim; state.treasury = (state.treasury || 0) + R.skim * (1 - FEE); }
@@ -45,11 +46,11 @@ export function spin(state, bet, rand = Math.random, forcedSlice) {
 }
 // Would the pool accept this spin right now? Changes nothing. Mirrors spin()'s own checks exactly (a top-off counts), so the
 // server can ask BEFORE spending a credit: a refused spin keeps its credit.
-export function canSpin(state, bet) {
+export function canSpin(state, bet, wheel = null) {
   const R = { ...SPIN_RULES, ...(state.rules || {}) };
   if (R.paused) return { ok: false, stopped: true };
   const pool = state.pool < R.topOffBelow ? R.topOffTo : state.pool;
-  return { ok: pool >= MAX_MULT * bet };
+  return { ok: pool >= (wheel ? Math.max(...wheel.sliceMult) : MAX_MULT) * bet };
 }
 function topOff(state, R) {
   if (!(state.pool < R.topOffBelow)) return 0;

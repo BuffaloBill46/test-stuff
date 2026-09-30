@@ -144,8 +144,9 @@ export const MAX_FIXED = (m) => Math.max(...Object.values(m.pays).flatMap((p) =>
 
 // One pull. `rand` gives uniform numbers in [0,1) (server seeds in the real version). Changes state.pool.
 // forcedStops (tests only) sets the reel stops directly.
+// machineId: 'big', or a settings-built machine object (Cody's admin settings).
 export function pull(state, machineId, rand = Math.random, forcedStops) {
-  const m = MACHINES[machineId];
+  const m = typeof machineId === 'object' ? machineId : MACHINES[machineId];
   if ({ ...POOL_RULES, ...(state.rules || {}) }.paused) return { paused: true, stopped: true }; // emergency stop
   // Top off BEFORE the pull too: the pool may have been lowered outside play (e.g. an emergency withdrawal).
   const before = topOff(state);
@@ -176,7 +177,7 @@ export function canPull(state, machineId) {
   const R = { ...POOL_RULES, ...(state.rules || {}) };
   if (R.paused) return { ok: false, stopped: true };
   const pool = state.pool < R.topOffBelow ? R.topOffTo : state.pool;
-  return { ok: pool >= MAX_FIXED(MACHINES[machineId]) };
+  return { ok: pool >= MAX_FIXED(typeof machineId === 'object' ? machineId : MACHINES[machineId]) };
 }
 
 // After each pull: skim to the treasury at the top, top off from the treasury at the bottom.
