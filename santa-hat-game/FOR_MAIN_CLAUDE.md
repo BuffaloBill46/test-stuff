@@ -16,6 +16,7 @@ Tick items off here as they're done. Order is roughly the order to do them in fo
 ## Needs live systems (this workspace can't reach them)
 - [ ] **Apply `supabase/005_credits_plays.sql`** to the project (checked on real Postgres in `tests/db/`), then insert the two
       `pools` rows with the pools' real starting SANTA balances (smallest units, 6 decimals).
+- [ ] **Apply `supabase/006_ranked_tickets.sql`** when ranked opens (checked on real Postgres, `tests/db/tickets.test.mjs`).
 - [ ] **Deploy the Edge Function** `supabase/functions/games/index.ts`. It imports `../../../server/*.js` and `../../../mockups/*.js`
       (include those files in the upload). Set `SOLANA_RPC_URL` (Helius; devnet URL for the test).
 - [ ] **Prove the pool row lock on real Postgres:** two connections settling plays on the same pool at the same moment. (Balances

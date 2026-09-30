@@ -21,7 +21,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 ## Next to build
 - [ ] **Turn on ranked Auto match:** the FFA RANKED lobby is built, but its Auto match button stays off ("opening soon") until tickets and the server below exist.
 - [x] **Auto match by rank points (logic built and tested, 2026-09-30):** `mockups/matchmaker.js`: ±50, then ±150, then any real players, bots at 30 s; 2–7 real, 1–3 bots (fills toward 6: Claude's pick), 3–8 total. `tests/matchmaker.test.mjs` (2 simulated hours of traffic). Runs on the server once it exists.
-- [ ] **Ranked tickets:** 10 free a day (reset every 24 hours), spent when the match starts, refunded if you leave before.
+- [ ] **Ranked tickets:** 10 free a day (reset every 24 hours), spent when the match starts, refunded if you leave before. *Built and tested (2026-09-30):* `supabase/006_ranked_tickets.sql` (NOT applied), `tests/db/tickets.test.mjs`: hold on joining, spend at the start, release if you leave before; extras used after the free ones and never expire; 10 bought per rolling 24 hours. Needs the ranked referee server to call it.
 - [ ] **Ranked payouts on the server:** 10 points per player in the pot (bots too); 3 or fewer players pays 1st only; 4+ pays 60/20/20; not placing costs −5; bots can win. *Rules coded and tested (2026-09-30):* `mockups/ranked.js`, `tests/ranked.test.mjs` (Claude's picks for ties etc. in DESIGN_NOTES). Needs the cheat-proof referee server to run for real.
 - [ ] **Match history and stats:** ranked matches, podiums, and the Today / This week / Events leaderboard tabs.
 - [ ] **Levels from rank points,** with items unlocking by level (needs the level table).
