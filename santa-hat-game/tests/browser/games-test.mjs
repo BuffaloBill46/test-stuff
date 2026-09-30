@@ -104,11 +104,23 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   await p.evaluate(() => document.querySelector('#fsBtn').click()); await p.waitForTimeout(700);
   check(!(await p.evaluate(() => document.fullscreenElement || document.querySelector('.machine').classList.contains('max'))), `${label}: full screen should turn off`);
 
-  // 7) winners list + paytable screenshots
+  // 7) "How to win" panel: rules, 7 examples with prizes from the real rules, and the win table
+  await p.evaluate(() => document.querySelector('#howBtn').click()); await p.waitForTimeout(500);
+  const how = await p.evaluate(() => ({ open: document.querySelector('#howDlg').open, examples: [...document.querySelectorAll('#howExamples .example h4')].map((h) => h.textContent.replace(/\s+/g, ' ').trim()), tableRows: document.querySelectorAll('#howTable tbody tr').length }));
+  const want = ['3 in a row · $1.05', 'Santa Hat is wild · $3.55', 'Paylines can bend · $3.00', 'Two lines at once · $2.45', 'Hat nickels · $0.15', 'Top line prize: 100× · $100.25'];
+  check(how.open, `${label}: How to win panel should open`);
+  want.forEach((w, i) => check(how.examples[i] === w, `${label}: example ${i + 1} should read "${w}", got "${how.examples[i]}"`));
+  check(/^Pool jackpot · 25% of the pool/.test(how.examples[6] || ''), `${label}: jackpot example`);
+  check(how.tableRows === 12, `${label}: win table rows`);
+  await p.screenshot({ path: `${OUT}/${label}-7-howtowin.png` });
+  await p.evaluate(() => document.querySelector('#howClose').click()); await p.waitForTimeout(300);
+  check(!(await p.evaluate(() => document.querySelector('#howDlg').open)), `${label}: How to win should close`);
+
+  // 8) winners list + paytable screenshots
   await p.evaluate(() => { document.querySelector('.paytable').open = true; document.querySelector('.winners').scrollIntoView({ block: 'end' }); }); await p.waitForTimeout(400);
-  await p.screenshot({ path: `${OUT}/${label}-7-winners.png` });
+  await p.screenshot({ path: `${OUT}/${label}-8-winners.png` });
   await p.evaluate(() => document.querySelector('.paytable').scrollIntoView({ block: 'start' })); await p.waitForTimeout(300);
-  await p.screenshot({ path: `${OUT}/${label}-8-paytable.png` });
+  await p.screenshot({ path: `${OUT}/${label}-9-paytable.png` });
   await ctx.close();
 }
 console.log('errors:', errors.length ? errors : 'none');
