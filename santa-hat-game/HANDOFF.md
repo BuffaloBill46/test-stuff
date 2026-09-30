@@ -102,7 +102,10 @@ between two devices has never been tested from here. Cody and friends testing on
 
 **Last updated:** 2026-09-29.
 
-**In progress (latest):** Slots rules rebuilt as **one Big Hat machine** (5×5, 15 lines, Santa Hat wild, 100× line, 74.7% payback, full-grid pool jackpot, $25 skim at $325); full table in `PAYTABLE.md`. **The page code (`games.js`, `slots3d.js`) is out of date with these rules. Don't run `deploy-pages.sh` until it's rebuilt.** Next: rebuild the page (5×5 grid, full screen, winners list).
+**Just finished (latest, 2026-09-30):** the Games tab's **Big Hat slot machine** rebuilt for the decided rules (5×5, 15 lines,
+Santa Hat wild, 5¢ hat bonus, 100× line about 1 in 9,000, full-grid pool jackpot 1 in 25,000 at 25%, skim $25 at $1,775,
+top-off below $150 back to $500, emergency stop), with full screen, drawn paylines, and a shared Recent winners list. Numbers
+in `PAYTABLE.md`. Tested (`tests/slots.test.mjs`, `tests/browser/games-test.mjs`) and published.
 
 **Just finished (before that):** Games tab with the **Santa Hat Slots demo** (Mini Hat + Big Hat 3D machines, stacked, demo money,
 draft paytable), and the Spin pool rule ($25 to the treasury when it reaches $175). **Before that:** 3% SANTA tax notices (Play intro, Wager card, Lottery); decisions recorded:

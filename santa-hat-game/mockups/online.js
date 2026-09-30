@@ -604,7 +604,7 @@ const app = {
   preview: (a) => setPreview(a),
   onTab: (tab) => {
     ui.lastBoard = '';
-    if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js')).then((g) => g.showGames(tab === 'games'));
+    if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
   },
 };
 let gamesMod = null; // Games tab code loads the first time it's opened

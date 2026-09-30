@@ -9,7 +9,6 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Level table:** how many rank points reach each level, and which items unlock at each.
 - [ ] **Treasury wallet:** Cody is making a new one. Send Claude its public address (never the secret key or recovery phrase).
 - [ ] **Lottery program:** when ready, share where Cody's on-chain lottery lives (its repo, or its program address on devnet) so the Store's Lottery block can link to it or plug into it.
-- [ ] **Rebuild the Slots page for the new rules** (Big Hat only, 5×5, Santa Hat wild, paylines drawn, full-grid pool jackpot) plus **full-screen buttons**, a **past winners list** at the bottom of the Games page (shared by every game: name, amount, +%, game icon), and a reel slow-down when hats are lining up. **Do not republish until done:** `games.js` / `slots3d.js` still expect the old two-machine rules.
 - [ ] **Escrow admin controls (Cody, must exist before real pools go live):** for every pool wallet (Spin, Slots):
   - **Adjust thresholds** without a code change: starting amount, skim point and amount, top-off levels, jackpot % and odds. (The game logic already reads these from one settings object, `POOL_RULES`.)
   - **Emergency withdrawal:** move funds out of a pool to a safe wallet if something goes wrong.
@@ -73,6 +72,7 @@ stop cheating and spam:
 
 ## Later
 - [ ] Wager mode (players bet SANTA, FFA).
+- [ ] **Recent winners list shared across players:** today it shows this browser's wins only; the real list needs the server (every settled win over the pull price, with name, amount, +% and game).
 - [ ] Tournaments.
 - [ ] Sound effects: catches, hits, landings, wind.
 - [ ] Bots occasionally use emotes too, so they stay hard to spot.
@@ -96,7 +96,8 @@ stop cheating and spam:
 - Wallet or email sign-in, avatars bound to the account, and email + wallet linking.
 - Item catalog with 37 items, including the Gorilla, Snowman and Panda heads; save rules checked on the server.
 - Bots with player names and random outfits; ranking rules written on the Play tab.
-- **Games tab + Santa Hat Slots (demo)**: Mini Hat ($0.10) and Big Hat ($1.00) 3D machines shaped like Santa hats (pom-pom lever), stacked; total Slots pool under the title; each machine shows its jackpot % and amount; draft paytable; demo money only.
+- **Big Hat slot machine rebuilt (demo, 2026-09-30):** one 5×5 machine (Mini Hat removed, no gold hatband), flat square reels, winning paylines drawn and squares framed, "+5¢" on every Santa Hat, full grid of hats for the pool jackpot, tap-to-stop, an honest slow-down when 3+ hats line up, celebrations only for wins over $1, **Full screen button**, total pool + pool-jackpot % and amount + $100 top prize, payout table with all 15 line diagrams, and a **Recent winners list** (shared by every Santa Hat game: name, amount, +%, game icon; demo shows this browser's wins).
+- **Games tab + Santa Hat Slots (first demo, replaced)**: Mini Hat ($0.10) and Big Hat ($1.00) 3D machines shaped like Santa hats (pom-pom lever), stacked; total Slots pool under the title; each machine shows its jackpot % and amount; draft paytable; demo money only.
 - Price cushion decided: 60-second quote, a payment counts if within 2%.
 - 3% SANTA tax notice on the Play page intro, the Wager card and the Lottery block. Decided: winners absorb the tax.
 - Unranked lobby (FFA or TEAM, Auto match into public games, private room code, practice) and the FFA RANKED lobby layout (Tournament greyed out, Coming soon).

@@ -1,4 +1,4 @@
-// Opens the PUBLISHED site's Games tab on a phone-sized screen and pulls the Mini Hat once.
+// Opens the PUBLISHED site's Games tab on a phone-sized screen and pulls the Big Hat once.
 import { createRequire } from 'module'; import { execSync } from 'child_process'; import { mkdirSync, readFileSync } from 'fs'; import path from 'path'; import os from 'os';
 const require = createRequire(import.meta.url);
 const { chromium } = require(path.join(execSync('npm root -g').toString().trim(), 'playwright'));
@@ -16,8 +16,8 @@ page.on('pageerror', (e) => errs.push(e.message)); page.on('console', (m) => { i
 await page.goto('https://buffalobill46.github.io/test-stuff/#games', { timeout: 60000 });
 await page.waitForFunction(() => window.__slots, null, { timeout: 90000 });
 await page.waitForTimeout(2000);
-await page.evaluate(() => document.querySelector('.machine[data-m="mini"] .pull').click());
-await page.waitForFunction(() => !document.querySelector('.machine[data-m="mini"] .pull').disabled, null, { timeout: 60000 });
-console.log('live pool:', await page.textContent('#slotPool'), '| balance:', await page.textContent('#demoBal'), '| result:', await page.textContent('.machine[data-m="mini"] .res'));
+await page.evaluate(() => document.querySelector('.machine .pull').click());
+await page.waitForFunction(() => window.__slots && !window.__slots.busy, null, { timeout: 90000 });
+console.log('live pool:', await page.textContent('#slotPool'), '| balance:', await page.textContent('#demoBal'), '| result:', await page.textContent('.machine .res'));
 await page.screenshot({ path: 'out/live-games.png' });
 console.log('errors:', errs.length ? errs : 'none'); await browser.close();
