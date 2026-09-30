@@ -42,13 +42,34 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 ## Santa Hat Games tab
 - [ ] **Spin pool skim:** when the Spin pool reaches $175, the server sends $25 to the treasury (decided).
 - [ ] **Santa Hat Spin:** $0.10 and $1.00, its own Spin pool seeded with **$50**, the agreed odds (unchanged, no jackpot), a 400-slice wheel (5x = 2 slices, 4x = 4), pay per spin.
-- [ ] **Slots with real SANTA:** server-picked results (provably fair), payments and payouts. The demo already picks the result first and then shows it, so a server result plugs straight in.
-- [ ] **Slots jackpot %s:** built with a draft of 1% (Mini Hat) and 10% (Big Hat). Cody to confirm.
+- [ ] **Slots with real SANTA:** server-picked reel stops (provably fair), payments and payouts. The game rules already take the random numbers from outside (`pull(state, 'big', rand)`), so server seeds plug straight in.
+- [ ] **Slots pool jackpot %:** 25% (Cody) gives about $360–430 on a full pool; about 14% would give about $250. Cody to confirm.
 - [ ] **Provably fair results** and a pool safety rule (a play only starts if the pool covers that game's biggest fixed win: Spin 5× the bet, Slots its top fixed prize).
 - [ ] **Entries split 90% to the pool, 10% burned** (after the 3% tax).
 - [ ] **3% SANTA tax notice at the top of the Spin page** when it's built (the Games tab intro already has one).
-- [ ] **Simulate a million spins** to prove the payback % before launch.
+- [ ] **Simulate a million spins** to prove the payback % before launch. (Slots: exact payback from the reel math plus `tests/payout-ranges.mjs`, 5 million pulls. Re-run both after any change.)
 - [ ] More click games from the idea list (Hat Drop, Present Pick, Sleigh Climb, Advent Scratch, Naughty or Nice).
+
+### Slots server: protect it from bots and abuse (no daily play limit, so this matters more)
+The math can't be beaten by grinding (a simulated 100,000-pull grinder lost about 25% every time), but the server still has to
+stop cheating and spam:
+- [ ] **One pull at a time per wallet.** A new pull waits until the last one is settled. No double-spending one payment.
+- [ ] **Every payment used once.** Each SANTA payment's transaction signature can buy exactly one pull; record it and refuse repeats.
+- [ ] **Confirm the payment on-chain (Helius) before the reels spin.** No confirmed payment, no pull.
+- [ ] **Rate limit per wallet and per IP** (e.g. a few pulls a second at most) to stop scripted floods; slow down, don't ban, on the first hits.
+- [ ] **Bot signals:** flag wallets pulling at perfectly regular intervals for hours; review before acting (a real grinder is fine).
+- [ ] **Results only from the server.** The page just animates what the server decided; the browser never picks outcomes or amounts.
+- [ ] **Payout queue with a sanity cap:** a single payout far above the biggest possible pull (about $205, or the pool jackpot) is held for Cody to review instead of sent automatically.
+- [ ] **Keys never leave the server;** pool wallets hold only what the rules need (pool + skim/top-off movements).
+
+### Slots: tips for building it right (from the research, see RESEARCH.md)
+- [ ] **Keep it a "PAR sheet" machine:** odds come only from symbol counts on the reel strips; change payback by changing counts or prizes in `mockups/slots.js`, then re-run `tests/slots.test.mjs`, `tests/paytable.mjs` and `tests/payout-ranges.mjs`.
+- [ ] **Provably fair:** the server commits to a hidden seed (publishes its hash), mixes in the player's seed and a pull counter, and derives the 5 reel stops. After a seed rotates, anyone can re-run it and check.
+- [ ] **Show every win clearly:** draw the winning paylines, light the winning symbols, show the hat-bonus nickels, then the total.
+- [ ] **Only celebrate real wins:** big effects only when the pull pays more than the $1 it cost (research: "losses disguised as wins"). Small returns show quietly.
+- [ ] **Reel timing:** reels stop left to right with a small bounce; about 250–500 ms between stops; a slower last reel only when hats are really lining up (honest anticipation, nothing staged).
+- [ ] **Let players stop early:** tapping during a spin lands the reels right away (same result, just faster).
+- [ ] **Paytable always one tap away,** with the 3% tax note and the odds.
 
 ## Later
 - [ ] Wager mode (players bet SANTA, FFA).
