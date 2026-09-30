@@ -137,6 +137,9 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 .signin.in { background: var(--plaque-hi); color: var(--text); box-shadow: 2px 2px 0 var(--ink); }
 #pages { position: fixed; z-index: 6; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 60px); bottom: 0; overflow-y: auto; padding: 22px 16px 40px; -webkit-overflow-scrolling: touch; touch-action: pan-y; -webkit-user-select: text; user-select: text; }
 .page { max-width: 1080px; display: grid; gap: 18px; }
+/* night-sky scrim behind page intros so text reads over the 3D village; fades out on the right so the scene still shows */
+.hero { width: fit-content; max-width: calc(100% + 24px); box-sizing: border-box; margin: -8px -12px 0; padding: 8px 28px 12px 12px;
+  background: linear-gradient(90deg, rgba(12,15,26,.8), rgba(12,15,26,.68) 80%, rgba(12,15,26,0)); }
 .hero h1 { font-size: 56px; margin: 4px 0 6px; }
 .hero p { margin: 0; font-size: 18px; color: #d6ddf0; max-width: 60ch; text-shadow: 1px 1px 0 var(--ink); }
 .modes3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
@@ -205,7 +208,13 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
 .machine .flash.show { animation: stamp 2.4s ease-out forwards; }
 .machine.jackpot .flash.show { animation-duration: 4.2s; }
 @keyframes stamp { 0% { opacity: 0; transform: scale(1.9) rotate(-4deg); } 10% { opacity: 1; transform: scale(1) rotate(-4deg); } 80% { opacity: 1; } 100% { opacity: 0; transform: scale(1) rotate(-4deg); } }
-.machine .pullrow { display: flex; gap: 12px; align-items: center; }
+.machine .pullrow { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+/* play credits: a ticket-stub strip under the play button */
+.credrow { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 8px; background: rgba(12,15,26,.55); border: 2px dashed #3a4570; border-radius: 3px; }
+.credrow .cred { margin-right: auto; font-size: 14px; color: #d6ddf0; }
+.credrow .cred b { font: 700 20px/1 var(--digits); color: var(--lamp); margin-right: 2px; }
+.credrow.none .cred b { color: var(--dim); }
+.credrow .sec { padding: 6px 10px; font-size: 13px; }
 .machine .res { font-size: 15px; color: #d6ddf0; min-height: 2.6em; display: flex; align-items: center; }
 .machine .res b { color: var(--lamp); margin-right: 4px; }
 .machine.won .jp { border-color: var(--lamp); }
@@ -255,6 +264,20 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
 .howbtn { display: block; width: 100%; margin-top: 8px; font-size: 15px; padding: 10px 14px; }
 .howdlg { width: min(760px, calc(100vw - 24px)); max-height: calc(100vh - 32px); overflow: auto; padding: 16px 18px 18px; color: var(--text); background: #1b2344; border: 2px solid var(--ink); }
 .howdlg::backdrop { background: rgba(8,10,20,.72); }
+.buydlg { width: min(420px, calc(100vw - 24px)); }
+.buydlg h2 { margin: 2px 0 12px; font: 800 36px/1 var(--display); color: var(--brim); text-shadow: 2px 2px 0 var(--ink); }
+.buydlg p { margin: 10px 0 0; line-height: 1.4; color: #d6ddf0; }
+.counter { display: grid; grid-template-columns: 56px 1fr 56px; align-items: center; gap: 10px; text-align: center; background: var(--ink); border: 2px solid #3a4570; border-radius: 3px; padding: 10px; }
+.counter .sec { font-size: 26px; padding: 8px 0; }
+.counter b { display: block; font: 700 54px/1 var(--digits); color: var(--lamp); }
+.counter span { font-size: 14px; color: var(--dim); }
+.quick { display: flex; gap: 8px; margin-top: 8px; } .quick .sec { flex: 1; font-family: var(--digits); }
+.quick .sec[aria-pressed="true"] { border-color: var(--lamp); color: var(--lamp); }
+.warnline { color: #ff7a6e !important; min-height: 1.2em; font-size: 14px; }
+.buyacts { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; } .buyacts .go { font-size: 20px; }
+.proofsteps code { display: block; margin: 3px 0 6px; font: 12px/1.3 ui-monospace, monospace; color: var(--frost); word-break: break-all; background: var(--ink); padding: 5px 7px; border-radius: 3px; }
+.proofout { min-height: 2.8em; line-height: 1.4; } .proofout .ok { color: var(--pine); } .proofout .bad { color: #ff7a6e; }
+.proofdlg .go { margin-top: 10px; font-size: 20px; }
 .howhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .howhead h2 { margin: 2px 0 8px; font: 800 36px/1 var(--display); color: var(--brim); text-shadow: 2px 2px 0 var(--ink); }
 .howdlg h3 { font: 800 22px/1.2 var(--display); color: var(--brim); margin: 16px 0 8px; }
@@ -516,7 +539,8 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
         <div class="jp topline"><span>Top line prize<small>5 Santa Hats in a row on a line</small></span><b id="topAmt">$100.00</b></div>
         <div class="screen"><canvas aria-label="Big Hat slot machine, 5 by 5 reels"></canvas><div class="flash" aria-hidden="true"></div>
           <button class="sec howbtn" id="howBtn" type="button">How to win · examples &amp; win table</button></div>
-        <div class="pullrow"><button class="go pull">Pull</button><output class="res" aria-live="polite">Pull the pom-pom, or tap the machine. Tap again to stop the reels early.</output></div>
+        <div class="pullrow"><button class="go pull">Pull</button><output class="res" aria-live="polite">Pull the pom-pom, or tap the machine. Tap again to stop the reels early.</output>
+          <div class="credrow"><span class="cred"><b id="crBig">0</b> <span id="crBigWhat">Big Hat pulls</span> left</span><button class="sec" type="button" data-buy="big">Buy 1–10</button><button class="sec" type="button" data-proof="big" hidden>Check last result</button></div></div>
         <ul class="facts"></ul>
       </article>
       <details class="paytable"><summary>Paytable <span class="dim">· draft, payouts not final</span></summary><div id="payRows"></div>
@@ -536,11 +560,37 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
           <button class="chip100" role="radio" aria-checked="false" data-bet="1"><b>$1</b><small>win up to $5</small></button>
         </div>
         <div class="screen"><canvas aria-label="Santa Hat prize wheel"></canvas><div class="flash" aria-hidden="true"></div></div>
-        <div class="pullrow"><button class="go spinbtn">Spin</button><output class="res" aria-live="polite">Pick 10¢ or $1, then spin. Tap again to land it early.</output></div>
+        <div class="pullrow"><button class="go spinbtn">Spin</button><output class="res" aria-live="polite">Pick 10¢ or $1, then spin. Tap again to land it early.</output>
+          <div class="credrow"><span class="cred"><b id="crSpin">0</b> <span id="crSpinWhat">10¢ spins</span> left</span><button class="sec" type="button" data-buy="spin">Buy 1–10</button><button class="sec" type="button" data-proof="spin" hidden>Check last result</button></div></div>
         <div class="oddsbox"><h4>What's on the wheel</h4><ul class="oddslist" id="oddsList"></ul></div>
         <div class="history"><h4>Your last spins</h4><ol id="spinHistory"></ol></div>
       </article>
     </section>
+    <dialog id="buyDlg" class="plaque howdlg buydlg" aria-labelledby="buyTitle">
+      <div class="eyebrow" id="buyEyebrow">Big Hat · $1.00 a pull</div><h2 id="buyTitle">Buy pulls</h2>
+      <div class="counter"><button class="sec" id="buyMinus" type="button" aria-label="One fewer">−</button>
+        <div><b id="buyCount" aria-live="polite">1</b><span id="buyWhat">Big Hat pull</span></div>
+        <button class="sec" id="buyPlus" type="button" aria-label="One more">+</button></div>
+      <div class="quick" id="buyQuick" role="group" aria-label="Quick picks"><button class="sec" type="button" data-n="1">1</button><button class="sec" type="button" data-n="5">5</button><button class="sec" type="button" data-n="10">10</button></div>
+      <p>One payment in SANTA. 10% is burned and the rest goes into the <b id="buyPool">Slots</b> prize pool right away. Your plays wait on your account: they don't expire and can't be cashed out.</p>
+      <p class="dim">Demo: paid from your demo balance. Winnings arrive 3% lighter (SANTA's token tax).</p>
+      <p class="warnline" id="buyNote" aria-live="polite"></p>
+      <div class="buyacts"><button class="sec" id="buyCancel" type="button">Cancel</button><button class="go" id="buyGo" type="button">Buy 1 · $1.00</button></div>
+    </dialog>
+    <dialog id="proofDlg" class="plaque howdlg proofdlg" aria-labelledby="proofTitle">
+      <div class="howhead"><div><div class="eyebrow">Fair results</div><h2 id="proofTitle">Check this result</h2></div>
+        <button class="sec" id="proofClose" type="button">Close</button></div>
+      <ol class="howrules proofsteps">
+        <li><b>Your payment went through</b> and one play was taken off your credits.</li>
+        <li><b>Only then</b> the house made a secret for this play and locked it in by showing you its fingerprint:<code id="proofCommit"></code></li>
+        <li><b>Your browser added its own number</b> (after seeing the fingerprint, so the house couldn't pick a secret to beat it):<code id="proofSeed"></code></li>
+        <li>Play number <b id="proofNo">#1</b>. The result comes from the secret, your number and the play number together.</li>
+        <li><b>After the play</b> the secret was revealed:<code id="proofSecret"></code></li>
+      </ol>
+      <button class="go" id="proofCheck" type="button">Re-check it now</button>
+      <p class="proofout" id="proofOut" aria-live="polite"></p>
+      <p class="dim">Demo: the house runs in your browser for now. With real SANTA it runs on the game server, in the same order.</p>
+    </dialog>
     <dialog id="howDlg" class="plaque howdlg" aria-labelledby="howTitle">
       <div class="howhead"><div><div class="eyebrow">Big Hat · $1.00 a pull</div><h2 id="howTitle">How to win</h2></div>
         <button class="sec" id="howClose" type="button">Close</button></div>

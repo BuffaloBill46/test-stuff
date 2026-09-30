@@ -2,7 +2,8 @@
 // 3D Big Hat machine (slots3d.js). DEMO ONLY: play money and a demo pool kept in this browser. No SANTA moves.
 import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount } from './slots.js';
 import { createMachine, symbolImages } from './slots3d.js';
-import { initSpin, showSpin, resetSpin } from './spinui.js';
+import { initSpin, showSpin, resetSpin, spinState, refreshSpin } from './spinui.js';
+import { initCredits, ready, play, short, refresh as refreshCredits, resetCredits } from './playcredits.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -122,13 +123,15 @@ function stamp(text) { const fl = $('#slots .machine .flash'); fl.textContent = 
 async function doPull() {
   if (busy) { view.slam(); return; } // tap during a spin: stop the reels early
   const card = $('#slots .machine'), res = $('#slots .machine .res');
-  if (state.bal < M.bet - 1e-9) { res.textContent = 'Out of demo money. Tap Reset to play on.'; return; }
+  if (!(await ready('big')) || busy) return; // no pulls left: the buy counter opens first
+  busy = true;
   const forced = test.next; test.next = undefined;
-  const r = pull(state, 'big', Math.random, forced);
-  if (r.paused) { res.textContent = r.stopped ? 'Slots are paused right now.' : 'The pool is refilling. Try again in a moment.'; return; }
-  busy = true; card.classList.remove('won', 'jackpot'); $('#slots .machine .flash').classList.remove('show');
-  state.bal -= M.bet; store.set(state); $('#demoBal').textContent = money(state.bal);
-  res.textContent = 'Spinning… tap again to stop early.';
+  const p = await play('big', forced); // the house: pool check, spend a pull, lock the secret, draw (house.js)
+  if (!p.r) { busy = false; res.textContent = p.failed ? `Couldn't pull (${p.why}). Your pull is still on your account.` : p.refused ? (p.stopped ? 'Slots are paused right now. Your pull stays on your account.' : 'The pool is refilling. Try again in a moment; your pull is kept.') : 'No pulls left.'; return; }
+  const r = p.r;
+  card.classList.remove('won', 'jackpot'); $('#slots .machine .flash').classList.remove('show');
+  store.set(state);
+  res.textContent = `Spinning… result locked (${short(p.commit)}). Tap again to stop early.`;
   await view.spin(r.stops, r);
   shownPool = state.pool; state.bal += r.received;
   const lines = r.wins.length, hatsTxt = r.hats ? `${r.hats} Santa Hat${r.hats > 1 ? 's' : ''} +${money(r.hatPay)}` : '';
@@ -174,12 +177,16 @@ export function initGames(opts = {}) {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#slots .machine').classList.remove('max'); });
   $('#demoReset').addEventListener('click', () => {
     if (busy) return;
-    Object.assign(state, { pool: POOL_RULES.start, bal: DEMO_START, treasury: 0 }); shownPool = state.pool; store.set(state); render(); resetSpin();
+    Object.assign(state, { pool: POOL_RULES.start, bal: DEMO_START, treasury: 0 }); shownPool = state.pool; store.set(state); render(); resetSpin(); resetCredits();
     $('#slots .machine .res').textContent = 'Pull the pom-pom, or tap the machine. Tap again to stop the reels early.';
   });
   paytable(); facts(); render();
   // Santa Hat Spin shares the demo balance and the Recent winners list.
-  initSpin({ wallet: { get: () => state.bal, add: (x) => { state.bal += x; store.set(state); $('#demoBal').textContent = money(state.bal); } }, addWinner });
+  const wallet = { get: () => state.bal, add: (x) => { state.bal += x; store.set(state); $('#demoBal').textContent = money(state.bal); } };
+  initSpin({ wallet, addWinner });
+  // Play credits: buying moves the entry money into that game's pool straight away, so the pool readouts update on purchase.
+  initCredits({ wallet, pools: { slots: state, spin: spinState() }, onChange: () => { shownPool = state.pool; store.set(state); render(); refreshSpin(); } });
+  refreshCredits();
   window.__slots = { state, view, test, get shownPool() { return shownPool; }, get busy() { return busy; } };
 }
 
