@@ -133,5 +133,12 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
         note: w.result?.jackpot ? 'pool jackpot' : w.result?.mult ? `${w.result.mult}×` : '', big: pay >= 10 * bet }; });
     winnersCache = { at: Date.now(), list }; return list;
   }
-  return { quote, buy, open, settle, tidy, winners };
+  // The player's own recent plays, each with everything needed to re-check it (secrets only for settled plays).
+  async function history(profile, limit = 20) {
+    const rows = await db.query(`select id, kind, play_no, commit, secret, player_seed, result, pay, settled_at from public.plays
+      where profile_id = $1 and state = 'settled' order by id desc limit $2`, [profile, limit]);
+    return rows.map((r) => ({ ticket: String(r.id), kind: r.kind, pay: +r.pay, at: new Date(r.settled_at).getTime(), result: r.result,
+      proof: { kind: r.kind, commit: r.commit, secret: r.secret, playerSeed: r.player_seed, playNo: +r.play_no } }));
+  }
+  return { quote, buy, open, settle, tidy, winners, history };
 }

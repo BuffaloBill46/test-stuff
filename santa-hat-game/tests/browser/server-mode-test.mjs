@@ -82,6 +82,14 @@ for (let i = 0; i < 3; i++) {
   shown.push(await p.textContent('.machine .res'));
 }
 check(await p.textContent('#crBig') === '0', 'all 3 pulls used, as the server counts them');
+// "My plays": all 3 listed; the oldest one re-checks against the server's record.
+await p.waitForFunction(() => document.querySelectorAll('#myPlayList [data-hist]').length === 3, null, { timeout: 15000 }).catch(() => {});
+check(!(await p.evaluate(() => document.querySelector('#myPlays').hidden)) && (await p.locator('#myPlayList [data-hist]').count()) === 3, 'My plays lists the 3 plays');
+await p.evaluate(() => document.querySelector('#myPlayList [data-hist="2"]').click()); await p.evaluate(() => document.querySelector('#proofCheck').click());
+await p.waitForFunction(() => /atch/.test(document.querySelector('#proofOut').textContent), null, { timeout: 15000 });
+const oldest = (await db.query('select commit from public.plays where profile_id = $1 and state = $2 order by id limit 1', [me, 'settled']))[0].commit;
+check(/^Matches\./.test(await p.textContent('#proofOut')) && (await p.textContent('#proofCommit')) === oldest, 'an older play re-checks from My plays');
+await p.evaluate(() => document.querySelector('#proofClose').click());
 await p.evaluate(() => document.querySelector('[data-proof="big"]').click()); await p.evaluate(() => document.querySelector('#proofCheck').click());
 await p.waitForFunction(() => /atch/.test(document.querySelector('#proofOut').textContent), null, { timeout: 15000 });
 check(/^Matches\./.test(await p.textContent('#proofOut')), 'Check this result matches the server\'s revealed secret');
