@@ -50,10 +50,11 @@ Tick items off here as they're done. Order is roughly the order to do them in fo
 - [ ] **Run the reconciliation on a schedule:** `server/reconcile.js` (books + everything still owed = wallet). Alarm on any drift;
       run it before any withdrawal. Needs the live wallet balances (RPC).
 - [ ] **Admin screen + emergency withdrawal:** the server side of the escrow controls is built (`server/admin.js`: pause, resume,
-      set-rules; wallet-signed, replay-proof, logged). Needed: set the Edge Function secret `ADMIN_WALLETS` (Cody's address); a
-      small admin page that builds the message with `adminMessage()`, has Cody's wallet `signMessage` it, and POSTs
-      `{ wallet, message, signature (hex) }` with header `x-santa-admin: 1`; and the withdrawal itself (a transfer from a pool
-      wallet to a safe wallet, needs the pool key, logged in `pool_log`). Pause first so a withdrawal isn't refilled by a top-off.
+      set-rules; wallet-signed, replay-proof, logged) AND the admin screen is built: `admin.html?server=<Edge Function URL>`
+      (published at /admin.html, not linked from the game; tested with a stand-in wallet, `tests/browser/admin-test.mjs`).
+      Needed: the Edge Function secret `ADMIN_WALLETS` (Cody's address); a quick real-Phantom check of its Connect/sign; and the
+      withdrawal itself (a transfer from a pool wallet to a safe wallet, needs the pool key, logged in `pool_log`), plus
+      approving waiting top-offs (the screen lists them). Pause first so a withdrawal isn't refilled by a top-off.
 - [ ] **Two real devices** playing a multiplayer match; **a real phone** for feel, frame rate and sound.
 
 ## Checked here, re-check live

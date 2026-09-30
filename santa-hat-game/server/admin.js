@@ -25,10 +25,9 @@ export function b58encode(bytes) {
 }
 const unhex = (h) => new Uint8Array((h.match(/../g) || []).map((x) => parseInt(x, 16)));
 
-// The exact text the wallet signs. The page builds it with this same function, so there's nothing to get wrong.
-export function adminMessage({ action, game, settings = {}, at, nonce }) {
-  return ['Santa Hat Arcade admin', `action: ${action}`, `game: ${game}`, `settings: ${JSON.stringify(settings)}`, `at: ${at}`, `nonce: ${nonce}`].join('\n');
-}
+// The exact text the wallet signs: one shared function for the admin screen and the server.
+import { adminMessage } from '../mockups/adminmsg.js';
+export { adminMessage };
 function parse(message) {
   const lines = message.split('\n'); if (lines[0] !== 'Santa Hat Arcade admin' || lines.length !== 6) return null;
   const get = (i, k) => (lines[i].startsWith(k + ': ') ? lines[i].slice(k.length + 2) : null);

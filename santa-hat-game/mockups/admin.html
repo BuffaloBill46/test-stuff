@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pool Controls · Santa Hat</title>
+<link rel="icon" href="hat-logo.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@600;800&family=Alegreya+Sans:wght@400;500;700&family=Silkscreen:wght@400;700&display=swap">
+<style>
+:root { --ink: #0c0f1a; --night: #121830; --plaque: #1b2344; --plaque-hi: #26305a; --frost: #b9cdf2; --text: #eef2fb; --dim: #9aa6c7;
+  --hat: #cf3128; --brim: #f5f1e8; --lamp: #ffbe5c; --pine: #7fe0a0; --warn: #ff7a6e;
+  --display: 'Grenze Gotisch', Georgia, serif; --body: 'Alegreya Sans', system-ui, sans-serif; --digits: 'Silkscreen', monospace; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--night); color: var(--text); font: 17px/1.45 var(--body); padding: 20px 16px 60px; }
+main { max-width: 900px; margin: 0 auto; display: grid; gap: 16px; }
+h1 { font: 800 44px/1 var(--display); color: var(--brim); margin: 4px 0; text-shadow: 2px 2px 0 var(--ink); }
+h2 { font: 800 28px/1.1 var(--display); color: var(--brim); margin: 0 0 8px; }
+.eyebrow { font: 700 11px/1.3 var(--digits); letter-spacing: 1px; color: var(--frost); text-transform: uppercase; }
+.plaque { background: var(--plaque); border: 2px solid var(--ink); box-shadow: inset 0 0 0 1px rgba(185,205,242,.18), 3px 3px 0 var(--ink); border-radius: 3px; padding: 14px 16px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.row label { min-width: 160px; }
+button { font: 700 16px/1 var(--body); color: var(--text); background: var(--plaque-hi); border: 2px solid var(--ink); border-radius: 3px; padding: 12px 16px; min-height: 44px; box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
+button.stop { background: var(--hat); color: var(--brim); } button:disabled { opacity: .5; cursor: not-allowed; }
+.pools { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.pool b.big { display: block; font: 700 30px/1.1 var(--digits); color: var(--lamp); }
+.state { font: 700 13px/1 var(--digits); text-transform: uppercase; padding: 6px 8px; border: 2px solid; display: inline-block; }
+.state.on { color: var(--pine); } .state.off { color: var(--warn); }
+label { display: grid; gap: 4px; font-size: 14px; color: var(--dim); }
+input, select { width: 100%; min-width: 0; font: 500 17px/1.2 var(--body); color: var(--text); background: #0e1328; border: 2px solid var(--ink); border-radius: 3px; padding: 9px 10px; min-height: 44px; }
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 10px 0; }
+#msg { min-height: 1.4em; } #msg.bad { color: var(--warn); } #msg.ok { color: var(--pine); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; } td, th { text-align: left; padding: 6px 4px; border-bottom: 1px solid rgba(185,205,242,.14); }
+th { color: var(--dim); font-weight: 500; } .dim { color: var(--dim); font-size: 14px; }
+</style></head>
+<body><main>
+  <div><div class="eyebrow">Santa Hat Arcade · escrow controls</div><h1>Pool Controls</h1>
+    <p class="dim">Every action is signed by your wallet (a free signature, not a payment) and written to the public log. Stop a pool before any withdrawal, so a top-off can't refill it.</p></div>
+  <section class="plaque"><div class="row"><button id="connect" type="button">Connect admin wallet</button><span id="who" class="dim">Not connected.</span></div></section>
+  <section class="pools" id="pools"><p class="dim">Loading the pools…</p></section>
+  <section class="plaque"><h2>Change settings</h2>
+    <div class="row"><label>Pool <select id="game"><option value="slots">Slots</option><option value="spin">Spin</option></select></label></div>
+    <div class="form" id="fields"></div>
+    <div class="row"><button id="save" type="button">Sign and save settings</button></div>
+    <p class="dim">Money amounts are dollars (pools are valued at the live SANTA price). The server refuses unsafe settings.</p>
+  </section>
+  <p id="msg" aria-live="polite"></p>
+  <section class="plaque"><h2>Waiting transfers</h2><div id="pending" class="dim">None.</div></section>
+  <section class="plaque"><h2>Change log</h2><div id="log" class="dim">No changes yet.</div></section>
+</main>
+<script type="module" src="admin.js"></script>
+</body></html>

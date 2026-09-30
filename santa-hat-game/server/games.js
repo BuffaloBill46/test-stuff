@@ -140,5 +140,13 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     return rows.map((r) => ({ ticket: String(r.id), kind: r.kind, pay: +r.pay, at: new Date(r.settled_at).getTime(), result: r.result,
       proof: { kind: r.kind, commit: r.commit, secret: r.secret, playerSeed: r.player_seed, playNo: +r.play_no } }));
   }
-  return { quote, buy, open, settle, tidy, winners, history };
+  // Public pool status (for the admin screen, and for anyone who wants to check): balances, settings, pending transfers, log.
+  async function pools() {
+    const ps = await db.query('select game, santa_raw, rules, updated_at from public.pools order by game');
+    const pending = await db.query(`select game, kind, status, amount_raw from public.pool_transfers where status <> 'sent' order by id desc limit 50`);
+    const log = await db.query('select game, what, by_wallet, at, details from public.pool_log order by id desc limit 30');
+    return { pools: ps.map((p) => ({ game: p.game, santaRaw: +p.santa_raw, rules: p.rules || {}, updatedAt: p.updated_at })),
+      pending, log: log.map((l) => ({ game: l.game, what: l.what, by: l.by_wallet, at: l.at, after: l.details?.after })) };
+  }
+  return { quote, buy, open, settle, tidy, winners, history, pools };
 }
