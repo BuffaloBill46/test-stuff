@@ -4,6 +4,7 @@
 //   SPIN_POOL_WALLET, SLOTS_POOL_WALLET  public addresses of the pool wallets (until set, buying is refused)
 //   SOLANA_RPC_URL                       e.g. a Helius URL (defaults to a free public endpoint)
 //   ADMIN_WALLETS                        Cody's admin wallet address(es), comma-separated (escrow admin controls)
+//   SANTA_MINT                           the token to accept (leave unset for real SANTA; the test token's address on devnet)
 // Pool wallet KEYS are not used here (payouts are sent by a separate worker) and never go in the website.
 import postgres from 'npm:postgres@3.4.5';
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -31,7 +32,7 @@ const chain = {
 const auth = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), { auth: { persistSession: false } });
 // The game prices plays with the 10-minute median, not one live reading (audit: price manipulation).
 const server = createGameServer({ db, chain, livePrice: makePrice({ db, livePrice }), liveFee,
-  poolWallets: { spin: env('SPIN_POOL_WALLET') || null, slots: env('SLOTS_POOL_WALLET') || null } });
+  poolWallets: { spin: env('SPIN_POOL_WALLET') || null, slots: env('SLOTS_POOL_WALLET') || null }, ...(env('SANTA_MINT') ? { mint: env('SANTA_MINT') } : {}) });
 
 Deno.serve(makeHandler({
   server,

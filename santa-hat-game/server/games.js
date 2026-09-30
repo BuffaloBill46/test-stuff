@@ -20,7 +20,8 @@ const isTicket = (t) => /^[0-9]{1,18}$/.test(String(t));
 const isSignature = (s) => /^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(String(s)); // a single payout above this (the biggest normal pull) is held for Cody, unless it's the pool jackpot
 const DEC = 1e6;
 
-export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f = fair }) {
+// mint: which token is SANTA here (defaults to real SANTA; set to the test token on devnet, e.g. the SANTA_MINT secret).
+export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f = fair, mint = MINT }) {
   const row = async (q, p) => (await db.query(q, p))[0];
   const walletOf = async (profile) => (await row('select wallet from public.profiles where id = $1', [profile]))?.wallet;
   // Pools hold SANTA (Cody): the game rules work in dollars, so a pool is valued at the live price for each decision.
@@ -37,7 +38,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     // where to pay: the page builds the one transaction from this (mockups/pay.js); the live tax so its fee matches the token
     const fee = await liveFee();
     return { id: q.id, kind, n, usd, santaRaw, price: price.usd, expiresAt: new Date(q.created_at).getTime() + QUOTE_SECONDS * 1000,
-      mint: MINT, pool: poolWallets?.[KINDS[kind].game] || null, fee: { bps: fee.bps, max: fee.max }, burnBps: 1000 };
+      mint, pool: poolWallets?.[KINDS[kind].game] || null, fee: { bps: fee.bps, max: fee.max }, burnBps: 1000 };
   }
 
   async function buy(profile, quoteId, signature) {
@@ -49,7 +50,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     if (q.used_by) return { error: 'quote already used' };
     const [tx, fee, wallet] = await Promise.all([chain.getTransaction(signature), liveFee(), walletOf(profile)]);
     if (!wallet) return { error: 'buying needs a linked wallet' };
-    const v = verifyPayment(tx, { mint: MINT, player: wallet, pool: poolWallets[KINDS[q.kind].game], quoteRaw: +q.santa_raw,
+    const v = verifyPayment(tx, { mint, player: wallet, pool: poolWallets[KINDS[q.kind].game], quoteRaw: +q.santa_raw,
       quoteAt: new Date(q.created_at).getTime(), quoteSeconds: QUOTE_SECONDS, cushion: CUSHION, burnBps: 1000, fee });
     if (!v.ok) return { error: v.why };
     try {

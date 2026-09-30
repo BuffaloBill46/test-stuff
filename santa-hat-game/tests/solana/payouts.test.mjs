@@ -37,7 +37,8 @@ const chain = {
     const amount = BigInt(p.amount_raw), fee = (amount * BigInt(BPS) + 9999n) / 10000n, blockhash = svm.latestBlockhash(), destination = await ata(p.to_wallet);
     const m = pipe(createTransactionMessage({ version: 0 }), (x) => setTransactionMessageFeePayerSigner(pool, x),
       (x) => setTransactionMessageLifetimeUsingBlockhash({ blockhash, lastValidBlockHeight: 1_000_000n }, x),
-      (x) => appendTransactionMessageInstructions([getTransferCheckedWithFeeInstruction({ source: poolAta, mint: mint.address, destination, authority: pool, amount, decimals: DEC, fee })], x));
+      (x) => appendTransactionMessageInstructions([getTransferCheckedWithFeeInstruction({ source: poolAta, mint: mint.address, destination, authority: pool, amount, decimals: DEC, fee }),
+        { programAddress: 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr', accounts: [], data: new TextEncoder().encode(`Santa Hat payout #${p.id}`) }], x)); // unique per payout
     const tx = await signTransactionMessageWithSigners(m);
     return { signature: getSignatureFromTransaction(tx), tx, blockhash };
   },

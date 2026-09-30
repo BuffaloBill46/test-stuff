@@ -96,6 +96,12 @@ Read this before starting new work on the game. Add to it whenever something rea
 - **A "must fail" check has to actually run the old code.** A `git stash` with a path that didn't match set nothing aside, so the
   "old code" run was the new code. Back the files up, restore the old versions, run, restore; confirm with `git diff --stat`.
 
+- **Identical transactions are deduplicated by the chain.** Two payouts of the same amount to the same wallet with the same
+  blockhash are byte-identical; Solana drops the second and its signature reports "landed". The payout crash test never saw it
+  (its amounts all differed); the end-to-end rehearsal did. Every money transaction gets a unique memo, and one signature can
+  never be recorded for two payouts.
+- **A dress rehearsal finds seams unit tests miss.** It also caught the server quoting the real SANTA mint during a test-token run.
+
 ## Multiplayer notes
 
 - This workspace can't open WebSockets (proxy limit), so live Supabase play can't be tested here.

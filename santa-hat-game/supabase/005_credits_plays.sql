@@ -80,7 +80,7 @@ create table public.payouts (
   -- queued → sending (signed; its signature saved BEFORE it's sent) → sent. 'held' waits for Cody. Never paid twice:
   -- a 'sending' payout is re-signed only after its old transaction's blockhash has expired (it can then never land).
   status text not null default 'queued' check (status in ('queued', 'held', 'sending', 'sent', 'failed')),
-  tx text, blockhash text, attempts int not null default 0, created_at timestamptz not null default now()
+  tx text unique, blockhash text, attempts int not null default 0, created_at timestamptz not null default now()  -- one transaction per row, never shared (payouts.js)
 );
 
 -- Skims (pool → treasury) and top-offs (treasury → pool) are REAL transfers, queued like payouts so the books never drift
@@ -92,7 +92,7 @@ create table public.pool_transfers (
   kind text not null check (kind in ('skim', 'top-off')),
   amount_raw bigint not null check (amount_raw > 0),
   status text not null default 'queued' check (status in ('needs_approval', 'queued', 'sending', 'sent', 'failed')),
-  tx text, blockhash text, attempts int not null default 0, created_at timestamptz not null default now()
+  tx text unique, blockhash text, attempts int not null default 0, created_at timestamptz not null default now()  -- one transaction per row, never shared (payouts.js)
 );
 alter table public.pool_transfers enable row level security;
 create policy pool_transfers_read on public.pool_transfers for select using (true);  -- public, like the pool log

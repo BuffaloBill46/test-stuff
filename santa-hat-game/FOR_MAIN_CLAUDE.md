@@ -11,7 +11,8 @@ Tick items off here as they're done. Order is roughly the order to do them in fo
       Function secrets `SPIN_POOL_WALLET` / `SLOTS_POOL_WALLET`. Until set, the server refuses all buying (built that way).
 - [ ] **Treasury wallet address** (skims go there; top-offs come from it).
 - [ ] **A devnet test token** with SANTA's settings (Token-2022, 6 decimals, 300 bps transfer fee). `tests/solana/split.test.mjs`
-      shows exactly how it's made. The game reads the mint from `MINT` in `mockups/market.js`; point it at the devnet mint for the test.
+      shows exactly how it's made. Give the server its address with the Edge Function secret `SANTA_MINT` (no code change; unset
+      = real SANTA). The page's live-price line still shows real SANTA's price and tax (`mockups/market.js`), which is fine for a test.
 
 - [ ] **Cody: how top-offs are paid.** Top-offs move SANTA from the treasury into a pool. Sending them automatically would put the
       treasury's key on the server. Options: (a) Cody approves each one (default now: queued as `needs_approval` in
@@ -35,6 +36,10 @@ Tick items off here as they're done. Order is roughly the order to do them in fo
 - [ ] **Turn on server mode for real:** the page uses the server when opened with `?server=<Edge Function URL>`
       (`mockups/gameserver.js`); proven end to end locally (`tests/browser/server-mode-test.mjs`). For launch, make the
       Edge Function URL the default instead of the in-browser demo.
+- [ ] **Start from the dress rehearsal:** `tests/solana/rehearsal.mjs` runs the whole devnet test locally (token, wallets, real
+      signed purchases, plays, payouts + skims, admin stop/resume, books = wallets). Repeat its steps on devnet; the only stand-in
+      is the "finalized transaction" record, which the RPC provides for real. Payout transactions MUST carry a unique memo
+      (`Santa Hat payout #<id>`), as in the rehearsal's adapter; the worker refuses to reuse a signature.
 - [ ] **Run the payout worker live:** `server/payouts.js` is built and proven on the real token program (never pays twice, even
       when it crashes before or after sending; `tests/solana/payouts.test.mjs`). Still needed: the live chain adapter (a Solana
       RPC: getLatestBlockhash, sendTransaction, getSignatureStatuses + isBlockhashValid; same shape as the test's), the pool

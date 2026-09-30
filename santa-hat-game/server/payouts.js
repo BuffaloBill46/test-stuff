@@ -7,35 +7,44 @@
 //   landed  → mark sent (never resent)          pending → leave it (it may still land)
 //   expired → its blockhash is dead, so the old transaction can never land: clear it and sign a fresh one
 // A 'sending' payout with no saved signature was never sent (step 2 comes before step 3), so it's safe to sign fresh.
+// EVERY transaction must be unique: two equal payouts to the same wallet in the same blockhash window would otherwise be
+// byte-identical, the chain would drop the second as a duplicate, and both would look "landed" (found by the dress
+// rehearsal, tests/solana/rehearsal.mjs). So the chain adapter adds a memo "Santa Hat <table> #<id>", and the database
+// refuses to save one signature for two rows (unique tx), which stops the worker loudly if an adapter ever forgets.
 // chain = { sign(payout) → { signature, tx, blockhash }, send(tx), status(signature, blockhash) → 'landed'|'pending'|'expired'|'failed' }
 export const MAX_ATTEMPTS = 5;
 
-export async function runPayouts({ db, chain, limit = 20 }) {
+// table: 'payouts' (winners) or 'pool_transfers' (skims, and top-offs once approved). Same rules for both.
+export async function runPayouts({ db, chain, limit = 20, table = 'payouts' }) {
+  const T = { payouts: 'public.payouts', pool_transfers: 'public.pool_transfers' }[table];
+  if (!T) throw new Error('unknown table ' + table);
   const report = { sent: 0, pending: 0, resigned: 0, failed: 0 };
   // Recover anything a previous run left half-done.
-  for (const p of await db.query(`select * from public.payouts where status = 'sending' order by id`)) {
+  for (const p of await db.query(`select * from ${T} where status = 'sending' order by id`)) {
     if (!p.tx) { await signAndSend(p); continue; }
     const st = await chain.status(p.tx, p.blockhash);
-    if (st === 'landed') { await db.query(`update public.payouts set status = 'sent' where id = $1 and status = 'sending'`, [p.id]); report.sent++; }
+    if (st === 'landed') { await db.query(`update ${T} set status = 'sent' where id = $1 and status = 'sending'`, [p.id]); report.sent++; }
     else if (st === 'expired' || st === 'failed') { report.resigned++; await signAndSend(p); } // failed on-chain can never succeed later either
     else report.pending++;
   }
   // New payouts ('held' ones wait for Cody and are never touched here).
   for (let i = 0; i < limit; i++) {
-    const [p] = await db.query(`update public.payouts set status = 'sending', tx = null, blockhash = null
-      where id = (select id from public.payouts where status = 'queued' order by id limit 1 for update skip locked) returning *`);
+    const [p] = await db.query(`update ${T} set status = 'sending', tx = null, blockhash = null
+      where id = (select id from ${T} where status = 'queued' order by id limit 1 for update skip locked) returning *`);
     if (!p) break;
     await signAndSend(p);
   }
   return report;
 
   async function signAndSend(p) {
-    if (p.attempts >= MAX_ATTEMPTS) { await db.query(`update public.payouts set status = 'failed' where id = $1`, [p.id]); report.failed++; return; }
+    if (p.attempts >= MAX_ATTEMPTS) { await db.query(`update ${T} set status = 'failed' where id = $1`, [p.id]); report.failed++; return; }
     const s = await chain.sign(p);
-    await db.query(`update public.payouts set tx = $2, blockhash = $3, attempts = attempts + 1 where id = $1 and status = 'sending'`, [p.id, s.signature, s.blockhash]);
+    const clash = await db.query(`select 1 from public.payouts where tx = $1 union all select 1 from public.pool_transfers where tx = $1`, [s.signature]);
+    if (clash.length) throw new Error(`payout ${table} #${p.id} built the same transaction as another one: the chain adapter must add a unique memo`);
+    await db.query(`update ${T} set tx = $2, blockhash = $3, attempts = attempts + 1 where id = $1 and status = 'sending'`, [p.id, s.signature, s.blockhash]);
     try { await chain.send(s.tx); } catch { /* not sent or unknown: the next run checks the saved signature */ }
     const st = await chain.status(s.signature, s.blockhash);
-    if (st === 'landed') { await db.query(`update public.payouts set status = 'sent' where id = $1`, [p.id]); report.sent++; }
+    if (st === 'landed') { await db.query(`update ${T} set status = 'sent' where id = $1`, [p.id]); report.sent++; }
     else report.pending++;
   }
 }

@@ -16,6 +16,7 @@ has a test that fails if the fix is undone. Re-run: see HANDOFF → How to test 
 | 5 | An email-only account could start a play it can't be paid for (not reachable today, but a free daily spin would reach it). | Low | **Fixed:** playing for SANTA needs a linked wallet. |
 | 6 | Unlimited price quotes per player (database spam). | Low | **Fixed:** 30 an hour. |
 | 7 | The public winners list hit the database on every request. | Low | **Fixed:** cached 10 seconds. |
+| 9 | **Equal payouts could be silently lost.** Two same-size wins to one wallet, signed moments apart, were byte-identical transactions; the chain drops the second as a duplicate, and the worker marked both paid. Found by the dress rehearsal (a third of the winnings went missing while the books said paid). | High | **Fixed:** every payout carries a unique memo ("Santa Hat payout #id", also readable on the chain), and the database refuses one signature for two payouts, so a worker that forgets fails loudly. Rehearsal now reconciles to zero drift. |
 | 8 | Two plays settling on one pool at once could overwrite each other's balance change. | Medium | **Fixed earlier today:** balances only add/subtract. The row lock itself still needs proving on real Postgres (FOR_MAIN_CLAUDE). |
 
 Checked and fine: the fairness order (payment → credit → secret → player's number → reveal) can't be skipped or reordered
