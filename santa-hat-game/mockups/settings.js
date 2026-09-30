@@ -3,16 +3,19 @@
 // works on old plays after odds change. build() turns settings into the game rules' shapes; check() is the guard rail:
 // it refuses anything that could hurt players or drain a pool, and reports what a change does BEFORE it's signed.
 import { MACHINES, SYMBOLS, SYM, stats, POOL_RULES, pull } from './slots.js';
-import { SEGMENTS, SLICES, SPIN_RULES, spin } from './spin.js';
-import { ITEMS, SLOTS } from './catalog.js';
+import { SEGMENTS, SEG_START, SLICE_MULT, SLICES, SPIN_RULES, spin } from './spin.js';
+import { ITEMS, SLOTS, BY_ID } from './catalog.js';
+import { KINDS } from './credits.js';
 
 const big = MACHINES.big;
 const countsOf = (segs) => segs.reduce((o, [m, n]) => ((o[m] = (o[m] || 0) + n), o), {});
+// The built-in wheel and items, captured before applyToGame() can change the shared ones.
+const ORIGINAL_SEGMENTS = SEGMENTS.map((x) => [...x]), ORIGINAL_ITEMS = ITEMS.map((x) => ({ ...x }));
 // Version 0 = the game exactly as built (Cody's decided numbers).
 export const DEFAULT_SETTINGS = Object.freeze({
   version: 0,
   prices: { spin10: 0.10, spin100: 1.00, big: 1.00, ticket: 0.10 },
-  spin: { slices: countsOf(SEGMENTS) },                                   // result (×) → how many of the 400 slices
+  spin: { slices: countsOf(ORIGINAL_SEGMENTS) },                                   // result (×) → how many of the 400 slices
   big: { counts: { ...big.counts }, pays: structuredClone(big.pays), hatBonus: big.hatBonus, jackpotPct: big.jackpotPct, jackpotOdds: 1 / big.poolJackpotOdds },
   store: { items: [] },                                                   // additions / changes on top of catalog.js
 });
@@ -25,8 +28,10 @@ export function build(s) {
   return { machine: m, wheel: wheelFrom(s.spin.slices), prices: s.prices };
 }
 // Same spreading as slots.js (so version 0 gives the identical strips): deterministic shuffle, no symbol twice in a row.
+// Symbols go in the game's fixed symbol order, NOT the order the counts happen to be listed in: the database stores settings
+// with its own key order, and the reels must come out the same for anyone rebuilding them from the published numbers.
 function spreadStrip(counts, seed) {
-  const bag = []; for (const [id, n] of Object.entries(counts)) for (let i = 0; i < n; i++) bag.push(SYM[id]);
+  const bag = []; for (const { id } of SYMBOLS) for (let i = 0; i < (counts[id] || 0); i++) bag.push(SYM[id]);
   let x = seed >>> 0; const r = () => { x = (Math.imul(x ^ (x >>> 15), 2246822519) + 0x9e3779b9) >>> 0; return x / 4294967296; };
   for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; }
   for (let pass = 0; pass < 50; pass++) { let fixed = true;
@@ -37,9 +42,10 @@ function spreadStrip(counts, seed) {
 // The wheel: today's hand-made layout for version-0 counts; otherwise results spread around the rim, the rare ones (4×, 5×)
 // as single-slice slivers and the rest as chunky segments, never two of the same side by side.
 export function wheelFrom(slices) {
-  const same = Object.entries(countsOf(SEGMENTS)).every(([m, n]) => (slices[m] || 0) === n) && Object.keys(slices).every((m) => (countsOf(SEGMENTS)[m] || 0) === slices[m]);
-  if (same) return { segments: SEGMENTS, sliceMult: SEGMENTS.flatMap(([m, n]) => Array(n).fill(m)) };
-  const lists = Object.entries(slices).filter(([, n]) => n > 0).map(([m, n]) => {
+  const orig = countsOf(ORIGINAL_SEGMENTS);
+  const same = Object.entries(orig).every(([m, n]) => (slices[m] || 0) === n) && Object.keys(slices).every((m) => (orig[m] || 0) === slices[m]);
+  if (same) return { segments: ORIGINAL_SEGMENTS.map((x) => [...x]), sliceMult: ORIGINAL_SEGMENTS.flatMap(([m, n]) => Array(n).fill(m)) };
+  const lists = Object.entries(slices).sort((a, b) => a[0] - b[0]).filter(([, n]) => n > 0).map(([m, n]) => { // fixed order, whatever the key order
     const mult = +m, parts = mult >= 4 ? n : Math.max(1, Math.min(n, Math.round(n / 22) || 1, 8));
     return Array.from({ length: parts }, (_, i) => [mult, Math.floor(n / parts) + (i < n % parts ? 1 : 0)]);
   });
@@ -107,11 +113,26 @@ export function checkItem(it) {
 }
 // The store's item list with the settings' additions/changes applied.
 export function itemsWith(s) {
-  const out = ITEMS.map((x) => ({ ...x }));
+  const out = ORIGINAL_ITEMS.map((x) => ({ ...x }));
   for (const it of s.store?.items || []) {
     const i = out.findIndex((x) => x.id === it.id), row = { ...(i >= 0 ? out[i] : {}), ...it };
     if (it.level !== undefined) delete row.price; if (it.price !== undefined) delete row.level;
     if (i >= 0) out[i] = row; else out.push(row);
   }
   return out;
+}
+
+// The PAGE in server mode: make the shared game data match the published settings, in place, BEFORE the machine, wheel,
+// paytable, buy counter and store are drawn (they all read these). Otherwise the page could draw an old wheel while the
+// server decides on the new one.
+export function applyToGame(s) {
+  const b = build(s);
+  Object.assign(MACHINES.big, b.machine);
+  SEGMENTS.splice(0, SEGMENTS.length, ...b.wheel.segments);
+  SLICE_MULT.splice(0, SLICE_MULT.length, ...b.wheel.sliceMult);
+  const starts = []; let at = 0; for (const [, n] of SEGMENTS) { starts.push(at); at += n; }
+  SEG_START.splice(0, SEG_START.length, ...starts);
+  for (const k of Object.keys(KINDS)) if (s.prices[k]) KINDS[k].bet = s.prices[k];
+  const items = itemsWith(s); ITEMS.splice(0, ITEMS.length, ...items); BY_ID.clear(); for (const i of items) BY_ID.set(i.id, i);
+  return b;
 }

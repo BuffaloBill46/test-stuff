@@ -1,6 +1,7 @@
 // Site tabs: Play / Store / Avatar / Ranks, wallet sign-in, avatar editor, leaderboard.
 import { THREE, character, lights, toon, part, build, hatGeo } from './kit.js';
 import { ITEMS, BY_ID, SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable } from './catalog.js';
+import { settingsReady } from './gameserver.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -189,7 +190,9 @@ export function initTabs(app) {
     if (usable(item, lvl, state.owned)) return '<span class="ok">Unlocked</span>';
     return item.price != null ? `<span class="price">$${item.price.toFixed(2)}</span>` : `<span>Level ${item.level}</span>`;
   }
+  let settingsIn = false;
   function renderStore(force) {
+    if (!settingsIn) { settingsReady.then(() => { settingsIn = true; renderStore(force); }); return; } // server mode: published prices/items first
     if (storeDrawn && !force) return; storeDrawn = true;
     const box = $('#carousels'); box.innerHTML = '<p class="dim">Wrapping presents…</p>';
     requestAnimationFrame(() => {

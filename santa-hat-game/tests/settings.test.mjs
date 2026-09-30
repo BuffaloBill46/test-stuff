@@ -45,4 +45,9 @@ const items = itemsWith(s); assert.equal(items.find((x) => x.id === 'shirt_coal'
 assert.equal(items.find((x) => x.id === 'shirt_coal').color, 0x2a2a35, 'a price change keeps the look');
 for (const bad of [{ id: 'face_alien', slot: 'face', name: 'Alien', face: 'alien', level: 3 }, { id: 'x', slot: 'shirt', name: 'X', color: 1, level: 1 }, { id: 'shirt_both', slot: 'shirt', name: 'B', color: 1, level: 1, price: 1 }, { id: 'hat_top', slot: 'hat', name: 'Top hat', price: 1 }])
   { s = S(); s.store.items = [bad]; assert.equal(check(s).ok, false, 'refuses ' + bad.id); }
+// The reels and wheel depend only on the numbers, never on the order the settings list them in (the database reorders keys).
+{ const a = S(), b = S(); a.big.counts = { ...a.big.counts, hat: 9, coal: 24 };
+  b.big.counts = Object.fromEntries(Object.entries(a.big.counts).reverse()); b.spin.slices = Object.fromEntries(Object.entries(a.spin.slices).reverse());
+  assert.deepEqual(build(a).machine.strips, build(b).machine.strips, 'same reels whatever the key order');
+  assert.deepEqual(build(a).wheel.sliceMult, build(b).wheel.sliceMult, 'same wheel whatever the key order'); }
 console.log('OK: settings: version 0 = today exactly; 10 unsafe changes refused; odds, prices, wheel and store changes do what they say');

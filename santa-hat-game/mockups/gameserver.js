@@ -12,9 +12,14 @@ export async function token() {
   if (testToken && /^http:\/\/localhost[:/]/.test(SERVER || '')) return testToken;
   try { return (await accounts().session())?.access_token || null; } catch { return null; }
 }
+// Server mode: the published game settings, applied to the page before anything is drawn (settings.js → applyToGame).
+export const settingsReady = SERVER ? (async () => {
+  try { const r = await call('settings'); if (r?.settings) { const { applyToGame } = await import('./settings.js'); applyToGame(r.settings); return r; } } catch {}
+  return null;
+})() : Promise.resolve(null);
 export async function call(action, body = {}) {
   const t = await token();
-  if (!t && action !== 'winners') return { error: 'sign in first' }; // the winners list is public
+  if (!t && !['winners', 'settings', 'pools'].includes(action)) return { error: 'sign in first' }; // public ones
   const r = await fetch(SERVER, { method: 'POST', headers: { 'content-type': 'application/json', ...(t ? { authorization: 'Bearer ' + t } : {}) }, body: JSON.stringify({ action, ...body }) });
   try { return await r.json(); } catch { return { error: `the game server answered ${r.status}` }; }
 }

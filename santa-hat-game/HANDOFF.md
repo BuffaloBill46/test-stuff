@@ -105,7 +105,10 @@ node tests/reconcile.test.mjs    # audit: books + everything owed = wallet
 (cd tests/browser && node audit-ux.mjs)          # audit: every tab at 5 screen sizes (tap size, contrast, overflow, dialogs)
 (cd tests/solana && node pay.test.mjs)          # the page's purchase transaction, on the real token program
 (cd tests/solana && node rehearsal.mjs)         # DRESS REHEARSAL of the devnet test: buy, play, pay out, admin, books = wallets
-(cd tests/browser && node admin-test.mjs)       # the admin screen: connect, Stop, bad setting refused, save, Resume
+(cd tests/browser && node admin-test.mjs)       # the admin screen: connect, Stop, bad setting refused, save, Resume, game settings editor
+node tests/settings.test.mjs     # game settings: version 0 = today exactly; guard rails; changes do what they say
+(cd tests/db && node settings-db.test.mjs)      # settings on the server: never mid-play, old plays re-check, credits keep their price
+(cd tests/browser && node settings-mode-test.mjs)  # the page draws published settings; plays land and re-check on them
 cd tests/solana && npm install && node split.test.mjs   # the payment split on the REAL Token-2022 program (LiteSVM, no network)
 cd tests/db && npm install && node credits-db.test.mjs && node server.test.mjs  # the SQL + server steps on real Postgres (PGlite)
 cd tests/browser && npm install  # once per fresh machine
@@ -156,6 +159,11 @@ FOR_MAIN_CLAUDE.md.
   pools in SANTA floating with the price (Cody), escrow admin controls (wallet-signed stop/resume/settings, logged).
 - Payout worker: never pays twice, even through crashes (proven on the real token program).
 - The Games page's server mode (`?server=<address>`), proven end to end against the real server code and SQL.
+
+**Game settings (Cody, 2026-09-30):** the admin screen edits prices, the Spin wheel, Big Hat odds/prizes/symbols, the jackpot
+% and odds, and the store (price/level changes, new colour items), with a guard-rail preview. Versioned and wallet-signed;
+changes apply to new plays only; every play records its version and price; credits keep the price they were bought at.
+Logic: `mockups/settings.js`. New item SHAPES (not colours) still need code.
 
 **Built but not switched on:** the payment checker and game server steps (`server/`), the credits/plays/payouts database file
 (`005`, not applied), ranked matchmaking (`matchmaker.js`). The one-transaction payment split is proven on the real token program.

@@ -102,6 +102,10 @@ Read this before starting new work on the game. Add to it whenever something rea
   never be recorded for two payouts.
 - **A dress rehearsal finds seams unit tests miss.** It also caught the server quoting the real SANTA mint during a test-token run.
 
+- **Anything rebuilt from stored settings must not depend on key order.** Postgres jsonb reorders object keys, so reels built
+  by iterating `Object.entries(counts)` came out differently for anyone rebuilding them from the published numbers. The server
+  and page agreed (both read the same reordered copy), so only an independent rebuild caught it. Iterate in a fixed order.
+
 ## Multiplayer notes
 
 - This workspace can't open WebSockets (proxy limit), so live Supabase play can't be tested here.

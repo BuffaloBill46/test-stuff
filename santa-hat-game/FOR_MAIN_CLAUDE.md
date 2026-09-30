@@ -52,6 +52,9 @@ Tick items off here as they're done. Order is roughly the order to do them in fo
       skims go pool → treasury with the pool key. Until then the books run ahead of the wallets by design and reconcile says so.
 - [ ] **Run the reconciliation on a schedule:** `server/reconcile.js` (books + everything still owed = wallet). Alarm on any drift;
       run it before any withdrawal. Needs the live wallet balances (RPC).
+- [ ] **Store purchases through the server** aren't built yet (buying avatar items / tickets): prices and items now come from
+      the game settings (`itemsWith()` in `mockups/settings.js`); the database `items` table must be kept in step with the
+      published settings (seed from `itemsWith`) before item purchases are checked on the server.
 - [ ] **Admin screen + emergency withdrawal:** the server side of the escrow controls is built (`server/admin.js`: pause, resume,
       set-rules; wallet-signed, replay-proof, logged) AND the admin screen is built: `admin.html?server=<Edge Function URL>`
       (published at /admin.html, not linked from the game; tested with a stand-in wallet, `tests/browser/admin-test.mjs`).
