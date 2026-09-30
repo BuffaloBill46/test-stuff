@@ -23,4 +23,9 @@ for (const [body, action] of [[{ action: 'quote', kind: 'big', n: 3 }, 'quote'],
 assert.equal((await json(await req({ action: 'quote', kind: 'big', n: 11 }))).status, 400, 'game refusals come back as 400');
 const boom = await json(await req({ action: 'open', kind: 'boom' }));
 assert.equal(boom.status, 500); assert.ok(!JSON.stringify(boom.body).includes('secret'), 'server internals never reach the player');
+// Admin: its own door (no player sign-in; the wallet signature is the proof, checked in server/admin.js).
+const h2 = makeHandler({ server, profileFor: async () => null, credits: async () => [], admin: { run: async (b) => (b.message === 'ok' ? { ok: true } : { error: 'not an admin message' }) } });
+const adm = (body) => h2(new Request('https://x/f', { method: 'POST', headers: { origin: 'https://buffalobill46.github.io', 'x-santa-admin': '1' }, body: JSON.stringify(body) }));
+assert.equal((await adm({ message: 'ok' })).status, 200); assert.equal((await adm({ message: 'x' })).status, 400);
+assert.equal((await h2(new Request('https://x/f', { method: 'POST', headers: { origin: 'https://evil.example', 'x-santa-admin': '1' }, body: '{}' }))).status, 403, 'other websites refused for admin too');
 console.log('OK: web door: sign-in required, other websites refused, 5 actions routed to the signed-in player, errors plain');

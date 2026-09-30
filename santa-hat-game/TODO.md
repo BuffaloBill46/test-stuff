@@ -9,7 +9,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Level table:** how many rank points reach each level, and which items unlock at each.
 - [ ] **Treasury wallet:** Cody is making a new one. Send Claude its public address (never the secret key or recovery phrase).
 - [ ] **Lottery program:** when ready, share where Cody's on-chain lottery lives (its repo, or its program address on devnet) so the Store's Lottery block can link to it or plug into it.
-- [ ] **Escrow admin controls (Cody, must exist before real pools go live):** for every pool wallet (Spin, Slots):
+- [ ] **Escrow admin controls (Cody, must exist before real pools go live):** for every pool wallet (Spin, Slots). *Built on the server (2026-09-30, `server/admin.js`, `tests/db/admin.test.mjs`):* wallet-signed emergency stop, resume and threshold/jackpot-% changes, no replays, sane-value checks, never mid-pull, all logged publicly. *Left for main Claude:* the admin screen (wallet signs the message) and the withdrawal transfer (needs the pool key). Jackpot odds stay a code change so old plays still re-check.
   - **Adjust thresholds** without a code change: starting amount, skim point and amount, top-off levels, jackpot % and odds. (The game logic already reads these from one settings object, `POOL_RULES`.)
   - **Emergency withdrawal:** move funds out of a pool to a safe wallet if something goes wrong.
   - **Emergency stop (pause):** stops play AND top-offs, so a withdrawal isn't instantly refilled. (Built and tested in the game logic; needs the admin screen and server.)

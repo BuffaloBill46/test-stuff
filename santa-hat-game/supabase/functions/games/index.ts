@@ -3,11 +3,13 @@
 // Settings (Supabase → Edge Functions → Secrets). SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and SUPABASE_DB_URL come built in.
 //   SPIN_POOL_WALLET, SLOTS_POOL_WALLET  public addresses of the pool wallets (until set, buying is refused)
 //   SOLANA_RPC_URL                       e.g. a Helius URL (defaults to a free public endpoint)
+//   ADMIN_WALLETS                        Cody's admin wallet address(es), comma-separated (escrow admin controls)
 // Pool wallet KEYS are not used here (payouts are sent by a separate worker) and never go in the website.
 import postgres from 'npm:postgres@3.4.5';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { createGameServer } from '../../../server/games.js';
 import { makeHandler } from '../../../server/http.js';
+import { createAdmin } from '../../../server/admin.js';
 import { livePrice, liveFee } from '../../../mockups/market.js';
 
 const env = (k: string) => Deno.env.get(k) ?? '';
@@ -31,6 +33,7 @@ const server = createGameServer({ db, chain, livePrice, liveFee,
 
 Deno.serve(makeHandler({
   server,
+  admin: createAdmin({ db, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean) }),
   async profileFor(token: string) {
     const { data, error } = await auth.auth.getUser(token);
     if (error || !data.user) return null;

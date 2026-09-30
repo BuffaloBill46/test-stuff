@@ -32,6 +32,11 @@ Tick items off here as they're done. Order is roughly the order to do them in fo
       when it crashes before or after sending; `tests/solana/payouts.test.mjs`). Still needed: the live chain adapter (a Solana
       RPC: getLatestBlockhash, sendTransaction, getSignatureStatuses + isBlockhashValid; same shape as the test's), the pool
       wallets' keys in the worker's secrets only (never the site or repo), and a schedule (e.g. a Supabase cron every minute).
+- [ ] **Admin screen + emergency withdrawal:** the server side of the escrow controls is built (`server/admin.js`: pause, resume,
+      set-rules; wallet-signed, replay-proof, logged). Needed: set the Edge Function secret `ADMIN_WALLETS` (Cody's address); a
+      small admin page that builds the message with `adminMessage()`, has Cody's wallet `signMessage` it, and POSTs
+      `{ wallet, message, signature (hex) }` with header `x-santa-admin: 1`; and the withdrawal itself (a transfer from a pool
+      wallet to a safe wallet, needs the pool key, logged in `pool_log`). Pause first so a withdrawal isn't refilled by a top-off.
 - [ ] **Two real devices** playing a multiplayer match; **a real phone** for feel, frame rate and sound.
 
 ## Checked here, re-check live

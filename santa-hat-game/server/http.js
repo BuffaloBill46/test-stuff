@@ -11,7 +11,7 @@ const allowed = (o) => ALLOWED_ORIGINS.includes(o) || /^http:\/\/localhost:\d+$/
 export function makeHandler(deps) {
   const cors = (origin) => ({
     'access-control-allow-origin': allowed(origin) ? origin : ALLOWED_ORIGINS[0],
-    'access-control-allow-headers': 'authorization, content-type, apikey, x-client-info',
+    'access-control-allow-headers': 'authorization, content-type, apikey, x-client-info, x-santa-admin',
     'access-control-allow-methods': 'POST, OPTIONS', vary: 'origin',
   });
   const reply = (origin, status, body) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...cors(origin) } });
@@ -21,6 +21,12 @@ export function makeHandler(deps) {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(origin) });
     if (req.method !== 'POST') return reply(origin, 405, { error: 'POST only' });
     if (origin && !allowed(origin)) return reply(origin, 403, { error: 'not from the game\'s website' });
+    // Admin actions carry their own proof (a wallet-signed message, server/admin.js), so they skip the player sign-in.
+    if (deps.admin && (req.headers.get('x-santa-admin') === '1')) {
+      let body; try { body = await req.json(); } catch { return reply(origin, 400, { error: 'send JSON' }); }
+      try { const out = await deps.admin.run(body || {}); return reply(origin, out?.error ? 400 : 200, out); }
+      catch (e) { console.error('admin error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
+    }
     const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
     const profile = token ? await deps.profileFor(token).catch(() => null) : null;
     if (!profile) return reply(origin, 401, { error: 'sign in first' });

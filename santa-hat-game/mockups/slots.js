@@ -155,7 +155,8 @@ export function pull(state, machineId, rand = Math.random, forcedStops) {
   const jackpot = forcedStops === 'JACKPOT' || (!forcedStops && rand() < m.poolJackpotOdds);
   if (jackpot) {
     const grid = Array.from({ length: m.reels }, () => Array(m.rows).fill(SYM.hat));
-    const pay = Math.min(jackpotAmount(machineId, state.pool), state.pool);
+    const pct = state.rules?.jackpotPct ?? m.jackpotPct; // adjustable by Cody (admin); the odds stay in code so old plays re-check
+    const pay = Math.min(state.pool * pct, state.pool);
     state.pool -= pay;
     return skim(state, { topOffBefore: before, stops: null, grid, wins: [], pay, jackpot: true, capped: false, received: pay * (1 - FEE), ahead: pay > m.bet + 1e-9 });
   }

@@ -69,6 +69,7 @@ create table public.pools (
 );
 create table public.pool_log (
   id bigserial primary key, game text not null, what text not null, amount numeric(14, 6), tx text, by_wallet text,
+  nonce text unique, details jsonb,                    -- admin changes: the signed message's one-time number (no replays)
   at timestamptz not null default now()
 );
 -- Winner payouts: queued by the server, sent by a worker. Anything above the sanity cap is held for Cody.
