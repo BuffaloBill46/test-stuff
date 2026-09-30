@@ -36,7 +36,7 @@ const server = createGameServer({ db, chain, livePrice: makePrice({ db, livePric
 
 Deno.serve(makeHandler({
   server,
-  admin: createAdmin({ db, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean) }),
+  admin: createAdmin({ db, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged() }),
   async profileFor(token: string) {
     const { data, error } = await auth.auth.getUser(token);
     if (error || !data.user) return null;

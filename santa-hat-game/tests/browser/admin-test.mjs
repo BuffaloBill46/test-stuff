@@ -16,7 +16,7 @@ const key = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign', 
 const addr = b58encode(new Uint8Array(await crypto.subtle.exportKey('raw', key.publicKey)));
 const pkcs8 = [...new Uint8Array(await crypto.subtle.exportKey('pkcs8', key.privateKey))];
 const server = createGameServer({ db, chain: {}, livePrice: async () => ({ usd: 0.00085 }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: {} });
-const handle = makeHandler({ server, admin: createAdmin({ db, adminWallets: [addr] }), profileFor: async () => null, credits: async () => [] });
+const handle = makeHandler({ server, admin: createAdmin({ db, adminWallets: [addr], onSettings: () => server.settingsChanged() }), profileFor: async () => null, credits: async () => [] });
 const web = http.createServer(async (req, res) => {
   if (req.method === 'GET') { const f = path.join(ROOT, req.url.split('?')[0]); if (!f.startsWith(ROOT) || !existsSync(f)) { res.writeHead(404); return res.end(); }
     res.writeHead(200, { 'content-type': f.endsWith('.js') ? 'text/javascript' : f.endsWith('.png') ? 'image/png' : 'text/html' }); return res.end(readFileSync(f)); }
@@ -49,6 +49,24 @@ check((await rules()).jackpotPct === 0.14, 'the jackpot % change was saved');
 await p.tap('[data-act="resume"][data-game="slots"]'); await p.waitForFunction(async () => /Running/.test(document.querySelector('.pools').textContent), null, { timeout: 15000 }).catch(() => {});
 check((await rules()).paused === false, 'Resume');
 check((await db.query('select count(*)::int as n from public.pool_log'))[0].n === 3, 'three signed changes in the public log');
+// Game settings editor: the preview updates; an unsafe change can't be published; a safe one is signed and saved; a new item.
+await p.waitForFunction(() => /pays back/.test(document.querySelector('#gsPreview').textContent), null, { timeout: 15000 });
+check(/Spin pays back 74\.5%/.test(await p.textContent('#gsPreview')) && /Big Hat pays back 75\.5%/.test(await p.textContent('#gsPreview')), 'preview shows today\'s payback: ' + (await p.textContent('#gsPreview')).slice(0, 120));
+await p.fill('[data-gs="slices.0"]', '150'); await p.waitForTimeout(700);
+check(await p.evaluate(() => document.querySelector('#gsSave').disabled) && /exactly 400 slices/.test(await p.textContent('#gsPreview')), 'a wheel that isn\'t 400 slices can\'t be published');
+await p.fill('[data-gs="slices.0"]', '180'); await p.fill('[data-gs="slices.2"]', '60'); await p.fill('[data-gs="slices.4"]', '6');
+await p.fill('[data-gs="big.jackpotOdds"]', '10000'); await p.fill('[data-gs="prices.spin100"]', '2');
+await p.evaluate(() => document.querySelector('#gsNew').closest('details').open = true);
+await p.fill('[data-new="id"]', 'shirt_mint'); await p.fill('[data-new="name"]', 'Mint'); await p.fill('[data-new="price"]', '0.3'); await p.tap('#gsAdd');
+await p.waitForTimeout(800);
+const pv = await p.textContent('#gsPreview');
+check(/Spin pays back 86\.5%/.test(pv) && /1 in 10,000/.test(pv) && !(await p.evaluate(() => document.querySelector('#gsSave').disabled)), 'preview of the new settings: ' + pv.slice(0, 160));
+await p.tap('#gsSave'); await p.waitForFunction(() => /Published settings version|Refused/.test(document.querySelector('#msg').textContent), null, { timeout: 20000 });
+const gsRow = (await db.query('select version, settings from public.game_settings order by version desc limit 1'))[0];
+check(gsRow?.version === 1 && gsRow.settings.big.jackpotOdds === 10000 && gsRow.settings.prices.spin100 === 2 && gsRow.settings.spin.slices['0'] === 180, 'settings v1 saved: ' + (await p.textContent('#msg')));
+check(gsRow?.settings.store.items.some((i) => i.id === 'shirt_mint' && i.price === 0.3), 'the new Mint shirt is in the store');
+await p.waitForFunction(() => /version 1/.test(document.querySelector('#gsVer').textContent), null, { timeout: 10000 }).catch(() => {});
+check(/version 1/.test(await p.textContent('#gsVer')), 'the editor shows version 1');
 await p.screenshot({ path: 'out/admin.png', fullPage: true });
 await browser.close(); web.close();
 console.log('errors:', errors.length ? errors : 'none'); console.log(fails.length || errors.length ? 'FAILED:\n - ' + fails.join('\n - ') : 'ALL CHECKS PASSED');

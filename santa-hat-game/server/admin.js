@@ -53,7 +53,7 @@ export function checkRules(game, rules) {
   return bad;
 }
 
-export function createAdmin({ db, adminWallets, now = () => Date.now() }) {
+export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettings = () => {} }) {
   async function run({ wallet, message, signature }) {
     const m = parse(message || '');
     if (!m || message !== adminMessage(m)) return { error: 'not an admin message' };
@@ -93,7 +93,7 @@ export function createAdmin({ db, adminWallets, now = () => Date.now() }) {
       await t.query('insert into public.game_settings (version, settings, by_wallet, nonce, message, signature) values ($1, $2, $3, $4, $5, $6)', [version, JSON.stringify(s), wallet, m.nonce, message, signature]);
       await t.query(`insert into public.pool_log (game, what, by_wallet, nonce, details) values ('all', $1, $2, $3, $4)`, [`settings v${version}`, wallet, m.nonce, JSON.stringify({ after: c.report })]);
       return { ok: true, version, report: c.report };
-    });
+    }).then((r) => { if (r?.ok) onSettings(r.version); return r; });
   }
   return { run };
 }

@@ -171,5 +171,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     const v = Number.isInteger(version) && version >= 0 ? version : await settingsVersion(), c = await cfgFor(v);
     return { version: v, settings: c.settings };
   }
-  return { quote, buy, open, settle, tidy, winners, history, pools, settings };
+  // Called when Cody publishes new settings, so the very next play uses them (no 15-second wait).
+  const settingsChanged = () => { latest = { at: 0, version: 0 }; };
+  return { quote, buy, open, settle, tidy, winners, history, pools, settings, settingsChanged };
 }
