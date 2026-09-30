@@ -29,6 +29,8 @@ const START = { spin: Math.round(50 / PRICE * 1e6), slots: Math.round(500 / PRIC
 await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', $1, '{}'), ('slots', $2, '{}')`, [START.spin, START.slots]);
 
 // Finalized transactions the stand-in chain returns (shaped like Solana's getTransaction jsonParsed).
+// fake but realistically shaped Solana transaction signatures (base58, 88 characters)
+const S = (name) => (name + '5'.repeat(88)).slice(0, 88).replace(/[0OIl]/g, '9');
 const txs = new Map();
 function pay(sig, { from = PLAYER, to, total, at = Date.now() }) {
   const s = splitPayment(total, 1000, FEE), b = (i, o, a) => ({ accountIndex: i, mint: MINT, owner: o, uiTokenAmount: { amount: String(a), decimals: 6 } });
@@ -42,20 +44,20 @@ const pool = async (g) => +(await one('select santa_raw from public.pools where 
 // Buy 10 $1 spins.
 let q = await server.quote(me, 'spin100', 10);
 assert.equal(q.usd, 10); assert.equal(q.santaRaw, Math.round(10 / PRICE * 1e6));
-pay('sigA', { to: POOLS.spin, total: q.santaRaw });
-let b = await server.buy(me, q.id, 'sigA');
+pay(S('A'), { to: POOLS.spin, total: q.santaRaw });
+let b = await server.buy(me, q.id, S('A'));
 assert.deepEqual(b, { ok: true, kind: 'spin100', left: 10 });
 assert.equal(await pool('spin'), START.spin + splitPayment(q.santaRaw, 1000, FEE).arrives, 'exactly the SANTA that arrived reached the Spin pool at purchase');
 
 // Cheats and mistakes: nothing is added.
 const q2 = await server.quote(me, 'spin100', 5);
 const replay = await server.quote(me, 'spin100', 10); // same amount, so only the one-use rule can stop it
-assert.equal((await server.buy(me, replay.id, 'sigA')).error, 'payment already used');
-assert.match((await server.buy(me, q2.id, 'sigA')).error, /quote was/, 'a payment for a different amount is refused too');
-pay('sigWrongPool', { to: POOLS.slots, total: q2.santaRaw }); assert.match((await server.buy(me, q2.id, 'sigWrongPool')).error, /pool received/);
-pay('sigTheirs', { from: OTHER, to: POOLS.spin, total: q2.santaRaw }); assert.match((await server.buy(me, q2.id, 'sigTheirs')).error, /not signed/);
-pay('sigLate', { to: POOLS.spin, total: q2.santaRaw, at: Date.now() + 5 * 60_000 }); assert.match((await server.buy(me, q2.id, 'sigLate')).error, /quote window/);
-assert.equal((await server.buy(them, q2.id, 'sigA')).error, 'unknown quote', 'someone else can\'t use my quote');
+assert.equal((await server.buy(me, replay.id, S('A'))).error, 'payment already used');
+assert.match((await server.buy(me, q2.id, S('A'))).error, /quote was/, 'a payment for a different amount is refused too');
+pay(S('WrongPool'), { to: POOLS.slots, total: q2.santaRaw }); assert.match((await server.buy(me, q2.id, S('WrongPool'))).error, /pool received/);
+pay(S('Theirs'), { from: OTHER, to: POOLS.spin, total: q2.santaRaw }); assert.match((await server.buy(me, q2.id, S('Theirs'))).error, /not signed/);
+pay(S('Late'), { to: POOLS.spin, total: q2.santaRaw, at: Date.now() + 5 * 60_000 }); assert.match((await server.buy(me, q2.id, S('Late'))).error, /quote window/);
+assert.equal((await server.buy(them, q2.id, S('A'))).error, 'unknown quote', 'someone else can\'t use my quote');
 assert.equal(await credits(me, 'spin100'), 10);
 
 // Play all 10, checking every result, and that the pool moves only by what's paid out (+ skim / top-off).
@@ -77,7 +79,7 @@ assert.deepEqual(await server.open(me, 'spin100'), { noCredit: true });
 // Slots: 10 pulls opened and settled at the same time; every pool change must be counted.
 // NOTE: PGlite runs transactions one at a time, so this can't catch a missing pool lock (checked: removing "for update" still
 // passes here). The lock must be proven on a real multi-connection Postgres before launch (TODO → Before anything paid goes live).
-q = await server.quote(me, 'big', 10); pay('sigB', { to: POOLS.slots, total: q.santaRaw }); assert.ok((await server.buy(me, q.id, 'sigB')).ok);
+q = await server.quote(me, 'big', 10); pay(S('B'), { to: POOLS.slots, total: q.santaRaw }); assert.ok((await server.buy(me, q.id, S('B'))).ok);
 const startSlots = await pool('slots');
 // One play at a time per player: 10 taps at once → exactly 1 play, 9 told to wait, only 1 credit spent.
 const burst = await Promise.all(Array.from({ length: 10 }, () => server.open(me, 'big')));
@@ -106,7 +108,7 @@ assert.equal(await pool('slots'), startSlots + moved, 'settles at the same time:
   const { jackpotAmount } = await import('../../mockups/slots.js');
   const slotsUsd = (await pool('slots')) / 1e6 * PRICE;
   console.log(`price halved: Spin pool now worth $${(rawBefore / 1e6 * PRICE).toFixed(2)} (was $${usdBefore.toFixed(2)}); Slots pool jackpot now about $${jackpotAmount('big', slotsUsd).toFixed(2)}`);
-  q = await server.quote(me, 'spin100', 1); pay('sigHalf', { to: POOLS.spin, total: q.santaRaw }); assert.ok((await server.buy(me, q.id, 'sigHalf')).ok);
+  q = await server.quote(me, 'spin100', 1); pay(S('Half'), { to: POOLS.spin, total: q.santaRaw }); assert.ok((await server.buy(me, q.id, S('Half'))).ok);
   assert.equal(q.santaRaw, Math.round(1 / PRICE * 1e6), 'a $1 spin now costs twice the SANTA');
   const o = await server.open(me, 'spin100'); const ss = await server.settle(me, o.ticket, newSeed(16));
   assert.ok(Math.abs(ss.payRaw - Math.round(ss.r.pay / PRICE * 1e6)) <= 1, 'prizes paid at the new price');
@@ -114,7 +116,7 @@ assert.equal(await pool('slots'), startSlots + moved, 'settles at the same time:
 assert.equal(await credits(me, 'big'), 0);
 
 // Someone else can't settle my play; a paused pool refuses and keeps the credit.
-q = await server.quote(me, 'spin10', 2); pay('sigC', { to: POOLS.spin, total: q.santaRaw }); await server.buy(me, q.id, 'sigC');
+q = await server.quote(me, 'spin10', 2); pay(S('C'), { to: POOLS.spin, total: q.santaRaw }); await server.buy(me, q.id, S('C'));
 const o = await server.open(me, 'spin10');
 assert.equal((await server.settle(them, o.ticket, newSeed(16))).error, 'no open play with that ticket');
 await server.settle(me, o.ticket, newSeed(16));
@@ -122,7 +124,7 @@ await db.query(`update public.pools set rules = '{"paused": true}' where game = 
 assert.deepEqual(await server.open(me, 'spin10'), { refused: true, stopped: true }); assert.equal(await credits(me, 'spin10'), 1);
 // Stuck plays: one spent with no secret, one opened but never settled (page closed). A minute later the next play tidies both.
 await db.query(`update public.pools set rules = '{}' where game = 'spin'`);
-q = await server.quote(me, 'spin100', 3); pay('sigD', { to: POOLS.spin, total: q.santaRaw }); await server.buy(me, q.id, 'sigD');
+q = await server.quote(me, 'spin100', 3); pay(S('D'), { to: POOLS.spin, total: q.santaRaw }); await server.buy(me, q.id, S('D'));
 const back = (id) => db.query(`update public.plays set spent_at = now() - interval '2 minutes', opened_at = case when opened_at is null then null else now() - interval '2 minutes' end where id = $1`, [id]);
 const stateOf = async (id) => (await one('select state from public.plays where id = $1', [id])).state;
 // (a) the server died before making the secret: refunded by the next play

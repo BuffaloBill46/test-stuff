@@ -12,7 +12,12 @@ import { NUMS } from '../mockups/house.js';
 import { MINT, QUOTE_SECONDS, CUSHION } from '../mockups/market.js';
 import { verifyPayment } from './verify.js';
 
-export const PAYOUT_CAP = 205; // a single payout above this (the biggest normal pull) is held for Cody, unless it's the pool jackpot
+export const PAYOUT_CAP = 205;
+export const QUOTES_PER_HOUR = 30; // per player (a quote is free to ask for; this stops database spam)
+// Audit fixes (2026-09-30): only real game names (not "toString" etc. that every JS object has), well-formed ids only.
+const isKind = (k) => typeof k === 'string' && Object.hasOwn(KINDS, k);
+const isTicket = (t) => /^[0-9]{1,18}$/.test(String(t));
+const isSignature = (s) => /^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(String(s)); // a single payout above this (the biggest normal pull) is held for Cody, unless it's the pool jackpot
 const DEC = 1e6;
 
 export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f = fair }) {
@@ -23,7 +28,9 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   const toRaw = (usd, price) => Math.round((usd / price) * DEC);
 
   async function quote(profile, kind, n) {
-    if (!KINDS[kind] || !Number.isInteger(n) || n < 1 || n > 10) return { error: 'buy 1 to 10' };
+    if (!isKind(kind) || !Number.isInteger(n) || n < 1 || n > 10) return { error: 'buy 1 to 10' };
+    const recent = (await row(`select count(*)::int as n from public.quotes where profile_id = $1 and created_at > now() - interval '1 hour'`, [profile])).n;
+    if (recent >= QUOTES_PER_HOUR) return { error: 'too many price quotes; try again in a little while' };
     const price = await livePrice(), usd = costOf(kind, n), santaRaw = Math.round((usd / price.usd) * DEC);
     const q = await row(`insert into public.quotes (profile_id, kind, n, usd, santa_raw, price_usd) values ($1, $2, $3, $4, $5, $6) returning id, created_at`,
       [profile, kind, n, usd, santaRaw, price.usd]);
@@ -34,6 +41,8 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   }
 
   async function buy(profile, quoteId, signature) {
+    if (!/^[0-9a-f-]{36}$/.test(String(quoteId))) return { error: 'unknown quote' };
+    if (!isSignature(signature)) return { error: 'that isn\'t a Solana transaction signature' };
     const q = await row('select * from public.quotes where id = $1 and profile_id = $2', [quoteId, profile]);
     if (!q) return { error: 'unknown quote' };
     if (!poolWallets?.[KINDS[q.kind].game]) return { error: 'payments are not open yet' }; // no pool wallet set: nobody can pay in
@@ -64,7 +73,9 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   }
 
   async function open(profile, kind) {
-    const K = KINDS[kind]; if (!K) return { error: 'unknown game' };
+    if (!isKind(kind)) return { error: 'unknown game' };
+    const K = KINDS[kind];
+    if (!(await walletOf(profile))) return { error: 'playing for SANTA needs a linked wallet (winnings are paid to it)' };
     await tidy(profile);
     const p = await row('select * from public.pools where game = $1', [K.game]);
     let price; try { price = (await livePrice()).usd; } catch (e) { return { failed: true, why: 'no live SANTA price right now' }; }
@@ -82,6 +93,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
 
   async function settle(profile, ticket, playerSeed) {
     if (!/^[0-9a-f]{8,64}$/.test(playerSeed || '')) return { error: 'bad player number' };
+    if (!isTicket(ticket)) return { error: 'no open play with that ticket' };
     const wallet = await walletOf(profile);
     let price = null; try { price = (await livePrice()).usd; } catch {}
     return db.tx(async (t) => {
@@ -110,12 +122,15 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     });
   }
   // Recent winners for everyone: settled plays that paid more than they cost (display names only, never wallets).
+  let winnersCache = { at: 0, list: null };
   async function winners(limit = 30) {
+    if (winnersCache.list && Date.now() - winnersCache.at < 10_000) return winnersCache.list; // public: cached 10 s
     const rows = await db.query(`select pr.name, pl.kind, pl.pay, pl.settled_at, pl.result from public.plays pl join public.profiles pr on pr.id = pl.profile_id
       where pl.state = 'settled' and pl.pay > case pl.kind when 'spin10' then 0.10 else 1 end order by pl.settled_at desc, pl.id desc limit $1`, [limit]);
-    return rows.map((w) => { const bet = KINDS[w.kind].bet, pay = +w.pay;
+    const list = rows.map((w) => { const bet = KINDS[w.kind].bet, pay = +w.pay;
       return { game: w.kind === 'big' ? 'slots' : w.kind, name: w.name, amount: pay, gainPct: ((pay - bet) / bet) * 100, at: new Date(w.settled_at).getTime(),
         note: w.result?.jackpot ? 'pool jackpot' : w.result?.mult ? `${w.result.mult}×` : '', big: pay >= 10 * bet }; });
+    winnersCache = { at: Date.now(), list }; return list;
   }
   return { quote, buy, open, settle, tidy, winners };
 }

@@ -24,13 +24,15 @@ const PRICE = 0.00085, FEE = { bps: 300, max: 1e15 };
 const me = (await db.query('insert into auth.users default values returning id'))[0].id;
 await db.query(`insert into public.profiles (id, wallet, name, avatar) values ($1, $2, 'Cody', '{}')`, [me, PLAYER]);
 await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', $1, '{}'), ('slots', $2, '{}')`, [Math.round(50 / PRICE * 1e6), Math.round(500 / PRICE * 1e6)]);
+// fake but realistically shaped Solana transaction signatures (base58, 88 characters)
+const S = (name) => (name + '5'.repeat(88)).slice(0, 88).replace(/[0OIl]/g, '9');
 const txs = new Map();
 const server = createGameServer({ db, chain: { getTransaction: async (s) => txs.get(s) ?? null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: POOLS });
 // Buy 3 Big Hat pulls the normal way (quote → a finalized payment → buy); the payment is a stand-in since there's no wallet here.
 const q = await server.quote(me, 'big', 3), sp = splitPayment(q.santaRaw, 1000, FEE), b = (i, o, a) => ({ accountIndex: i, mint: MINT, owner: o, uiTokenAmount: { amount: String(a) } });
-txs.set('sig1', { blockTime: Math.floor(Date.now() / 1000), meta: { err: null, innerInstructions: [], preTokenBalances: [b(1, PLAYER, 1e13), b(2, POOLS.slots, 1e12)], postTokenBalances: [b(1, PLAYER, 1e13 - q.santaRaw), b(2, POOLS.slots, 1e12 + sp.arrives)] },
+txs.set(S('1'), { blockTime: Math.floor(Date.now() / 1000), meta: { err: null, innerInstructions: [], preTokenBalances: [b(1, PLAYER, 1e13), b(2, POOLS.slots, 1e12)], postTokenBalances: [b(1, PLAYER, 1e13 - q.santaRaw), b(2, POOLS.slots, 1e12 + sp.arrives)] },
   transaction: { message: { accountKeys: [{ pubkey: PLAYER, signer: true }], instructions: [{ program: 'spl-token', parsed: { type: 'burnChecked', info: { mint: MINT, authority: PLAYER, tokenAmount: { amount: String(sp.burn) } } } }] } } });
-check((await server.buy(me, q.id, 'sig1')).ok, 'test purchase');
+check((await server.buy(me, q.id, S('1'))).ok, 'test purchase');
 const handle = makeHandler({ server, profileFor: async (t) => (t === 'test-token' ? me : null), credits: (p) => db.query('select kind, left_n from public.credits where profile_id = $1', [p]) });
 // One local address serves the page AND the game server (like the real site + Edge Function, both https in real life).
 const web = http.createServer(async (req, res) => {
