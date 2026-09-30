@@ -104,7 +104,7 @@ between two devices has never been tested from here. Cody and friends testing on
 
 **Last updated:** 2026-09-29.
 
-**Just finished (latest, 2026-09-30): Santa Hat Spin demo** on the Games tab (see TODO → Santa Hat Games tab). **Before that:** the Games tab's **Big Hat slot machine** rebuilt for the decided rules (5×5, 15 lines,
+**Just finished (latest, 2026-09-30): Santa Hat Spin demo** on the Games tab (see TODO → Santa Hat Games tab). **Before that:** the Games tab's **Big Hat slot machine** rebuilt for the decided rules (5×5, 11 straight/diagonal lines,
 Santa Hat wild, 5¢ hat bonus, 100× line about 1 in 9,000, full-grid pool jackpot 1 in 25,000 at 25%, skim $25 at $1,775,
 top-off below $150 back to $500, emergency stop), with full screen, drawn paylines, and a shared Recent winners list. Numbers
 in `PAYTABLE.md`. Tested (`tests/slots.test.mjs`, `tests/browser/games-test.mjs`) and published.

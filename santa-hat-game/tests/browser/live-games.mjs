@@ -19,5 +19,8 @@ await page.waitForTimeout(2000);
 await page.evaluate(() => document.querySelector('.machine .pull').click());
 await page.waitForFunction(() => window.__slots && !window.__slots.busy, null, { timeout: 90000 });
 console.log('live pool:', await page.textContent('#slotPool'), '| balance:', await page.textContent('#demoBal'), '| result:', await page.textContent('.machine .res'));
+await page.evaluate(() => { document.querySelector('#spin').scrollIntoView(); document.querySelector('#spin .spinbtn').click(); });
+await page.waitForFunction(() => window.__spin && !window.__spin.busy, null, { timeout: 90000 });
+console.log('live spin: pool', await page.textContent('#spinPool'), '| wheel shows', await page.evaluate(() => window.__spin.view.shownMult() + '×'), '| result:', await page.textContent('#spin .res'));
 await page.screenshot({ path: 'out/live-games.png' });
 console.log('errors:', errs.length ? errs : 'none'); await browser.close();
