@@ -168,7 +168,7 @@ export function createMachine(canvas) {
   }
   reels.forEach(place);
 
-  // --- win overlay: paylines, winning squares, hat nickels (a canvas drawn over the window)
+  // --- win overlay: paylines, winning squares, hat bonus (a canvas drawn over the window)
   const OW = 640, OH = Math.round((OW * winH) / winW), ocv = document.createElement('canvas'); ocv.width = OW; ocv.height = OH;
   const octx = ocv.getContext('2d'), otex = new G.CanvasTexture(ocv); otex.colorSpace = G.SRGBColorSpace;
   const overlay = new G.Mesh(new G.PlaneGeometry(winW, winH), new G.MeshBasicMaterial({ map: otex, transparent: true, depthWrite: false }));
@@ -194,7 +194,7 @@ export function createMachine(canvas) {
         octx.strokeStyle = col; octx.lineWidth = 6; octx.stroke();
         octx.lineWidth = 5; for (let r = 0; r < w.count; r++) octx.strokeRect(cx(r) - cw / 2 + 4, cy(rows[r]) - cw / 2 + 4, cw - 8, cw - 8);
       });
-      if (info.grid && !info.jackpot && M.hatBonus) { // every Santa Hat pays a nickel
+      if (info.grid && !info.jackpot && M.hatBonus) { // every Santa Hat pays the hat bonus
         octx.font = `700 ${Math.round(cw * 0.26)}px Silkscreen, monospace`; octx.textAlign = 'right'; octx.textBaseline = 'bottom';
         info.grid.forEach((col, r) => col.forEach((s, row) => { if (s !== SYM.hat) return;
           const x = cx(r) + cw / 2 - 5, y = cy(row) + cw / 2 - 4, t = '+' + Math.round(M.hatBonus * M.bet * 100) + '¢';

@@ -63,7 +63,7 @@ Simulated 399,983 pulls. Biggest normal pull seen: **$102.93** (several lines at
 | A pull pays | How often |
 |---|---|
 | $0 (nothing) | 4.12% (1 in 24) |
-| 5¢ to 99¢ (hat nickels, less than the pull back) | 62.10% (1 in 2) |
+| 6¢ to 99¢ (hat bonus, less than the pull back) | 62.10% (1 in 2) |
 | $1 to $1.99 | 24.66% (1 in 4) |
 | $2 to $4.99 | 8.37% (1 in 12) |
 | $5 to $9.99 | 0.40% (1 in 253) |

@@ -12,7 +12,7 @@ const usd = (x) => '$' + x.toFixed(2);
 
 // simulated per-pull numbers (lines overlap, so these need a simulation)
 const N = 400000, st = { pool: 1e12, skimAt: Infinity }; let hit = 0, micro = 0, ahead = 0, back = 0, jp = 0, maxPay = 0;
-const BANDS = [[0, 0, '$0 (nothing)'], [0.01, 0.99, '5¢ to 99¢ (hat nickels, less than the pull back)'], [1, 1.99, '$1 to $1.99'], [2, 4.99, '$2 to $4.99'],
+const BANDS = [[0, 0, '$0 (nothing)'], [0.01, 0.99, '6¢ to 99¢ (hat bonus, less than the pull back)'], [1, 1.99, '$1 to $1.99'], [2, 4.99, '$2 to $4.99'],
   [5, 9.99, '$5 to $9.99'], [10, 24.99, '$10 to $24.99'], [25, 49.99, '$25 to $49.99'], [50, 99.99, '$50 to $99.99'], [100, Infinity, '$100 and up']];
 const bandCount = BANDS.map(() => 0);
 const tease = { 2: 0, 3: 0, 4: 0 };
