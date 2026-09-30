@@ -21,9 +21,15 @@
 export const FEE = 0.03;                       // SANTA's own transfer tax (read live from the token in the real version)
 export const BURN = 0.10;                      // Games tab: 10% burned, 90% to the pool, after the tax
 export const IN_PER_DOLLAR = (1 - BURN * (1 - FEE)) * (1 - FEE); // 87.59¢ of each $1 lands in the pool
-export const START_POOL = 500; // demo. Must cover the $100 top prize; with the 100× at about 1 in 9,000, $500 never locked in simulation ($250 locked about 1 run in 100).
-// Slots pool skim (Cody): when the pool reaches SKIM_AT, SKIM goes to the treasury (arrives 3% lighter).
-export const SKIM_AT = 1775, SKIM = 25; // Cody: skim point $1,775; the $25 helps cover the tax on winnings
+// Slots pool (escrow) rules, all ADJUSTABLE: the real server loads these from Cody's admin settings, and pull() reads
+// them on every pull, so a change applies right away.
+//   start        starting pool (must cover the $100 top prize; $500 never locked in simulation, $250 locked ~1 run in 100)
+//   skimAt/skim  when the pool reaches skimAt, send skim to the treasury (Cody: $25 at $1,775; helps cover the tax on winnings)
+//   topOffBelow  if the pool drops below this after a pull, the treasury tops it back up to topOffTo (Cody: top-off feature).
+//                It's above the $100 top prize, so the game can never lock.
+//   paused       Cody's emergency stop: no pulls AND no top-offs (so funds can be withdrawn without the treasury refilling).
+export const POOL_RULES = { start: 500, skimAt: 1775, skim: 25, topOffBelow: 150, topOffTo: 500, paused: false };
+export const START_POOL = POOL_RULES.start, SKIM_AT = POOL_RULES.skimAt, SKIM = POOL_RULES.skim; // starting values, for tests
 
 export const SYMBOLS = [
   { id: 'hat', name: 'Santa Hat' }, { id: 'star', name: 'Gold Star' }, { id: 'reindeer', name: 'Reindeer' },
@@ -134,7 +140,10 @@ export const MAX_FIXED = (m) => Math.max(...Object.values(m.pays).flatMap((p) =>
 // forcedStops (tests only) sets the reel stops directly.
 export function pull(state, machineId, rand = Math.random, forcedStops) {
   const m = MACHINES[machineId];
-  if (state.pool < MAX_FIXED(m)) return { paused: true };
+  if ({ ...POOL_RULES, ...(state.rules || {}) }.paused) return { paused: true, stopped: true }; // emergency stop
+  // Top off BEFORE the pull too: the pool may have been lowered outside play (e.g. an emergency withdrawal).
+  const before = topOff(state);
+  if (state.pool < MAX_FIXED(m)) return { paused: true, topOff: before };
   state.pool += m.bet * IN_PER_DOLLAR;
   // Pool jackpot: its own draw. When it hits, the whole grid shows Santa Hats and only the jackpot is paid.
   const jackpot = forcedStops === 'JACKPOT' || (!forcedStops && rand() < m.poolJackpotOdds);
@@ -142,7 +151,7 @@ export function pull(state, machineId, rand = Math.random, forcedStops) {
     const grid = Array.from({ length: m.reels }, () => Array(m.rows).fill(SYM.hat));
     const pay = Math.min(jackpotAmount(machineId, state.pool), state.pool);
     state.pool -= pay;
-    return skim(state, { stops: null, grid, wins: [], pay, jackpot: true, capped: false, received: pay * (1 - FEE), ahead: pay > m.bet + 1e-9 });
+    return skim(state, { topOffBefore: before, stops: null, grid, wins: [], pay, jackpot: true, capped: false, received: pay * (1 - FEE), ahead: pay > m.bet + 1e-9 });
   }
   const stops = forcedStops || Array.from({ length: m.reels }, () => Math.floor(rand() * m.stripLen));
   const grid = gridFor(m, stops), wins = evaluate(m, grid);
@@ -151,13 +160,25 @@ export function pull(state, machineId, rand = Math.random, forcedStops) {
   const capped = pay > state.pool;
   pay = Math.min(pay, state.pool); // can never pay more than the pool holds
   state.pool -= pay;
-  return skim(state, { stops, grid, wins, hats, hatPay, pay, jackpot: false, capped, received: pay * (1 - FEE), ahead: pay > m.bet + 1e-9 });
+  return skim(state, { topOffBefore: before, stops, grid, wins, hats, hatPay, pay, jackpot: false, capped, received: pay * (1 - FEE), ahead: pay > m.bet + 1e-9 });
 }
 
-// After each pull: if the pool has reached SKIM_AT, send SKIM to the treasury.
+// After each pull: skim to the treasury at the top, top off from the treasury at the bottom.
+// state.rules (optional) overrides POOL_RULES for this pool; state.treasury tracks the treasury's net (+ received, − sent).
 function skim(state, result) {
-  if (state.pool >= (state.skimAt ?? SKIM_AT)) { state.pool -= SKIM; result.skim = SKIM; state.treasury = (state.treasury || 0) + SKIM * (1 - FEE); }
+  const R = { ...POOL_RULES, ...(state.rules || {}) }, at = state.skimAt ?? R.skimAt;
+  if (state.pool >= at) { state.pool -= R.skim; result.skim = R.skim; state.treasury = (state.treasury || 0) + R.skim * (1 - FEE); }
+  const add = (result.topOffBefore || 0) + topOff(state); delete result.topOffBefore;
+  if (add) result.topOff = add; // everything the treasury added around this pull
   return result;
+}
+// If the pool is below topOffBelow, the treasury tops it up to topOffTo. Returns the amount added (0 if none).
+function topOff(state) {
+  const R = { ...POOL_RULES, ...(state.rules || {}) };
+  if (!(state.pool < R.topOffBelow)) return 0;
+  const add = R.topOffTo - state.pool; // what must arrive; the treasury sends a bit more because of the 3% tax
+  state.pool += add; state.treasury = (state.treasury || 0) - add / (1 - FEE);
+  return add;
 }
 
 // Tests/demo: reel stops that put `sym` on `count` reels of a given line (the rest random).

@@ -11,7 +11,13 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Treasury wallet:** Cody is making a new one. Send Claude its public address (never the secret key or recovery phrase).
 - [ ] **Lottery program:** when ready, share where Cody's on-chain lottery lives (its repo, or its program address on devnet) so the Store's Lottery block can link to it or plug into it.
 - [ ] **Rebuild the Slots page for the new rules** (Big Hat only, 5×5, Santa Hat wild, paylines drawn, full-grid pool jackpot) plus **full-screen buttons**, a **past winners list** at the bottom of the Games page (shared by every game: name, amount, +%, game icon), and a reel slow-down when hats are lining up. **Do not republish until done:** `games.js` / `slots3d.js` still expect the old two-machine rules.
-- [ ] **Slots pool refill safety net** (real money, Cody): proposal: the treasury refills the pool to $250 if it ever drops below $150. Rarely needed with the $1,025 skim, but possible while the pool builds up.
+- [ ] **Escrow admin controls (Cody, must exist before real pools go live):** for every pool wallet (Spin, Slots):
+  - **Adjust thresholds** without a code change: starting amount, skim point and amount, top-off levels, jackpot % and odds. (The game logic already reads these from one settings object, `POOL_RULES`.)
+  - **Emergency withdrawal:** move funds out of a pool to a safe wallet if something goes wrong.
+  - **Emergency stop (pause):** stops play AND top-offs, so a withdrawal isn't instantly refilled. (Built and tested in the game logic; needs the admin screen and server.)
+  - Only Cody can do these, confirmed with his wallet signature (not just a password). Every change and withdrawal is logged (what, when, amount, transaction) so players can trust the pools.
+  - Prize and odds changes should be announced, and never happen mid-pull.
+- [x] **Slots pool top-off** (Cody liked it): below $150 the treasury tops the pool up to $500, checked before and after every pull, so the game can't lock. Built and tested in the game logic; the real treasury transfer needs the server.
 - [ ] **Slots payouts:** Cody deciding, now that the machines are built. Replace `PAYTABLE` (and the jackpot %s in `MACHINES`) in `mockups/slots.js`, then run `tests/slots.test.mjs`. The starting pool must suit the biggest fixed win: with the draft's 20× top prize, $50 paused the Big Hat early in about 3% of simulated runs, $100 in none.
 
 ## Next to build

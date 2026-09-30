@@ -1,7 +1,7 @@
 // Writes santa-hat-game/PAYTABLE.md: the full Big Hat payout table (a "PAR sheet") from the live settings in
 // mockups/slots.js. Re-run after any change: node tests/paytable.mjs
 import { writeFileSync } from 'fs';
-import { MACHINES, SYMBOLS, IN_PER_DOLLAR, FEE, BURN, START_POOL, SKIM_AT, SKIM, MAX_FIXED, stats, pull } from '../mockups/slots.js';
+import { MACHINES, SYMBOLS, IN_PER_DOLLAR, FEE, BURN, START_POOL, SKIM_AT, SKIM, POOL_RULES, MAX_FIXED, stats, pull } from '../mockups/slots.js';
 import { rng } from './rng.mjs';
 
 const m = MACHINES.big, s = stats(m), L = m.stripLen, lines = m.lines.length, rand = rng(2026);
@@ -134,8 +134,10 @@ Nothing is staged.
 - Simulated ${POOL_RUNS} runs × 20,000 pulls from ${usd(START_POOL)}: the pool's lowest point in any run was **${usd(poolLow)}**;
   **${poolPaused} pulls were refused** (pool too low); pools settled around **${usd(poolMedianEnd)}**; the pool jackpot's typical
   size was **${usd(jpMedian)}**; the treasury received about **${usd(treasuryPer20k)} per 20,000 pulls**.
-- If the pool ever did drop under ${usd(MAX_FIXED(m))}, pulls would stop and nothing would refill it; a treasury refill rule
-  (e.g. top it back up to $250) is the safety net. With the $${SKIM_AT} skim point this hasn't happened in simulation.
+- **Top-off:** if the pool is ever below **${usd(POOL_RULES.topOffBelow)}** (before or after a pull), the treasury tops it back up
+  to **${usd(POOL_RULES.topOffTo)}**. That's above the ${usd(MAX_FIXED(m))} top prize, so the game can't lock.
+- **Emergency stop:** Cody can pause the pool: no pulls and no top-offs, so funds can be withdrawn safely.
+- All of these numbers are adjustable settings (\`POOL_RULES\` in \`mockups/slots.js\`; admin settings on the real server).
 
 ## Paylines
 

@@ -1,6 +1,6 @@
 // Santa Hat Slots rules: invariants asserted, plus the numbers a PAR sheet would list for the current (DRAFT) settings.
 // Run: node tests/slots.test.mjs
-import { MACHINES, SYMBOLS, SYM, IN_PER_DOLLAR, START_POOL, SKIM_AT, SKIM, MAX_FIXED, stats, gridFor, evaluate, pull, stopsShowing } from '../mockups/slots.js';
+import { MACHINES, SYMBOLS, SYM, IN_PER_DOLLAR, START_POOL, SKIM_AT, SKIM, POOL_RULES, MAX_FIXED, stats, gridFor, evaluate, pull, stopsShowing } from '../mockups/slots.js';
 import { rng } from './rng.mjs';
 
 const fail = (m) => { console.error('FAIL:', m); process.exit(1); };
@@ -61,7 +61,7 @@ for (const m of Object.values(MACHINES)) {
 }
 
 // Slots pool over long runs: never negative, never pays beyond the pool, skims $25 to the treasury at $325.
-let paused = 0, capped = 0, jackpots = 0, skims = 0; const ends = [], jackAmts = [];
+let paused = 0, capped = 0, jackpots = 0, skims = 0, topOffs = 0, lowest = Infinity; const ends = [], jackAmts = []; let treasuryNet = 0;
 for (let run = 0; run < 200; run++) {
   const st = { pool: START_POOL };
   for (let i = 0; i < 20000; i++) {
@@ -69,14 +69,38 @@ for (let run = 0; run < 200; run++) {
     if (r.paused) { paused++; continue; }
     if (r.capped) capped++;
     if (r.jackpot) { jackpots++; jackAmts.push(r.pay); }
+    if (r.topOff) { topOffs++; if (Math.abs(st.pool - POOL_RULES.topOffTo) > 1e-9) fail('top-off should bring the pool to topOffTo'); }
+    if (st.pool < POOL_RULES.topOffBelow - 1e-9) fail('pool left below the top-off level');
+    lowest = Math.min(lowest, st.pool);
     if (r.skim) { skims++; if (st.pool < SKIM_AT - SKIM - 1e-9 || st.pool >= SKIM_AT) fail('skim left the pool out of range'); }
     if (st.pool >= SKIM_AT) fail('pool should never sit at or above the skim point');
     if (r.pay > before + MACHINES.big.bet * IN_PER_DOLLAR + 1e-9) fail('paid more than the pool held');
     if (st.pool < -1e-9) fail('pool went negative');
     if (Math.abs(r.received - r.pay * 0.97) > 1e-9) fail('winner should receive the pay minus 3%');
   }
-  ends.push(st.pool);
+  ends.push(st.pool); treasuryNet += st.treasury || 0;
 }
+if (paused) fail(`${paused} pulls refused: with the top-off the game must never lock`);
 ends.sort((a, b) => a - b); jackAmts.sort((a, b) => a - b);
-console.log(`Slots pool, 200 runs × 20,000 pulls from $${START_POOL}: median end $${ends[100].toFixed(0)}, lowest $${ends[0].toFixed(0)}; ${skims} skims of $${SKIM}; ${jackpots} pool jackpots (median $${(jackAmts[jackAmts.length >> 1] || 0).toFixed(2)}); ${paused} paused pulls; ${capped} capped wins`);
+console.log(`Slots pool, 200 runs × 20,000 pulls from $${START_POOL}: median end $${ends[100].toFixed(0)}, lowest after any pull $${lowest.toFixed(0)}; ${skims} skims of $${SKIM}; ${topOffs} top-offs; treasury net about $${(treasuryNet / 200).toFixed(0)} per 20,000 pulls; ${jackpots} pool jackpots (median $${(jackAmts[jackAmts.length >> 1] || 0).toFixed(2)}); ${paused} paused pulls; ${capped} capped wins`);
+// Stress: start the pool low so the top-off has to work. It must fire, and no pull may ever be refused.
+{
+  let tops = 0, refused = 0, sent = 0;
+  for (let run = 0; run < 100; run++) {
+    const st = { pool: run % 2 ? 120 : 50, treasury: 0 }; // $50 is under the $100 top prize: the top-off must run before the first pull
+    for (let i = 0; i < 5000; i++) { const r = pull(st, 'big', rand); if (r.paused) refused++; if (r.topOff) tops++; if (st.pool < POOL_RULES.topOffBelow - 1e-9) fail('stress: pool below top-off level'); }
+    sent += Math.min(0, st.treasury);
+  }
+  if (!tops) fail('stress: the top-off never fired');
+  if (refused) fail(`stress: ${refused} pulls refused even with the top-off`);
+  console.log(`Top-off stress (pool starting at $50 or $120): ${tops} top-offs in 100 runs, 0 refused pulls.`);
+}
+// Emergency stop: paused means no pull and no top-off, even with an empty pool.
+{
+  const st = { pool: 20, treasury: 0, rules: { paused: true } }, r = pull(st, 'big', rand);
+  if (!r.paused || !r.stopped || st.pool !== 20 || st.treasury !== 0) fail('paused pool must refuse pulls and must not top off');
+  st.rules.paused = false; const r2 = pull(st, 'big', rand);
+  if (r2.paused || !r2.topOff) fail('after un-pausing, the top-off should refill the pool and the pull should run');
+  console.log('Emergency stop: paused pool refused the pull and did not top off; un-paused, it topped off and played.');
+}
 console.log('OK: strips, paylines, all-stops check, pool invariants');

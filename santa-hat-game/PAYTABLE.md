@@ -128,8 +128,10 @@ Nothing is staged.
 - Simulated 60 runs × 20,000 pulls from $500.00: the pool's lowest point in any run was **$364.55**;
   **0 pulls were refused** (pool too low); pools settled around **$1741.48**; the pool jackpot's typical
   size was **$363.20**; the treasury received about **$970.00 per 20,000 pulls**.
-- If the pool ever did drop under $100.00, pulls would stop and nothing would refill it; a treasury refill rule
-  (e.g. top it back up to $250) is the safety net. With the $1775 skim point this hasn't happened in simulation.
+- **Top-off:** if the pool is ever below **$150.00** (before or after a pull), the treasury tops it back up
+  to **$500.00**. That's above the $100.00 top prize, so the game can't lock.
+- **Emergency stop:** Cody can pause the pool: no pulls and no top-offs, so funds can be withdrawn safely.
+- All of these numbers are adjustable settings (`POOL_RULES` in `mockups/slots.js`; admin settings on the real server).
 
 ## Paylines
 

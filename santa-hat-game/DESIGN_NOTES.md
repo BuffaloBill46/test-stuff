@@ -152,9 +152,12 @@ $50 start). **The slots paytable is a placeholder** (spin's 1×–4× fixed wins
   **Demo start: $500.** With the 100× this common, a $250 start locked about 1 run in 100; $500 never locked.
   Simulated: pools settle around $1,750; the treasury gets about $970 per 20,000 pulls.
 - Teasers happen naturally at their real odds (e.g. 4 hats then something else: about 1 in 1,000 pulls). Nothing is staged.
+- **Top-off (Cody: yes):** below $150 the treasury tops the pool back up to $500, checked before and after every pull.
+- **Escrow admin controls (Cody: required):** adjustable thresholds (all in one settings object, `POOL_RULES`), an
+  emergency withdrawal, and an emergency stop that also halts top-offs. Cody-only, wallet-signed, and publicly logged.
 - **Open, Cody:**
   (1) Pool jackpot size: 25% of a ~$1,750 pool is about $430, not the ~$250 Cody expected. ~14% would make it about $250.
-  (2) Real starting pool amount (the demo uses $500) and whether to add the treasury refill safety net anyway.
+  (2) Real starting pool amount (the demo uses $500).
   (3) The "$500 threshold bonus" idea: still open.
 
 **Built earlier (demo, 2026-09-29; now out of date, see TODO):** the Games tab has the two machines, stacked: **Mini Hat** ($0.10) and **Big Hat** ($1.00).

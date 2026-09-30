@@ -61,6 +61,8 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
   Winners absorb it, and it must be stated on the Play page and at the top of every SANTA game's description.
 - **Pool wallets:** a Spin pool and a separate Slots pool (keys only on the server), plus a new treasury wallet Cody is making. The
   lottery runs on Cody's own on-chain lottery program (or manually). None of these are hooked up yet.
+- **Escrow admin controls are a must before any real pool goes live:** adjustable thresholds, emergency withdrawal, and an
+  emergency stop (see TODO). The game logic already reads all thresholds from `POOL_RULES` and supports the stop switch.
 - Money: nothing paid is live. No wallet has ever been charged. Keep it that way until Cody signs off.
 
 ## How to test (run these before you call anything done)
