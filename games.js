@@ -2,7 +2,7 @@
 // 3D Big Hat machine (slots3d.js). DEMO ONLY: play money and a demo pool kept in this browser. No SANTA moves.
 import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount } from './slots.js';
 import { createMachine, symbolImages } from './slots3d.js';
-import { initSpin, showSpin, resetSpin, spinState, refreshSpin } from './spinui.js';
+import { initSpin, showSpin, resetSpin, spinState, refreshSpin, showResult } from './spinui.js';
 import { initCredits, ready, play, short, refresh as refreshCredits, resetCredits, setPrice } from './playcredits.js';
 import { livePrice, liveFee, santaFor, fmtSanta } from './market.js';
 import { FEE } from './slots.js';
@@ -161,6 +161,7 @@ async function doPull() {
     res.innerHTML = `<span class="dim">Returned ${money(r.pay)}${hatsTxt ? ' (' + hatsTxt + ')' : ''}. Less than the $1 pull.</span>`;
   } else res.textContent = 'No win this time.';
   store.set(state); render(); busy = false;
+  showResult(res);
 }
 
 // Full screen: the real Fullscreen API where it works, a fixed overlay where it doesn't (iPhone Safari).

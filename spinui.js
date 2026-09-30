@@ -27,6 +27,10 @@ function odds_() {
   const o = odds();
   $('#oddsList').innerHTML = [5, 4, 3, 2, 1, 0].map((m) => `<li><i style="background:${MULT_STYLE[m][0]}"></i><span><b>${m}×</b> ${m === 1 ? 'money back' : m === 0 ? 'no win' : 'win'}<br>${(o[m] * 100).toFixed(1)}% · 1 in ${+(1 / o[m]).toFixed(1)}</span></li>`).join('');
 }
+// Phones: the result line sits under the wheel; bring it just into view when the play ends (focus-group finding).
+// The bottom tab bar covers the page on phones, so "visible" means above it (a first version missed that).
+export const visibleBottom = () => { const t = document.querySelector('#nav .tabs'), r = t?.getBoundingClientRect(); return r && r.top > innerHeight / 2 ? r.top : innerHeight; };
+export function showResult(el) { const r = el.getBoundingClientRect(); if (r.bottom > visibleBottom() || r.top < 0) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
 function stamp(text) { const fl = $('#spin .flash'); fl.textContent = text; fl.classList.remove('show'); void fl.offsetWidth; fl.classList.add('show'); }
 function setBet(b) { bet = b; setSpinKind(spinKindFor(b)); document.querySelectorAll('#spin .bets button').forEach((x) => x.setAttribute('aria-checked', String(+x.dataset.bet === b))); }
 
@@ -50,9 +54,10 @@ async function doSpin() {
     sfx(r.mult >= 4 ? 'bigWin' : 'smallWin'); card().classList.add(r.mult >= 5 ? 'jackpot' : 'won'); stamp(r.mult >= 5 ? '5× !' : `${r.mult}× WIN`);
     res.innerHTML = `<b>${r.mult}× win!</b> ${money(r.pay)} <span class="dim">· you get ${money(r.received)} after the 3% tax</span>`;
     addWinner(bet >= 1 ? 'spin100' : 'spin10', r.pay, bet, `${r.mult}×`);
-  } else if (r.mult === 1) res.innerHTML = `<span class="dim">Money back: ${money(r.pay)} (you get ${money(r.received)} after the 3% tax).</span>`;
+  } else if (r.mult === 1) res.innerHTML = `<span class="dim">Money back, less SANTA's 3% tax: you get ${money(r.received)}.</span>`;
   else res.textContent = 'No win this time.';
   store.set(st); render(); busy = false;
+  showResult(res);
 }
 
 function toggleFull() {
