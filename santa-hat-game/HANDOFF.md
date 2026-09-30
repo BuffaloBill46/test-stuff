@@ -125,6 +125,7 @@ between two devices has never been tested from here. Cody and friends testing on
 5. Where Cody's on-chain lottery program lives.
 6. The Slots pool jackpot %: 25% gives about $360–430 on a full pool, and ~14% would give about $250.
 7. Whether to build a free daily spin (it costs real money from the Spin pool).
+8. Play credits (buy 1–10 plays in one transaction): four questions in TODO → "Play credits". It replaces "pay per spin".
 
 **Next big step (needs Cody's OK, costs about $5–10/month):** the game server. It's needed for real SANTA in Slots and Spin
 (provably fair results, payments, payouts, escrow admin controls), ranked tickets and payouts, and a shared winners list.

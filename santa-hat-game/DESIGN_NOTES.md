@@ -251,6 +251,8 @@ jackpot amount**, plus its jackpot odds and biggest fixed win (worked out from t
   The pool typically grew to about $220, and the worst 1% ended around $155. *(Spin-style numbers.
   With the jackpot, the Slots pool levels off instead. See "Spin and Slots pools".)*
 - **Pay per spin:** each spin is its own wallet transaction. No deposited balances; we never hold player funds.
+  *(Proposed replacement, Cody 2026-09-30, not yet final: buy 1–10 play credits in one transaction, stored on the account.
+  See TODO → "Play credits".)*
 - **Slots numbers:** Cody is drafting the paytable. Claude checks it (payback % and a million-spin simulation) before launch.
 - **No daily play limit (Cody, 2026-09-30; replaces the earlier $10/day + $10 per level idea).** The math holds up under
   heavy play: one simulated grinder doing 100,000 pulls lost about 25% every time (never ahead in 100 tries), burned

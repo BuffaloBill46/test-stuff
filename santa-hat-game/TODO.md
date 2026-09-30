@@ -49,6 +49,27 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Simulate a million spins** to prove the payback % before launch. (Slots: exact payback from the reel math plus `tests/payout-ranges.mjs`, 5 million pulls. Re-run both after any change.)
 - [ ] More click games from the idea list (Hat Drop, Present Pick, Sleigh Climb, Advent Scratch, Naughty or Nice).
 
+### Play credits: buy 1–10 plays in one transaction (Cody's idea, 2026-09-30)
+Tapping Spin (or the Big Hat's pull) with no credits pops up a counter: pick 1–10 plays, pay once, and the game shows a
+**credit count stored on the player's account**. Each play spends one credit. A free daily spin then becomes "add 1 credit".
+Why it's good: one wallet popup instead of ten, and one network fee instead of ten.
+- [ ] **Demo first (no money):** the 1–10 counter popup, a credits readout next to the Spin button and the pull, plays spend credits.
+- [ ] **Credits live in the database, never the browser.** Only the server can add or remove them (row security, like profiles).
+      The page only shows the number.
+- [ ] **The money moves at purchase:** the single payment already does the 10% burn / 90% to that game's pool, so a credit
+      is fully paid for before it's used. Price locked in dollars at purchase; later SANTA price moves don't change it.
+- [ ] **Invariants to test as assertions:** credits bought = credits used + credits left, per player; a credit is spent at most
+      once (even with two taps or two tabs at once); one payment signature buys credits exactly once; a play that the pool
+      refuses (paused or refilling) keeps its credit.
+- [ ] **Free daily spin:** the server adds 1 credit per player per day. Still needs Cody's yes (it costs real money from the Spin pool).
+- **Cody to decide:**
+  1. This replaces the decided "pay per spin, we never hold player funds". Credits are prepaid plays, so we'd be holding
+     something of value for players. OK?
+  2. Are credits per game and per size (10¢ Spin, $1 Spin, $1 Big Hat) or one shared "$1 of play" balance? Claude's pick: per
+     game and size, so each pool gets its own money up front and nothing moves between pools.
+  3. Refunds: can unused credits be cashed out, and do they expire? Claude's pick: no cash-out, no expiry.
+  4. A bulk discount (like tickets' "save 10%")? Claude's pick: none, since it would lower the payback math.
+
 ### Slots server: protect it from bots and abuse (no daily play limit, so this matters more)
 The math can't be beaten by grinding (a simulated 100,000-pull grinder lost about 25% every time), but the server still has to
 stop cheating and spam:
