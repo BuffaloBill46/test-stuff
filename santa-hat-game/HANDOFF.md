@@ -139,9 +139,7 @@ between two devices has never been tested from here. Cody and friends testing on
 5. Where Cody's on-chain lottery program lives.
 6. The Slots pool jackpot %: 25% gives about $360–430 on a full pool, and ~14% would give about $250.
 7. Whether to build a free daily spin (it costs real money from the Spin pool; with credits it's just "add 1 credit a day").
-8. **SANTA price swings:** prizes are in dollars but pools hold SANTA (options in TODO → Before anything paid goes live).
-9. **Where the Spin/Slots server runs:** Supabase Edge Functions (free tier) vs an always-on server (~$5–10/month).
-10. Which new click game to build next (Present Pick, Hat Drop, …) and its odds.
+8. Which new click game to build next (Present Pick, Hat Drop, …) and its odds.
 
 **Next big step (needs Cody's OK):** put `server/games.js` online (Edge Functions or a small server), apply `005`, and connect the
 page to it instead of the in-browser stand-in (`house.js`). Before real money: prove the pool lock on real Postgres, decide price swings.

@@ -110,6 +110,12 @@ How the pool wallets are controlled (options; Claude's pick marked):
 Each wallet also needs a little SOL (Solana's own coin) to pay network fees. **Creating and funding them is a
 real-money step: not done, waits for Cody.** The keys never go in the website or the repo.
 
+### Where the games' server runs, and SANTA price swings (decided, Cody 2026-09-30)
+- **Spin and Slots run on Supabase Edge Functions** (free plan). No always-on server for them.
+- **Pools hold SANTA and float with the token price.** The pool jackpot (a % of the pool) floats in dollars with it. Fixed prizes
+  (e.g. the $100 top line) stay in dollars and are paid in SANTA at the live price. Pool rules (skim, top-off, "must cover the top
+  prize") compare the pool's live dollar value (Claude's reading of Cody's call).
+
 ### Spin and Slots pools, and the Slots jackpot (decided)
 **Cody's calls:**
 - **Spin and Slots are two separate games with two separate pools (two wallets).** Nothing is shared between them.
