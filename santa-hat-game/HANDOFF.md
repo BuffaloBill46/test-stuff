@@ -134,6 +134,12 @@ between two devices has never been tested from here. Cody and friends testing on
   pay-per-spin), **fair results in Cody's order** (payment and credit first, then the secret) with a "Check this result" panel,
   and the **live SANTA price and live token tax**. Numbers: `PAYTABLE.md`, `mockups/spin.js`.
 
+**Server side, built and proven here but not deployed** (everything else for devnet is in `FOR_MAIN_CLAUDE.md`):
+- Edge Function `games` (Cody's choice): quote → buy → open → settle, stuck-play tidying, one play at a time per player,
+  pools in SANTA floating with the price (Cody), escrow admin controls (wallet-signed stop/resume/settings, logged).
+- Payout worker: never pays twice, even through crashes (proven on the real token program).
+- The Games page's server mode (`?server=<address>`), proven end to end against the real server code and SQL.
+
 **Built but not switched on:** the payment checker and game server steps (`server/`), the credits/plays/payouts database file
 (`005`, not applied), ranked matchmaking (`matchmaker.js`). The one-transaction payment split is proven on the real token program.
 
