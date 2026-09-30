@@ -27,7 +27,10 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     const price = await livePrice(), usd = costOf(kind, n), santaRaw = Math.round((usd / price.usd) * DEC);
     const q = await row(`insert into public.quotes (profile_id, kind, n, usd, santa_raw, price_usd) values ($1, $2, $3, $4, $5, $6) returning id, created_at`,
       [profile, kind, n, usd, santaRaw, price.usd]);
-    return { id: q.id, kind, n, usd, santaRaw, price: price.usd, expiresAt: new Date(q.created_at).getTime() + QUOTE_SECONDS * 1000 };
+    // where to pay: the page builds the one transaction from this (mockups/pay.js); the live tax so its fee matches the token
+    const fee = await liveFee();
+    return { id: q.id, kind, n, usd, santaRaw, price: price.usd, expiresAt: new Date(q.created_at).getTime() + QUOTE_SECONDS * 1000,
+      mint: MINT, pool: poolWallets?.[KINDS[kind].game] || null, fee: { bps: fee.bps, max: fee.max }, burnBps: 1000 };
   }
 
   async function buy(profile, quoteId, signature) {

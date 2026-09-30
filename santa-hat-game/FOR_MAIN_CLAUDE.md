@@ -21,10 +21,11 @@ Tick items off here as they're done. Order is roughly the order to do them in fo
 - [ ] **Prove the pool row lock on real Postgres:** two connections settling plays on the same pool at the same moment. (Balances
       add/subtract so no SANTA can be lost either way; the lock keeps each play's "can the pool pay?" check on the latest balance.)
 - [ ] **Real wallet signing in the browser: write `window.santaPay(quote)`.** The page already calls it (server mode,
-      `mockups/playcredits.js` → `buyFromServer`): given the server's quote `{ id, kind, n, usd, santaRaw, expiresAt }`, build ONE
-      transaction (burnChecked 10%-after-tax + transferCheckedWithFee to the pool wallet; amounts from `splitPayment` in
-      `mockups/market.js`; exactly the layout proven in `tests/solana/split.test.mjs`), have Phantom sign and send it, wait until
-      it's FINALIZED, and return its signature. The page then calls `buy`, and the server checks it (`server/verify.js`).
+      `mockups/playcredits.js` → `buyFromServer`) with the server's quote (it includes `mint`, `pool`, `fee`, `burnBps`).
+      The transaction is ALREADY BUILT for you: `purchaseInstructions(lib, quote, walletSigner)` in `mockups/pay.js` (pass the
+      `@solana-program/token-2022` module as `lib`), proven on the real token program and accepted by the server's checker
+      (`tests/solana/pay.test.mjs`). Left: wrap Phantom as a @solana/kit transaction signer, sign + send, wait until FINALIZED,
+      return the signature. Add `pay.js` to `deploy-pages.sh` when the page imports it.
 - [ ] **Turn on server mode for real:** the page uses the server when opened with `?server=<Edge Function URL>`
       (`mockups/gameserver.js`); proven end to end locally (`tests/browser/server-mode-test.mjs`). For launch, make the
       Edge Function URL the default instead of the in-browser demo.
