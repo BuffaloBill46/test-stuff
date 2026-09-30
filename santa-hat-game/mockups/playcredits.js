@@ -118,6 +118,7 @@ export async function play(kind, forced) {
   if (serverMode) {
     try {
       const o = await call('open', { kind });
+      if (o.busy) return { failed: true, why: 'your last play is still finishing' }; // one play at a time
       if (!o.ticket) { await syncCredits(); return o.error ? { failed: true, why: o.error } : o; }
       const s = await call('settle', { ticket: o.ticket, seed: newSeed(16) }); // our number goes in only after the fingerprint came back
       await syncCredits();

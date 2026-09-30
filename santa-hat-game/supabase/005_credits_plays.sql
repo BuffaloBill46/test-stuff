@@ -118,10 +118,14 @@ begin
 end $$;
 
 -- Step 2 of the order: take one credit (only if there is one; the row lock makes two taps safe) and start the play.
+-- Returns the play id, null when there's no credit, or -1 when another play of this player isn't finished yet.
 create function public.spend_credit(p_profile uuid, p_kind text) returns bigint
 language plpgsql security definer set search_path = '' as $$
 declare next_no bigint; play_id bigint;
 begin
+  -- One play at a time per player (anti-flood): a per-player lock, then refuse while another play is unfinished.
+  perform pg_advisory_xact_lock(hashtext(p_profile::text));
+  if exists (select 1 from public.plays where profile_id = p_profile and state in ('spent', 'open')) then return -1; end if;
   update public.credits set left_n = left_n - 1, used = used + 1 where profile_id = p_profile and kind = p_kind and left_n > 0;
   if not found then return null; end if;
   select coalesce(max(play_no), 0) + 1 into next_no from public.plays where profile_id = p_profile;

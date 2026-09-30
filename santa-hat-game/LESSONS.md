@@ -73,7 +73,9 @@ Read this before starting new work on the game. Add to it whenever something rea
   Now every step after the spend refunds on failure, and a test forces each failure.
 - **Browser hashing (crypto.subtle) only works on secure pages** (https, or http://localhost). The live site is https; tests that
   play the games must load `http://localhost/…`, not `http://local.test/…`.
-- **The stray-comment bug struck again, in a test:** a `//` note typed mid-line swallowed the rest of the line. Notes go on their own line.
+- **Full-screen label raced the browser.** The button read the state 60 ms after asking; under load the browser took longer, so it
+  said "Full screen" while full screen was on. The label now follows the browser's own fullscreenchange report.
+- **The stray-comment bug struck again (three times now), in tests:** a `//` note typed mid-line swallowed the rest of the line. Notes go on their own line.
 - **Rounded constants multiply their error.** A test's pool-income figure rounded to 7 digits was fine for 1 pull and failed for 5.
   Use the exact formula, `(1 - 0.10 * 0.97) * 0.97`.
 - **When a new test fails, check the test's bookkeeping before the game.** The bot-emote check failed three times; every time it

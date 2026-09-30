@@ -66,7 +66,11 @@ const p2 = (await one(`select public.spend_credit($1, 'spin100') as id`, [uid]))
 await db.query(`select public.refund_play($1)`, [p2]);
 let c = await one(`select left_n, bought, used from public.credits where profile_id = $1 and kind = 'spin100'`, [uid]);
 assert.deepEqual([c.left_n, c.bought, c.used], [4, 5, 1]);
-for (let i = 0; i < 4; i++) assert.ok((await one(`select public.spend_credit($1, 'spin100') as id`, [uid])).id);
+const finish = async (id) => { await db.query(`select public.lock_play($1, $2, 's')`, [id, 'e'.repeat(64)]); await db.query(`select public.settle_play($1, 'x', '{}', 0, 0, 1, 0, 0, 'w', 205)`, [id]); };
+const first = (await one(`select public.spend_credit($1, 'spin100') as id`, [uid])).id;
+assert.equal(+(await one(`select public.spend_credit($1, 'big') as id`, [uid])).id, -1, 'one play at a time: refused while another is unfinished');
+await finish(first);
+for (let i = 0; i < 3; i++) { const id = (await one(`select public.spend_credit($1, 'spin100') as id`, [uid])).id; assert.ok(+id > 0); await finish(id); }
 assert.equal((await one(`select public.spend_credit($1, 'spin100') as id`, [uid])).id, null, 'no credit, no play');
 assert.equal((await one(`select public.spend_credit($1, 'big') as id`, [uid])).id, null, 'Spin credits can\'t be spent on Slots');
 

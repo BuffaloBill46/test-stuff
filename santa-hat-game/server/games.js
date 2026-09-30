@@ -69,6 +69,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     if (!can.ok) return { refused: true, stopped: !!can.stopped };                       // 1. pool check: credit untouched
     const playId = (await row('select public.spend_credit($1, $2) as id', [profile, kind])).id; // 2. spend one credit
     if (!playId) return { noCredit: true };
+    if (+playId === -1) return { busy: true }; // one play at a time per player
     try {                                                                                 // 3. only now: the secret
       const secret = f.newSeed(), commit = await f.fingerprint(secret);
       await db.query('select public.lock_play($1, $2, $3)', [playId, commit, secret]);

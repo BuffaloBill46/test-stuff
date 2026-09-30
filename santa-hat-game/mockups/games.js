@@ -177,7 +177,9 @@ export function initGames(opts = {}) {
     const b = e.currentTarget.getBoundingClientRect();
     if (e.target === e.currentTarget && (e.clientX < b.left || e.clientX > b.right || e.clientY < b.top || e.clientY > b.bottom)) e.currentTarget.close?.();
   });
-  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) { const b = $('#fsBtn'); b.setAttribute('aria-pressed', 'false'); $('span', b).textContent = 'Full screen'; } });
+  // The label follows the browser's own report (entering can take longer than a moment on a busy or slow device).
+  document.addEventListener('fullscreenchange', () => { const c = $('#slots .machine'), b = $('#fsBtn'), on = document.fullscreenElement === c || c.classList.contains('max');
+    b.setAttribute('aria-pressed', String(on)); $('span', b).textContent = on ? 'Exit full screen' : 'Full screen'; });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#slots .machine').classList.remove('max'); });
   $('#demoReset').addEventListener('click', () => {
     if (busy) return;

@@ -72,7 +72,9 @@ export function initSpin(opts) {
   $('#spin canvas').addEventListener('click', doSpin);
   document.querySelectorAll('#spin .bets button').forEach((b) => b.addEventListener('click', () => { if (!busy) setBet(+b.dataset.bet); }));
   $('#spinFs').addEventListener('click', toggleFull);
-  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) { const b = $('#spinFs'); b.setAttribute('aria-pressed', 'false'); $('span', b).textContent = 'Full screen'; } });
+  // The label follows the browser's own report (entering can take longer than a moment on a busy or slow device).
+  document.addEventListener('fullscreenchange', () => { const c = card(), b = $('#spinFs'), on = document.fullscreenElement === c || c.classList.contains('max');
+    b.setAttribute('aria-pressed', String(on)); $('span', b).textContent = on ? 'Exit full screen' : 'Full screen'; });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') card().classList.remove('max'); });
   odds_(); render();
   window.__spin = { st, view, test, get busy() { return busy; }, get shownPool() { return shownPool; }, SLICES };

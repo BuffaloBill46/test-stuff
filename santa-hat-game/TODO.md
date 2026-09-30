@@ -73,7 +73,7 @@ never hold much for anyone.
 ### Slots server: protect it from bots and abuse (no daily play limit, so this matters more)
 The math can't be beaten by grinding (a simulated 100,000-pull grinder lost about 25% every time), but the server still has to
 stop cheating and spam:
-- [ ] **One pull at a time per wallet.** A new pull waits until the last one is settled. No double-spending one payment.
+- [x] **One play at a time per player (built, 2026-09-30):** enforced in the database (`spend_credit`, a per-player lock), so 10 taps at once give 1 play and spend 1 credit. Stuck plays are tidied first, so nobody is blocked forever.
 - [ ] **Every payment used once.** Each SANTA payment's transaction signature buys its 1–10 credits exactly once; record it and refuse repeats.
 - [ ] **Confirm the payment on-chain (Helius) before any credits are added.** No confirmed payment, no credits, no pull.
 - [ ] **Rate limit per wallet and per IP** (e.g. a few pulls a second at most) to stop scripted floods; slow down, don't ban, on the first hits.

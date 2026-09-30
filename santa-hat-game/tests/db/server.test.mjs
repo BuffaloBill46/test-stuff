@@ -79,10 +79,21 @@ assert.deepEqual(await server.open(me, 'spin100'), { noCredit: true });
 // passes here). The lock must be proven on a real multi-connection Postgres before launch (TODO → Before anything paid goes live).
 q = await server.quote(me, 'big', 10); pay('sigB', { to: POOLS.slots, total: q.santaRaw }); assert.ok((await server.buy(me, q.id, 'sigB')).ok);
 const startSlots = await pool('slots');
-const opened = await Promise.all(Array.from({ length: 10 }, () => server.open(me, 'big')));
+// One play at a time per player: 10 taps at once → exactly 1 play, 9 told to wait, only 1 credit spent.
+const burst = await Promise.all(Array.from({ length: 10 }, () => server.open(me, 'big')));
+assert.equal(burst.filter((o) => o.ticket).length, 1); assert.equal(burst.filter((o) => o.busy).length, 9);
+assert.equal(await credits(me, 'big'), 9, 'the 9 refused taps spent nothing');
+let moved = (await server.settle(me, burst.find((o) => o.ticket).ticket, newSeed(16))).poolDelta;
+for (let i = 0; i < 9; i++) { const o = await server.open(me, 'big'); moved += (await server.settle(me, o.ticket, newSeed(16))).poolDelta; }
+// 10 different players settling at the same time: every SANTA movement counted.
+const others = [];
+// fake wallet addresses must be valid base58: no 0, O, I or l
+for (let i = 0; i < 10; i++) { const w = 'PLAYR' + 'abcdefghjk'[i].repeat(3) + 'wa11et'.padEnd(34, '1'); const id = await mk(w);
+  await db.query(`insert into public.credits (profile_id, kind, left_n, bought) values ($1, 'big', 1, 1)`, [id]); others.push(id); }
+const opened = await Promise.all(others.map((id) => server.open(id, 'big')));
 assert.equal(opened.filter((o) => o.ticket).length, 10);
-const settled = await Promise.all(opened.map((o) => server.settle(me, o.ticket, newSeed(16))));
-const moved = settled.reduce((a, s) => a + s.poolDelta, 0);
+const settled = await Promise.all(opened.map((o, i) => server.settle(others[i], o.ticket, newSeed(16))));
+moved += settled.reduce((a, x) => a + x.poolDelta, 0);
 assert.equal(await pool('slots'), startSlots + moved, 'settles at the same time: every SANTA movement counted');
 
 // SANTA's price halves (Cody: pools float with the token). The pool's SANTA doesn't change; its dollar value halves,
@@ -112,15 +123,21 @@ assert.deepEqual(await server.open(me, 'spin10'), { refused: true, stopped: true
 // Stuck plays: one spent with no secret, one opened but never settled (page closed). A minute later the next play tidies both.
 await db.query(`update public.pools set rules = '{}' where game = 'spin'`);
 q = await server.quote(me, 'spin100', 3); pay('sigD', { to: POOLS.spin, total: q.santaRaw }); await server.buy(me, q.id, 'sigD');
-const stuckSpent = (await one(`select public.spend_credit($1, 'spin100') as id`, [me])).id;   // server died before the secret
-const stuckOpen = await server.open(me, 'spin100');                                            // page closed before settling
-await db.query(`update public.plays set spent_at = now() - interval '2 minutes', opened_at = case when opened_at is null then null else now() - interval '2 minutes' end where id in ($1, $2)`, [stuckSpent, stuckOpen.ticket]);
-const creditsBefore = await credits(me, 'spin100');
-const next = await server.open(me, 'spin100'); assert.ok(next.ticket);
-const st = Object.fromEntries((await db.query('select id, state from public.plays where id in ($1, $2)', [stuckSpent, stuckOpen.ticket])).map((r) => [r.id, r.state]));
-assert.equal(st[stuckSpent], 'refunded', 'a play stuck before its secret is refunded');
-assert.equal(st[stuckOpen.ticket], 'settled', 'a play stuck after its secret is finished and paid');
+const back = (id) => db.query(`update public.plays set spent_at = now() - interval '2 minutes', opened_at = case when opened_at is null then null else now() - interval '2 minutes' end where id = $1`, [id]);
+const stateOf = async (id) => (await one('select state from public.plays where id = $1', [id])).state;
+// (a) the server died before making the secret: refunded by the next play
+const stuckSpent = (await one(`select public.spend_credit($1, 'spin100') as id`, [me])).id;
+assert.deepEqual(await server.open(me, 'spin100'), { busy: true }, 'a fresh unfinished play blocks a second one');
+await back(stuckSpent);
+let creditsBefore = await credits(me, 'spin100');
+let next = await server.open(me, 'spin100'); assert.ok(next.ticket);
+assert.equal(await stateOf(stuckSpent), 'refunded', 'a play stuck before its secret is refunded');
 assert.equal(await credits(me, 'spin100'), creditsBefore + 1 - 1, 'refund +1, the new play -1');
+// (b) the page closed after the secret was locked: finished and paid by the next play
+const stuckOpen = next;
+await back(stuckOpen.ticket);
+next = await server.open(me, 'spin100'); assert.ok(next.ticket);
+assert.equal(await stateOf(stuckOpen.ticket), 'settled', 'a play stuck after its secret is finished and paid');
 await server.settle(me, next.ticket, newSeed(16));
 const books = await db.query('select * from public.credits where bought <> used + left_n'); assert.equal(books.length, 0);
 console.log(`OK: quote → pay → buy → open → settle on real Postgres; 5 bad payments refused; 20 plays re-checked; 10 settles at once all counted (balances add/subtract, so none can be lost); price halving checked; paused pool keeps the credit`);
