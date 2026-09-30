@@ -14,6 +14,9 @@ Tick items off here as they're done. Order is roughly the order to do them in fo
       shows exactly how it's made. Give the server its address with the Edge Function secret `SANTA_MINT` (no code change; unset
       = real SANTA). The page's live-price line still shows real SANTA's price and tax (`mockups/market.js`), which is fine for a test.
 
+- [ ] **Cody: payback level and Spin's dry runs** (see FOCUS_GROUP.md): 74.5–75.5% vs 85–97% on real slots; 36 of 100 simulated
+      players went 15+ plays without a real win. If he changes odds, re-run `tests/spin.test.mjs`, `tests/slots.test.mjs`,
+      `tests/paytable.mjs` and the pool simulations before launch.
 - [ ] **Cody: how top-offs are paid.** Top-offs move SANTA from the treasury into a pool. Sending them automatically would put the
       treasury's key on the server. Options: (a) Cody approves each one (default now: queued as `needs_approval` in
       `pool_transfers`, and the game keeps running on the books); (b) a small separate "top-off reserve" wallet whose key is on the

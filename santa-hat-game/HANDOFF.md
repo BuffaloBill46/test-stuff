@@ -144,6 +144,13 @@ between two devices has never been tested from here. Cody and friends testing on
   pay-per-spin), **fair results in Cody's order** (payment and credit first, then the secret) with a "Check this result" panel,
   and the **live SANTA price and live token tax**. Numbers: `PAYTABLE.md`, `mockups/spin.js`.
 
+**Pre-hand-over pass (2026-09-30, evening):** an audit (`AUDIT.md`: 9 findings, all fixed or handed over, incl. skims that only
+happened on paper, price manipulation, and equal payouts silently lost as duplicate transactions), a 100-player focus group
+(`FOCUS_GROUP.md`: real game math + 10 real browser walkthroughs; opinions simulated), a **dress rehearsal of the devnet test**
+(`tests/solana/rehearsal.mjs`: books = wallets to the unit), the admin screen (`admin.html`), and "My plays". Cody's open
+economy questions from the focus group (payback level, Spin dry runs, top-off approval) are in FOCUS_GROUP.md and
+FOR_MAIN_CLAUDE.md.
+
 **Server side, built and proven here but not deployed** (everything else for devnet is in `FOR_MAIN_CLAUDE.md`):
 - Edge Function `games` (Cody's choice): quote → buy → open → settle, stuck-play tidying, one play at a time per player,
   pools in SANTA floating with the price (Cody), escrow admin controls (wallet-signed stop/resume/settings, logged).
