@@ -6,16 +6,17 @@
 // The edges are rare because few paths reach them, not because a bin is drawn thin: every bin is the same width.
 export const ROWS = 8;
 export const BINS = ROWS + 1;
-// Prize per bin (× the drop price), mirror-image, edges to middle 10× · 5× · 1× · 0.5× · 0× (Cody, 2026-09-30).
-// Pays back 212/256 = 82.8%: the pool keeps about 4.8¢ of each $1 (it receives about 87.6¢ after the burn and tax).
-export const PAYS = [10, 5, 1, 0.5, 0, 0.5, 1, 5, 10];
+// Prize per bin (× the drop price), mirror-image, edges to middle 10× · 5× · 1× · 0.4× · 0× (Cody, 2026-09-30; the 0.4×
+// was 0.5× until he asked for 78–80%). Pays back 200.8/256 = 78.4%: the pool keeps about 9¢ of each $1 (it receives
+// about 87.6¢ after the burn and tax).
+export const PAYS = [10, 5, 1, 0.4, 0, 0.4, 1, 5, 10];
 export const BETS = [0.10, 1.00];
 
 const choose = (n, k) => { let r = 1; for (let i = 1; i <= k; i++) r = (r * (n - i + 1)) / i; return r; };
 export const WAYS = Array.from({ length: BINS }, (_, k) => choose(ROWS, k));        // 1, 8, 28, 56, 70, 56, 28, 8, 1
 export const TOTAL = 2 ** ROWS;                                                       // 256
 export const odds = (k) => WAYS[k] / TOTAL;
-export const payback = () => PAYS.reduce((a, p, k) => a + p * WAYS[k], 0) / TOTAL;   // 212 / 256 = 82.81%
+export const payback = () => PAYS.reduce((a, p, k) => a + p * WAYS[k], 0) / TOTAL;   // 200.8 / 256 = 78.44%
 export const realWin = () => PAYS.reduce((a, p, k) => a + (p > 1 ? WAYS[k] : 0), 0) / TOTAL; // more back than it cost
 
 // One drop. `rand` gives uniform numbers in [0,1) (server-seeded in the real version): one per row.
