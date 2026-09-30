@@ -125,7 +125,7 @@ real-money step: not done, waits for Cody.** The keys never go in the website or
   - **Spin pool:** shared by the $0.10 and $1.00 spins.
   - **Slots pool:** one machine now, the $1.00 Big Hat (the $0.10 Mini Hat was scrapped 2026-09-30).
 - **Each pool keeps all the money that comes in;** nothing is swept out.
-- **Spin stays exactly as it is:** fixed odds 0x–5x, a 400-slice wheel, no jackpot. "Fun, easy risk."
+- **Spin stays simple:** fixed odds 0x–5x (now a main wheel + bonus wheel, see below), no jackpot. "Fun, easy risk."
 - **Only Slots has a jackpot,** paying a **percentage of the Slots pool.** It can never pay more than the pool holds,
   so the jackpot can't empty it. That's guaranteed by the math, not just seen in tests.
 
@@ -228,14 +228,18 @@ jackpot amount**, plus its jackpot odds and biggest fixed win (worked out from t
   bets, one shared pool. The reel needs 10 symbols.
 
 ### Checked math (spin)
-- Average paid back per $1 spin: **$0.745**. *(Before the 3% tax was known this said the pool takes in $0.90 and gains $0.155 per $1. With the tax the pool takes in $0.876 and gains 10.8–13.1¢; see "SANTA's 3% tax" above.)*
+- Average paid back per $1 spin: **$0.75** (two wheels, 2026-09-30; the old single wheel: $0.745). *(Before the 3% tax was known this said the pool takes in $0.90 and gains $0.155 per $1. With the tax the pool takes in $0.876 and gains 10.8–13.1¢; see "SANTA's 3% tax" above.)*
 - Short-term swings are real: in 2,000 simulated runs of 500 × $1 spins, a pool starting at $0 dipped as low as
   **−$24.50**. The pool needs a starting balance, plus a rule that a spin can only start if the pool can
   cover its biggest possible win (5× the bet).
-- **The wheel (decided): 400 slices matching the real odds exactly:** 0x 202, 1x 132, 2x 40, 3x 20, 4x **4**, 5x **2**.
-  To keep it readable, neighbouring slices of the same result merge into chunky segments, so the wheel shows
-  a couple dozen clear pieces. The 4x and 5x slices stay as thin glowing gold slivers spread around the rim,
-  easy to spot even though they're small.
+- ~~The wheel: 400 slices, 4x and 5x as thin slivers.~~ **Replaced (Cody, 2026-09-30: "you can't even see half the
+  prizes on the wheel bc slivers are to small"; he picked option A):**
+- **The wheels (decided): a main wheel and a bonus wheel, every segment the same size, so the segments ARE the odds.**
+  Main, 40 segments: 0x 21, 1x 12, 2x 4, **gold star 3**. A star turns the wheel round to its bonus face, 12 segments:
+  3x 9, 4x 2, 5x 1. Final odds: 0x 52.5% · 1x 30% · 2x 10% · 3x 5.625% · 4x 1.25% · 5x 0.625%. **Pays back 75.0%**
+  (was 74.5%); a real win (2x+) 1 spin in 5.7 (was 6.1). One fair number picks the main segment, the next the bonus
+  segment; "Check this result" replays both. Options weighed: bonus wheel (picked), Plinko (built as a separate preview,
+  `plinko.html`), labels outside the rim, unequal segments that don't match the odds (rejected: misleading).
 
 ### Proposals
 - **Fair results: the order (decided, Cody 2026-09-30; a safety rule, never change the order).**

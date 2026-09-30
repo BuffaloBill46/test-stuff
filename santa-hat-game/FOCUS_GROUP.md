@@ -29,7 +29,7 @@ collector (cosmetics), small-phone player (320 px), grinder, returning daily pla
 Longest dry runs by type (median): phone newcomer 17 plays, small-phone player 18, returning daily player 18, careful budgeter
 14. Those are the types most likely to feel "this never pays". Big Hat players (about 1 real win in 3) had it much easier.
 
-**Why:** the games pay back 74.5% (Spin) and 75.5% (Big Hat) of what's played. Typical online slots return 94–97%, and casino
+**Why:** the games pay back 74.5% (Spin; 75.0% with the two-wheel Spin since) and 75.5% (Big Hat) of what's played. Typical online slots return 94–97%, and casino
 floors 85–92%. That's Cody's economy call; it's here so it's made knowingly (see "Decisions for Cody").
 
 ## What the walkthroughs found, and what was fixed

@@ -152,3 +152,10 @@ And an early exit in `renderChrome` cleared the HUD but not the scoreboard, so a
 tab. `tests/browser/phone-shots.mjs` now checks five sizes, sideways included, for how much of the screen the UI covers,
 UI that overlaps, a top bar running off the edge, and a match scoreboard left on screen. The Avatar camera no longer uses
 fixed spots: it measures the free area (below the bar; above or beside the panel) and frames the whole character in it.
+
+## Rare prizes need visible real estate, not thinner slices (2026-09-30)
+The 400-slice wheel was exactly right on paper, but its 4× and 5× were 1-slice slivers nobody could see, so Cody said
+"you can't even see half the prizes". Make rarity come from a SECOND step instead (a gold star → a bonus wheel), so that
+every segment you can see is a real, equal-size chance. Keep equal segments: a wheel whose sizes don't match its odds would
+mislead players. When the draw gets a second step, the proof re-check must replay the same numbers in the same order (the
+first fair number for the main wheel, the second for the bonus). `tests/credits.test.mjs` compares both segments.
