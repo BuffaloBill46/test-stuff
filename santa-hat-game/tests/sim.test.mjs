@@ -3,7 +3,7 @@ import { createSim, K, PTS, PHASES, constrain } from '../mockups/sim.js';
 let seed = 1;
 const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
 const fail = (m, extra) => { console.error('FAIL:', m, extra ? JSON.stringify(extra).slice(0, 400) : ''); process.exit(1); };
-let maxBytes = 0, matches = 0;
+let maxBytes = 0, matches = 0, botEmotes = 0;
 
 function checkInvariants(sim, tag) {
   const S = sim.S;
@@ -36,6 +36,7 @@ function runMatch(mode, humansStart, churn) {
   // warm-up in lobby
   for (let i = 0; i < 90; i++) { sim.step(dt); checkInvariants(sim, 'lobby'); }
   sim.startMatch(mode);
+  sim.__lastEmote = Math.max(0, ...sim.S.ev.map((v) => v[0])); // emotes from the lobby warm-up have no timestamp here; skip them
   const phases = [];
   let t = 0, lastPhase = null, teamSnapshotsChecked = 0;
   const holdTime = {};
@@ -67,6 +68,14 @@ function runMatch(mode, humansStart, churn) {
     }
     const before = Object.fromEntries(simNow.S.ents.map((e) => [e.id, e.score]));
     simNow.step(dt); t += dt;
+    // bot emotes: only bots, one of the 4 emotes, at most one per bot every 8 s
+    for (const [id, k, who, i] of simNow.S.ev) {
+      if (k !== 'emote' || id <= (simNow.__lastEmote || 0)) continue; simNow.__lastEmote = id;
+      const e = simNow.byId(who); if (e && !e.bot) fail('emote from a real player\'s character', { who }); // not found = a bot that has since left its seat
+      if (!(i >= 0 && i <= 3)) fail('unknown emote', { i });
+      const seen = (simNow.__chat ||= new Map()); if (seen.has(who) && t - seen.get(who) < 8 - 1e-6) fail('bot emoted too often', { who, gap: t - seen.get(who) });
+      seen.set(who, t); botEmotes++;
+    }
     if (simNow.S.phase !== lastPhase) { phases.push(simNow.S.phase); lastPhase = simNow.S.phase; }
     checkInvariants(simNow, mode);
     // point-rate sanity: nobody gains more than one big event + hat second in a single frame
@@ -112,4 +121,6 @@ for (let i = 0; i < 40; i++) runMatch(i % 2 ? 'team' : 'ffa', 2 + (i % 7), true)
   sim.setReport('x', { q: 2, ep: e.ep, x: 0, z: 5, t: 0 });
   if (e.x !== at.x || e.z !== at.z) fail('out-of-order report was accepted');
 }
+if (botEmotes < matches) fail('bots hardly ever emote', { botEmotes });
+console.log(`bots emoted ${botEmotes} times in ${matches} matches (about ${(botEmotes / matches).toFixed(1)} per match)`);
 console.log(`OK: ${matches} full matches, invariants held every frame; largest snapshot ${maxBytes} bytes (limit 4096)`);

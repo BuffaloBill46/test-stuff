@@ -263,6 +263,7 @@ function handleEvents(v) {
     else if (k === 'catch') { const at = entPos(a, v); if (at) { burst.spawn(at.clone().setY(2.2), 16, C.gold, 3, 3); pop(at.setY(3.1), 'HEADER +50', 'big'); } }
     else if (k === 'boing') { const at = entPos(a, v); if (at) pop(at.setY(2.9), 'BOING', 'white'); }
     else if (k === 'pts') { const at = entPos(a, v); if (at) pop(at.setY(2.9), '+' + (+b || 0), mine(a) ? '' : 'green'); }
+    else if (k === 'emote') showEmote('b' + a, +b); // a bot's emote (bots have no player id, so key by entity)
     else if (k === 'splat') burst.spawn(new V3(+a || 0, 0.1, +b || 0), 6, 0xffffff, 2, 1.5);
     else if (k === 'round') banner(`Round ${+a || 1} of ${K.ROUNDS}`);
     else if (k === 'break') banner(`Round ${+a || 1} done`);
@@ -425,7 +426,7 @@ function draw(v, dt, t) {
     w.ring.position.set(x, 0.05, z);
     w.ring.material.color.set(isMe ? C.lantern : v.mode === 'team' ? TEAM_RING[e.team] : 0xdfe6f5);
     w.ring.scale.setScalar(isMe ? 1.15 : 0.9);
-    const p = toScreen(tmp.set(x, 2.85, z), camera, W, H), b = bubbles.get(e.peer);
+    const p = toScreen(tmp.set(x, 2.85, z), camera, W, H), b = bubbles.get(e.peer || 'b' + e.id);
     const say = b && b.until > performance.now() ? b.text : '';
     w.label.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -100%)`;
     const text = say || nameOf(e); if (w.label.dataset.t !== text) { w.label.dataset.t = text; w.label.textContent = text; }
