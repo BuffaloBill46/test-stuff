@@ -4,6 +4,11 @@
 // and anyone can check them: landing in bin k (0–8, left to right) takes k "rights" out of 8, which happens C(8,k) ways
 // out of 256:   1 · 8 · 28 · 56 · 70 · 56 · 28 · 8 · 1
 // The edges are rare because few paths reach them, not because a bin is drawn thin: every bin is the same width.
+// POOL (Cody, 2026-09-30): Snowball Drop shares the SPIN pool, under the same rules (SPIN_RULES: start, $25 skim at $175,
+// top-off, emergency stop). A drop only starts if the pool can cover the biggest prize (10× the price).
+import { SPIN_RULES, topOff } from './spin.js';
+import { FEE, IN_PER_DOLLAR } from './slots.js';
+
 export const ROWS = 8;
 export const BINS = ROWS + 1;
 // Prize per bin (× the drop price), mirror-image, edges to middle 10× · 5× · 1× · 0.4× · 0× (Cody, 2026-09-30; the 0.4×
@@ -26,4 +31,27 @@ export function drop(bet, rand = Math.random) {
   const path = Array.from({ length: ROWS }, () => (rand() < 0.5 ? 0 : 1));
   const bin = path.reduce((a, b) => a + b, 0), mult = PAYS[bin], pay = Math.round(mult * bet * 100) / 100;
   return { path, bin, mult, bet, pay, ahead: pay > bet + 1e-9 };
+}
+
+export const MAX_MULT = Math.max(...PAYS);
+// One drop against the shared Spin pool (the same steps as spin() in spin.js): stop check, top-off, cover the top prize,
+// the path, pay, skim, top-off. forced (tests only): the path as 0/1 per row.
+export function play(state, bet, rand = Math.random, forced) {
+  const R = { ...SPIN_RULES, ...(state.rules || {}) };
+  if (!BETS.includes(bet)) throw new Error('unknown bet ' + bet);
+  if (R.paused) return { paused: true, stopped: true };
+  const before = topOff(state, R);
+  if (state.pool < MAX_MULT * bet) return { paused: true, topOff: before };
+  if (!state.prepaid) state.pool += bet * IN_PER_DOLLAR; // with play credits the entry already reached the pool at purchase
+  const r = forced ? { ...drop(bet, (() => { let i = 0; return () => (forced[i++] ? 0.75 : 0.25); })()) } : drop(bet, rand);
+  state.pool -= r.pay;
+  const res = { ...r, received: r.pay * (1 - FEE) };
+  if (state.pool >= R.skimAt) { state.pool -= R.skim; res.skim = R.skim; state.treasury = (state.treasury || 0) + R.skim * (1 - FEE); }
+  const add = before + topOff(state, R); if (add) res.topOff = add;
+  return res;
+}
+export function canPlay(state, bet) {
+  const R = { ...SPIN_RULES, ...(state.rules || {}) };
+  if (R.paused) return { ok: false, stopped: true };
+  return { ok: (state.pool < R.topOffBelow ? R.topOffTo : state.pool) >= MAX_MULT * bet };
 }

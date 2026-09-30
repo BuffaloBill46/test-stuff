@@ -28,3 +28,37 @@ let paid = 0; const N = 400_000; for (let i = 0; i < N; i++) paid += drop(1).pay
 assert.ok(Math.abs(paid / N - payback()) < 0.01, `400k drops paid back ${(paid / N * 100).toFixed(2)}%`);
 assert.throws(() => drop(0.37), /unknown bet/);
 console.log(`OK: Snowball Drop: exact odds (all 256 paths), pays back ${(payback() * 100).toFixed(2)}%, real win 1 in ${(1 / realWin()).toFixed(2)}, 10× 1 in 128`);
+
+// SHARED POOL (Cody, 2026-09-30): Spin and Snowball Drop pay from and into one Spin pool. 300 runs × 20,000 plays, a mix of
+// both games at 10¢ and $1. Asserted on every play: never negative, never pays past what the pool holds, never sits at
+// or above the skim point; counted: refusals, skims, top-offs.
+{
+  const { spin, SPIN_RULES } = await import('../mockups/spin.js');
+  const { play } = await import('../mockups/plinko.js');
+  const { IN_PER_DOLLAR } = await import('../mockups/slots.js');
+  const { rng } = await import('./rng.mjs');
+  const rand = rng(4242);
+  for (const dropShare of [0.5, 0.8]) {
+    let skims = 0, tops = 0, refused = 0, low = Infinity, treasury = 0, drops = 0, spins = 0;
+    for (let run = 0; run < 300; run++) {
+      const st = { pool: SPIN_RULES.start, treasury: 0 };
+      for (let i = 0; i < 20000; i++) {
+        const bet = rand() < 0.4 ? 1 : 0.1, before = st.pool, isDrop = rand() < dropShare;
+        const r = isDrop ? play(st, bet, rand) : spin(st, bet, rand);
+        if (r.paused) { refused++; continue; }
+        isDrop ? drops++ : spins++;
+        assert.ok(r.pay <= before + bet * IN_PER_DOLLAR + (r.topOff || 0) + 1e-9, 'paid more than the pool held');
+        assert.ok(st.pool > -1e-9, 'pool went negative');
+        assert.ok(st.pool < SPIN_RULES.skimAt, 'pool sits at or above the skim point');
+        if (r.skim) skims++; if (r.topOff) tops++; low = Math.min(low, st.pool);
+      }
+      treasury += st.treasury;
+    }
+    assert.equal(refused, 0, 'no play refused');
+    console.log(`shared Spin pool, ${Math.round(dropShare * 100)}% drops: ${drops.toLocaleString()} drops + ${spins.toLocaleString()} spins; ${skims} skims, ${tops} top-offs, lowest $${low.toFixed(2)}, 0 refused; treasury about $${(treasury / 300).toFixed(0)} per 20,000 plays`);
+  }
+  // emergency stop covers drops too
+  const st = { pool: 3, treasury: 0, rules: { paused: true } }, r = play(st, 1, rand);
+  assert.ok(r.paused && st.pool === 3, 'a stopped Spin pool stops Snowball Drop too (and does not top off)');
+}
+console.log('OK: Snowball Drop shares the Spin pool safely');

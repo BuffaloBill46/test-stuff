@@ -159,3 +159,8 @@ The 400-slice wheel was exactly right on paper, but its 4× and 5× were 1-slice
 every segment you can see is a real, equal-size chance. Keep equal segments: a wheel whose sizes don't match its odds would
 mislead players. When the draw gets a second step, the proof re-check must replay the same numbers in the same order (the
 first fair number for the main wheel, the second for the bonus). `tests/credits.test.mjs` compares both segments.
+
+## "Done" must come after the screen shows the new state (2026-09-30)
+The admin screen said "Done: pause" and only then re-read the pools, so for a moment it said Done beside "Running".
+A browser test caught it intermittently. An intermittent failure is a timing gap to find, not a flake to re-run away.
+Rule: refresh, then confirm.

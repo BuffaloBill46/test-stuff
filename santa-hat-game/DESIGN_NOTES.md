@@ -154,6 +154,12 @@ Spin 80.0% (main wheel 0× 20 · 1× 12 · 2× 5 · star 3; a real win 1 in 5), 
 (Spin about $1,017 → $573 per 20,000 spins; Big Hat about $949 → $483 per 20,000 pulls). Big Hat at 7¢ (82% with the
 jackpot) was tried and rejected: the treasury got only about $123 per 20,000 pulls.
 
+**Snowball Drop shares the Spin pool (decided, Cody 2026-09-30).** Same rules as Spin (start, $25 skim at $175, top-off,
+emergency stop); a drop only starts if the pool covers its top prize (10×). Simulated 6 million mixed plays (half drops, and
+80% drops): 0 refused, 4–5 top-offs (Drop's 10× wins are bigger than Spin's 5×; Spin alone needed none), lowest pool
+about $10, treasury about $650–700 per 20,000 plays. Guard rail: Spin's top-off must cover Drop's top prize ($10).
+Logic `mockups/plinko.js` (`play`, `canPlay`), test `tests/plinko.test.mjs`. Still a preview: not in the arcade, no credits yet.
+
 **Slots, current rules (decided by Cody, 2026-09-30; full numbers in `PAYTABLE.md`, always regenerate it after changes):**
 - **One machine: the Big Hat, $1.00 a pull, 5×5 grid, 11 paylines: straight or diagonal only, always starting on the first
   reel** (Cody, 2026-09-30; the bent V and zig-zag lines were removed). Short diagonals are 3 or 4 squares long. The Mini Hat is scrapped.

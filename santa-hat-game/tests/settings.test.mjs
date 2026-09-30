@@ -1,8 +1,8 @@
 // Game settings: version 0 is exactly today's game; the guard rails refuse unsafe changes; a change does what it says.
 import assert from 'node:assert/strict';
 import { DEFAULT_SETTINGS, build, check, itemsWith, wheelFrom } from '../mockups/settings.js';
-import { MACHINES, stats, pull } from '../mockups/slots.js';
-import { MAIN, BONUS, STAR, spin } from '../mockups/spin.js';
+import { MACHINES, stats, pull, POOL_RULES } from '../mockups/slots.js';
+import { MAIN, BONUS, STAR, spin, SPIN_RULES } from '../mockups/spin.js';
 
 const S = () => structuredClone(DEFAULT_SETTINGS);
 // Version 0 = today's game, exactly (same strips, same wheel, same payback).
@@ -22,6 +22,7 @@ assert.match(refused('bonus wheel not 12', (s) => { s.spin.bonus[3] = 20; }), /e
 assert.match(refused('a star on the bonus wheel', (s) => { s.spin.bonus = { star: 1, 3: 11 }; }), /whole-number prizes/);
 assert.match(refused('top prize bigger than a top-off can cover', (s) => { s.big.pays.hat[5] = 900; s.big.counts.hat = 1; }), /must cover the top prize/);
 assert.match(refused('jackpot 90%', (s) => { s.big.jackpotPct = 0.9; }), /1%–50%/);
+assert.match((() => { const r = check(S(), { spin: { ...SPIN_RULES, topOffTo: 8 }, slots: POOL_RULES }); assert.equal(r.ok, false); return r.problems.join('; '); })(), /Snowball Drop's top prize/, 'the shared pool must cover a 10× drop');
 assert.match(refused('jackpot too easy', (s) => { s.big.jackpotOdds = 50; }), /1 in 1,000/);
 assert.match(refused('free plays', (s) => { s.prices.big = 0; }), /\$0\.01–\$100/);
 assert.match(refused('small spin dearer than big', (s) => { s.prices.spin10 = 2; }), /small spin must cost less/);
@@ -54,4 +55,4 @@ for (const bad of [{ id: 'face_alien', slot: 'face', name: 'Alien', face: 'alien
   b.big.counts = Object.fromEntries(Object.entries(a.big.counts).reverse()); b.spin = { main: Object.fromEntries(Object.entries(a.spin.main).reverse()), bonus: Object.fromEntries(Object.entries(a.spin.bonus).reverse()) };
   assert.deepEqual(build(a).machine.strips, build(b).machine.strips, 'same reels whatever the key order');
   assert.deepEqual(build(a).wheel, build(b).wheel, 'same wheels whatever the key order'); }
-console.log('OK: settings: version 0 = today exactly; 12 unsafe changes refused; odds, prices, wheel and store changes do what they say');
+console.log('OK: settings: version 0 = today exactly; 13 unsafe changes refused; odds, prices, wheel and store changes do what they say');

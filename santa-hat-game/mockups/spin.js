@@ -76,7 +76,8 @@ export function canSpin(state, bet, wheel = null) {
   const pool = state.pool < R.topOffBelow ? R.topOffTo : state.pool;
   return { ok: pool >= topMult(wheel || DEFAULT_WHEEL) * bet };
 }
-function topOff(state, R) {
+// Shared with Snowball Drop (plinko.js), which plays from this same pool (Cody, 2026-09-30).
+export function topOff(state, R) {
   if (!(state.pool < R.topOffBelow)) return 0;
   const add = R.topOffTo - state.pool; state.pool += add; state.treasury = (state.treasury || 0) - add / (1 - FEE);
   return add;

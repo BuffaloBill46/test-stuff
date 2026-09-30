@@ -23,6 +23,11 @@ Tick items off here as they're done. Order is roughly the order to do them in fo
       any extra to the pool (tested on real Postgres with books = wallet at every step, `tests/db/admin.test.mjs`). No key needed.
       Left for you: check it once with a real devnet deposit (the Edge Function already passes its `chain` to the admin).
 
+- [ ] **Snowball Drop into the arcade (when Cody says go):** its rules and pool steps are built (`mockups/plinko.js`:
+      `play`/`canPlay` on the **Spin pool**, Cody's decision). Still to do: credit kinds (e.g. `drop10`/`drop100`, game
+      'spin'), the house/server `open`/`settle` branch (the path comes from the fair numbers: one per row), the re-check,
+      and the Games-tab card. The shared pool is proven safe in `tests/plinko.test.mjs`.
+
 ## Needs live systems (this workspace can't reach them)
 - [ ] **Apply `supabase/005_credits_plays.sql`** to the project (checked on real Postgres in `tests/db/`), then insert the two
       `pools` rows with the pools' real starting SANTA balances (smallest units, 6 decimals).

@@ -167,7 +167,8 @@ FOR_MAIN_CLAUDE.md.
   the jackpot, Plinko 78.4% (Cody picked its prizes: 10×, 5×, 1×, 0.4×, 0× edges to middle). Pools still never refuse or pause in the simulations; the treasury's skims are smaller. Re-check replays both draws.
 - **Snowball Drop (Plinko) preview** at `/plinko.html` (not linked from the game; Cody asked to see it): 8 rows of fair
   50/50 bounces, equal-width presents, prizes 10× · 5× · 1× · 0.4× · 0× (edges to middle), 78.4% payback. Rules `mockups/plinko.js`, tests `tests/plinko.test.mjs`,
-  `tests/browser/plinko-test.mjs`. Not wired into credits or the server: waiting on Cody's verdict.
+  `tests/browser/plinko-test.mjs`. **It shares the Spin pool** (Cody), simulated safe with both games playing. Not wired into
+  credits or the server yet.
 - **"What's SANTA?" draft copy** in `WHATS_SANTA.md` (short + long, from santahat.gold and on-chain facts): Cody to edit.
 
 **Server side, built and proven here but not deployed** (everything else for devnet is in `FOR_MAIN_CLAUDE.md`):
