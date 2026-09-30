@@ -83,6 +83,20 @@ create table public.payouts (
   tx text, blockhash text, attempts int not null default 0, created_at timestamptz not null default now()
 );
 
+-- Skims (pool → treasury) and top-offs (treasury → pool) are REAL transfers, queued like payouts so the books never drift
+-- from the wallets (audit 2026-09-30: they used to happen only in the database). Skims are sent by the payout worker with the
+-- pool's key. Top-offs wait for Cody ('needs_approval') unless he chooses otherwise: sending them automatically would put the
+-- treasury's key on the server.
+create table public.pool_transfers (
+  id bigserial primary key, play_id bigint references public.plays (id), game text not null check (game in ('spin', 'slots')),
+  kind text not null check (kind in ('skim', 'top-off')),
+  amount_raw bigint not null check (amount_raw > 0),
+  status text not null default 'queued' check (status in ('needs_approval', 'queued', 'sending', 'sent', 'failed')),
+  tx text, blockhash text, attempts int not null default 0, created_at timestamptz not null default now()
+);
+alter table public.pool_transfers enable row level security;
+create policy pool_transfers_read on public.pool_transfers for select using (true);  -- public, like the pool log
+
 alter table public.quotes enable row level security;   alter table public.payments enable row level security;
 alter table public.credits enable row level security;  alter table public.plays enable row level security;
 alter table public.pools enable row level security;    alter table public.pool_log enable row level security;
@@ -90,7 +104,7 @@ alter table public.payouts enable row level security;
 create policy credits_read_own on public.credits for select using (profile_id = public.my_profile_id());
 create policy pools_read on public.pools for select using (true);
 create policy pool_log_read on public.pool_log for select using (true);
-revoke insert, update, delete on public.quotes, public.payments, public.credits, public.plays, public.pools, public.pool_log, public.payouts from anon, authenticated;
+revoke insert, update, delete on public.quotes, public.payments, public.credits, public.plays, public.pools, public.pool_log, public.payouts, public.pool_transfers from anon, authenticated;
 
 -- A player's own plays; the secret shows only once the play is settled.
 create view public.my_plays with (security_barrier) as
@@ -144,7 +158,7 @@ end $$;
 -- Steps 4–5: record the result (the server ran the game rules), update the pool, queue the payout.
 -- p_pool_delta_raw / p_treasury_delta_raw: the exact SANTA the pool gained or lost on this play (payout, skim, top-off).
 create function public.settle_play(p_play bigint, p_seed text, p_result jsonb, p_pay numeric, p_pay_raw bigint, p_price numeric,
-  p_pool_delta_raw bigint, p_treasury_delta_raw bigint, p_to_wallet text, p_cap numeric)
+  p_pool_delta_raw bigint, p_treasury_delta_raw bigint, p_to_wallet text, p_cap numeric, p_skim_raw bigint default 0, p_top_raw bigint default 0)
 returns void language plpgsql security definer set search_path = '' as $$
 declare pl public.plays;
 begin
@@ -157,6 +171,8 @@ begin
     insert into public.payouts (play_id, to_wallet, amount_usd, amount_raw, price_usd, status)
       values (pl.id, p_to_wallet, p_pay, p_pay_raw, p_price, case when p_pay > p_cap then 'held' else 'queued' end);
   end if;
+  if p_skim_raw > 0 then insert into public.pool_transfers (play_id, game, kind, amount_raw) values (pl.id, case when pl.kind = 'big' then 'slots' else 'spin' end, 'skim', p_skim_raw); end if;
+  if p_top_raw > 0 then insert into public.pool_transfers (play_id, game, kind, amount_raw, status) values (pl.id, case when pl.kind = 'big' then 'slots' else 'spin' end, 'top-off', p_top_raw, 'needs_approval'); end if;
 end $$;
 
 -- Give the credit back (the pool refused the play, or something failed before a result existed).

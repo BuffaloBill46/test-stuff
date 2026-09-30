@@ -13,6 +13,11 @@ Tick items off here as they're done. Order is roughly the order to do them in fo
 - [ ] **A devnet test token** with SANTA's settings (Token-2022, 6 decimals, 300 bps transfer fee). `tests/solana/split.test.mjs`
       shows exactly how it's made. The game reads the mint from `MINT` in `mockups/market.js`; point it at the devnet mint for the test.
 
+- [ ] **Cody: how top-offs are paid.** Top-offs move SANTA from the treasury into a pool. Sending them automatically would put the
+      treasury's key on the server. Options: (a) Cody approves each one (default now: queued as `needs_approval` in
+      `pool_transfers`, and the game keeps running on the books); (b) a small separate "top-off reserve" wallet whose key is on the
+      server, holding only a few top-offs' worth (Claude's pick); (c) the treasury key on the server (not recommended).
+
 ## Needs live systems (this workspace can't reach them)
 - [ ] **Apply `supabase/005_credits_plays.sql`** to the project (checked on real Postgres in `tests/db/`), then insert the two
       `pools` rows with the pools' real starting SANTA balances (smallest units, 6 decimals).
@@ -34,6 +39,11 @@ Tick items off here as they're done. Order is roughly the order to do them in fo
       when it crashes before or after sending; `tests/solana/payouts.test.mjs`). Still needed: the live chain adapter (a Solana
       RPC: getLatestBlockhash, sendTransaction, getSignatureStatuses + isBlockhashValid; same shape as the test's), the pool
       wallets' keys in the worker's secrets only (never the site or repo), and a schedule (e.g. a Supabase cron every minute).
+- [ ] **Send skims (and approved top-offs) on the chain:** `pool_transfers` rows (queued by every settle) must be sent like
+      payouts: the worker in `server/payouts.js` has the exact shape (claim → sign → save signature → send → recover by chain status);
+      skims go pool → treasury with the pool key. Until then the books run ahead of the wallets by design and reconcile says so.
+- [ ] **Run the reconciliation on a schedule:** `server/reconcile.js` (books + everything still owed = wallet). Alarm on any drift;
+      run it before any withdrawal. Needs the live wallet balances (RPC).
 - [ ] **Admin screen + emergency withdrawal:** the server side of the escrow controls is built (`server/admin.js`: pause, resume,
       set-rules; wallet-signed, replay-proof, logged). Needed: set the Edge Function secret `ADMIN_WALLETS` (Cody's address); a
       small admin page that builds the message with `adminMessage()`, has Cody's wallet `signMessage` it, and POSTs

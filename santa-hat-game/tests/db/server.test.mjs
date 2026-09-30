@@ -142,6 +142,24 @@ next = await server.open(me, 'spin100'); assert.ok(next.ticket);
 assert.equal(await stateOf(stuckOpen.ticket), 'settled', 'a play stuck after its secret is finished and paid');
 await server.settle(me, next.ticket, newSeed(16));
 const books = await db.query('select * from public.credits where bought <> used + left_n'); assert.equal(books.length, 0);
+// Skims and top-offs are real transfers now (audit): force both on the Spin pool, then reconcile books vs wallets.
+{
+  const price = PRICE, usd = (raw) => raw / 1e6 * price;
+  await db.query(`update public.pools set rules = $1 where game = 'spin'`, [JSON.stringify({ skimAt: usd(await pool('spin')) - 1, skim: 2 })]); // next play skims
+  q = await server.quote(me, 'spin10', 3); pay(S('Skim'), { to: POOLS.spin, total: q.santaRaw }); assert.ok((await server.buy(me, q.id, S('Skim'))).ok);
+  let o = await server.open(me, 'spin10'); let x = await server.settle(me, o.ticket, newSeed(16)); assert.ok(x.r.skim, 'a skim happened');
+  await db.query(`update public.pools set santa_raw = $1, rules = $2 where game = 'spin'`, [Math.round(6 / price * 1e6), JSON.stringify({ topOffBelow: 8, topOffTo: 20 })]); // below the top-off line
+  const spinAfterForce = await pool('spin');
+  o = await server.open(me, 'spin10'); x = await server.settle(me, o.ticket, newSeed(16)); assert.ok(x.r.topOff, 'a top-off happened');
+  const tr = await db.query(`select kind, status, amount_raw from public.pool_transfers where game = 'spin' order by id`);
+  assert.deepEqual(tr.map((t) => [t.kind, t.status]), [['skim', 'queued'], ['top-off', 'needs_approval']], 'queued as real transfers; the top-off waits for Cody');
+  // Reconcile: the Spin wallet (simulated: nothing sent yet) = the forced balance + nothing arrived since; books + owed must match it.
+  const { reconcile } = await import('../../server/reconcile.js');
+  const since = await db.query(`select po.status, po.amount_raw from public.payouts po join public.plays pl on pl.id = po.play_id where pl.kind <> 'big' and pl.id = $1`, [o.ticket]);
+  const wallet = spinAfterForce; // the forced balance is what the wallet holds before this last play's movements are sent
+  const rc = reconcile({ bookRaw: await pool('spin'), walletRaw: wallet, payouts: since, transfers: tr.filter((t) => t.kind === 'top-off') });
+  assert.ok(rc.ok, `books vs wallet after a top-off play: drift ${rc.drift}`);
+}
 // The shared winners list: only plays that paid more than they cost, newest first, names only (never a wallet).
 const wins = await server.winners();
 const realWins = (await db.query(`select count(*)::int as n from public.plays where state = 'settled' and pay > case kind when 'spin10' then 0.10 else 1 end`))[0].n;
