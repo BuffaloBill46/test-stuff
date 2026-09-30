@@ -138,26 +138,24 @@ $50 start). **The slots paytable is a placeholder** (spin's 1×–4× fixed wins
   Spin pool reaches $175, $25 goes to the treasury** (arrives as $24.25 after the tax), which puts it back at $150.
   Simulated in `tests/tax-split.mjs`: 2,000 runs × 5,000 spins from $50, zero pauses, and the pool never went below zero.
 
-**Slots, current rules (decided by Cody, 2026-09-29; full numbers in `PAYTABLE.md`):**
+**Slots, current rules (decided by Cody, 2026-09-30; full numbers in `PAYTABLE.md`, always regenerate it after changes):**
 - **One machine: the Big Hat, $1.00 a pull, 5×5 grid, 15 paylines.** The Mini Hat is scrapped.
-- **Santa Hat is Wild** (stands in for any symbol except Coal). **5 Santa Hats in a row on a line = 100× the price ($100).**
-  All other prizes scale down from it, with lots of micro wins.
-- **Hat bonus: every Santa Hat anywhere on the grid pays 5¢** (Cody). About 2.2 hats a pull, so it's 11.1% of the payback.
-- **Every line prize is more than the $1 pull** (smallest: 3 Snowballs or 3 Bells = $1.10). Cody: fine to win more than $1
-  only every 3–4 pulls. Reels carry 20 Coal each so line wins come less often.
-- **Pays back 74.9%** (target 75%): line prizes 65.2% + hat bonus 9.6%. **A win over $1 on 29% of pulls (about 1 in 3.5)**;
-  90% of pulls pay something (the rest are hat-bonus nickels). 100× line about 1 in 24,750 pulls.
-- **Pool jackpot is separate:** its own draw (draft 1 in 2,500 pulls), **pays 25% of the Slots pool** (Cody; typically about $190), and **all 25 squares show
-  Santa Hats**. The reels alone can never make a full grid of hats.
-- **Slots pool skim (Cody): when it reaches $1,025, $25 goes to the treasury.** Demo start: $250 (must cover the $100 top prize).
-  Simulated with the 25% jackpot: no refused pulls; pools settle around $850; the pool jackpot is typically about $190; the
-  treasury gets about $430 per 20,000 pulls. Lowest point seen: about $118, so the refill safety net matters more.
-- Teasers happen naturally at their real odds (e.g. 4 hats then something else: about 1 in 1,260 pulls). Nothing is staged.
+- **Santa Hat is Wild** (stands in for any symbol except Coal). **5 Santa Hats in a row on a line = 100× ($100), about
+  1 in 9,000 pulls** (Cody asked for about 1 in 10,000). **5 Stars = 50×, 5 Snowballs = 25×** (Cody).
+- **Hat bonus: every Santa Hat anywhere on the grid pays 5¢** (Cody). About 2.4 hats a pull, 11.8% of the payback.
+- **Every line prize is more than the $1 pull** (smallest: 3 Snowballs, Bells or Pine Trees = $1.05).
+- **Pays back 75.5%**: line prizes 63.8% + hat bonus 11.8%. **A win over $1 on about 28% of pulls (1 in 3.5)**; about 93% of pulls
+  pay something. Normal pulls range from $0 to about $205 (several lines at once).
+- **Pool jackpot is separate:** its own draw, **1 in 25,000 pulls** (harder than the 100× line), **pays 25% of the Slots pool**,
+  and **all 25 squares show Santa Hats**. The reels alone can never make a full grid of hats. Typical size about $360–430.
+- **Slots pool skim (Cody): when it reaches $1,775, $25 goes to the treasury** (helps cover the tax on winnings).
+  **Demo start: $500.** With the 100× this common, a $250 start locked about 1 run in 100; $500 never locked.
+  Simulated: pools settle around $1,750; the treasury gets about $970 per 20,000 pulls.
+- Teasers happen naturally at their real odds (e.g. 4 hats then something else: about 1 in 1,000 pulls). Nothing is staged.
 - **Open, Cody:**
-  (1) Refill safety net. Below $100 the game would lock (only pulls refill the pool). With the $1,025 skim it never
-  happened in simulation, but early on (pool building from $250) it came within $50. Proposal: the treasury refills
-  the pool to $250 if it ever drops below $150.
-  (2) The "$500 threshold bonus" idea: still open (which feature switches on at $500?).
+  (1) Pool jackpot size: 25% of a ~$1,750 pool is about $430, not the ~$250 Cody expected. ~14% would make it about $250.
+  (2) Real starting pool amount (the demo uses $500) and whether to add the treasury refill safety net anyway.
+  (3) The "$500 threshold bonus" idea: still open.
 
 **Built earlier (demo, 2026-09-29; now out of date, see TODO):** the Games tab has the two machines, stacked: **Mini Hat** ($0.10) and **Big Hat** ($1.00).
 The **total Slots pool** shows under the Slots title. Each machine shows its **jackpot % of the pool and the current

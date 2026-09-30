@@ -34,6 +34,13 @@ for (const m of Object.values(MACHINES)) {
   if (Math.abs(exact - s.linePayback) > 1e-9) fail(`3-reel check: all-stops line payback ${exact} ≠ formula ${s.linePayback}`);
   console.log(`Win reading: all ${(L ** 3).toLocaleString()} stops of a 3-reel test machine match the exact formula.`);
 }
+// Guards against a setting silently switching off (a stray comment once disabled the hat bonus without any error).
+for (const m of Object.values(MACHINES)) {
+  if (!(m.hatBonus > 0)) fail(`${m.id}: hat bonus is missing or zero`);
+  if (!(m.poolJackpotOdds > 0) || !(m.jackpotPct > 0)) fail(`${m.id}: pool jackpot settings missing`);
+  const s = stats(m); if (!(s.hatPayback > 0)) fail(`${m.id}: hat bonus contributes nothing`);
+  if (s.payback < 0.70 || s.payback > 0.80) fail(`${m.id}: payback ${(s.payback * 100).toFixed(1)}% is outside 70–80%`);
+}
 // No reel strip has two Santa Hats next to each other, so the reels alone can never show a full grid of hats.
 for (const m of Object.values(MACHINES)) m.strips.forEach((st, r) => st.forEach((x, i) => { if (x === SYM.hat && st[(i + 1) % st.length] === SYM.hat) fail(`${m.id} reel ${r}: two hats in a row at ${i}`); }));
 

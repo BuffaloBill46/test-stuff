@@ -21,9 +21,9 @@
 export const FEE = 0.03;                       // SANTA's own transfer tax (read live from the token in the real version)
 export const BURN = 0.10;                      // Games tab: 10% burned, 90% to the pool, after the tax
 export const IN_PER_DOLLAR = (1 - BURN * (1 - FEE)) * (1 - FEE); // 87.59¢ of each $1 lands in the pool
-export const START_POOL = 250; // demo. Must cover the Big Hat's 100× ($100) line; $250 never paused in simulation, $50 always did.
+export const START_POOL = 500; // demo. Must cover the $100 top prize; with the 100× at about 1 in 9,000, $500 never locked in simulation ($250 locked about 1 run in 100).
 // Slots pool skim (Cody): when the pool reaches SKIM_AT, SKIM goes to the treasury (arrives 3% lighter).
-export const SKIM_AT = 1025, SKIM = 25; // Cody: raised from $325 so the pool builds a cushion (and a bigger pool jackpot)
+export const SKIM_AT = 1775, SKIM = 25; // Cody: skim point $1,775; the $25 helps cover the tax on winnings
 
 export const SYMBOLS = [
   { id: 'hat', name: 'Santa Hat' }, { id: 'star', name: 'Gold Star' }, { id: 'reindeer', name: 'Reindeer' },
@@ -45,12 +45,13 @@ const LINES_5 = [
 // pays: { in-a-row count: × the pull price } for a line. Only the longest run on a line pays.
 export const MACHINES = {
   big: {
-    id: 'big', name: 'Big Hat', bet: 1.00, reels: 5, rows: 5, lines: LINES_5, jackpotPct: 0.25, poolJackpotOdds: 1 / 2500, hatBonus: 0.05,
-    counts: { hat: 5, star: 3, reindeer: 3, snowman: 4, present: 4, lantern: 5, pine: 6, bell: 7, snowball: 8, coal: 20 },
-    pays: { // every line prize is more than the $1 pull
-      hat: { 5: 100, 4: 10, 3: 2.5 }, star: { 5: 25, 4: 6, 3: 2 }, reindeer: { 5: 15, 4: 4, 3: 1.7 }, snowman: { 5: 9, 4: 3, 3: 1.5 },
-      present: { 5: 6, 4: 2.5, 3: 1.4 }, lantern: { 5: 4.5, 4: 2, 3: 1.3 }, pine: { 5: 3.5, 4: 1.8, 3: 1.2 },
-      bell: { 5: 3, 4: 1.6, 3: 1.1 }, snowball: { 5: 2.5, 4: 1.5, 3: 1.1 },
+    // poolJackpotOdds: Cody wants the pool jackpot harder to hit than the 100× line.
+    id: 'big', name: 'Big Hat', bet: 1.00, reels: 5, rows: 5, lines: LINES_5, jackpotPct: 0.25, poolJackpotOdds: 1 / 25000, hatBonus: 0.05,
+    counts: { hat: 8, star: 3, reindeer: 3, snowman: 4, present: 4, lantern: 5, pine: 7, bell: 9, snowball: 8, coal: 34 },
+    pays: { // every line prize is more than the $1 pull; Cody: 5 Stars = 50×, 5 Snowballs = 25×, 100× about 1 in 10,000
+      hat: { 5: 100, 4: 5, 3: 1.4 }, star: { 5: 50, 4: 3.5, 3: 1.4 }, reindeer: { 5: 10, 4: 3, 3: 1.3 }, snowman: { 5: 7, 4: 2.5, 3: 1.2 },
+      present: { 5: 5, 4: 2, 3: 1.15 }, lantern: { 5: 4, 4: 1.6, 3: 1.1 }, pine: { 5: 3, 4: 1.4, 3: 1.05 },
+      bell: { 5: 2.5, 4: 1.3, 3: 1.05 }, snowball: { 5: 25, 4: 1.2, 3: 1.05 },
     },
   },
 };
