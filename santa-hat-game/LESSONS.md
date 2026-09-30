@@ -64,6 +64,10 @@ Read this before starting new work on the game. Add to it whenever something rea
   refused every pull, so nothing could ever refill it: a silent permanent lock. Caught by simulating long runs and counting
   paused pulls. Any pool with a "must cover the top prize" rule needs a refill path.
 
+- **A stray comment silently switched off a money setting.** Inserting a `//` note mid-line in `slots.js` commented out
+  `hatBonus: 0.05`; payback dropped 9% with no error. Caught only because the number looked wrong. The Slots test now
+  fails if the hat bonus or pool jackpot settings are missing, or payback leaves 70–80%. Put notes on their own line.
+
 ## Multiplayer notes
 
 - This workspace can't open WebSockets (proxy limit), so live Supabase play can't be tested here.
