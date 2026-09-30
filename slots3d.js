@@ -1,11 +1,11 @@
-// Santa Hat Slots: the two 3D machines. Each cabinet IS a Santa hat: red faceted cone body, white fur brim for a
-// base, and the drooping tip ends in the pom-pom, which is the pull lever. Reels are faceted drums with the ten
-// symbols drawn as low-poly models (same kit as the plaza), clipped to the reel window.
+// Santa Hat Slots: the Big Hat machine in 3D. The cabinet IS a Santa hat: red faceted cone body, white fur brim for a
+// base, and the drooping tip ends in the pom-pom, which is the pull lever. A 5×5 window of flat square reels sits on
+// its front; the ten symbols are low-poly models from the same kit as the plaza.
 import { THREE, C, part, build, toon, lights, glow, hatGeo, pineGeo, snowmanGeo, reindeerGeo, giftGeo, Burst } from './kit.js';
-import { SYMBOLS, REELS, STRIP_LEN } from './slots.js';
+import { SYMBOLS, SYM, MACHINES } from './slots.js';
 
 const G = THREE, V3 = THREE.Vector3;
-const CELL = 128, STEP = (Math.PI * 2) / STRIP_LEN;
+const CELL = 128;
 
 // ---------- the ten symbols as models
 function starGeo(r = 0.62, inner = 0.27, depth = 0.22) {
@@ -75,38 +75,6 @@ export function symbolImages() {
   return atlas;
 }
 
-// One tall strip image per reel, in that reel's symbol order. `blur` makes the fast-spinning version.
-function reelTexture(strip, blur) {
-  const imgs = symbolImages(), cv = document.createElement('canvas');
-  cv.width = CELL; cv.height = CELL * STRIP_LEN;
-  const x = cv.getContext('2d');
-  strip.forEach((sym, i) => {
-    const y = i * CELL, g = x.createLinearGradient(0, y, 0, y + CELL);
-    g.addColorStop(0, '#e9e2d2'); g.addColorStop(0.5, '#fbf8f1'); g.addColorStop(1, '#e9e2d2');
-    x.fillStyle = g; x.fillRect(0, y, CELL, CELL);
-    x.fillStyle = '#c9bea6'; x.fillRect(0, y, CELL, 3);
-    x.drawImage(imgs[SYMBOLS[sym].id], 4, y + 4, CELL - 8, CELL - 8);
-  });
-  let out = cv;
-  if (blur) { out = document.createElement('canvas'); out.width = cv.width; out.height = cv.height; const o = out.getContext('2d'); o.filter = 'blur(7px)'; o.drawImage(cv, 0, 0); o.drawImage(cv, 0, -CELL * STRIP_LEN + 2); }
-  const t = new G.CanvasTexture(out); t.colorSpace = G.SRGBColorSpace; t.anisotropy = 4; return t;
-}
-
-// A faceted drum: STRIP_LEN flat faces, face k shows strip cell k. Rotation.x = -k * STEP puts face k on the payline.
-function drumGeo(radius, width) {
-  const pos = [], uv = [], hw = width / 2;
-  for (let k = 0; k < STRIP_LEN; k++) {
-    const a0 = -k * STEP + STEP / 2, a1 = -k * STEP - STEP / 2; // top edge, bottom edge
-    const y0 = Math.sin(a0) * radius, z0 = Math.cos(a0) * radius, y1 = Math.sin(a1) * radius, z1 = Math.cos(a1) * radius;
-    const vT = 1 - k / STRIP_LEN, vB = 1 - (k + 1) / STRIP_LEN;
-    pos.push(-hw, y0, z0, -hw, y1, z1, hw, y1, z1, -hw, y0, z0, hw, y1, z1, hw, y0, z0);
-    uv.push(0, vT, 0, vB, 1, vB, 0, vT, 1, vB, 1, vT);
-  }
-  const g = new G.BufferGeometry();
-  g.setAttribute('position', new G.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new G.Float32BufferAttribute(uv, 2));
-  g.computeVertexNormals(); return g;
-}
-
 // Tapering tube made of faceted cone pieces along a list of points: the hat's drooping tip.
 function droopParts(points, r0, r1, color, seed) {
   const out = [];
@@ -121,164 +89,213 @@ function droopParts(points, r0, r1, color, seed) {
   return out;
 }
 
-const KINDS = {
-  mini: { body: 2.9, rBase: 1.75, rTop: 0.45, reelW: 0.46, faceH: 0.42, bulbs: 12, star: false },
-  big: { body: 4.3, rBase: 2.35, rTop: 0.6, reelW: 0.6, faceH: 0.55, bulbs: 20, star: true },
-};
+// Square reel tiles: one texture per symbol, plus a motion-blurred copy for fast spinning.
+let tileTex = null;
+function tiles() {
+  if (tileTex) return tileTex;
+  const imgs = symbolImages(), mk = (cv) => { const t = new G.CanvasTexture(cv); t.colorSpace = G.SRGBColorSpace; t.anisotropy = 4; return t; };
+  tileTex = { sharp: [], blur: [] };
+  SYMBOLS.forEach((s, i) => {
+    const cv = document.createElement('canvas'); cv.width = cv.height = CELL; const x = cv.getContext('2d');
+    const g = x.createLinearGradient(0, 0, 0, CELL); g.addColorStop(0, '#efe8d8'); g.addColorStop(0.5, '#fbf8f1'); g.addColorStop(1, '#eae2d0');
+    x.fillStyle = g; x.fillRect(0, 0, CELL, CELL); x.fillStyle = '#cdbfa2'; x.fillRect(0, 0, CELL, 2); x.fillRect(0, CELL - 2, CELL, 2);
+    x.drawImage(imgs[s.id], 7, 7, CELL - 14, CELL - 14);
+    const b = document.createElement('canvas'); b.width = b.height = CELL; const bx = b.getContext('2d');
+    for (let k = -5; k <= 5; k++) { bx.globalAlpha = 0.2; bx.drawImage(cv, 0, k * 5); } // vertical smear
+    tileTex.sharp[i] = mk(cv); tileTex.blur[i] = mk(b);
+  });
+  return tileTex;
+}
 
-// Builds one machine into its own small renderer on `canvas`.
-export function createMachine(canvas, kind) {
-  const K = KINDS[kind];
+const LINE_COLORS = ['#ffbe5c', '#7fe0a0', '#ff7a6e', '#b9cdf2', '#f5f1e8', '#ffd95c', '#8fe3ff', '#ff9ad5', '#c5ff7a', '#ffb07a', '#a7a2ff', '#7affd9', '#ffe07a', '#ff8f8f', '#9ad0ff'];
+
+// The Big Hat: a 5×5 slot machine built as a giant Santa hat. Flat square reels scroll inside a window on its front;
+// each reel reuses 6 tiles that change symbol as they scroll past, so any strip length works.
+export function createMachine(canvas) {
+  const M = MACHINES.big, R = M.reels, ROWS = M.rows, L = M.stripLen;
   const renderer = new G.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.localClippingEnabled = true;
   const scene = new G.Scene(); lights(scene, { hemi: 1.6, moonI: 1.5 });
   const warm = new G.DirectionalLight(0xffc98a, 0.9); warm.position.set(6, 3, 8); scene.add(warm);
   const cam = new G.PerspectiveCamera(30, 1, 0.1, 100);
 
-  // --- the reel window, set in a box that sticks out of the front of the hat
-  const radius = K.faceH / 2 / Math.sin(STEP / 2), gap = 0.07;
-  const winW = K.reelW * 3 + gap * 4, winH = K.faceH * 3 * 0.97;
-  const winY = 0.75 + K.body * 0.36, coneAt = (y) => K.rBase + (K.rTop - K.rBase) * ((y - 0.75) / K.body);
-  const front = coneAt(winY - winH / 2) + 0.38; // window face z: clear of the cone even at the window's bottom edge
-  const frame = 0.16, depth = 0.95;
+  // --- cabinet: fur brim base, red cone body, reel window box with a gold frame
+  const K = { body: 6.2, rBase: 3.25, rTop: 0.75 };
+  const c = 0.74, gap = 0.06, winW = R * c + (R + 1) * gap, winH = ROWS * c;
+  const winY = 0.75 + K.body * 0.40, coneAt = (y) => K.rBase + (K.rTop - K.rBase) * ((y - 0.75) / K.body);
+  const front = coneAt(winY - winH / 2) + 0.38, frame = 0.18, depth = 1.0;
   const ps = [
-    part(new G.CylinderGeometry(K.rBase + 0.1, K.rBase + 0.25, 0.42, 9), C.woodDark, { pos: [0, 0.21, 0], jit: 0.03 }),
-    part(new G.TorusGeometry(K.rBase * 0.98, 0.34 + K.rBase * 0.06, 5, 11), C.brim, { pos: [0, 0.62, 0], rot: [Math.PI / 2, 0, 0], jit: 0.07, seed: 3 }),
-    part(new G.CylinderGeometry(K.rTop, K.rBase, K.body, 9, 4), C.hat, { pos: [0, 0.75 + K.body / 2, 0], jit: 0.07, seed: 5 }),
-    // reel housing: dark back plate + red side walls + gold frame
+    part(new G.CylinderGeometry(K.rBase + 0.1, K.rBase + 0.25, 0.42, 10), C.woodDark, { pos: [0, 0.21, 0], jit: 0.03 }),
+    part(new G.TorusGeometry(K.rBase * 0.98, 0.5, 5, 12), C.brim, { pos: [0, 0.66, 0], rot: [Math.PI / 2, 0, 0], jit: 0.08, seed: 3 }),
+    part(new G.CylinderGeometry(K.rTop, K.rBase, K.body, 10, 4), C.hat, { pos: [0, 0.75 + K.body / 2, 0], jit: 0.08, seed: 5 }),
     part(new G.BoxGeometry(winW + 0.1, winH + 0.1, 0.1), C.ink, { pos: [0, winY, front - depth] }),
     part(new G.BoxGeometry(frame, winH + frame * 2, depth), C.hatDark, { pos: [-(winW / 2 + frame / 2), winY, front - depth / 2] }),
     part(new G.BoxGeometry(frame, winH + frame * 2, depth), C.hatDark, { pos: [winW / 2 + frame / 2, winY, front - depth / 2] }),
     part(new G.BoxGeometry(winW + frame * 2, frame, depth), C.hatDark, { pos: [0, winY + winH / 2 + frame / 2, front - depth / 2] }),
     part(new G.BoxGeometry(winW + frame * 2, frame, depth), C.hatDark, { pos: [0, winY - winH / 2 - frame / 2, front - depth / 2] }),
-    part(new G.BoxGeometry(winW + frame * 2 + 0.12, 0.12, 0.14), C.gold, { pos: [0, winY + winH / 2 + frame, front + 0.02] }),
-    part(new G.BoxGeometry(winW + frame * 2 + 0.12, 0.12, 0.14), C.gold, { pos: [0, winY - winH / 2 - frame, front + 0.02] }),
-    part(new G.BoxGeometry(0.12, winH + frame * 2 + 0.12, 0.14), C.gold, { pos: [-(winW / 2 + frame), winY, front + 0.02] }),
-    part(new G.BoxGeometry(0.12, winH + frame * 2 + 0.12, 0.14), C.gold, { pos: [winW / 2 + frame, winY, front + 0.02] }),
-    // payline pointers
-    part(new G.ConeGeometry(0.1, 0.2, 3), C.gold, { pos: [-(winW / 2 + frame + 0.16), winY, front + 0.04], rot: [0, 0, -Math.PI / 2] }),
-    part(new G.ConeGeometry(0.1, 0.2, 3), C.gold, { pos: [winW / 2 + frame + 0.16, winY, front + 0.04], rot: [0, 0, Math.PI / 2] }),
-    // coin tray under the window
-    part(new G.BoxGeometry(winW * 0.7, 0.2, 0.5), C.woodDark, { pos: [0, 1.05, coneAt(1.05) + 0.1] }),
-    part(new G.BoxGeometry(winW * 0.6, 0.06, 0.4), C.goldDeep, { pos: [0, 1.16, coneAt(1.05) + 0.12] }),
+    part(new G.BoxGeometry(winW + frame * 2 + 0.14, 0.13, 0.15), C.gold, { pos: [0, winY + winH / 2 + frame, front + 0.02] }),
+    part(new G.BoxGeometry(winW + frame * 2 + 0.14, 0.13, 0.15), C.gold, { pos: [0, winY - winH / 2 - frame, front + 0.02] }),
+    part(new G.BoxGeometry(0.13, winH + frame * 2 + 0.14, 0.15), C.gold, { pos: [-(winW / 2 + frame), winY, front + 0.02] }),
+    part(new G.BoxGeometry(0.13, winH + frame * 2 + 0.14, 0.15), C.gold, { pos: [winW / 2 + frame, winY, front + 0.02] }),
   ];
-  if (K.star) {
-    ps.push(part(new G.TorusGeometry(coneAt(winY + winH / 2 + 0.55) + 0.06, 0.12, 4, 12), C.gold, { pos: [0, winY + winH / 2 + 0.55, 0], rot: [Math.PI / 2, 0, 0] }));
-    ps.push(part(starGeo(0.42, 0.18, 0.16), C.gold, { pos: [0, winY + winH / 2 + 0.62, coneAt(winY + winH / 2 + 0.62) + 0.3] }));
-  }
+  const starY = winY + winH / 2 + frame + 0.5;
+  ps.push(part(starGeo(0.45, 0.19, 0.16), C.gold, { pos: [0, starY, coneAt(starY) + 0.22] })); // star ornament (no hatband)
   const cabinet = toon(build(ps), 0.035); scene.add(cabinet);
 
   // --- drooping tip + pom-pom lever, pivoting at the top of the cone
   const topY = 0.75 + K.body, tip = new G.Group(); tip.position.set(0, topY, 0); scene.add(tip);
-  const leanOf = (k) => k.rTop + (k.rBase - k.rTop) * 0.45 + 0.6, lean = leanOf(K);
-  const pts = [new V3(0, -0.05, 0), new V3(0.25, 0.55, 0), new V3(0.8, 0.8, 0), new V3(lean - 0.1, 0.45, 0.05), new V3(lean + 0.05, -0.35, 0.1), new V3(lean, -1.05, 0.12)];
-  tip.add(toon(build(droopParts(pts, K.rTop, 0.08, C.hat, 21)), 0.03));
-  const pom = toon(build([part(new G.IcosahedronGeometry(0.34, 1), C.brim, { jit: 0.06, seed: 31 })]), 0.035);
-  pom.position.copy(pts.at(-1)).add(new V3(0, -0.28, 0)); tip.add(pom);
+  const lean = K.rTop + (K.rBase - K.rTop) * 0.45 + 0.6;
+  const pts = [new V3(0, -0.05, 0), new V3(0.3, 0.6, 0), new V3(0.95, 0.85, 0), new V3(lean - 0.1, 0.45, 0.05), new V3(lean + 0.05, -0.4, 0.1), new V3(lean, -1.2, 0.12)];
+  tip.add(toon(build(droopParts(pts, K.rTop, 0.09, C.hat, 21)), 0.03));
+  const pom = toon(build([part(new G.IcosahedronGeometry(0.38, 1), C.brim, { jit: 0.06, seed: 31 })]), 0.035);
+  pom.position.copy(pts.at(-1)).add(new V3(0, -0.3, 0)); tip.add(pom);
 
-  // --- reels
-  const planes = (x0, x1) => [new G.Plane(new V3(0, -1, 0), winY + winH / 2), new G.Plane(new V3(0, 1, 0), -(winY - winH / 2)), new G.Plane(new V3(1, 0, 0), -x0), new G.Plane(new V3(-1, 0, 0), x1)];
-  const reels = REELS.map((strip, i) => {
-    const x = (i - 1) * (K.reelW + gap);
-    const sharp = reelTexture(strip, false), blurred = reelTexture(strip, true);
-    const mat = new G.MeshBasicMaterial({ map: sharp, clippingPlanes: planes(x - K.reelW / 2, x + K.reelW / 2) });
-    const drum = new G.Mesh(drumGeo(radius, K.reelW), mat);
-    drum.position.set(x, winY, front - 0.12 - radius); scene.add(drum);
-    const start = Math.floor(Math.random() * STRIP_LEN);
-    return { drum, mat, sharp, blurred, angle: -start * STEP, stop: start, phase: 'idle', v: 0, t: 0 };
+  // --- reels: flat columns of square tiles, clipped to the window
+  const T = tiles(), clip = [new G.Plane(new V3(0, -1, 0), winY + winH / 2), new G.Plane(new V3(0, 1, 0), -(winY - winH / 2))];
+  const mats = { sharp: T.sharp.map((t) => new G.MeshBasicMaterial({ map: t, clippingPlanes: clip })), blur: T.blur.map((t) => new G.MeshBasicMaterial({ map: t, clippingPlanes: clip })) };
+  const cellGeo = new G.PlaneGeometry(c, c), topRowY = winY + winH / 2 - c / 2, mod = (i) => ((i % L) + L) % L;
+  const back = new G.Mesh(new G.PlaneGeometry(winW, winH), new G.MeshBasicMaterial({ color: 0x2a2f45 })); back.position.set(0, winY, front - 0.14); scene.add(back);
+  const reels = M.strips.map((strip, r) => {
+    const x = -winW / 2 + gap + c / 2 + r * (c + gap), start = Math.floor(Math.random() * L);
+    const cells = Array.from({ length: ROWS + 1 }, () => { const m = new G.Mesh(cellGeo, mats.sharp[0]); m.position.set(x, 0, front - 0.12); scene.add(m); return m; });
+    return { r, x, strip, cells, p: start, stop: start, phase: 'idle', v: 0, t: 0, override: null };
   });
-  // shading over the reels: darker toward the top and bottom rows, plus a glass sheen
-  const shadeCv = document.createElement('canvas'); shadeCv.width = 8; shadeCv.height = 64;
-  { const x = shadeCv.getContext('2d'), g = x.createLinearGradient(0, 0, 0, 64);
-    g.addColorStop(0, 'rgba(12,15,26,.78)'); g.addColorStop(0.3, 'rgba(12,15,26,.12)'); g.addColorStop(0.5, 'rgba(12,15,26,0)'); g.addColorStop(0.7, 'rgba(12,15,26,.12)'); g.addColorStop(1, 'rgba(12,15,26,.78)');
-    x.fillStyle = g; x.fillRect(0, 0, 8, 64); }
-  const shade = new G.Mesh(new G.PlaneGeometry(winW, winH), new G.MeshBasicMaterial({ map: new G.CanvasTexture(shadeCv), transparent: true, depthWrite: false }));
-  shade.position.set(0, winY, front - 0.05); scene.add(shade);
-  const line = new G.Mesh(new G.PlaneGeometry(winW, 0.025), new G.MeshBasicMaterial({ color: C.hat, transparent: true, opacity: 0.55 }));
-  line.position.set(0, winY, front - 0.04); scene.add(line);
-
-  // --- marquee bulbs around the frame (one instanced mesh; colors animate)
-  const bulbPos = [], n = K.bulbs, bw = winW / 2 + frame + 0.06, bh = winH / 2 + frame + 0.06;
-  for (let i = 0; i < n; i++) { // walk the frame's perimeter
-    const per = 4 * (bw + bh), d = (i / n) * per;
-    let x, y; if (d < 2 * bw) { x = -bw + d; y = bh; } else if (d < 2 * bw + 2 * bh) { x = bw; y = bh - (d - 2 * bw); } else if (d < 4 * bw + 2 * bh) { x = bw - (d - 2 * bw - 2 * bh); y = -bh; } else { x = -bw; y = -bh + (d - 4 * bw - 2 * bh); }
-    bulbPos.push(new V3(x, winY + y, front + 0.1));
+  const symAt = (reel, i) => (reel.override && reel.override.has(mod(i)) ? reel.override.get(mod(i)) : reel.strip[mod(i)]);
+  function place(reel) { // row k shows strip index floor(p)+k; p going DOWN scrolls the symbols down
+    const base = Math.floor(reel.p), frac = reel.p - base, fast = reel.phase === 'run' && reel.v > 9;
+    reel.cells.forEach((m, k) => { m.position.y = topRowY - (k - frac) * c; m.material = (fast ? mats.blur : mats.sharp)[symAt(reel, base + k)]; });
   }
-  const bulbs = new G.InstancedMesh(new G.IcosahedronGeometry(0.065, 0), new G.MeshBasicMaterial({ color: 0xffffff }), n);
+  reels.forEach(place);
+
+  // --- win overlay: paylines, winning squares, hat nickels (a canvas drawn over the window)
+  const OW = 640, OH = Math.round((OW * winH) / winW), ocv = document.createElement('canvas'); ocv.width = OW; ocv.height = OH;
+  const octx = ocv.getContext('2d'), otex = new G.CanvasTexture(ocv); otex.colorSpace = G.SRGBColorSpace;
+  const overlay = new G.Mesh(new G.PlaneGeometry(winW, winH), new G.MeshBasicMaterial({ map: otex, transparent: true, depthWrite: false }));
+  overlay.position.set(0, winY, front - 0.03); scene.add(overlay);
+  const cx = (r) => ((gap + c / 2 + r * (c + gap)) / winW) * OW, cy = (row) => ((row * c + c / 2) / winH) * OH, cw = (c / winW) * OW;
+  function drawOverlay(info) {
+    // Reset the canvas instead of clearRect: in testing, a clearRect right after the canvas was uploaded as a texture
+    // was sometimes lost, leaving the last win's lines floating over the next spin.
+    ocv.width = OW; octx.lineJoin = 'round';
+    overlay.visible = !!info;
+    if (info) {
+      const lit = new Set();
+      (info.wins || []).forEach((w) => { for (let r = 0; r < w.count; r++) lit.add(r + ',' + M.lines[w.line][r]); });
+      if (info.jackpot) for (let r = 0; r < R; r++) for (let row = 0; row < ROWS; row++) lit.add(r + ',' + row);
+      if (lit.size) { // dim everything that didn't win
+        octx.fillStyle = 'rgba(12,15,26,.45)';
+        for (let r = 0; r < R; r++) for (let row = 0; row < ROWS; row++) if (!lit.has(r + ',' + row)) octx.fillRect(cx(r) - cw / 2, cy(row) - cw / 2, cw, cw);
+      }
+      (info.wins || []).forEach((w, i) => { // the line itself, through the whole row path, plus frames on its winning squares
+        const col = LINE_COLORS[w.line % LINE_COLORS.length], rows = M.lines[w.line];
+        octx.strokeStyle = 'rgba(12,15,26,.85)'; octx.lineWidth = 11; octx.lineJoin = 'round'; octx.beginPath();
+        rows.forEach((row, r) => (r ? octx.lineTo(cx(r), cy(row)) : octx.moveTo(cx(r) - cw / 2, cy(row)))); octx.lineTo(cx(R - 1) + cw / 2, cy(rows[R - 1])); octx.stroke();
+        octx.strokeStyle = col; octx.lineWidth = 6; octx.stroke();
+        octx.lineWidth = 5; for (let r = 0; r < w.count; r++) octx.strokeRect(cx(r) - cw / 2 + 4, cy(rows[r]) - cw / 2 + 4, cw - 8, cw - 8);
+      });
+      if (info.grid && !info.jackpot && M.hatBonus) { // every Santa Hat pays a nickel
+        octx.font = `700 ${Math.round(cw * 0.26)}px Silkscreen, monospace`; octx.textAlign = 'right'; octx.textBaseline = 'bottom';
+        info.grid.forEach((col, r) => col.forEach((s, row) => { if (s !== SYM.hat) return;
+          const x = cx(r) + cw / 2 - 5, y = cy(row) + cw / 2 - 4, t = '+' + Math.round(M.hatBonus * M.bet * 100) + '¢';
+          octx.lineWidth = 5; octx.strokeStyle = '#0c0f1a'; octx.strokeText(t, x, y); octx.fillStyle = '#ffbe5c'; octx.fillText(t, x, y); }));
+      }
+      if (info.jackpot) { octx.strokeStyle = '#ffd95c'; octx.lineWidth = 10; octx.strokeRect(5, 5, OW - 10, OH - 10); }
+    }
+    otex.needsUpdate = true;
+  }
+
+  // --- marquee bulbs around the frame, and effects
+  const n = 26, bw = winW / 2 + frame + 0.07, bh = winH / 2 + frame + 0.07, bulbPos = [];
+  for (let i = 0; i < n; i++) {
+    const per = 4 * (bw + bh), d = (i / n) * per; let x, y;
+    if (d < 2 * bw) { x = -bw + d; y = bh; } else if (d < 2 * bw + 2 * bh) { x = bw; y = bh - (d - 2 * bw); } else if (d < 4 * bw + 2 * bh) { x = bw - (d - 2 * bw - 2 * bh); y = -bh; } else { x = -bw; y = -bh + (d - 4 * bw - 2 * bh); }
+    bulbPos.push(new V3(x, winY + y, front + 0.11));
+  }
+  const bulbs = new G.InstancedMesh(new G.IcosahedronGeometry(0.07, 0), new G.MeshBasicMaterial({ color: 0xffffff }), n);
   bulbPos.forEach((p, i) => { bulbs.setMatrixAt(i, new G.Matrix4().setPosition(p)); bulbs.setColorAt(i, new G.Color(C.lantern)); });
   scene.add(bulbs);
-  const halo = glow(C.lantern, winW * 1.1, 0.12); halo.position.set(0, winY, front + 0.2); scene.add(halo);
+  const halo = glow(C.lantern, winW * 1.15, 0.1); halo.position.set(0, winY, front + 0.2); scene.add(halo);
+  const burst = new Burst(220); scene.add(burst.mesh);
 
-  const burst = new Burst(160); scene.add(burst.mesh);
-
-  // --- camera framing
-  // Both machines share the Big Hat's framing, so the Mini Hat really looks smaller.
-  const FB = KINDS.big, topB = 0.75 + FB.body, xMin = -(FB.rBase + 0.5), xMax = leanOf(FB) + 0.5, yMin = 0, yMax = topB + 1.05;
-  const cx = (xMin + xMax) / 2, lookY = (yMin + yMax) / 2, spanW = xMax - xMin, spanH = yMax - yMin;
+  // --- camera: fit the whole hat
+  const box = new G.Box3().setFromObject(cabinet).union(new G.Box3().setFromObject(tip)), ctr = box.getCenter(new V3()), size = box.getSize(new V3());
   function resize() {
-    const w = canvas.clientWidth || 300, h = canvas.clientHeight || 360;
+    const w = canvas.clientWidth || 300, h = canvas.clientHeight || 300;
     renderer.setSize(w, h, false); cam.aspect = w / h;
-    const tan = Math.tan((cam.fov * Math.PI) / 360), dist = Math.max(spanH / 2 / tan, spanW / 2 / tan / cam.aspect) * 1.06 + FB.rBase;
-    cam.position.set(cx, lookY + 0.5, dist); cam.lookAt(cx, lookY, 0); cam.updateProjectionMatrix();
+    const tan = Math.tan((cam.fov * Math.PI) / 360), dist = Math.max(size.y / 2 / tan, size.x / 2 / tan / cam.aspect) * 1.04 + K.rBase;
+    cam.position.set(ctr.x, ctr.y + 0.4, dist); cam.lookAt(ctr.x, ctr.y, 0); cam.updateProjectionMatrix();
   }
   new ResizeObserver(resize).observe(canvas); resize();
 
   // --- animation
-  let fx = { kind: null, t: 0 }, pullT = -1, raf = 0, active = false, last = performance.now(), clock = 0, onDone = null;
-  const col = new G.Color(), gold = new G.Color(C.gold), lamp = new G.Color(C.lantern), red = new G.Color(C.hat), cream = new G.Color(C.brim);
-  const easeOutBack = (t) => { const c1 = 1.25, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+  let fx = { kind: null, t: 0 }, pullT = -1, raf = 0, active = false, last = performance.now(), clock = 0, onDone = null, info = null, anticipating = false;
+  const col = new G.Color(), gold = new G.Color(C.gold), lamp = new G.Color(C.lantern), red = new G.Color(C.hat), cream = new G.Color(C.brim), dimc = new G.Color(0.35, 0.22, 0.1);
+  const easeOutBack = (t) => { const c1 = 1.1, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
 
-  function spin(stops, result = {}) {
+  // stops: strip index shown in the TOP row of each reel (null for the pool jackpot: every square shows a Santa Hat).
+  function spin(stops, result) {
     return new Promise((resolve) => {
-      onDone = () => resolve(); fx = { kind: null, t: 0 }; pullT = 0;
-      reels.forEach((r, i) => { r.phase = 'wind'; r.t = -0.12 * i; r.stop = stops[i]; r.stopAt = 1.1 + i * 0.45; });
-      reels.result = result; wake();
+      info = result; onDone = resolve; fx = { kind: null, t: 0 }; pullT = 0; anticipating = false; drawOverlay(null);
+      reels.forEach((r, i) => {
+        r.override = null;
+        r.stop = stops ? stops[i] : Math.floor(Math.random() * L);
+        if (!stops) { r.override = new Map(); for (let k = 0; k < ROWS; k++) r.override.set(mod(r.stop + k), SYM.hat); }
+        r.phase = 'wind'; r.t = -0.08 * i; r.v = 0; r.stopAt = 0.85 + i * 0.32; r.slam = false;
+      });
+      wake();
     });
+  }
+  function slam() { // tap during a spin: land everything now (same result, just faster)
+    reels.forEach((r) => { if (r.phase === 'wind' || r.phase === 'run') { r.phase = 'run'; r.v = Math.max(r.v, 12); r.stopAt = r.t; r.slam = true; } });
+  }
+  // Honest anticipation: once 3+ reels have landed, if a payline shows Santa Hats on every landed reel, the rest slow down.
+  function checkAnticipation(landed) {
+    if (anticipating || landed < 3 || landed >= R || !info || !info.grid) return;
+    const hatsSoFar = M.lines.some((rows) => rows.slice(0, landed).every((row, r) => info.grid[r][row] === SYM.hat));
+    if (hatsSoFar) { anticipating = true; reels.forEach((r, i) => { if (i >= landed && !r.slam) r.stopAt += 0.9 + (i - landed) * 0.35; }); }
   }
   function tick(dt) {
     clock += dt;
-    // lever pull: tip swings down and back
-    if (pullT >= 0) { pullT += dt; const k = pullT < 0.18 ? pullT / 0.18 : Math.max(0, 1 - (pullT - 0.18) / 0.5); tip.rotation.z = -0.32 * k; pom.scale.setScalar(1 - 0.12 * k); if (pullT > 0.7) { pullT = -1; tip.rotation.z = 0; pom.scale.setScalar(1); } }
-    let spinning = false;
+    if (pullT >= 0) { pullT += dt; const k = pullT < 0.18 ? pullT / 0.18 : Math.max(0, 1 - (pullT - 0.18) / 0.5); tip.rotation.z = -0.3 * k; pom.scale.setScalar(1 - 0.12 * k); if (pullT > 0.7) { pullT = -1; tip.rotation.z = 0; pom.scale.setScalar(1); } }
+    let spinning = false, landed = 0;
     for (const r of reels) {
-      if (r.phase === 'idle') continue;
+      if (r.phase === 'idle') { landed++; continue; }
       spinning = true; r.t += dt;
-      if (r.phase === 'wind') { if (r.t > 0) { r.phase = 'run'; } else { r.angle -= dt * 0.8; } }
+      if (r.phase === 'wind') { if (r.t > 0) r.phase = 'run'; else r.p += dt * 1.2; }
       else if (r.phase === 'run') {
-        r.v = Math.min(22, r.v + dt * 70); r.angle += r.v * dt;
-        if (r.t >= r.stopAt) { // plan the landing: at least one more lap, finishing on the chosen face
-          const target = -r.stop * STEP, twoPi = Math.PI * 2;
-          let rem = ((target - r.angle) % twoPi + twoPi) % twoPi; rem += twoPi;
-          r.phase = 'land'; r.from = r.angle; r.rem = rem; r.lt = 0; r.dur = rem / (r.v * 0.62);
+        r.v = Math.min(anticipating && r.stopAt - r.t > 0.4 ? 10 : 24, r.v + dt * 80); r.p -= r.v * dt;
+        if (r.t >= r.stopAt) { // plan the landing on the chosen stop, at least a few squares further down
+          const minRun = r.slam ? 2 : 5, n2 = Math.floor((r.p - minRun - r.stop) / L);
+          r.target = r.stop + L * n2; r.from = r.p; r.lt = 0; r.dur = Math.min(0.7, Math.max(0.16, (r.from - r.target) / (r.v * 0.55)));
+          r.phase = 'land';
         }
       } else if (r.phase === 'land') {
-        r.lt += dt; const k = Math.min(1, r.lt / r.dur); r.angle = r.from + r.rem * easeOutBack(k);
-        if (k >= 1) { r.phase = 'idle'; r.v = 0; r.angle = -r.stop * STEP; burst.spawn(new V3(r.drum.position.x, winY - winH / 2, front + 0.2), 6, C.snow, 1.2, 1.2); }
+        r.lt += dt; const k = Math.min(1, r.lt / r.dur); r.p = r.from + (r.target - r.from) * easeOutBack(k);
+        if (k >= 1) { r.phase = 'idle'; r.v = 0; r.p = r.stop; burst.spawn(new V3(r.x, winY - winH / 2, front + 0.2), 4, C.snow, 1, 1); }
       }
-      const fast = r.phase === 'run' && r.v > 9;
-      if (r.mat.map !== (fast ? r.blurred : r.sharp)) { r.mat.map = fast ? r.blurred : r.sharp; r.mat.needsUpdate = true; }
-      r.drum.rotation.x = r.angle;
+      place(r);
     }
+    if (spinning) checkAnticipation(landed);
     if (!spinning && onDone) {
-      const res = reels.result || {}; fx = { kind: res.jackpot ? 'jackpot' : res.win ? 'win' : null, t: 0 };
-      if (fx.kind) { const c = fx.kind === 'jackpot' ? C.gold : C.lantern; burst.spawn(new V3(0, winY + winH / 2, front + 0.3), fx.kind === 'jackpot' ? 120 : 36, c, fx.kind === 'jackpot' ? 3.2 : 2, fx.kind === 'jackpot' ? 5 : 3); }
+      drawOverlay(info);
+      const kind = info.jackpot ? 'jackpot' : info.pay >= 10 * M.bet ? 'big' : info.pay > M.bet ? 'win' : null;
+      fx = { kind, t: 0 };
+      if (kind) burst.spawn(new V3(0, winY + winH / 2, front + 0.3), kind === 'win' ? 30 : 120, kind === 'win' ? C.lantern : C.gold, kind === 'win' ? 2 : 3.4, kind === 'win' ? 3 : 5);
       const d = onDone; onDone = null; d();
     }
-    // bulbs: slow chase at rest, fast chase while spinning, flashing gold/red on a win
     if (fx.kind) fx.t += dt;
-    const win = fx.kind && fx.t < (fx.kind === 'jackpot' ? 4 : 1.6);
+    const celebrate = fx.kind && fx.t < ({ win: 1.6, big: 3, jackpot: 5 })[fx.kind];
     for (let i = 0; i < n; i++) {
-      if (win) col.copy(Math.floor(fx.t * 10 + i) % 2 ? gold : fx.kind === 'jackpot' ? red : cream);
-      else { const speed = spinning ? 14 : 3, on = (Math.floor(clock * speed) + i) % 3 === 0; col.copy(on ? lamp : col.setRGB(0.35, 0.22, 0.1)); }
+      if (celebrate) col.copy(Math.floor(fx.t * 10 + i) % 2 ? gold : fx.kind === 'win' ? cream : red);
+      else { const speed = anticipating ? 22 : spinning ? 14 : 3, on = (Math.floor(clock * speed) + i) % 3 === 0; col.copy(on ? lamp : dimc); }
       bulbs.setColorAt(i, col);
     }
     bulbs.instanceColor.needsUpdate = true;
-    halo.material.opacity = win ? 0.28 + 0.1 * Math.sin(fx.t * 20) : 0.1;
-    if (fx.kind === 'jackpot' && fx.t < 1.2) { const s = (1.2 - fx.t) * 0.06; cam.position.x = cx + (Math.random() - 0.5) * s; } else cam.position.x = cx;
+    halo.material.opacity = celebrate ? 0.26 + 0.1 * Math.sin(fx.t * 20) : anticipating ? 0.2 + 0.08 * Math.sin(clock * 16) : 0.08;
+    if ((fx.kind === 'jackpot' || fx.kind === 'big') && fx.t < 1.2) cam.position.x = ctr.x + (Math.random() - 0.5) * (1.2 - fx.t) * 0.06; else cam.position.x = ctr.x;
     burst.update(dt);
-    return spinning || pullT >= 0 || win || burst.items.length > 0;
+    return spinning || pullT >= 0 || celebrate || burst.items.length > 0;
   }
-  // Renders continuously while busy; at rest it drops to ~12 fps for the bulb chase.
   function loop(now) {
     raf = 0; if (!active) return;
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -286,12 +303,12 @@ export function createMachine(canvas, kind) {
     if (busy) raf = requestAnimationFrame(loop); else setTimeout(() => { if (active && !raf) raf = requestAnimationFrame(loop); }, 80);
   }
   function wake() { if (active && !raf) { last = performance.now(); raf = requestAnimationFrame(loop); } }
-  reels.forEach((r) => { r.drum.rotation.x = r.angle; });
 
   return {
-    spin,
+    spin, slam,
     setActive(on) { active = on; if (on) { resize(); wake(); } },
-    shown: () => reels.map((r) => r.stop), // strip index on the payline, per reel
-    debug: { reels, scene, cam, renderer },
+    spinning: () => reels.some((r) => r.phase !== 'idle'),
+    shown: () => reels.map((r) => Array.from({ length: ROWS }, (_, k) => symAt(r, Math.round(r.p) + k))), // what each reel shows, top to bottom
+    debug: { reels, scene, cam, renderer, overlay: ocv, overlayMesh: overlay },
   };
 }
