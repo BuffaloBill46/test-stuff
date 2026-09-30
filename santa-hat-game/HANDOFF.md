@@ -92,6 +92,7 @@ node tests/credits.test.mjs      # play credits + fair results: Cody's order on 
 node tests/market.test.mjs       # live price + live token tax (reads mainnet; skips politely if offline)
 node tests/verify.test.mjs       # server payment checker: a good payment passes, 12 cheats refused
 node tests/matchmaker.test.mjs   # ranked matchmaking rules, 2 simulated hours of traffic
+node tests/ranked.test.mjs       # ranked points: the Play page's rules as code (pot, places, ties, −5)
 node tests/http.test.mjs         # the server's web door: sign-in, other websites refused, plain errors
 (cd tests/solana && node payouts.test.mjs)  # payout worker: winners paid exactly once, even through crashes
 (cd tests/browser && node server-mode-test.mjs)  # the Games page playing through the real server code + real SQL

@@ -46,6 +46,9 @@ per player in the pot (bots included), bots can win, and bots play under player-
 7. **Where private rooms and practice go in the unranked lobby.** Proposal: Auto match replaces
    today's Quick play. "Private room (code)" and "Practice vs bots" become smaller buttons under it.
 8. **Ranked teams.** The lobby title says FFA only. Confirm there's no ranked TEAM mode for now.
+10. **Ranked points details (Claude's picks, coded in `mockups/ranked.js`; Cody can overrule):** the pot is created by the
+   match, not taken from players (otherwise not placing would cost 10, not the 5 the Play page says); tied players split the
+   places they share (whole points, leftovers to the earlier place); rank points never go below 0.
 9. **Tournament details** (brackets, entry, prizes): later, when it comes off "Coming soon".
 
 ## Economy (decided)
