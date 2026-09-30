@@ -28,6 +28,7 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
 | `santa-hat-game/DESIGN_NOTES.md` | Every design and economy decision Cody has made (lobbies, prices, burn splits, Spin odds, pools, limits). |
 | `santa-hat-game/MULTIPLAYER_PLAN.md` | How multiplayer works and the free-plan message budget. |
 | `santa-hat-game/RESEARCH.md` | Brand and visual research (the look we're matching). |
+| `santa-hat-game/AUDIT.md` | The pre-hand-over audit: what was found, what was fixed, what's left. |
 | `santa-hat-game/FOR_MAIN_CLAUDE.md` | What this cloud workspace couldn't do (wallets, live deploys, real money). For the devnet move. |
 
 ## Where things live
@@ -98,6 +99,9 @@ node tests/http.test.mjs         # the server's web door: sign-in, other website
 (cd tests/browser && node server-mode-test.mjs)  # the Games page playing through the real server code + real SQL
 (cd tests/db && node admin.test.mjs)            # escrow admin controls: wallet-signed only, no replays, stop really stops
 (cd tests/db && node tickets.test.mjs)          # ranked tickets: 10 free a day, held/spent/released, 10 bought per 24 h
+(cd tests/db && node security.test.mjs && node price.test.mjs)  # audit: attacks refused cleanly; price manipulation guard
+node tests/reconcile.test.mjs    # audit: books + everything owed = wallet
+(cd tests/browser && node audit-ux.mjs)          # audit: every tab at 5 screen sizes (tap size, contrast, overflow, dialogs)
 (cd tests/solana && node pay.test.mjs)          # the page's purchase transaction, on the real token program
 cd tests/solana && npm install && node split.test.mjs   # the payment split on the REAL Token-2022 program (LiteSVM, no network)
 cd tests/db && npm install && node credits-db.test.mjs && node server.test.mjs  # the SQL + server steps on real Postgres (PGlite)
