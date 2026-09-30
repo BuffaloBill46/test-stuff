@@ -16,7 +16,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
   - Only Cody can do these, confirmed with his wallet signature (not just a password). Every change and withdrawal is logged (what, when, amount, transaction) so players can trust the pools.
   - Prize and odds changes should be announced, and never happen mid-pull.
 - [x] **Slots pool top-off** (Cody liked it): below $150 the treasury tops the pool up to $500, checked before and after every pull, so the game can't lock. Built and tested in the game logic; the real treasury transfer needs the server.
-- [ ] **Slots payouts:** Cody deciding, now that the machines are built. Replace `PAYTABLE` (and the jackpot %s in `MACHINES`) in `mockups/slots.js`, then run `tests/slots.test.mjs`. The starting pool must suit the biggest fixed win: with the draft's 20× top prize, $50 paused the Big Hat early in about 3% of simulated runs, $100 in none.
+- [x] **Slots payouts decided** (Big Hat, 11 straight/diagonal lines, 100× top line, 5¢ hat bonus, 75.5% payback). The live numbers are always in `PAYTABLE.md`; regenerate it with `node tests/paytable.mjs` after any change.
 
 ## Next to build
 - [ ] **Turn on ranked Auto match:** the FFA RANKED lobby is built, but its Auto match button stays off ("opening soon") until tickets and the server below exist.
