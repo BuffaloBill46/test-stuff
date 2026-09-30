@@ -114,7 +114,7 @@ real-money step: not done, waits for Cody.** The keys never go in the website or
 **Cody's calls:**
 - **Spin and Slots are two separate games with two separate pools (two wallets).** Nothing is shared between them.
   - **Spin pool:** shared by the $0.10 and $1.00 spins.
-  - **Slots pool:** shared by the $0.10 mini hat and $1.00 large hat bets.
+  - **Slots pool:** one machine now, the $1.00 Big Hat (the $0.10 Mini Hat was scrapped 2026-09-30).
 - **Each pool keeps all the money that comes in;** nothing is swept out.
 - **Spin stays exactly as it is:** fixed odds 0x–5x, a 400-slice wheel, no jackpot. "Fun, easy risk."
 - **Only Slots has a jackpot,** paying a **percentage of the Slots pool.** It can never pay more than the pool holds,

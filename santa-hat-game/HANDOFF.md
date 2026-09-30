@@ -10,8 +10,8 @@ It's written so you can take over mid-stream with no other context. **Keep it cu
 main game is **Snowball Square**: up to 8 players (real people plus bots) in a snowy low-poly plaza throw
 snowballs and fight over a giant Santa hat, in FFA or TEAM mode. Around it is a small site with tabs:
 **Play** (lobbies, ranked and unranked), **Store** (items priced in USD, paid in SANTA; buying not built
-yet), **Avatar** (dress-up editor, saved to your account), **Ranks** (leaderboard). A **Santa Hat Games**
-tab (single-player Spin and Slots) is designed but not built.
+yet), **Avatar** (dress-up editor, saved to your account), **Ranks** (leaderboard). **Games** (single-player
+Santa Hat Spin and Big Hat slots; built as demos, no real money yet).
 
 **Cody** is the creative director: non-technical, makes every design, economy and tone call. **Claude** is
 the only builder. Read `/CLAUDE.md` (repo root) for how we work together. Short version: work
