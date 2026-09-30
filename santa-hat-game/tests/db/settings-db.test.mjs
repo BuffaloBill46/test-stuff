@@ -20,7 +20,7 @@ const credit = (kind, bet, n) => db.query(`insert into public.credits (profile_i
 const S = () => { const s = structuredClone(DEFAULT_SETTINGS); delete s.version; return s; };
 
 // Unsafe changes are refused and store nothing.
-let bad = S(); bad.spin.slices = { 0: 100, 1: 100, 2: 100, 3: 96, 4: 2, 5: 2 };
+let bad = S(); bad.spin.main = { 0: 5, 1: 10, 2: 15, star: 10 };
 assert.match((await admin.run(await sign(bad))).error, /Spin would pay back/);
 assert.equal((await server.settings()).version, 0);
 
@@ -28,7 +28,7 @@ assert.equal((await server.settings()).version, 0);
 await credit('spin100', 1, 3);
 const early = await server.open(me, 'spin100'); assert.ok(early.ticket);
 // ...then Cody changes the wheel (fewer no-wins) and the Big Hat jackpot odds, and doubles the $1 spin's price.
-const s1 = S(); s1.spin.slices = { 0: 180, 1: 132, 2: 60, 3: 20, 4: 6, 5: 2 }; s1.big.jackpotOdds = 10000; s1.prices.spin100 = 2;
+const s1 = S(); s1.spin.main = { 0: 18, 1: 12, 2: 6, star: 4 }; s1.spin.bonus = { 3: 8, 4: 3, 5: 1 }; s1.big.jackpotOdds = 10000; s1.prices.spin100 = 2;
 const saved = await admin.run(await sign(s1)); assert.ok(saved.ok, saved.error);
 assert.equal(saved.version, 1); console.log(`saved settings v1: Spin payback ${(saved.report.spin.payback * 100).toFixed(1)}%, real win ${(saved.report.spin.realWin * 100).toFixed(1)}%`);
 // The early play still settles on version 0 (the change never lands mid-play), and re-checks on version 0's wheel.

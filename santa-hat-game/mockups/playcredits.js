@@ -166,7 +166,8 @@ async function recheck() {
   const p = shown; if (!p) return;
   const c = await check(p, await cfgForProof(p)), K = KINDS[p.kind];
   let what;
-  if (K.game === 'spin') what = `slice ${c.outcome.slice} of 400, a ${c.outcome.mult}× result`;
+  if (K.game === 'spin') what = c.outcome.bonusSlice !== undefined ? `main-wheel segment ${c.outcome.slice + 1} of 40 (a gold star), then bonus-wheel segment ${c.outcome.bonusSlice + 1} of 12: a ${c.outcome.mult}× result`
+    : `main-wheel segment ${c.outcome.slice + 1} of 40, a ${c.outcome.mult}× result`;
   else if (c.outcome.jackpot) what = 'the pool jackpot (all 25 squares Santa Hats)';
   else what = `reel stops ${c.outcome.stops.join(', ')} (one per reel, each 0–75)`;
   $('#proofOut').innerHTML = c.matches

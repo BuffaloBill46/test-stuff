@@ -1,36 +1,40 @@
-// Santa Hat Spin: the 3D prize wheel. A painted face (29 segments over 400 equal slices), a pine-wreath rim with chasing
-// bulbs, gold pegs at every segment edge, a candy-cane flapper that flicks as the pegs pass, gold stars on the rim that
-// mark the 4× and 5× slivers, and a Santa hat on the hub. The wheel always lands exactly on the slice the rules picked.
+// Santa Hat Spin: the 3D prize wheel. Two painted faces on one wheel: the MAIN face (40 equal segments, 3 of them gold
+// stars) and the BONUS face (12 equal segments: 3×, 4×, 5×). Landing on a star flips the wheel round to its bonus face,
+// which then spins too. Pine-wreath rim with chasing bulbs, gold pegs at every segment edge, a candy-cane flapper that
+// flicks as the pegs pass, gold rim stars marking the star segments (and the bonus 5×), a Santa hat on the hub.
+// The wheel always lands exactly on the segment the rules picked.
 import { THREE, C, part, build, toon, lights, glow, hatGeo, Burst } from './kit.js';
-import { SLICES, SEGMENTS, SEG_START, SLICE_MULT } from './spin.js';
+import { MAIN, BONUS, STAR } from './spin.js';
 import { play as sfx } from './sfx.js';
 
-const G = THREE, V3 = THREE.Vector3, TAU = Math.PI * 2, TH = TAU / SLICES;
+const G = THREE, V3 = THREE.Vector3, TAU = Math.PI * 2;
 export const MULT_STYLE = { // face colour, label colour
-  0: ['#26305a', '#6f7ba8'], 1: ['#f5f1e8', '#8f1712'], 2: ['#2f6b4a', '#f5f1e8'], 3: ['#cf3128', '#ffe7a0'], 4: ['#ffc94a', '#0c0f1a'], 5: ['#ffe27a', '#8f1712'],
+  [STAR]: ['#ffc94a', '#8f1712'], 0: ['#26305a', '#6f7ba8'], 1: ['#f5f1e8', '#8f1712'], 2: ['#2f6b4a', '#f5f1e8'], 3: ['#cf3128', '#ffe7a0'], 4: ['#ffc94a', '#0c0f1a'], 5: ['#ffe27a', '#8f1712'],
 };
 
-function faceTexture() {
+function starPath(x, px, py, r) { x.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? r * 0.45 : r; x.lineTo(px + Math.cos(a) * rr, py + Math.sin(a) * rr); } x.closePath(); }
+// One face: `list` is the wheel's segments clockwise from the top (a multiplier, or STAR). Every segment the same size.
+function faceTexture(list, bonus) {
   const S = 1024, cv = document.createElement('canvas'); cv.width = cv.height = S;
-  const x = cv.getContext('2d'), c = S / 2, R = S / 2 - 4, a0 = -Math.PI / 2;
+  const x = cv.getContext('2d'), c = S / 2, R = S / 2 - 4, a0 = -Math.PI / 2, TH = TAU / list.length;
   x.fillStyle = '#0c0f1a'; x.beginPath(); x.arc(c, c, R + 4, 0, TAU); x.fill();
-  SEGMENTS.forEach(([mult, n], i) => {
-    const s = a0 + SEG_START[i] * TH, e = s + n * TH, [bg, fg] = MULT_STYLE[mult];
+  list.forEach((mult, i) => {
+    const s = a0 + i * TH, e = s + TH, m = (s + e) / 2, [bg, fg] = MULT_STYLE[mult];
     x.beginPath(); x.moveTo(c, c); x.arc(c, c, R, s, e); x.closePath();
-    if (mult >= 4) { const g = x.createRadialGradient(c, c, R * 0.2, c, c, R); g.addColorStop(0, '#fff6c8'); g.addColorStop(1, bg); x.fillStyle = g; } else x.fillStyle = bg;
-    x.fill(); x.lineWidth = mult >= 4 ? 1.5 : 3; x.strokeStyle = '#0c0f1a'; x.stroke();
-    if (mult === 0) { x.save(); x.beginPath(); x.moveTo(c, c); x.arc(c, c, R, s, e); x.closePath(); x.clip(); // snowflake pattern on the empty segments
-      x.strokeStyle = 'rgba(185,205,242,.12)'; x.lineWidth = 2; for (let k = 0; k < 3; k++) { const m = s + ((k + 0.5) / 3) * (e - s), rr = R * (0.45 + 0.17 * k); const px = c + Math.cos(m) * rr, py = c + Math.sin(m) * rr;
-        for (let j = 0; j < 3; j++) { const t = (j * Math.PI) / 3; x.beginPath(); x.moveTo(px - Math.cos(t) * 12, py - Math.sin(t) * 12); x.lineTo(px + Math.cos(t) * 12, py + Math.sin(t) * 12); x.stroke(); } }
-      x.restore(); }
-    if (n >= 5) { // label along the radius, reading outward
-      const m = (s + e) / 2; x.save(); x.translate(c, c); x.rotate(m); x.textAlign = 'right'; x.textBaseline = 'middle';
-      x.font = `800 ${n >= 20 ? 64 : n >= 8 ? 52 : 34}px 'Grenze Gotisch', Georgia, serif`;
-      x.lineWidth = 6; x.strokeStyle = mult === 1 ? 'rgba(245,241,232,.9)' : 'rgba(12,15,26,.55)'; x.strokeText(mult + '×', R - 22, 0);
-      x.fillStyle = fg; x.fillText(mult + '×', R - 22, 0); x.restore();
+    if (mult === STAR || mult >= 4) { const g = x.createRadialGradient(c, c, R * 0.2, c, c, R); g.addColorStop(0, '#fff6c8'); g.addColorStop(1, bg); x.fillStyle = g; } else x.fillStyle = bg;
+    x.fill(); x.lineWidth = 3; x.strokeStyle = '#0c0f1a'; x.stroke();
+    if (mult === STAR) { // a big gold star: "go to the bonus wheel"
+      const px = c + Math.cos(m) * R * 0.74, py = c + Math.sin(m) * R * 0.74;
+      starPath(x, px, py, 40); x.fillStyle = '#ffe27a'; x.fill(); x.lineWidth = 5; x.strokeStyle = '#8f1712'; x.stroke();
+      return;
     }
+    x.save(); x.translate(c, c); x.rotate(m); x.textAlign = 'right'; x.textBaseline = 'middle'; // label along the radius, reading outward
+    x.font = `800 ${bonus ? 110 : 58}px 'Grenze Gotisch', Georgia, serif`;
+    x.lineWidth = bonus ? 9 : 6; x.strokeStyle = mult === 1 ? 'rgba(245,241,232,.9)' : 'rgba(12,15,26,.55)'; x.strokeText(mult + '×', R - 22, 0);
+    x.fillStyle = fg; x.fillText(mult + '×', R - 22, 0); x.restore();
   });
-  x.beginPath(); x.arc(c, c, R * 0.24, 0, TAU); x.fillStyle = '#8f1712'; x.fill(); x.lineWidth = 6; x.strokeStyle = '#0c0f1a'; x.stroke();
+  x.beginPath(); x.arc(c, c, R * 0.24, 0, TAU); x.fillStyle = bonus ? '#c98a1b' : '#8f1712'; x.fill(); x.lineWidth = 6; x.strokeStyle = '#0c0f1a'; x.stroke();
+  if (bonus) { x.font = "800 64px 'Grenze Gotisch', Georgia, serif"; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#fff6c8'; x.fillText('BONUS', c, c + R * 0.34); }
   const t = new G.CanvasTexture(cv); t.colorSpace = G.SRGBColorSpace; t.anisotropy = 8; return t;
 }
 function starGeo(r = 0.2, inner = 0.09, depth = 0.08) {
@@ -56,16 +60,25 @@ export function createWheel(canvas) {
 
   // the spinning wheel: face + wreath rim + pegs + rim stars + hub hat
   const wheel = new G.Group(); wheel.position.set(0, cy, 0); scene.add(wheel);
-  const face = new G.Mesh(new G.CircleGeometry(R, 128), new G.MeshBasicMaterial({ map: faceTexture() })); face.position.z = 0.1; wheel.add(face); // in front of the wooden disc (0.06), or the two flicker
+  // two faces (main, bonus), each with its own pegs and rim stars; only one shows at a time. Face textures are drawn when
+  // first needed (the fonts must be loaded) and redrawn if the published settings change the wheels.
+  const faces = {}, mkFace = (kind) => {
+    const list = kind === 'bonus' ? BONUS : MAIN, TH = TAU / list.length, grp = new G.Group();
+    const face = new G.Mesh(new G.CircleGeometry(R, 128), new G.MeshBasicMaterial({ map: faceTexture(list, kind === 'bonus') })); face.position.z = 0.1; grp.add(face); // in front of the wooden disc (0.06), or the two flicker
+    const pegs = [], stars = [];
+    list.forEach((mult, i) => { const a = Math.PI / 2 - i * TH; pegs.push(part(new G.CylinderGeometry(0.045, 0.055, 0.18, 6), C.gold, { pos: [Math.cos(a) * (R - 0.08), Math.sin(a) * (R - 0.08), 0.14], rot: [Math.PI / 2, 0, 0] }));
+      if (mult === STAR || mult >= 5) { const b = Math.PI / 2 - (i + 0.5) * TH; stars.push(part(starGeo(0.24), C.gold, { pos: [Math.cos(b) * (R + 0.34), Math.sin(b) * (R + 0.34), 0.2], rot: [0, 0, b - Math.PI / 2] })); } });
+    grp.add(toon(build(pegs), 0.02)); if (stars.length) grp.add(toon(build(stars), 0.025));
+    return { grp, list, TH, key: list.join(','), pegAngles: list.map((_, i) => i * TH) };
+  };
+  const faceOf = (kind) => { const want = (kind === 'bonus' ? BONUS : MAIN).join(',');
+    if (!faces[kind] || faces[kind].key !== want) { if (faces[kind]) wheel.remove(faces[kind].grp); faces[kind] = mkFace(kind); wheel.add(faces[kind].grp); }
+    return faces[kind]; };
+  let mode = 'main';
   const back = toon(build([part(new G.CylinderGeometry(R + 0.05, R + 0.05, 0.12, 48), C.woodDark, { rot: [Math.PI / 2, 0, 0] })]), 0.03); wheel.add(back);
   const wreathParts = [part(new G.TorusGeometry(R + 0.12, 0.2, 5, 40), C.pine, { jit: 0.06, seed: 8 })];
   for (let i = 0; i < 16; i++) { const a = (i / 16) * TAU; wreathParts.push(part(new G.IcosahedronGeometry(0.13, 0), C.snow, { pos: [Math.cos(a) * (R + 0.14), Math.sin(a) * (R + 0.14), 0.16], jit: 0.04, seed: i })); }
   wheel.add(toon(build(wreathParts), 0.03));
-  const pegParts = [], starParts = [];
-  SEG_START.forEach((st) => { const a = Math.PI / 2 - st * TH; pegParts.push(part(new G.CylinderGeometry(0.045, 0.055, 0.18, 6), C.gold, { pos: [Math.cos(a) * (R - 0.08), Math.sin(a) * (R - 0.08), 0.14], rot: [Math.PI / 2, 0, 0] })); });
-  SEGMENTS.forEach(([mult], i) => { if (mult < 4) return; const a = Math.PI / 2 - (SEG_START[i] + 0.5) * TH;
-    starParts.push(part(starGeo(mult === 5 ? 0.24 : 0.18), mult === 5 ? C.gold : C.goldDeep, { pos: [Math.cos(a) * (R + 0.34), Math.sin(a) * (R + 0.34), 0.2], rot: [0, 0, a - Math.PI / 2] })); });
-  wheel.add(toon(build(pegParts), 0.02)); wheel.add(toon(build(starParts), 0.025));
   const hat = toon(hatGeo({ scale: 0.72 }), 0.03); hat.rotation.x = Math.PI / 2; hat.position.z = 0.3; wheel.add(hat);
 
   // bulbs around the rim (don't spin; they chase)
@@ -93,14 +106,19 @@ export function createWheel(canvas) {
   new ResizeObserver(resize).observe(canvas); resize();
 
   // --- motion. `turn` = clockwise angle turned; the pointer (top) shows slice floor(((-turn) mod 2π) / TH).
-  let turn = 0, spinning = null, raf = 0, active = false, last = performance.now(), clock = 0, flapV = 0, flapA = 0, fx = { kind: null, t: 0 };
-  const mod = (a) => ((a % TAU) + TAU) % TAU, sliceAt = (t) => Math.floor(mod(-t) / TH) % SLICES;
+  let turn = 0, spinning = null, raf = 0, active = false, last = performance.now(), clock = 0, flapV = 0, flapA = 0, fx = { kind: null, t: 0 }, flip = null;
+  const mod = (a) => ((a % TAU) + TAU) % TAU, cur = () => faceOf(mode), sliceAt = (t) => Math.floor(mod(-t) / cur().TH) % cur().list.length;
+  function show(kind) { mode = kind; const f = faceOf(kind); for (const k of Object.keys(faces)) faces[k].grp.visible = faces[k] === f; }
+  // Turn the wheel round to the other face (a quick flip about its upright axis; the faces swap when it's edge-on).
+  function flipTo(kind) {
+    if (mode === kind && !flip) { show(kind); return Promise.resolve(); }
+    return new Promise((resolve) => { flip = { to: kind, t: 0, dur: 0.7, swapped: false, resolve }; wake(); });
+  }
   const col = new G.Color(), lamp = new G.Color(C.lantern), gold = new G.Color(C.gold), red = new G.Color(C.hat), cream = new G.Color(C.brim), dimc = new G.Color(0.35, 0.22, 0.1);
-  const pegAngles = SEG_START.map((s) => s * TH);
 
   function spinTo(slice, info = {}) {
     return new Promise((resolve) => {
-      const u = 0.2 + Math.random() * 0.6, targetMod = mod(-(slice + u) * TH); // land inside the slice, not on its edge
+      const u = 0.2 + Math.random() * 0.6, targetMod = mod(-(slice + u) * cur().TH); // land inside the segment, not on its edge
       const delta = mod(targetMod - mod(turn)) + TAU * (4 + Math.floor(Math.random() * 2));
       spinning = { from: turn, delta, t: 0, dur: 4.6 + Math.random() * 0.8, resolve, info }; fx = { kind: null, t: 0 }; wake();
     });
@@ -112,13 +130,17 @@ export function createWheel(canvas) {
     if (spinning) {
       const s = spinning; s.t += dt; const k = Math.min(1, s.t / s.dur), prev = turn;
       turn = s.from + s.delta * easeOut(k); speed = (turn - prev) / Math.max(dt, 1e-4);
-      if (k >= 1) { spinning = null; const info = s.info; fx = { kind: info.mult >= 5 ? 'top' : info.mult >= 2 ? 'win' : null, t: 0 };
+      if (k >= 1) { spinning = null; const info = s.info; fx = { kind: info.star ? 'win' : info.mult >= 5 ? 'top' : info.mult >= 2 ? 'win' : null, t: 0 };
         if (fx.kind) burst.spawn(new V3(0, cy + R * 0.6, 0.6), fx.kind === 'top' ? 140 : 40, fx.kind === 'top' ? C.gold : C.lantern, fx.kind === 'top' ? 3.4 : 2.2, fx.kind === 'top' ? 5 : 3);
         s.resolve(); }
     }
+    if (flip) { flip.t += dt; const k = Math.min(1, flip.t / flip.dur);
+      if (k >= 0.5 && !flip.swapped) { flip.swapped = true; show(flip.to); }
+      wheel.rotation.y = Math.sin(k * Math.PI) * (Math.PI / 2); // edge-on at the middle, face-on at both ends
+      if (k >= 1) { wheel.rotation.y = 0; const r = flip.resolve; flip = null; r(); } }
     wheel.rotation.z = -turn;
     // flapper: pushed when a peg passes under it, springs back
-    const at = mod(-turn); let near = Infinity; for (const p of pegAngles) { let d = mod(p - at); if (d > Math.PI) d -= TAU; if (Math.abs(d) < Math.abs(near)) near = d; }
+    const at = mod(-turn); let near = Infinity; for (const p of cur().pegAngles) { let d = mod(p - at); if (d > Math.PI) d -= TAU; if (Math.abs(d) < Math.abs(near)) near = d; }
     if (Math.abs(near) < 0.03 && speed > 0.2) { if (flapV > -speed * 0.05) sfx('spinTick'); flapV -= speed * 0.06; } // one tick per peg
     flapV += (-flapA * 90 - flapV * 9) * dt; flapA += flapV * dt; flapA = Math.max(-0.7, Math.min(0.25, flapA)); flap.rotation.z = flapA;
     if (fx.kind) fx.t += dt;
@@ -131,7 +153,7 @@ export function createWheel(canvas) {
     bulbs.instanceColor.needsUpdate = true;
     halo.material.opacity = party ? 0.2 + 0.08 * Math.sin(fx.t * 18) : 0.07;
     burst.update(dt);
-    return !!spinning || party || burst.items.length > 0 || Math.abs(flapA) > 0.002;
+    return !!spinning || !!flip || party || burst.items.length > 0 || Math.abs(flapA) > 0.002;
   }
   function loop(now) {
     raf = 0; if (!active) return;
@@ -143,10 +165,10 @@ export function createWheel(canvas) {
   function finishNow() { if (spinning) { spinning.t = spinning.dur; wake(); } } // tap to stop: same slice, lands now
 
   return {
-    spinTo, finishNow,
-    setActive(on) { active = on; if (on) { resize(); wake(); } },
+    spinTo, finishNow, flipTo, get mode() { return mode; },
+    setActive(on) { active = on; if (on) { show(mode); resize(); wake(); } },
     spinning: () => !!spinning,
-    shownSlice: () => sliceAt(turn), shownMult: () => SLICE_MULT[sliceAt(turn)],
+    shownSlice: () => sliceAt(turn), shownMult: () => cur().list[sliceAt(turn)], // on the bonus face: the bonus result
     debug: { scene, cam, renderer },
   };
 }

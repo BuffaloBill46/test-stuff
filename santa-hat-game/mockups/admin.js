@@ -2,7 +2,7 @@
 // (adminmsg.js); the server checks it (server/admin.js). Open with ?server=<the games Edge Function address>.
 import { adminMessage } from './adminmsg.js';
 import { POOL_RULES } from './slots.js';
-import { SPIN_RULES } from './spin.js';
+import { SPIN_RULES, MAIN_SLICES, BONUS_SLICES } from './spin.js';
 import { DEFAULT_SETTINGS, check, itemsWith } from './settings.js';
 import { ITEMS, SLOTS } from './catalog.js';
 import { SYMBOLS } from './slots.js';
@@ -68,7 +68,9 @@ async function loadSettings() {
   const r = await post({ action: 'settings' }); gs = r.settings || structuredClone(DEFAULT_SETTINGS); added = [];
   $('#gsVer').textContent = `· version ${r.version ?? 0}`;
   $('#gsPrices').innerHTML = Object.entries(gs.prices).map(([k, v]) => `<label>${PRICE_LABEL[k] || k}${numInput('prices.' + k, v)}</label>`).join('');
-  $('#gsSlices').innerHTML = Object.entries(gs.spin.slices).map(([m, n]) => `<label>${m}× ${m === '0' ? '(no win)' : m === '1' ? '(money back)' : ''}${numInput('slices.' + m, n, 1)}</label>`).join('');
+  const segLabel = (m) => (m === 'star' ? '★ gold star (to the bonus wheel)' : `${m}× ${m === '0' ? '(no win)' : m === '1' ? '(money back)' : ''}`);
+  $('#gsSlices').innerHTML = Object.entries(gs.spin.main).map(([m, n]) => `<label>${segLabel(m)}${numInput('main.' + m, n, 1)}</label>`).join('');
+  $('#gsBonus').innerHTML = Object.entries(gs.spin.bonus).map(([m, n]) => `<label>${segLabel(m)}${numInput('bonus.' + m, n, 1)}</label>`).join('');
   $('#gsBig').innerHTML = `<label>Pool jackpot: share of the pool (0.01–0.5)${numInput('big.jackpotPct', gs.big.jackpotPct)}</label>
     <label>Pool jackpot: 1 in …${numInput('big.jackpotOdds', gs.big.jackpotOdds, 1)}</label><label>Hat bonus (× the pull price, per Santa Hat)${numInput('big.hatBonus', gs.big.hatBonus)}</label>`;
   $('#gsCounts').innerHTML = SYMBOLS.map((x) => `<label>${x.name}${numInput('counts.' + x.id, gs.big.counts[x.id], 1)}</label>`).join('');
@@ -89,7 +91,7 @@ function renderItems() {
 function gather() {
   const s = structuredClone(gs); delete s.version; const v = (k) => document.querySelector(`[data-gs="${k}"]`)?.value;
   for (const k of Object.keys(s.prices)) s.prices[k] = Number(v('prices.' + k));
-  for (const m of Object.keys(s.spin.slices)) s.spin.slices[m] = Number(v('slices.' + m));
+  for (const w of ['main', 'bonus']) for (const m of Object.keys(s.spin[w])) s.spin[w][m] = Number(v(`${w}.${m}`));
   for (const k of ['jackpotPct', 'jackpotOdds', 'hatBonus']) s.big[k] = Number(v('big.' + k));
   for (const x of SYMBOLS) s.big.counts[x.id] = Number(v('counts.' + x.id));
   s.big.pays = {}; for (const x of SYMBOLS) for (const n of [3, 4, 5]) { const raw = v(`pays.${x.id}.${n}`); if (raw !== undefined && raw !== '') (s.big.pays[x.id] ||= {})[n] = Number(raw); }
@@ -109,8 +111,8 @@ function gather() {
 let timer = 0;
 function preview() {
   clearTimeout(timer); timer = setTimeout(() => {
-    const s = gather(), total = Object.values(s.spin.slices).reduce((a, b) => a + b, 0);
-    $('#gsSliceTotal').textContent = `(${total} of 400)`;
+    const s = gather(), sum = (o) => Object.values(o).reduce((a, b) => a + b, 0);
+    $('#gsSliceTotal').textContent = `(${sum(s.spin.main)} of ${MAIN_SLICES})`; $('#gsBonusTotal').textContent = `(${sum(s.spin.bonus)} of ${BONUS_SLICES})`;
     const rules = Object.fromEntries((state?.pools || []).map((p) => [p.game, { ...DEFAULTS[p.game], ...p.rules }]));
     const c = check({ ...s, version: 0 }, { spin: rules.spin || SPIN_RULES, slots: rules.slots || POOL_RULES }), r = c.report;
     $('#gsPreview').innerHTML = (r ? `<p>Spin pays back <b>${(r.spin.payback * 100).toFixed(1)}%</b>; a real win (2× or more) <b>1 in ${(1 / r.spin.realWin).toFixed(1)}</b> spins; top prize ${r.spin.top}×.</p>

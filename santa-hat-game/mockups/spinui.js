@@ -1,6 +1,6 @@
 // Santa Hat Spin page: bet chips, Spin button, pool readout, odds legend, last-spins strip, full screen.
 // DEMO ONLY: play money (the same demo balance as Slots) and a demo Spin pool kept in this browser.
-import { SPIN_RULES, SLICES, odds, spin } from './spin.js';
+import { SPIN_RULES, MAIN_SLICES, MAIN, BONUS, STAR, odds } from './spin.js';
 import { createWheel, MULT_STYLE } from './spin3d.js';
 import { ready, play, short, setSpinKind, spinKindFor } from './playcredits.js';
 import { play as sfx } from './sfx.js';
@@ -14,7 +14,7 @@ const store = { get() { try { return JSON.parse(localStorage.getItem(KEY)); } ca
 let view = null, busy = false, bet = 0.1, wallet = null, addWinner = () => {}, shownPool = 0;
 const saved = store.get();
 const st = saved && Number.isFinite(saved.pool) ? { treasury: 0, history: [], ...saved } : { pool: SPIN_RULES.start, treasury: 0, history: [] };
-const test = { next: undefined }; // tests only: force the next slice (0–399)
+const test = { next: undefined }; // tests only: force the next main segment (0–39), or [main, bonus]
 const card = () => $('#spin .wheelcard');
 
 function render() {
@@ -24,8 +24,10 @@ function render() {
     : '<li class="empty">No spins yet.</li>';
 }
 function odds_() {
-  const o = odds();
-  $('#oddsList').innerHTML = [5, 4, 3, 2, 1, 0].map((m) => `<li><i style="background:${MULT_STYLE[m][0]}"></i><span><b>${m}×</b> ${m === 1 ? 'money back' : m === 0 ? 'no win' : 'win'}<br>${(o[m] * 100).toFixed(1)}% · 1 in ${+(1 / o[m]).toFixed(1)}</span></li>`).join('');
+  const o = odds(), stars = MAIN.filter((m) => m === STAR).length, count = (list, m) => list.filter((x) => x === m).length;
+  const where = (m) => (count(MAIN, m) ? `${count(MAIN, m)} of ${MAIN.length} on the wheel` : `${count(BONUS, m)} of ${BONUS.length} on the bonus wheel`);
+  $('#oddsList').innerHTML = [5, 4, 3, 2, 1, 0].filter((m) => o[m]).map((m) => `<li><i style="background:${MULT_STYLE[m][0]}"></i><span><b>${m}×</b> ${m === 1 ? 'money back' : m === 0 ? 'no win' : 'win'} · ${where(m)}<br>${(o[m] * 100).toFixed(1)}% · 1 in ${+(1 / o[m]).toFixed(1)}</span></li>`).join('')
+    + (stars ? `<li><i style="background:${MULT_STYLE[STAR][0]}"></i><span><b>★</b> gold star · ${stars} of ${MAIN.length}: spin the bonus wheel<br>${((stars / MAIN.length) * 100).toFixed(1)}% · 1 in ${+(MAIN.length / stars).toFixed(1)}</span></li>` : '');
 }
 // Phones: the result line sits under the wheel; bring it just into view when the play ends (focus-group finding).
 // The bottom tab bar covers the page on phones, so "visible" means above it (a first version missed that).
@@ -46,7 +48,12 @@ async function doSpin() {
   card().classList.remove('won', 'jackpot'); $('#spin .flash').classList.remove('show');
   store.set(st);
   res.textContent = `Spinning… result locked (${short(p.commit)}). Tap again to land it early.`;
-  await view.spinTo(r.slice, r);
+  if (view.mode !== 'main') await view.flipTo('main');
+  if (r.bonusSlice !== undefined) { // a gold star: the wheel turns round to its bonus face and spins again
+    await view.spinTo(r.slice, { star: true });
+    sfx('smallWin'); stamp('★ BONUS'); res.textContent = 'Gold star! Spinning the bonus wheel: 3×, 4× or 5×.';
+    await view.flipTo('bonus'); await view.spinTo(r.bonusSlice, r);
+  } else await view.spinTo(r.slice, r);
   if (p.server) { st.pool = p.poolUsd; shownPool = st.pool; } // the server's pool; winnings go out as a real payout
   else { shownPool = st.pool; wallet.add(r.received); }
   st.history.unshift(r.mult); st.history.length = Math.min(st.history.length, MAX_HISTORY);
@@ -83,7 +90,7 @@ export function initSpin(opts) {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') card().classList.remove('max'); });
   setBet(+document.querySelector('#spin .bets [aria-checked="true"]').dataset.bet); // the chosen size's price (settings may change it)
   odds_(); render();
-  window.__spin = { st, view, test, get busy() { return busy; }, get shownPool() { return shownPool; }, SLICES };
+  window.__spin = { st, view, test, get busy() { return busy; }, get shownPool() { return shownPool; }, SLICES: MAIN_SLICES };
 }
 export function resetSpin() { if (busy) return; Object.assign(st, { pool: SPIN_RULES.start, treasury: 0, history: [] }); shownPool = st.pool; store.set(st); render(); }
 export function showSpin(on) { view?.setActive(on); }

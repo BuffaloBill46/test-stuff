@@ -9,7 +9,7 @@ import { FEE } from './slots.js';
 import { play as sfx } from './sfx.js';
 import { SERVER, call, settingsReady } from './gameserver.js';
 import { KINDS } from './credits.js';
-import { SLICE_MULT } from './spin.js';
+import { topMult } from './spin.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -227,7 +227,7 @@ async function showMarket() {
 }
 
 function labelsFromSettings() {
-  const c = (v) => (v < 1 ? Math.round(v * 100) + '¢' : '$' + (Number.isInteger(v) ? v : v.toFixed(2))), top = Math.max(...SLICE_MULT);
+  const c = (v) => (v < 1 ? Math.round(v * 100) + '¢' : '$' + (Number.isInteger(v) ? v : v.toFixed(2))), top = topMult(); // the wheels as published (applyToGame updates them in place)
   for (const [cls, k] of [['chip10', 'spin10'], ['chip100', 'spin100']]) {
     const b = $('#spin .' + cls), bet = KINDS[k].bet; b.dataset.bet = bet; $('b', b).textContent = c(bet); $('small', b).textContent = `win up to ${c(bet * top)}`;
   }

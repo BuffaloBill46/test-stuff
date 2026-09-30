@@ -82,7 +82,7 @@ for (let run = 0; run < 60; run++) {
     assert.ok(close(pools[poolKey].pool, expect), `prepaid play moved the pool by the entry: ${pools[poolKey].pool} vs ${expect}`); prepaidOk++;
     const c = await check(s.proof);
     assert.ok(c.matches, 'secret matches the fingerprint shown before the play');
-    if (KINDS[kind].game === 'spin') assert.equal(c.outcome.slice, s.r.slice);
+    if (KINDS[kind].game === 'spin') assert.deepEqual([c.outcome.slice, c.outcome.bonusSlice, c.outcome.mult], [s.r.slice, s.r.bonusSlice, s.r.mult], 'the re-check gives the same segment(s) and result, bonus wheel included');
     else if (s.r.jackpot) assert.ok(c.outcome.jackpot); else assert.deepEqual(c.outcome.stops, s.r.stops);
     checked++; plays++;
   }
@@ -100,12 +100,13 @@ for (let run = 0; run < 60; run++) {
   await assert.rejects(() => house.settle(o.ticket, 'abcd'), /already settled/, 'a play settles once');
 }
 
-// 8. The fair numbers are really uniform: the wheel pays back its exact 74.5% when driven by them.
+// 8. The fair numbers are really uniform: the wheels pay back their exact 75% when driven by them.
 {
-  const secret = newSeed(); let paid = 0, N = 40000; const hits = new Array(400).fill(0);
-  for (let i = 0; i < N; i++) { const [x] = await numbers(secret, 'seed', i, 1); const o = outcomeFrom('spin100', [x]); paid += o.mult; hits[o.slice]++; }
+  const secret = newSeed(); let paid = 0, N = 40000; const hits = new Array(40).fill(0), bonusHits = new Array(12).fill(0);
+  for (let i = 0; i < N; i++) { const xs = await numbers(secret, 'seed', i, 2); const o = outcomeFrom('spin100', xs); paid += o.mult; hits[o.slice]++; if (o.bonusSlice !== undefined) bonusHits[o.bonusSlice]++; }
   const pb = paid / N; assert.ok(Math.abs(pb - payback()) < 0.02, `payback from fair numbers ${pb}`);
-  assert.ok(Math.min(...hits) > 40 && Math.max(...hits) < 170, 'every slice turns up about equally');
+  assert.ok(Math.min(...hits) > 800 && Math.max(...hits) < 1200, 'every main segment turns up about equally');
+  assert.ok(Math.min(...bonusHits) > 150 && Math.max(...bonusHits) < 350, 'every bonus segment turns up about equally: ' + bonusHits);
   console.log(`fair numbers: ${N.toLocaleString()} spins pay back ${(pb * 100).toFixed(2)}% (exact ${(payback() * 100).toFixed(2)}%)`);
 }
 console.log(`OK: ${plays} plays in Cody's order, ${checked} results re-checked, ${prepaidOk} prepaid pool moves, books balanced after every step`);

@@ -134,7 +134,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
       const skimRaw = toRaw(r.skim || 0, price), topRaw = toRaw(r.topOff || 0, price);
       const payRaw = Math.min(toRaw(r.pay, price), +p.santa_raw + topRaw - skimRaw); // never more than the pool holds
       const poolDelta = topRaw - skimRaw - payRaw, treasuryDelta = Math.round(skimRaw * (1 - FEE)) - Math.round(topRaw / (1 - FEE));
-      const result = K.game === 'spin' ? { slice: r.slice, mult: r.mult } : { stops: r.stops, jackpot: r.jackpot, wins: r.wins.length, hats: r.hats };
+      const result = K.game === 'spin' ? { slice: r.slice, ...(r.bonusSlice !== undefined ? { bonusSlice: r.bonusSlice } : {}), mult: r.mult } : { stops: r.stops, jackpot: r.jackpot, wins: r.wins.length, hats: r.hats };
       await t.query('select public.settle_play($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',  // skims/top-offs queued as real transfers
         [pl.id, playerSeed, JSON.stringify(result), Math.round(r.pay * 100) / 100, payRaw, price, poolDelta, treasuryDelta, wallet, cap, skimRaw, topRaw]);
       return { r, payRaw, poolDelta, price, poolUsd: state.pool, proof: { kind: pl.kind, commit: pl.commit, secret: pl.secret, playerSeed, playNo: +pl.play_no, settingsVersion: +pl.settings_version } };  // 5. revealed

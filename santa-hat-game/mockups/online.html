@@ -651,7 +651,7 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
       <button class="go" id="proofCheck" type="button">Re-check it now</button>
       <p class="proofout" id="proofOut" aria-live="polite"></p>
       <p class="dim"><b>Check it yourself, with any SHA-256 tool:</b> the SHA-256 of the secret must equal the fingerprint. The play's
-        numbers are HMAC-SHA256 with the secret's bytes as the key over "your number:play number:0", read 4 bytes at a time as fractions of 2<sup>32</sup>.</p>
+        numbers are HMAC-SHA256 with the secret's bytes as the key over "your number:play number:0" (then :1, :2… for more numbers; Spin's bonus wheel uses the second), read 4 bytes at a time as fractions of 2<sup>32</sup>.</p>
       <p class="dim">Demo: the house runs in your browser for now. With real SANTA it runs on the game server, in the same order.</p>
     </dialog>
     <dialog id="howDlg" class="plaque howdlg" aria-labelledby="howTitle">

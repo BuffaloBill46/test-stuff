@@ -52,9 +52,10 @@ check((await db.query('select count(*)::int as n from public.pool_log'))[0].n ==
 // Game settings editor: the preview updates; an unsafe change can't be published; a safe one is signed and saved; a new item.
 await p.waitForFunction(() => /pays back/.test(document.querySelector('#gsPreview').textContent), null, { timeout: 15000 });
 check(/Spin pays back 74\.5%/.test(await p.textContent('#gsPreview')) && /Big Hat pays back 75\.5%/.test(await p.textContent('#gsPreview')), 'preview shows today\'s payback: ' + (await p.textContent('#gsPreview')).slice(0, 120));
-await p.fill('[data-gs="slices.0"]', '150'); await p.waitForTimeout(700);
-check(await p.evaluate(() => document.querySelector('#gsSave').disabled) && /exactly 400 slices/.test(await p.textContent('#gsPreview')), 'a wheel that isn\'t 400 slices can\'t be published');
-await p.fill('[data-gs="slices.0"]', '180'); await p.fill('[data-gs="slices.2"]', '60'); await p.fill('[data-gs="slices.4"]', '6');
+await p.fill('[data-gs="main.0"]', '30'); await p.waitForTimeout(700);
+check(await p.evaluate(() => document.querySelector('#gsSave').disabled) && /exactly 40 segments/.test(await p.textContent('#gsPreview')), 'a main wheel that isn\'t 40 segments can\'t be published');
+await p.fill('[data-gs="main.0"]', '18'); await p.fill('[data-gs="main.2"]', '6'); await p.fill('[data-gs="main.star"]', '4');
+await p.fill('[data-gs="bonus.3"]', '8'); await p.fill('[data-gs="bonus.4"]', '3');
 await p.fill('[data-gs="big.jackpotOdds"]', '10000'); await p.fill('[data-gs="prices.spin100"]', '2');
 await p.evaluate(() => document.querySelector('#gsNew').closest('details').open = true);
 await p.fill('[data-new="id"]', 'shirt_mint'); await p.fill('[data-new="name"]', 'Mint'); await p.fill('[data-new="price"]', '0.3'); await p.tap('#gsAdd');
@@ -63,7 +64,7 @@ const pv = await p.textContent('#gsPreview');
 check(/Spin pays back 86\.5%/.test(pv) && /1 in 10,000/.test(pv) && !(await p.evaluate(() => document.querySelector('#gsSave').disabled)), 'preview of the new settings: ' + pv.slice(0, 160));
 await p.tap('#gsSave'); await p.waitForFunction(() => /Published settings version|Refused/.test(document.querySelector('#msg').textContent), null, { timeout: 20000 });
 const gsRow = (await db.query('select version, settings from public.game_settings order by version desc limit 1'))[0];
-check(gsRow?.version === 1 && gsRow.settings.big.jackpotOdds === 10000 && gsRow.settings.prices.spin100 === 2 && gsRow.settings.spin.slices['0'] === 180, 'settings v1 saved: ' + (await p.textContent('#msg')));
+check(gsRow?.version === 1 && gsRow.settings.big.jackpotOdds === 10000 && gsRow.settings.prices.spin100 === 2 && gsRow.settings.spin.main['0'] === 18 && gsRow.settings.spin.bonus['4'] === 3, 'settings v1 saved: ' + (await p.textContent('#msg')));
 check(gsRow?.settings.store.items.some((i) => i.id === 'shirt_mint' && i.price === 0.3), 'the new Mint shirt is in the store');
 await p.waitForFunction(() => /version 1/.test(document.querySelector('#gsVer').textContent), null, { timeout: 10000 }).catch(() => {});
 check(/version 1/.test(await p.textContent('#gsVer')), 'the editor shows version 1');

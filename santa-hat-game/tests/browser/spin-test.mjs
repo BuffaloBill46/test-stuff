@@ -30,14 +30,16 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   const money = () => p.evaluate(() => ({ pool: window.__spin.st.pool, bal: window.__slots.state.bal }));
   const waitDone = () => p.waitForFunction(() => !window.__spin.busy, null, { timeout: 90000 });
   async function forced(mult, bet) {
-    const slice = await p.evaluate(async ([m, b]) => { const s = await import('./spin.js'); const idx = s.SLICE_MULT.map((x, i) => [x, i]).filter(([x]) => x === m).map(([, i]) => i);
-      const pick = idx[Math.floor(Math.random() * idx.length)]; document.querySelector(`#spin .bets button[data-bet="${b}"]`).click(); window.__spin.test.next = pick; return pick; }, [mult, bet]);
+    // 0×–2× are on the main wheel; 3×–5× need a gold star, then that bonus segment. `slice` is where the wheel must end up.
+    const slice = await p.evaluate(async ([m, b]) => { const s = await import('./spin.js'), any = (list, v) => { const idx = list.map((x, i) => [x, i]).filter(([x]) => x === v).map(([, i]) => i); return idx[Math.floor(Math.random() * idx.length)]; };
+      const main = s.MAIN.includes(m) ? any(s.MAIN, m) : any(s.MAIN, s.STAR), bonus = s.MAIN.includes(m) ? undefined : any(s.BONUS, m);
+      document.querySelector(`#spin .bets button[data-bet="${b}"]`).click(); window.__spin.test.next = bonus === undefined ? main : [main, bonus]; return bonus ?? main; }, [mult, bet]);
     const before = await money(); await p.evaluate(() => document.querySelector('#spin .spinbtn').click());
     return { slice, before };
   }
   let r = await read(); console.log(label, 'at rest:', JSON.stringify(r));
   check(r.pool === '$50.00' && r.bal === '$20.00', `${label}: starting spin pool / balance`);
-  check(await p.locator('#oddsList li').count() === 6, `${label}: odds legend`);
+  check(await p.locator('#oddsList li').count() === 7, `${label}: odds legend (6 results + the gold star)`);
   check(!r.wide, `${label}: page wider than screen`);
   await p.screenshot({ path: `${OUT}/${label}-1-wheel.png` });
 
@@ -49,8 +51,12 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   check(await p.textContent('#buyGo') === 'Buy 10 · $10.00' && await p.textContent('#buyTitle') === 'Buy spins', `${label}: buy counter for $1 spins`);
   await p.evaluate(() => document.querySelector('#buyGo').click());
   await p.waitForTimeout(1500); await p.screenshot({ path: `${OUT}/${label}-2-spinning.png` });
+  await p.waitForFunction(() => window.__spin.view.mode === 'bonus', null, { timeout: 90000 });
+  check(/BONUS/.test(await p.textContent('#spin .flash')) && /bonus wheel/.test(await p.textContent('#spin .res')), `${label}: a gold star says so and turns to the bonus wheel`);
+  await p.waitForTimeout(1200); await p.screenshot({ path: `${OUT}/${label}-2b-bonus.png` });
   await waitDone(); await p.waitForTimeout(300); let after = await money(); r = await read();
-  check(await p.evaluate(() => window.__spin.view.shownSlice()) === slice, `${label}: wheel must stop on the picked slice`);
+  check(await p.evaluate(() => window.__spin.view.mode) === 'bonus' && await p.evaluate(() => window.__spin.view.shownSlice()) === slice, `${label}: the bonus wheel must stop on the picked segment`);
+  check(await p.evaluate(() => window.__spin.view.shownMult()) === 5, `${label}: the bonus wheel shows 5×`);
   check(Math.abs(after.bal - (before.bal - 10 + 5 * 0.97)) < 1e-9, `${label}: 10 spins bought ($10), then a 5× win`);
   check(Math.abs(after.pool - (before.pool + 10 * IN - 5)) < 1e-9, `${label}: 5× pool (all 10 entries arrived at purchase)`);
   check(await p.textContent('#crSpin') === '9', `${label}: 9 $1 spins left`);
@@ -61,6 +67,7 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
 
   // 1× = money back: quiet, no winner entry
   ({ slice, before } = await forced(1, 1)); await waitDone(); after = await money(); r = await read();
+  check(await p.evaluate(() => window.__spin.view.mode) === 'main' && await p.evaluate(() => window.__spin.view.shownSlice()) === slice, `${label}: the next spin turns back to the main wheel and stops on its segment`);
   check(Math.abs(after.bal - (before.bal + 0.97)) < 1e-9, `${label}: 1× balance`);
   check(/Money back/.test(r.res) && r.winners.length === 1, `${label}: 1× should be quiet money back`);
 

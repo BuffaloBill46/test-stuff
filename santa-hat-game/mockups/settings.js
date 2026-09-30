@@ -3,19 +3,18 @@
 // works on old plays after odds change. build() turns settings into the game rules' shapes; check() is the guard rail:
 // it refuses anything that could hurt players or drain a pool, and reports what a change does BEFORE it's signed.
 import { MACHINES, SYMBOLS, SYM, stats, POOL_RULES, pull } from './slots.js';
-import { SEGMENTS, SEG_START, SLICE_MULT, SLICES, SPIN_RULES, spin } from './spin.js';
+import { MAIN, BONUS, MAIN_SLICES, BONUS_SLICES, MAIN_COUNTS, BONUS_COUNTS, SPIN_RULES, layout, odds as spinOdds, payback as spinPaybackOf, topMult } from './spin.js';
 import { ITEMS, SLOTS, BY_ID } from './catalog.js';
 import { KINDS } from './credits.js';
 
 const big = MACHINES.big;
-const countsOf = (segs) => segs.reduce((o, [m, n]) => ((o[m] = (o[m] || 0) + n), o), {});
-// The built-in wheel and items, captured before applyToGame() can change the shared ones.
-const ORIGINAL_SEGMENTS = SEGMENTS.map((x) => [...x]), ORIGINAL_ITEMS = ITEMS.map((x) => ({ ...x }));
+// The built-in items, captured before applyToGame() can change the shared ones.
+const ORIGINAL_ITEMS = ITEMS.map((x) => ({ ...x }));
 // Version 0 = the game exactly as built (Cody's decided numbers).
 export const DEFAULT_SETTINGS = Object.freeze({
   version: 0,
   prices: { spin10: 0.10, spin100: 1.00, big: 1.00, ticket: 0.10 },
-  spin: { slices: countsOf(ORIGINAL_SEGMENTS) },                                   // result (×) → how many of the 400 slices
+  spin: { main: { ...MAIN_COUNTS }, bonus: { ...BONUS_COUNTS } },  // how many of the 40 main / 12 bonus segments show each result
   big: { counts: { ...big.counts }, pays: structuredClone(big.pays), hatBonus: big.hatBonus, jackpotPct: big.jackpotPct, jackpotOdds: 1 / big.poolJackpotOdds },
   store: { items: [] },                                                   // additions / changes on top of catalog.js
 });
@@ -25,7 +24,7 @@ export function build(s) {
   const m = { ...big, bet: s.prices.big, counts: s.big.counts, pays: s.big.pays, hatBonus: s.big.hatBonus, jackpotPct: s.big.jackpotPct, poolJackpotOdds: 1 / s.big.jackpotOdds };
   m.strips = Array.from({ length: m.reels }, (_, i) => spreadStrip(m.counts, 1000 * m.reels + 17 * i + 3));
   m.stripLen = m.strips[0].length; m.lineBet = m.bet / m.lines.length;
-  return { machine: m, wheel: wheelFrom(s.spin.slices), prices: s.prices };
+  return { machine: m, wheel: wheelFrom(s.spin), prices: s.prices };
 }
 // Same spreading as slots.js (so version 0 gives the identical strips): deterministic shuffle, no symbol twice in a row.
 // Symbols go in the game's fixed symbol order, NOT the order the counts happen to be listed in: the database stores settings
@@ -39,24 +38,8 @@ function spreadStrip(counts, seed) {
     if (fixed) break; }
   return bag;
 }
-// The wheel: today's hand-made layout for version-0 counts; otherwise results spread around the rim, the rare ones (4×, 5×)
-// as single-slice slivers and the rest as chunky segments, never two of the same side by side.
-export function wheelFrom(slices) {
-  const orig = countsOf(ORIGINAL_SEGMENTS);
-  const same = Object.entries(orig).every(([m, n]) => (slices[m] || 0) === n) && Object.keys(slices).every((m) => (orig[m] || 0) === slices[m]);
-  if (same) return { segments: ORIGINAL_SEGMENTS.map((x) => [...x]), sliceMult: ORIGINAL_SEGMENTS.flatMap(([m, n]) => Array(n).fill(m)) };
-  const lists = Object.entries(slices).sort((a, b) => a[0] - b[0]).filter(([, n]) => n > 0).map(([m, n]) => { // fixed order, whatever the key order
-    const mult = +m, parts = mult >= 4 ? n : Math.max(1, Math.min(n, Math.round(n / 22) || 1, 8));
-    return Array.from({ length: parts }, (_, i) => [mult, Math.floor(n / parts) + (i < n % parts ? 1 : 0)]);
-  });
-  const segs = []; let guard = 0;
-  while (lists.some((l) => l.length) && guard++ < 10000) {
-    const options = lists.filter((l) => l.length && (!segs.length || l[0][0] !== segs.at(-1)[0])).sort((a, b) => b.length - a.length);
-    const take = options[0] || lists.find((l) => l.length); segs.push(take.shift());
-  }
-  if (segs.length > 1 && segs[0][0] === segs.at(-1)[0]) { const last = segs.pop(); segs[0] = [last[0], last[1] + segs[0][1]]; } // merge around the top
-  return { segments: segs, sliceMult: segs.flatMap(([m, n]) => Array(n).fill(m)) };
-}
+// The two Spin wheels from their segment counts: every segment the same size, results spread evenly (spin.js layout()).
+export function wheelFrom(spin) { return { main: layout(spin.main, MAIN_SLICES), bonus: layout(spin.bonus, BONUS_SLICES) }; }
 
 // What a settings record does, and whether it's allowed. { ok, problems: [...], report: {...} }
 export const LIMITS = { price: [0.01, 100], payback: [0.5, 0.98], jackpotPct: [0.01, 0.5], jackpotOdds: [1000, 10_000_000] };
@@ -64,9 +47,11 @@ export function check(s, rules = { spin: SPIN_RULES, slots: POOL_RULES }) {
   const p = [], num = (v) => typeof v === 'number' && Number.isFinite(v);
   for (const [k, v] of Object.entries(s.prices || {})) if (!num(v) || v < LIMITS.price[0] || v > LIMITS.price[1]) p.push(`price ${k} must be $0.01–$100`);
   if (!(s.prices?.spin10 < s.prices?.spin100)) p.push('the small spin must cost less than the big spin');
-  const sl = s.spin?.slices || {}, total = Object.values(sl).reduce((a, b) => a + b, 0);
-  if (Object.entries(sl).some(([m, n]) => !Number.isInteger(n) || n < 0 || !/^\d+$/.test(m) || +m > 100)) p.push('Spin slices must be whole numbers for whole multipliers');
-  if (total !== SLICES) p.push(`the Spin wheel must have exactly ${SLICES} slices (has ${total})`);
+  const mw = s.spin?.main || {}, bw = s.spin?.bonus || {}, sum = (o) => Object.values(o).reduce((a, b) => a + b, 0);
+  const bad = (o, star) => Object.entries(o).some(([m, n]) => !Number.isInteger(n) || n < 0 || !((star && m === 'star') || (/^\d+$/.test(m) && +m <= 100)));
+  if (bad(mw, true) || bad(bw, false)) p.push('Spin segment counts must be whole numbers, for whole-number prizes (and "star" on the main wheel)');
+  if (sum(mw) !== MAIN_SLICES) p.push(`the main Spin wheel must have exactly ${MAIN_SLICES} segments (has ${sum(mw)})`);
+  if (sum(bw) !== BONUS_SLICES) p.push(`the bonus Spin wheel must have exactly ${BONUS_SLICES} segments (has ${sum(bw)})`);
   const c = s.big?.counts || {};
   if (SYMBOLS.some((x) => !Number.isInteger(c[x.id]) || c[x.id] < 0) || Object.keys(c).some((k) => !(k in SYM))) p.push('Big Hat symbol counts must be whole numbers for the 10 symbols');
   const len = Object.values(c).reduce((a, b) => a + b, 0); if (len < 20 || len > 400) p.push('a Big Hat reel must hold 20–400 symbols');
@@ -78,8 +63,8 @@ export function check(s, rules = { spin: SPIN_RULES, slots: POOL_RULES }) {
   for (const it of s.store?.items || []) p.push(...checkItem(it));
   if (p.length) return { ok: false, problems: p };
   const { machine: m, wheel } = build(s), st = stats(m);
-  const spinPayback = wheel.sliceMult.reduce((a, x) => a + x, 0) / SLICES, spinWin = wheel.sliceMult.filter((x) => x >= 2).length / SLICES;
-  const maxMult = Math.max(...wheel.sliceMult), topFixed = Math.max(...Object.values(m.pays).flatMap((q) => Object.values(q))) * m.bet;
+  const spinPayback = spinPaybackOf(wheel), spinWin = Object.entries(spinOdds(wheel)).reduce((a, [x, q]) => a + (x >= 2 ? q : 0), 0);
+  const maxMult = topMult(wheel), topFixed = Math.max(...Object.values(m.pays).flatMap((q) => Object.values(q))) * m.bet;
   if (spinPayback < LIMITS.payback[0] || spinPayback > LIMITS.payback[1]) p.push(`Spin would pay back ${(spinPayback * 100).toFixed(1)}% (allowed ${LIMITS.payback.map((x) => x * 100 + '%').join('–')}; over 100% drains the pool)`);
   if (st.payback < LIMITS.payback[0] || st.payback > LIMITS.payback[1]) p.push(`Big Hat would pay back ${(st.payback * 100).toFixed(1)}% (allowed ${LIMITS.payback.map((x) => x * 100 + '%').join('–')})`);
   // a pool must be able to cover its biggest fixed prize after a top-off, or the game locks itself (LESSONS)
@@ -89,7 +74,7 @@ export function check(s, rules = { spin: SPIN_RULES, slots: POOL_RULES }) {
   let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647); let ahead = 0; const pool = { pool: 1e9, prepaid: true };
   for (let i = 0; i < 20000; i++) if (pull(pool, m, rnd).ahead) ahead++;
   const report = {
-    spin: { payback: spinPayback, realWin: spinWin, top: maxMult, slices: s.spin.slices },
+    spin: { payback: spinPayback, realWin: spinWin, top: maxMult, stars: s.spin.main.star || 0 },
     big: { payback: st.payback, realWin: ahead / 20000, topPrize: topFixed, top100: st.each['hat:5'] ? 1 / (st.each['hat:5'] * st.lines) : null, jackpot: `${Math.round(s.big.jackpotPct * 100)}% of the pool, 1 in ${Math.round(s.big.jackpotOdds).toLocaleString()}` },
     prices: s.prices,
   };
@@ -128,10 +113,7 @@ export function itemsWith(s) {
 export function applyToGame(s) {
   const b = build(s);
   Object.assign(MACHINES.big, b.machine);
-  SEGMENTS.splice(0, SEGMENTS.length, ...b.wheel.segments);
-  SLICE_MULT.splice(0, SLICE_MULT.length, ...b.wheel.sliceMult);
-  const starts = []; let at = 0; for (const [, n] of SEGMENTS) { starts.push(at); at += n; }
-  SEG_START.splice(0, SEG_START.length, ...starts);
+  MAIN.splice(0, MAIN.length, ...b.wheel.main); BONUS.splice(0, BONUS.length, ...b.wheel.bonus);
   for (const k of Object.keys(KINDS)) if (s.prices[k]) KINDS[k].bet = s.prices[k];
   const items = itemsWith(s); ITEMS.splice(0, ITEMS.length, ...items); BY_ID.clear(); for (const i of items) BY_ID.set(i.id, i);
   return b;

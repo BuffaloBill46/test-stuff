@@ -1,45 +1,68 @@
 // Santa Hat Spin: game rules only (no graphics), so it can be tested in node and later run on the server.
-// The wheel has 400 equal slices. A random number picks ONE slice; the wheel then lands exactly on it. Odds are just
-// "how many slices show that result", so they are exact and anyone can count them:
-//   0× 202 slices (50.5%) · 1× 132 (33%) · 2× 40 (10%) · 3× 20 (5%) · 4× 4 (1%) · 5× 2 (0.5%)   → pays back 74.5%
-// Neighbouring slices of the same result are drawn as one chunky segment; the 4× and 5× are thin gold slivers.
+// Two wheels (Cody, 2026-09-30: "option A"; the old 400-slice wheel's 4× and 5× slivers were too thin to see).
+//   MAIN wheel, 40 equal segments:  0× ×21 · 1× (money back) ×12 · 2× ×4 · gold STAR ×3
+//   BONUS wheel, 12 equal segments: 3× ×9 · 4× ×2 · 5× ×1          (spun only when the main wheel lands on a star)
+// Every segment on a wheel is the same size, so what you see IS the odds: count the segments. One fair number picks
+// the main segment; on a star, the next fair number picks the bonus segment. The wheels land exactly there.
+//   0× 52.5% · 1× 30% · 2× 10% · 3× 5.625% · 4× 1.25% · 5× 0.625%                                  → pays back 75.0%
 // Spin has its OWN pool (not the Slots pool). Both spin sizes ($0.10 and $1.00) share it.
 import { FEE, IN_PER_DOLLAR } from './slots.js';
 
-export const SLICES = 400;
+export const MAIN_SLICES = 40, BONUS_SLICES = 12;
+export const STAR = -1;                     // a main-wheel segment that sends you to the bonus wheel
 export const BETS = [0.10, 1.00];
 export const MULTS = [0, 1, 2, 3, 4, 5];
-export const MAX_MULT = 5;
+export const MAIN_COUNTS = { star: 3, 2: 4, 1: 12, 0: 21 }, BONUS_COUNTS = { 5: 1, 4: 2, 3: 9 };
+
+// Segments spread evenly around a wheel: at each position, the result that is furthest behind its fair share goes next
+// (ties: the rarer one). Deterministic, and in a FIXED order (star, then the biggest prize down), never the order the counts
+// happen to be listed in (a database may reorder keys, and anyone rebuilding the wheel must get the same one).
+export function layout(counts, n) {
+  const keys = ['star', ...Object.keys(counts).filter((k) => k !== 'star').map(Number).sort((a, b) => b - a).map(String)].filter((k) => (counts[k] || 0) > 0);
+  const placed = Object.fromEntries(keys.map((k) => [k, 0])), out = [];
+  for (let i = 0; i < n; i++) {
+    let best = null, lag = -Infinity;
+    for (const k of keys) { const due = (counts[k] * (i + 1)) / n - placed[k]; if (placed[k] < counts[k] && due > lag + 1e-9) { lag = due; best = k; } }
+    placed[best]++; out.push(best === 'star' ? STAR : +best);
+  }
+  return out;
+}
+export const MAIN = layout(MAIN_COUNTS, MAIN_SLICES), BONUS = layout(BONUS_COUNTS, BONUS_SLICES);
+export const DEFAULT_WHEEL = { main: MAIN, bonus: BONUS };
+export const topMult = (w = DEFAULT_WHEEL) => Math.max(...w.main.filter((m) => m !== STAR), ...(w.main.includes(STAR) ? w.bonus : [0]));
+export const MAX_MULT = topMult();
+
+// Chance of each final result (× the spin price), and the payback, from the wheels themselves.
+export function odds(w = DEFAULT_WHEEL) {
+  const o = {}, star = w.main.filter((m) => m === STAR).length / w.main.length;
+  for (const m of w.main) if (m !== STAR) o[m] = (o[m] || 0) + 1 / w.main.length;
+  if (star) for (const m of w.bonus) o[m] = (o[m] || 0) + star / w.bonus.length;
+  return o;
+}
+export const payback = (w = DEFAULT_WHEEL) => Object.entries(odds(w)).reduce((a, [m, p]) => a + m * p, 0);
+export const starChance = (w = DEFAULT_WHEEL) => w.main.filter((m) => m === STAR).length / w.main.length;
 
 // Spin pool rules (all adjustable, like the Slots POOL_RULES). Cody: $25 to the treasury when the pool reaches $175.
 // Top-off mirrors the Slots safety net: below $10 the treasury tops it back to the $50 start, so the wheel can't lock.
 export const SPIN_RULES = { start: 50, skimAt: 175, skim: 25, topOffBelow: 10, topOffTo: 50, paused: false };
 
-// The segments around the wheel, clockwise from the top: [multiplier, slices]. Counts must total the odds above.
-export const SEGMENTS = [
-  [0, 26], [1, 22], [2, 8], [0, 25], [5, 1], [3, 5], [1, 22], [0, 25], [4, 1], [2, 8], [1, 22], [0, 25], [3, 5],
-  [4, 1], [2, 8], [0, 26], [1, 22], [3, 5], [0, 25], [5, 1], [2, 8], [1, 22], [0, 25], [4, 1], [3, 5], [0, 25], [2, 8], [4, 1], [1, 22],
-];
-// slice index -> multiplier, and each segment's first slice
-export const SLICE_MULT = []; export const SEG_START = [];
-for (const [mult, n] of SEGMENTS) { SEG_START.push(SLICE_MULT.length); for (let i = 0; i < n; i++) SLICE_MULT.push(mult); }
-if (SLICE_MULT.length !== SLICES) throw new Error(`wheel has ${SLICE_MULT.length} slices, expected ${SLICES}`);
-
-export const odds = () => Object.fromEntries(MULTS.map((x) => [x, SLICE_MULT.filter((m) => m === x).length / SLICES]));
-export const payback = () => SLICE_MULT.reduce((a, m) => a + m, 0) / SLICES;
-
-// One spin. `rand` gives uniform numbers in [0,1) (server seeds in the real version). forcedSlice is for tests.
-// wheel (optional): a settings-built wheel { sliceMult } (Cody's admin settings); without it, the built-in wheel.
-export function spin(state, bet, rand = Math.random, forcedSlice, wheel = null) {
-  const R = { ...SPIN_RULES, ...(state.rules || {}) }, SM = wheel?.sliceMult || SLICE_MULT, top = wheel ? Math.max(...SM) : MAX_MULT;
+// One spin. `rand` gives uniform numbers in [0,1) (server-seeded in the real version): the first picks the main segment;
+// on a star, the second picks the bonus segment. forced (tests only): a main segment, or [main, bonus].
+// wheel (optional): a settings-built { main, bonus } (Cody's admin settings); without it, the built-in wheels.
+export function spin(state, bet, rand = Math.random, forced, wheel = null) {
+  const R = { ...SPIN_RULES, ...(state.rules || {}) }, W = wheel || DEFAULT_WHEEL, top = topMult(W);
   if (!wheel && !BETS.includes(bet)) throw new Error('unknown bet ' + bet); // with settings, prices come from the settings
   if (R.paused) return { paused: true, stopped: true };
   const before = topOff(state, R);
   if (state.pool < top * bet) return { paused: true, topOff: before }; // must cover the biggest prize
   if (!state.prepaid) state.pool += bet * IN_PER_DOLLAR; // with play credits the entry already reached the pool at purchase
-  const slice = forcedSlice ?? Math.floor(rand() * SLICES), mult = SM[slice], pay = mult * bet;
+  const f = Array.isArray(forced) ? forced : [forced];
+  const slice = f[0] ?? Math.floor(rand() * W.main.length);
+  let mult = W.main[slice], bonusSlice;
+  if (mult === STAR) { bonusSlice = f[1] ?? Math.floor(rand() * W.bonus.length); mult = W.bonus[bonusSlice]; }
+  const pay = mult * bet;
   state.pool -= pay;
-  const res = { slice, mult, bet, pay, received: pay * (1 - FEE), ahead: pay > bet + 1e-9 };
+  const res = { slice, ...(bonusSlice !== undefined ? { bonusSlice } : {}), mult, bet, pay, received: pay * (1 - FEE), ahead: pay > bet + 1e-9 };
   if (state.pool >= R.skimAt) { state.pool -= R.skim; res.skim = R.skim; state.treasury = (state.treasury || 0) + R.skim * (1 - FEE); }
   const add = before + topOff(state, R); if (add) res.topOff = add;
   return res;
@@ -50,7 +73,7 @@ export function canSpin(state, bet, wheel = null) {
   const R = { ...SPIN_RULES, ...(state.rules || {}) };
   if (R.paused) return { ok: false, stopped: true };
   const pool = state.pool < R.topOffBelow ? R.topOffTo : state.pool;
-  return { ok: pool >= (wheel ? Math.max(...wheel.sliceMult) : MAX_MULT) * bet };
+  return { ok: pool >= topMult(wheel || DEFAULT_WHEEL) * bet };
 }
 function topOff(state, R) {
   if (!(state.pool < R.topOffBelow)) return 0;

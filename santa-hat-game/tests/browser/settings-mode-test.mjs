@@ -41,7 +41,7 @@ check((await server.buy(me, q.id, S('1'))).ok, 'test purchase');
 const akey = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign', 'verify']), aaddr = b58encode(new Uint8Array(await crypto.subtle.exportKey('raw', akey.publicKey)));
 const adminSrv = createAdmin({ db, adminWallets: [aaddr], onSettings: () => server.settingsChanged() });
 const V1 = structuredClone(DEFAULT_SETTINGS); delete V1.version;
-V1.spin.slices = { 0: 180, 1: 132, 2: 60, 3: 20, 4: 6, 5: 2 }; V1.big.jackpotOdds = 10000; V1.prices.spin100 = 2;
+V1.spin.main = { 0: 18, 1: 12, 2: 6, star: 4 }; V1.spin.bonus = { 3: 8, 4: 3, 5: 1 }; V1.big.jackpotOdds = 10000; V1.prices.spin100 = 2;
 V1.big.counts = { ...V1.big.counts, hat: 9, coal: 24 }; V1.store.items = [{ id: 'shirt_mint', slot: 'shirt', name: 'Mint', color: 0x98e0c0, price: 0.3 }];
 { const message = adminMessage({ action: 'set-settings', game: 'all', settings: V1, at: new Date().toISOString(), nonce: 'ab'.repeat(16) });
   const sig = [...new Uint8Array(await crypto.subtle.sign('Ed25519', akey.privateKey, new TextEncoder().encode(message)))].map((x) => x.toString(16).padStart(2, '0')).join('');
@@ -83,7 +83,7 @@ check(/Rudolph/.test(winText) && /\$5\.00/.test(winText) && /5×/.test(winText),
 check(!/wa11et/.test(winText), 'no wallet addresses on the page');
 // The page draws the published settings: prices, the wheel's odds, the Big Hat's jackpot odds, the new store item.
 check(/\$2/.test(await p.textContent('#spin .chip100')) && /win up to \$10/.test(await p.textContent('#spin .chip100')), 'the big spin shows $2 (win up to $10): ' + await p.textContent('#spin .chip100'));
-check(/0×nowin45\.0%/.test((await p.textContent('#oddsList')).replace(/\s+/g, '')), 'the odds legend shows the new wheel: ' + (await p.textContent('#oddsList')).slice(0, 80));
+check(/0×nowin·18of40onthewheel45\.0%/.test((await p.textContent('#oddsList')).replace(/\s+/g, '')), 'the odds legend shows the new wheel: ' + (await p.textContent('#oddsList')).slice(0, 80));
 check(/1 in 10,000/.test(await p.textContent('#slots .facts')), 'the Big Hat facts show 1 in 10,000: ' + await p.textContent('#slots .facts'));
 check(await p.evaluate(() => window.__spin.SLICES && window.__spin.view.shownMult !== undefined), 'wheel ready');
 await p.evaluate(() => document.querySelector('#t-store').click()); await p.waitForTimeout(1500);
