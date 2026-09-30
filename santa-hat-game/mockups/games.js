@@ -2,6 +2,7 @@
 // 3D Big Hat machine (slots3d.js). DEMO ONLY: play money and a demo pool kept in this browser. No SANTA moves.
 import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount } from './slots.js';
 import { createMachine, symbolImages } from './slots3d.js';
+import { initSpin, showSpin, resetSpin } from './spinui.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -28,14 +29,14 @@ function render() {
   $('#slotPool').textContent = money(shownPool);
   $('#demoBal').textContent = money(state.bal);
   $('#jpAmt').textContent = money(jackpotAmount('big', shownPool));
-  $('.machine .pct').textContent = +(M.jackpotPct * 100).toFixed(2) + '%';
+  $('#slots .machine .pct').textContent = +(M.jackpotPct * 100).toFixed(2) + '%';
   $('#topAmt').textContent = money(100 * M.bet);
   renderWinners();
 }
 
 function facts() {
   const s = stats(M);
-  $('.machine .facts').innerHTML = [
+  $('#slots .machine .facts').innerHTML = [
     ['Pays back', `${(s.payback * 100).toFixed(1)}% on average`],
     ['Top line prize (5 Santa Hats)', `about 1 in ${Math.round(1 / (s.topPerLine * s.lines)).toLocaleString()}`],
     ['Pool jackpot', `1 in ${Math.round(1 / M.poolJackpotOdds).toLocaleString()}`],
@@ -116,16 +117,16 @@ export function addWinner(game, amount, bet, note) {
   store.set(state); renderWinners();
 }
 
-function stamp(text) { const fl = $('.machine .flash'); fl.textContent = text; fl.classList.remove('show'); void fl.offsetWidth; fl.classList.add('show'); }
+function stamp(text) { const fl = $('#slots .machine .flash'); fl.textContent = text; fl.classList.remove('show'); void fl.offsetWidth; fl.classList.add('show'); }
 
 async function doPull() {
   if (busy) { view.slam(); return; } // tap during a spin: stop the reels early
-  const card = $('.machine'), res = $('.machine .res');
+  const card = $('#slots .machine'), res = $('#slots .machine .res');
   if (state.bal < M.bet - 1e-9) { res.textContent = 'Out of demo money. Tap Reset to play on.'; return; }
   const forced = test.next; test.next = undefined;
   const r = pull(state, 'big', Math.random, forced);
   if (r.paused) { res.textContent = r.stopped ? 'Slots are paused right now.' : 'The pool is refilling. Try again in a moment.'; return; }
-  busy = true; card.classList.remove('won', 'jackpot'); $('.machine .flash').classList.remove('show');
+  busy = true; card.classList.remove('won', 'jackpot'); $('#slots .machine .flash').classList.remove('show');
   state.bal -= M.bet; store.set(state); $('#demoBal').textContent = money(state.bal);
   res.textContent = 'Spinning… tap again to stop early.';
   await view.spin(r.stops, r);
@@ -149,7 +150,7 @@ async function doPull() {
 
 // Full screen: the real Fullscreen API where it works, a fixed overlay where it doesn't (iPhone Safari).
 function toggleFull() {
-  const card = $('.machine'), btn = $('#fsBtn'), isOn = document.fullscreenElement === card || card.classList.contains('max');
+  const card = $('#slots .machine'), btn = $('#fsBtn'), isOn = document.fullscreenElement === card || card.classList.contains('max');
   if (isOn) { if (document.fullscreenElement) document.exitFullscreen?.(); card.classList.remove('max'); }
   else if (card.requestFullscreen && document.fullscreenEnabled) card.requestFullscreen().catch(() => card.classList.add('max'));
   else card.classList.add('max');
@@ -159,9 +160,9 @@ function toggleFull() {
 export function initGames(opts = {}) {
   if (inited) return; inited = true;
   if (opts.name) nameOf = opts.name;
-  view = createMachine($('.machine canvas'));
-  $('.machine .pull').addEventListener('click', doPull);
-  $('.machine canvas').addEventListener('click', doPull);
+  view = createMachine($('#slots .machine canvas'));
+  $('#slots .machine .pull').addEventListener('click', doPull);
+  $('#slots .machine canvas').addEventListener('click', doPull);
   $('#fsBtn').addEventListener('click', toggleFull);
   $('#howBtn').addEventListener('click', openHow);
   $('#howClose').addEventListener('click', () => $('#howDlg').close?.() ?? $('#howDlg').removeAttribute('open'));
@@ -170,17 +171,19 @@ export function initGames(opts = {}) {
     if (e.target === e.currentTarget && (e.clientX < b.left || e.clientX > b.right || e.clientY < b.top || e.clientY > b.bottom)) e.currentTarget.close?.();
   });
   document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) { const b = $('#fsBtn'); b.setAttribute('aria-pressed', 'false'); $('span', b).textContent = 'Full screen'; } });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('.machine').classList.remove('max'); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#slots .machine').classList.remove('max'); });
   $('#demoReset').addEventListener('click', () => {
     if (busy) return;
-    Object.assign(state, { pool: POOL_RULES.start, bal: DEMO_START, treasury: 0 }); shownPool = state.pool; store.set(state); render();
-    $('.machine .res').textContent = 'Pull the pom-pom, or tap the machine. Tap again to stop the reels early.';
+    Object.assign(state, { pool: POOL_RULES.start, bal: DEMO_START, treasury: 0 }); shownPool = state.pool; store.set(state); render(); resetSpin();
+    $('#slots .machine .res').textContent = 'Pull the pom-pom, or tap the machine. Tap again to stop the reels early.';
   });
   paytable(); facts(); render();
+  // Santa Hat Spin shares the demo balance and the Recent winners list.
+  initSpin({ wallet: { get: () => state.bal, add: (x) => { state.bal += x; store.set(state); $('#demoBal').textContent = money(state.bal); } }, addWinner });
   window.__slots = { state, view, test, get shownPool() { return shownPool; }, get busy() { return busy; } };
 }
 
 export function showGames(on, opts) {
   if (on) initGames(opts);
-  view?.setActive(on);
+  view?.setActive(on); showSpin(on);
 }

@@ -73,6 +73,7 @@ node tests/sim.test.mjs          # referee: 120 simulated matches, rule checks, 
 node tests/catalog-sql.mjs       # item catalog checks (and prints the SQL seed)
 node tests/tax-split.mjs         # SANTA 3% tax split examples and pool simulation
 node tests/jackpot-sim.mjs       # jackpot = % of pool: level-off point, never below zero
+node tests/spin.test.mjs         # Spin rules: exact wheel odds, pool, skim, top-off
 node tests/slots.test.mjs        # Slots rules: exact wild-aware payback, every line, pool never negative, skim
 node tests/paytable.mjs          # regenerates PAYTABLE.md (the full payout table) from mockups/slots.js
 node tests/slots-tune.mjs        # tuning helper: scales prizes to a payback target
@@ -83,6 +84,7 @@ node link-test.mjs               # email + wallet account linking (local stand-i
 node mp.mjs                      # multiplayer room: join, host handover
 node idle.mjs                    # 3-minute idle and hidden-tab kicks
 node live.mjs                    # loads the PUBLISHED site on a phone-sized screen
+node spin-test.mjs               # Games tab: Spin wheel (forced results, tap-to-land, money math, winners list)
 node games-test.mjs              # Games tab: Slots readouts, pulls, forced win and jackpot, money math
 node live-games.mjs              # pulls a lever on the PUBLISHED Games tab
 ```
@@ -102,7 +104,7 @@ between two devices has never been tested from here. Cody and friends testing on
 
 **Last updated:** 2026-09-29.
 
-**Just finished (latest, 2026-09-30):** the Games tab's **Big Hat slot machine** rebuilt for the decided rules (5×5, 15 lines,
+**Just finished (latest, 2026-09-30): Santa Hat Spin demo** on the Games tab (see TODO → Santa Hat Games tab). **Before that:** the Games tab's **Big Hat slot machine** rebuilt for the decided rules (5×5, 15 lines,
 Santa Hat wild, 5¢ hat bonus, 100× line about 1 in 9,000, full-grid pool jackpot 1 in 25,000 at 25%, skim $25 at $1,775,
 top-off below $150 back to $500, emergency stop), with full screen, drawn paylines, and a shared Recent winners list. Numbers
 in `PAYTABLE.md`. Tested (`tests/slots.test.mjs`, `tests/browser/games-test.mjs`) and published.

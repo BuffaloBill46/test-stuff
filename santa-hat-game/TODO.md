@@ -40,12 +40,12 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 
 ## Santa Hat Games tab
 - [ ] **Spin pool skim:** when the Spin pool reaches $175, the server sends $25 to the treasury (decided).
-- [ ] **Santa Hat Spin:** $0.10 and $1.00, its own Spin pool seeded with **$50**, the agreed odds (unchanged, no jackpot), a 400-slice wheel (5x = 2 slices, 4x = 4), pay per spin.
+- [x] **Santa Hat Spin (demo built, 2026-09-30):** 3D prize wheel (pine-wreath rim, gold pegs, candy-cane flapper, gold stars marking the 4×/5× slivers, Santa hat hub), 10¢/$1 chips, exact agreed odds on a 400-slice wheel (29 segments), own $50 pool with $25 skim at $175 and a top-off below $10, tap-to-land, 1× shown as "money back", celebrations for 2×+, odds legend, last-spins strip, full screen, wins feed the shared Recent winners list. Tests: `tests/spin.test.mjs`, `tests/browser/spin-test.mjs`. Real SANTA needs the server.
 - [ ] **Slots with real SANTA:** server-picked reel stops (provably fair), payments and payouts. The game rules already take the random numbers from outside (`pull(state, 'big', rand)`), so server seeds plug straight in.
 - [ ] **Slots pool jackpot %:** 25% (Cody) gives about $360–430 on a full pool; about 14% would give about $250. Cody to confirm.
 - [ ] **Provably fair results** and a pool safety rule (a play only starts if the pool covers that game's biggest fixed win: Spin 5× the bet, Slots its top fixed prize).
 - [ ] **Entries split 90% to the pool, 10% burned** (after the 3% tax).
-- [ ] **3% SANTA tax notice at the top of the Spin page** when it's built (the Games tab intro already has one).
+- [x] **3% SANTA tax notice:** the Games tab intro covers Spin and Slots; each win message also says what arrives after the 3% tax.
 - [ ] **Simulate a million spins** to prove the payback % before launch. (Slots: exact payback from the reel math plus `tests/payout-ranges.mjs`, 5 million pulls. Re-run both after any change.)
 - [ ] More click games from the idea list (Hat Drop, Present Pick, Sleigh Climb, Advent Scratch, Naughty or Nice).
 
