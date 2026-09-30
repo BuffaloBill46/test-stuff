@@ -35,7 +35,7 @@ await ctx.addInitScript(({ pkcs8, addr }) => {
 const p = await ctx.newPage(); p.on('pageerror', (e) => errors.push(e.message));
 await p.goto('http://localhost:8788/admin.html?server=' + encodeURIComponent('http://localhost:8788/api'));
 await p.waitForFunction(() => document.querySelectorAll('.pool').length === 2, null, { timeout: 15000 });
-check(/top-off/.test(await p.textContent('#pending')) && /needs_approval/.test(await p.textContent('#pending')), 'the waiting top-off is shown');
+check(/top-off/.test(await p.textContent('#pending')) && /waiting for your deposit/.test(await p.textContent('#pending')) && /send [0-9,]+ SANTA/.test(await p.textContent('#toSend')), 'the waiting top-off is shown, with how much to send');
 await p.tap('#connect'); await p.waitForFunction(() => /Connected/.test(document.querySelector('#who').textContent));
 await p.tap('[data-act="pause"][data-game="slots"]'); await p.waitForFunction(() => /Done|Refused/.test(document.querySelector('#msg').textContent), null, { timeout: 15000 });
 const rules = async () => (await db.query(`select rules from public.pools where game = 'slots'`))[0].rules;

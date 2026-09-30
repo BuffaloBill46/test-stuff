@@ -64,4 +64,48 @@ const r = await rules('slots'); assert.equal(r.jackpotPct, 0.14);
 const st = { pool: 1750, rules: r, prepaid: true };
 assert.ok(Math.abs(pull(st, 'big', Math.random, 'JACKPOT').pay - 1750 * 0.14) < 1e-9, 'the game uses the new jackpot %');
 assert.equal(await logs(), 3, 'every applied change is in the public log: pause, resume, settings');
+// Top-offs are paid by Cody sending SANTA himself (Cody, 2026-09-30), then recording the deposit. The server books exactly what
+// ARRIVED in the pool wallet (read from the chain's balance record); invariant: wallet = book + owed out − owed in, every step.
+{
+  const { reconcile } = await import('../../server/reconcile.js');
+  const { MINT } = await import('../../mockups/market.js');
+  const POOL = 'SP1Npoo1wa11et1111111111111111111111111111', sig = (c) => c.repeat(88);
+  const txs = new Map(); // a finalized transaction as getTransaction returns it: only the balance records matter here
+  const deposit = (s, raw, { to = POOL, mint = MINT, err = null } = {}) => txs.set(s, { meta: { err,
+    preTokenBalances: [{ mint, owner: to, uiTokenAmount: { amount: '1000' } }], postTokenBalances: [{ mint, owner: to, uiTokenAmount: { amount: String(1000 + raw) } }] } });
+  const adm = createAdmin({ db, adminWallets: [cody.address], chain: { getTransaction: async (s) => txs.get(s) ?? null }, poolWallets: { spin: POOL } });
+  const book = async () => +(await db.query(`select santa_raw from public.pools where game = 'spin'`))[0].santa_raw;
+  const check = async (walletRaw, why) => {
+    const transfers = await db.query(`select * from public.pool_transfers where game = 'spin'`);
+    const rc = reconcile({ bookRaw: await book(), walletRaw, transfers });
+    assert.equal(rc.drift, 0, 'books = wallet: ' + why); return rc;
+  };
+  // Two plays each queued a top-off (the game kept running on the books); the wallet doesn't have that SANTA yet.
+  await db.query(`insert into public.pool_transfers (game, kind, amount_raw, status) values ('spin', 'top-off', 300, 'needs_approval'), ('spin', 'top-off', 500, 'needs_approval')`);
+  let wallet = (await book()) - 800;
+  assert.equal((await check(wallet, 'before any deposit')).owedIn, 800);
+  const rec = async (tx, game = 'spin') => adm.run(await signed(cody, { action: 'record-deposit', game, settings: { tx } }));
+  // Refused, changing nothing: not a signature, unknown transaction, SANTA sent elsewhere, a failed transaction, another token, no wallet set.
+  deposit(sig('A'), 400, { to: 'SomeoneE1se11111111111111111111111111111111' }); deposit(sig('B'), 400, { err: { x: 1 } }); deposit(sig('C'), 400, { mint: 'OtherMint111111111111111111111111111111111' });
+  for (const [tx, why] of [['hello', 'paste the transaction'], [sig('Z'), 'no SANTA arrived'], [sig('A'), 'no SANTA arrived'], [sig('B'), 'no SANTA arrived'], [sig('C'), 'no SANTA arrived']]) assert.match((await rec(tx)).error, new RegExp(why), tx);
+  assert.match((await rec(sig('A'), 'slots')).error, /doesn't know this pool/);
+  assert.equal((await adm.run(await signed(stranger, { action: 'record-deposit', game: 'spin', settings: { tx: sig('D') } }))).error, 'not an admin wallet');
+  await check(wallet, 'refusals changed nothing');
+  // Short deposit: 400 arrives → the 300 top-off is paid, 100 of the 500 one; 400 still owed; the book is untouched.
+  deposit(sig('D'), 400); wallet += 400;
+  const b0 = await book();
+  assert.deepEqual(await rec(sig('D')), { ok: true, game: 'spin', arrived: 400, coveredTopOffs: 400, addedToPool: 0 });
+  assert.equal(await book(), b0, 'a top-off was already in the book');
+  assert.equal((await check(wallet, 'after a short deposit')).owedIn, 400);
+  assert.equal((await rec(sig('D'))).error, 'that deposit was already recorded');
+  await check(wallet, 'recording twice changed nothing');
+  // Generous deposit: 1,000 arrives → the last 400 is paid and 600 extra goes into the pool.
+  deposit(sig('E'), 1000); wallet += 1000;
+  assert.deepEqual(await rec(sig('E')), { ok: true, game: 'spin', arrived: 1000, coveredTopOffs: 400, addedToPool: 600 });
+  assert.equal(await book(), b0 + 600);
+  assert.equal((await check(wallet, 'after an extra deposit')).owedIn, 0);
+  const logged = await db.query(`select details from public.pool_log where what = 'deposit' order by id`);
+  assert.deepEqual(logged.map((l) => l.details.arrived), [400, 1000], 'both deposits in the public log');
+}
+console.log('OK: deposits (Cody pays top-offs himself): booked exactly as arrived on the chain, short and extra deposits, books = wallet at every step, no double recording');
 console.log('OK: admin controls: wallet-signed only; replay, stranger, tampering, stale and bad settings refused; stop really stops plays; jackpot % adjustable; all logged');

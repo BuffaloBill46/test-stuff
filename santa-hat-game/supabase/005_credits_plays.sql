@@ -99,11 +99,13 @@ create table public.payouts (
 
 -- Skims (pool → treasury) and top-offs (treasury → pool) are REAL transfers, queued like payouts so the books never drift
 -- from the wallets (audit 2026-09-30: they used to happen only in the database). Skims are sent by the payout worker with the
--- pool's key. Top-offs wait for Cody ('needs_approval') unless he chooses otherwise: sending them automatically would put the
--- treasury's key on the server.
+-- pool's key. Top-offs are paid by Cody HIMSELF (Cody, 2026-09-30): he sends SANTA to the pool wallet, then records the deposit
+-- on the admin screen ('record-deposit', server/admin.js checks it on the chain). Until then a top-off waits as 'needs_approval'
+-- (shown as "waiting for your deposit"). A recorded deposit is a 'deposit' row (its transaction signature can be recorded once);
+-- it marks waiting top-offs paid, oldest first, and anything beyond them is added to the pool.
 create table public.pool_transfers (
   id bigserial primary key, play_id bigint references public.plays (id), game text not null check (game in ('spin', 'slots')),
-  kind text not null check (kind in ('skim', 'top-off')),
+  kind text not null check (kind in ('skim', 'top-off', 'deposit')),
   amount_raw bigint not null check (amount_raw > 0),
   status text not null default 'queued' check (status in ('needs_approval', 'queued', 'sending', 'sent', 'failed')),
   tx text unique, blockhash text, attempts int not null default 0, created_at timestamptz not null default now()  -- one transaction per row, never shared (payouts.js)

@@ -31,12 +31,12 @@ const chain = {
 };
 const auth = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), { auth: { persistSession: false } });
 // The game prices plays with the 10-minute median, not one live reading (audit: price manipulation).
-const server = createGameServer({ db, chain, livePrice: makePrice({ db, livePrice }), liveFee,
-  poolWallets: { spin: env('SPIN_POOL_WALLET') || null, slots: env('SLOTS_POOL_WALLET') || null }, ...(env('SANTA_MINT') ? { mint: env('SANTA_MINT') } : {}) });
+const poolWallets = { spin: env('SPIN_POOL_WALLET') || null, slots: env('SLOTS_POOL_WALLET') || null }, mintOpt = env('SANTA_MINT') ? { mint: env('SANTA_MINT') } : {};
+const server = createGameServer({ db, chain, livePrice: makePrice({ db, livePrice }), liveFee, poolWallets, ...mintOpt });
 
 Deno.serve(makeHandler({
   server,
-  admin: createAdmin({ db, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged() }),
+  admin: createAdmin({ db, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), chain, poolWallets, ...mintOpt }), // chain: to check Cody's deposits
   async profileFor(token: string) {
     const { data, error } = await auth.auth.getUser(token);
     if (error || !data.user) return null;

@@ -162,7 +162,10 @@ $50 start). **The slots paytable is a placeholder** (spin's 1×–4× fixed wins
   **Demo start: $500.** With the 100× this common, a $250 start locked about 1 run in 100; $500 never locked.
   Simulated: pools settle around $1,750; the treasury gets about $970 per 20,000 pulls.
 - Teasers happen naturally at their real odds (e.g. 4 hats then something else: about 1 in 1,000 pulls). Nothing is staged.
-- **Top-off (Cody: yes):** below $150 the treasury tops the pool back up to $500, checked before and after every pull.
+- **Top-off (Cody: yes):** below $150 the pool is topped back up to $500, checked before and after every pull.
+  **Who pays (Cody, 2026-09-30): Cody, by sending SANTA to the pool wallet himself** ("makes it simple"). The game keeps running on
+  the books meanwhile; the admin screen shows "waiting for your deposit" and how much to send (3% tax included); he pastes the
+  transaction signature and the server books exactly what arrived on the chain (extra goes into the pool). No wallet key on the server.
 - **Escrow admin controls (Cody: required):** adjustable thresholds (all in one settings object, `POOL_RULES`), an
   emergency withdrawal, and an emergency stop that also halts top-offs. Cody-only, wallet-signed, and publicly logged.
 - **Open, Cody:**

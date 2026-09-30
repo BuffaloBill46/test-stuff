@@ -138,3 +138,9 @@ Read this before starting new work on the game. Add to it whenever something rea
 - `WebFetch` gets 403 errors from dexscreener.com, solscan.io and birdeye.so (anti-bot).
   `https://api.dexscreener.com/latest/dex/tokens/<mint>` works over curl and confirmed the
   token: SANTA/SANTA, website santahat.gold, X account @santahatgp.
+
+## A deposit is booked by what ARRIVED, never by what was meant to be sent (2026-09-30)
+Cody pays top-offs by sending SANTA himself. The token takes 3% on the way and he may send more or less than asked, so the
+server reads the arrival from the chain's own balance record and books that exact amount: top-offs first (they were already
+in the book when the play settled, so they're marked paid, not added again), extra into the pool. Test it with the
+reconciliation rule as an assertion after every step (short deposit, extra deposit, recorded twice), not a spot-check.

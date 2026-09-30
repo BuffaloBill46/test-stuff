@@ -163,7 +163,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     const ps = await db.query('select game, santa_raw, rules, updated_at from public.pools order by game');
     const pending = await db.query(`select game, kind, status, amount_raw from public.pool_transfers where status <> 'sent' order by id desc limit 50`);
     const log = await db.query('select game, what, by_wallet, at, details from public.pool_log order by id desc limit 30');
-    return { pools: ps.map((p) => ({ game: p.game, santaRaw: +p.santa_raw, rules: p.rules || {}, updatedAt: p.updated_at })),
+    return { pools: ps.map((p) => ({ game: p.game, santaRaw: +p.santa_raw, rules: p.rules || {}, updatedAt: p.updated_at, wallet: poolWallets?.[p.game] || null })),
       pending, log: log.map((l) => ({ game: l.game, what: l.what, by: l.by_wallet, at: l.at, after: l.details?.after })) };
   }
   // Public: the settings new plays use (and any older version, so a play can be re-checked on the odds it ran on).

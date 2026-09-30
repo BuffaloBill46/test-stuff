@@ -151,7 +151,7 @@ between two devices has never been tested from here. Cody and friends testing on
 happened on paper, price manipulation, and equal payouts silently lost as duplicate transactions), a 100-player focus group
 (`FOCUS_GROUP.md`: real game math + 10 real browser walkthroughs; opinions simulated), a **dress rehearsal of the devnet test**
 (`tests/solana/rehearsal.mjs`: books = wallets to the unit), the admin screen (`admin.html`), and "My plays". Cody's open
-economy questions from the focus group (payback level, Spin dry runs, top-off approval) are in FOCUS_GROUP.md and
+economy questions from the focus group (payback level, Spin dry runs, top-offs: decided, Cody pays them himself) are in FOCUS_GROUP.md and
 FOR_MAIN_CLAUDE.md.
 
 **Server side, built and proven here but not deployed** (everything else for devnet is in `FOR_MAIN_CLAUDE.md`):
