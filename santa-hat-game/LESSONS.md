@@ -144,3 +144,11 @@ Cody pays top-offs by sending SANTA himself. The token takes 3% on the way and h
 server reads the arrival from the chain's own balance record and books that exact amount: top-offs first (they were already
 in the book when the play settled, so they're marked paid, not added again), extra into the pool. Test it with the
 reconciliation rule as an assertion after every step (short deposit, extra deposit, recorded twice), not a spot-check.
+
+## Test the page at the real phone's size, both ways up (2026-09-30)
+Cody's Galaxy S22+ screenshots showed what the 390×844 checks never did. Sideways, Chrome's in-app browser leaves only about
+300 px of height, so the match's top bar and stats covered 39% of the screen. Upright, the Avatar camera cut the hat off.
+And an early exit in `renderChrome` cleared the HUD but not the scoreboard, so after Leave the old scores sat over the Avatar
+tab. `tests/browser/phone-shots.mjs` now checks five sizes, sideways included, for how much of the screen the UI covers,
+UI that overlaps, a top bar running off the edge, and a match scoreboard left on screen. The Avatar camera no longer uses
+fixed spots: it measures the free area (below the bar; above or beside the panel) and frames the whole character in it.
