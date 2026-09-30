@@ -4,6 +4,7 @@
 import { KINDS, MAX_BUY, newLedger, buy, costOf } from './credits.js';
 import { createHouse, check } from './house.js';
 import { newSeed } from './fair.js';
+import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);
@@ -59,7 +60,8 @@ export function initCredits(opts) {
 export function resetCredits() { Object.assign(ledger, newLedger()); last = {}; store.set(ledger); refresh(); }
 
 // ---- the buy counter ----
-let count = 1, buyKind = 'big', resolveBuy = null;
+let count = 1, buyKind = 'big', resolveBuy = null, price = null;
+export function setPrice(p) { price = p; if (resolveBuy) setCount(count); }
 function setCount(n) {
   count = Math.max(1, Math.min(MAX_BUY, n));
   const K = KINDS[buyKind], cost = costOf(buyKind, count), short = wallet.get() < cost - 1e-9;
@@ -68,6 +70,7 @@ function setCount(n) {
   $('#buyMinus').disabled = count <= 1; $('#buyPlus').disabled = count >= MAX_BUY;
   document.querySelectorAll('#buyQuick button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.n === count)));
   $('#buyGo').textContent = `Buy ${count} · ${money(cost)}`; $('#buyGo').disabled = short;
+  $('#buySanta').innerHTML = price ? `≈ <b>${fmtSanta(santaFor(cost, price))} SANTA</b> at today's price. The real checkout locks the price for ${QUOTE_SECONDS} seconds.` : '';
   $('#buyNote').textContent = short ? `Not enough demo money (${money(wallet.get())}). Tap Reset above the Slots.` : '';
 }
 // Resolves true once credits are there (bought now or already), false if the player backed out.
