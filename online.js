@@ -360,7 +360,8 @@ function renderChrome() {
     $('#roomchip').innerHTML = practice ? '<i>Practice</i><b>vs bots</b>'
       : `<i>${me.w ? 'Watching' : autoStart ? 'Auto match' : 'Room'}</i><b>${esc(autoStart ? (roomMode === 'team' ? 'TEAM' : 'FFA') : roomCode)}</b><span>${idleLeft ? `<em class="idle">Still there? Leaving in ${idleLeft}s</em>` : `${count} playing${watchers ? ` · ${watchers} watching` : ''}${isHost ? ' · you referee' : ''}`}</span>`;
   }
-  if (!inRoom() || !v) { if (ui.lastCard) { $('#panel').hidden = true; ui.lastCard = ''; } setHud(''); return; }
+  // Out of a match: clear the scoreboard too (it used to linger after Leave, showing over the Avatar tab on Cody's phone).
+  if (!inRoom() || !v) { if (ui.lastCard) { $('#panel').hidden = true; ui.lastCard = ''; } setHud(''); ui.lastBoard = ''; $('#board').hidden = true; return; }
   const m = myEnt(v);
   const humans = v.ents.filter((e) => !e.bot);
   // lobby / results panel
@@ -412,6 +413,15 @@ function setHud(s) { if (s !== ui.lastHud) { ui.lastHud = s; $('#hud').innerHTML
 
 // ---------- per-frame drawing
 const tmp = new V3(), camTarget = new V3(), camPos = new V3(0, 16, 22);
+let viewShifted = false;
+// The free area for the Avatar preview, in screen pixels: its centre and height.
+function avatarBand() {
+  const top = ($('#nav')?.getBoundingClientRect().bottom || 0) + 20, panel = document.querySelector('.avatar-panel')?.getBoundingClientRect();
+  const tabbar = document.querySelector('#nav .tabs')?.getBoundingClientRect(), floor = tabbar && tabbar.top > H / 2 ? tabbar.top : H;
+  if (panel && panel.width && panel.left > W * 0.35) { const bottom = floor - 8; return { cx: panel.left / 2, cy: (top + bottom) / 2, h: Math.max(120, bottom - top) }; } // panel beside
+  const bottom = Math.min(floor, panel && panel.width ? panel.top : floor) - 8;
+  return { cx: W / 2, cy: (top + bottom) / 2, h: Math.max(120, bottom - top) };                                                   // panel below
+}
 function draw(v, dt, t) {
   syncViews(v);
   const mine = myEnt(v);
@@ -465,6 +475,7 @@ function draw(v, dt, t) {
     if (b.y < 0.08 || b.life <= 0) { scene.remove(b.mesh); localBalls.splice(i, 1); }
   }
   // camera
+  if (viewShifted && !(tabs?.tab === 'avatar' && !inRoom())) { camera.clearViewOffset(); viewShifted = false; }
   if (mine) {
     camTarget.lerp(tmp.set(ctl.x * 0.55, 0, ctl.z * 0.55), Math.min(1, dt * 3));
     const portrait = H > W * 1.1; camera.fov = portrait ? 62 : 50; camera.updateProjectionMatrix();
@@ -477,9 +488,15 @@ function draw(v, dt, t) {
     camPos.lerp(tmp.copy(camTarget).add(portrait ? new V3(0, 26, 19) : new V3(0, 18, 16)), Math.min(1, dt * 2));
     camera.position.copy(camPos); camera.lookAt(camTarget.x, 0.5, camTarget.z - 1);
   } else if (tabs?.tab === 'avatar') {
-    const narrow = W < 820; camera.fov = narrow ? 44 : 34; camera.updateProjectionMatrix();
+    // Frame the whole character, hat included, in the space the page actually leaves free: below the top bar and above
+    // (phones upright) or beside (wide or sideways screens) the editor panel. Fixed camera spots cut the head off on
+    // Cody's Galaxy S22+ (2026-09-30), so the camera distance and the picture's offset follow the free area every frame.
+    const band = avatarBand(), fov = 30, tall = 2.5; // the character with its hat is about 2.4 units tall
+    camera.fov = fov; camera.updateProjectionMatrix();
+    const fill = band.h > 480 ? 0.72 : 0.86, d = (tall * H) / (fill * band.h * 2 * Math.tan((fov * Math.PI) / 360)); // big screens: a little room around
     camTarget.set(0, 0, 6.5);
-    camera.position.set(narrow ? 0 : 1.1, narrow ? 0.9 : 1.75, 12.2); camera.lookAt(narrow ? 0 : 1.1, narrow ? -0.2 : 1.2, 6.5);
+    camera.position.set(0, 1.35, 6.5 + d); camera.lookAt(0, 1.15, 6.5);
+    camera.setViewOffset(W, H, W / 2 - band.cx, H / 2 - band.cy, W, H); viewShifted = true;
     preview.rotation.y = Math.sin(t * 0.5) * 0.5; animate(preview.userData.ch, dt, 0);
   } else {
     if (camera.fov !== 50) { camera.fov = 50; camera.updateProjectionMatrix(); }

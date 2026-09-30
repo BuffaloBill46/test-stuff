@@ -59,6 +59,14 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
   </section>
   <p id="msg" aria-live="polite"></p>
   <section class="plaque"><h2>Waiting transfers</h2><div id="pending" class="dim">None.</div></section>
+  <section class="plaque"><h2>Top-offs: you pay them</h2>
+    <p class="dim">When a pool needs topping off, it shows above as "waiting for your deposit" with how much to send. Send that SANTA
+      from your own wallet to the pool's address, then paste the transaction's signature here. The server checks it on the chain
+      and books exactly what arrived (after SANTA's 3% tax). Extra SANTA is simply added to the pool.</p>
+    <div id="toSend"></div>
+    <div class="row"><label>Pool<select id="depGame"><option>spin</option><option>slots</option></select></label>
+      <label style="flex:1">Transaction signature<input id="depTx" placeholder="e.g. 5h3k…"></label>
+      <button type="button" id="depSave">Record deposit</button></div></section>
   <section class="plaque"><h2>Change log</h2><div id="log" class="dim">No changes yet.</div></section>
 </main>
 <script type="module" src="admin.js"></script>

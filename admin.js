@@ -26,7 +26,11 @@ async function load() {
       <p><span class="state ${R.paused ? 'off' : 'on'}">${R.paused ? 'Stopped' : 'Running'}</span></p>
       <p class="dim">Skim $${R.skim} at $${R.skimAt} · top off below $${R.topOffBelow} to $${R.topOffTo}${p.game === 'slots' ? ` · jackpot ${Math.round(R.jackpotPct * 100)}%` : ''}</p>
       <div class="row"><button type="button" class="${R.paused ? '' : 'stop'}" data-act="${R.paused ? 'resume' : 'pause'}" data-game="${esc(p.game)}">${R.paused ? 'Resume' : 'Stop (emergency)'}</button></div></article>`; }).join('');
-  $('#pending').innerHTML = state.pending.length ? `<table><tr><th>Pool</th><th>What</th><th>SANTA</th><th>Status</th></tr>${state.pending.map((t) => `<tr><td>${esc(t.game)}</td><td>${esc(t.kind)}</td><td>${(t.amount_raw / 1e6).toFixed(2)}</td><td>${esc(t.status)}</td></tr>`).join('')}</table>` : 'None.';
+  const STATUS = { needs_approval: 'waiting for your deposit', queued: 'queued', sending: 'sending', failed: 'failed (will retry)' };
+  $('#pending').innerHTML = state.pending.length ? `<table><tr><th>Pool</th><th>What</th><th>SANTA</th><th>Status</th></tr>${state.pending.map((t) => `<tr><td>${esc(t.game)}</td><td>${esc(t.kind)}</td><td>${(t.amount_raw / 1e6).toFixed(2)}</td><td>${esc(STATUS[t.status] || t.status)}</td></tr>`).join('')}</table>` : 'None.';
+  // What to send for waiting top-offs: the pool must RECEIVE the amount, and SANTA's 3% tax comes off on the way.
+  $('#toSend').innerHTML = state.pools.map((p) => { const owed = state.pending.filter((t) => t.game === p.game && t.kind === 'top-off' && t.status === 'needs_approval').reduce((a, t) => a + +t.amount_raw, 0);
+    return owed ? `<p><b>${esc(p.game)} pool:</b> send <b>${Math.ceil(owed / 0.97 / 1e6).toLocaleString()} SANTA</b> (${Math.ceil(owed / 1e6).toLocaleString()} arrives after the 3% tax) to <code>${esc(p.wallet || 'the pool wallet (address not set on the server yet)')}</code></p>` : ''; }).join('');
   $('#log').innerHTML = state.log.length ? `<table><tr><th>When</th><th>Pool</th><th>Action</th><th>By</th></tr>${state.log.map((l) => `<tr><td>${esc(new Date(l.at).toLocaleString())}</td><td>${esc(l.game)}</td><td>${esc(l.what)}</td><td>${esc(String(l.by).slice(0, 6))}…</td></tr>`).join('')}</table>` : 'No changes yet.';
   fields();
 }
@@ -40,7 +44,7 @@ async function act(action, game, settings = {}) {
   let signature; try { signature = (await wallet.signMessage(new TextEncoder().encode(message), 'utf8')).signature; } catch { return msg('Signing was cancelled.', 'bad'); }
   const r = await post({ wallet: address, message, signature: hex(new Uint8Array(signature)) }, true);
   if (r.error) return msg('Refused: ' + r.error, 'bad');
-  msg(action === 'set-settings' ? `Published settings version ${r.version}. New plays use it now; it's in the public log.` : `Done: ${action} on the ${game} pool. It's in the public log.`, 'ok'); await load();
+  msg(action === 'set-settings' ? `Published settings version ${r.version}. New plays use it now; it's in the public log.` : action === 'record-deposit' ? `Recorded: ${(r.arrived / 1e6).toLocaleString()} SANTA arrived in the ${game} pool (${(r.coveredTopOffs / 1e6).toLocaleString()} paid waiting top-offs, ${(r.addedToPool / 1e6).toLocaleString()} added to the pool).` : `Done: ${action} on the ${game} pool. It's in the public log.`, 'ok'); await load();
 }
 $('#connect').addEventListener('click', async () => {
   wallet = window.phantom?.solana || window.solflare || window.backpack?.solana || window.solana || null;
@@ -49,6 +53,7 @@ $('#connect').addEventListener('click', async () => {
 });
 $('#pools').addEventListener('click', (e) => { const b = e.target.closest('[data-act]'); if (b) act(b.dataset.act, b.dataset.game); });
 $('#game').addEventListener('change', fields);
+$('#depSave').addEventListener('click', () => { const tx = $('#depTx').value.trim(); if (!tx) return msg('Paste the transaction signature first.', 'bad'); act('record-deposit', $('#depGame').value, { tx }); });
 $('#save').addEventListener('click', () => {
   const g = $('#game').value, p = state?.pools.find((x) => x.game === g), R = { ...DEFAULTS[g], ...(p?.rules || {}) }, changed = {};
   for (const el of document.querySelectorAll('#fields [data-k]')) { const v = Number(el.value); if (v !== R[el.dataset.k]) changed[el.dataset.k] = v; }

@@ -436,6 +436,47 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
 .myplays ol { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
 .myplays li { display: flex; gap: 10px; align-items: center; padding: 6px 8px; background: rgba(12,15,26,.35); border-radius: 3px; }
 .myplays li span { margin-right: auto; } .myplays li b { font: 700 14px/1 var(--digits); color: var(--lamp); } .myplays li small { color: var(--dim); }
+/* Phones (Cody's Galaxy S22+, 2026-09-30). Upright, in a match: the game's name gives way so the room chip, sound and Leave
+   fit on one row and the stats sit right under them. */
+@media (max-width: 640px) and (orientation: portrait) {
+  #gamebar .brand { display: none; }
+  #hud { top: calc(env(safe-area-inset-top, 0px) + 66px); }
+}
+@media (max-width: 370px) and (orientation: portrait) { /* the smallest phones: shorter room chip; the emotes stay on one row */
+  #roomchip i { display: none; } #roomchip b { font-size: 15px; }
+  #emotes { gap: 4px; } #emotes button { font-size: 11px; padding: 6px 5px; }
+  #board { width: 150px; }
+}
+/* Sideways phones: only about 300 px of height. The match's bar, stats and scoreboard shrink into one strip along the top
+   and the right edge, so most of the screen is the plaza; the site's top bar stays on one line; the avatar editor sits
+   beside the character instead of under it. */
+@media (max-height: 480px) and (orientation: landscape) {
+  header.bar { padding: calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px; }
+  #gamebar .brand, #roomchip { display: none; }
+  #hud { top: calc(env(safe-area-inset-top, 0px) + 6px); left: 12px; gap: 6px; max-width: calc(100% - 150px); }
+  .stat { min-width: 0; padding: 4px 7px 3px; } .stat i { font-size: 9px; margin-bottom: 3px; } .stat b { font-size: 15px; }
+  .pips { gap: 3px; } .pips u { width: 9px; height: 9px; }
+  #board { top: calc(env(safe-area-inset-top, 0px) + 60px); right: 12px; width: 150px; padding: 5px 8px; }
+  #board li { font-size: 13px; } #board li b { font-size: 12px; }
+  #emotes { right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); }
+  #emotes button { padding: 6px 8px; font-size: 13px; }
+  #banner { font-size: 36px; top: 40%; }
+  #home, #panel { bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); max-height: calc(100% - 64px); }
+  #nav { gap: 10px; padding-top: calc(env(safe-area-inset-top, 0px) + 4px); padding-bottom: 4px; }
+  #nav .brand { font-size: 20px; white-space: nowrap; } #nav .brand img { height: 26px; width: auto; }
+  #nav .tabs { gap: 2px; } #nav .tabs button { padding: 6px 9px; }
+  #tixchip { display: none; }
+  #pages { top: calc(env(safe-area-inset-top, 0px) + 56px); padding-top: 12px; }
+  .avatar-page { grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); }
+  .avatar-panel { grid-column: 2; margin-top: 0; }
+}
+/* In-between widths (tablets upright, small laptops): the tabs share the top bar with the chips, so it gets tight and
+   Sign in ran off the right edge (audit, 2026-09-30). Compact tabs; the tickets chip waits for a wider screen. */
+@media (min-width: 641px) and (max-width: 900px) {
+  #nav { gap: 10px; } #nav .brand { font-size: 22px; white-space: nowrap; }
+  #nav .tabs { gap: 2px; } #nav .tabs button { padding: 8px 8px; }
+  #tixchip { display: none; }
+}
 /* Touch screens: every control at least 44 px tall so thumbs hit it (the tab bar and small buttons were 26–36 px). */
 @media (pointer: coarse), (max-width: 820px) {
   #nav .tabs button, .signin, .sec, .slots button, .lbtabs button, .paytable summary { min-height: 44px; }
