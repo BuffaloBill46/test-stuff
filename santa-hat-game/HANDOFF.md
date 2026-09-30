@@ -47,8 +47,10 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
     a stand-in for the server), `playcredits.js` (buy counter, readouts, "Check this result").
   - `market.js`: live SANTA price and the token's live tax (read-only), plus the payment split math. `sfx.js`: sound effects.
   - `matchmaker.js`: ranked Auto match logic (not switched on yet).
-- **Server code (NOT deployed):** `santa-hat-game/server/`: `verify.js` (is this transaction a valid payment?) and `games.js`
-  (quote → buy → open → settle). Runs the same rule files as the demo.
+- **Server code (NOT deployed):** `santa-hat-game/server/`: `verify.js` (is this transaction a valid payment?), `games.js`
+  (quote → buy → open → settle, plus tidying stuck plays) and `http.js` (the web door: sign-in, our website only).
+  It runs as the Supabase **Edge Function** `supabase/functions/games/index.ts` (Cody's choice; thin wiring, type-checked and
+  smoke-run with Deno: `npm install deno` gives a runnable Deno). Pools hold SANTA and float with the price (Cody).
   - `kit.js` / `plaza.js`: the low-poly art kit and the plaza scene.
   - `snowball.js`, `bethehat.js`, `sleigh.js`, `hatchase.js`, `village.js`, `index.html`: the four
     original single-player mockups (published under `/mockups/`). **Not dead code; keep them.**
@@ -89,6 +91,7 @@ node tests/credits.test.mjs      # play credits + fair results: Cody's order on 
 node tests/market.test.mjs       # live price + live token tax (reads mainnet; skips politely if offline)
 node tests/verify.test.mjs       # server payment checker: a good payment passes, 12 cheats refused
 node tests/matchmaker.test.mjs   # ranked matchmaking rules, 2 simulated hours of traffic
+node tests/http.test.mjs         # the server's web door: sign-in, other websites refused, plain errors
 cd tests/solana && npm install && node split.test.mjs   # the payment split on the REAL Token-2022 program (LiteSVM, no network)
 cd tests/db && npm install && node credits-db.test.mjs && node server.test.mjs  # the SQL + server steps on real Postgres (PGlite)
 cd tests/browser && npm install  # once per fresh machine
@@ -141,8 +144,9 @@ between two devices has never been tested from here. Cody and friends testing on
 7. Whether to build a free daily spin (it costs real money from the Spin pool; with credits it's just "add 1 credit a day").
 8. Which new click game to build next (Present Pick, Hat Drop, …) and its odds.
 
-**Next big step (needs Cody's OK):** put `server/games.js` online (Edge Functions or a small server), apply `005`, and connect the
-page to it instead of the in-browser stand-in (`house.js`). Before real money: prove the pool lock on real Postgres, decide price swings.
+**Next big step:** connect the Games page to the Edge Function instead of the in-browser stand-in (`house.js`), apply `005`,
+deploy the function. Before real money: Cody's pool wallets (real money), Solana sign-in turned on, a payout worker (sends
+queued prizes; needs the pool keys, server-only), and the pool lock proven on real Postgres.
 
 ## Handing over (for Cody)
 

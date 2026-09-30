@@ -109,5 +109,18 @@ assert.equal((await server.settle(them, o.ticket, newSeed(16))).error, 'no open 
 await server.settle(me, o.ticket, newSeed(16));
 await db.query(`update public.pools set rules = '{"paused": true}' where game = 'spin'`);
 assert.deepEqual(await server.open(me, 'spin10'), { refused: true, stopped: true }); assert.equal(await credits(me, 'spin10'), 1);
+// Stuck plays: one spent with no secret, one opened but never settled (page closed). A minute later the next play tidies both.
+await db.query(`update public.pools set rules = '{}' where game = 'spin'`);
+q = await server.quote(me, 'spin100', 3); pay('sigD', { to: POOLS.spin, total: q.santaRaw }); await server.buy(me, q.id, 'sigD');
+const stuckSpent = (await one(`select public.spend_credit($1, 'spin100') as id`, [me])).id;   // server died before the secret
+const stuckOpen = await server.open(me, 'spin100');                                            // page closed before settling
+await db.query(`update public.plays set spent_at = now() - interval '2 minutes', opened_at = case when opened_at is null then null else now() - interval '2 minutes' end where id in ($1, $2)`, [stuckSpent, stuckOpen.ticket]);
+const creditsBefore = await credits(me, 'spin100');
+const next = await server.open(me, 'spin100'); assert.ok(next.ticket);
+const st = Object.fromEntries((await db.query('select id, state from public.plays where id in ($1, $2)', [stuckSpent, stuckOpen.ticket])).map((r) => [r.id, r.state]));
+assert.equal(st[stuckSpent], 'refunded', 'a play stuck before its secret is refunded');
+assert.equal(st[stuckOpen.ticket], 'settled', 'a play stuck after its secret is finished and paid');
+assert.equal(await credits(me, 'spin100'), creditsBefore + 1 - 1, 'refund +1, the new play -1');
+await server.settle(me, next.ticket, newSeed(16));
 const books = await db.query('select * from public.credits where bought <> used + left_n'); assert.equal(books.length, 0);
 console.log(`OK: quote → pay → buy → open → settle on real Postgres; 5 bad payments refused; 20 plays re-checked; 10 settles at once all counted (balances add/subtract, so none can be lost); price halving checked; paused pool keeps the credit`);

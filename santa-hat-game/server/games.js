@@ -33,6 +33,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   async function buy(profile, quoteId, signature) {
     const q = await row('select * from public.quotes where id = $1 and profile_id = $2', [quoteId, profile]);
     if (!q) return { error: 'unknown quote' };
+    if (!poolWallets?.[KINDS[q.kind].game]) return { error: 'payments are not open yet' }; // no pool wallet set: nobody can pay in
     if (q.used_by) return { error: 'quote already used' };
     const [tx, fee, wallet] = await Promise.all([chain.getTransaction(signature), liveFee(), walletOf(profile)]);
     if (!wallet) return { error: 'buying needs a linked wallet' };
@@ -45,8 +46,23 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     } catch (e) { return { error: /duplicate key|already used/.test(e.message) ? 'payment already used' : e.message }; }
   }
 
+  // Stuck plays (the page closed mid-play, or the server hiccupped): run before each new play, for that player only.
+  // 'spent' for a minute with no secret → the credit is refunded. 'open' for a minute (secret locked, the player's number
+  // never came) → finished with a server-made number and paid as normal. No paid play is ever lost.
+  async function tidy(profile, stuckSeconds = 60) {
+    const stuck = await db.query(`select id, state from public.plays where profile_id = $1 and state in ('spent', 'open')
+      and coalesce(opened_at, spent_at) < now() - make_interval(secs => $2)`, [profile, stuckSeconds]);
+    const done = [];
+    for (const p of stuck) {
+      if (p.state === 'spent') { await db.query('select public.refund_play($1)', [p.id]); done.push({ id: p.id, refunded: true }); }
+      else done.push({ id: p.id, ...(await settle(profile, String(p.id), f.newSeed(16))) });
+    }
+    return done;
+  }
+
   async function open(profile, kind) {
     const K = KINDS[kind]; if (!K) return { error: 'unknown game' };
+    await tidy(profile);
     const p = await row('select * from public.pools where game = $1', [K.game]);
     let price; try { price = (await livePrice()).usd; } catch (e) { return { failed: true, why: 'no live SANTA price right now' }; }
     const can = K.game === 'spin' ? canSpin(poolState(p, price), K.bet) : canPull(poolState(p, price), kind);
@@ -89,5 +105,5 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
       return { r, payRaw, poolDelta, price, proof: { kind: pl.kind, commit: pl.commit, secret: pl.secret, playerSeed, playNo: +pl.play_no } };  // 5. revealed
     });
   }
-  return { quote, buy, open, settle };
+  return { quote, buy, open, settle, tidy };
 }
