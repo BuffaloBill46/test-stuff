@@ -5,6 +5,7 @@
 import { MACHINES, SYMBOLS, SYM, stats, POOL_RULES, pull } from './slots.js';
 import { MAIN, BONUS, MAIN_SLICES, BONUS_SLICES, MAIN_COUNTS, BONUS_COUNTS, SPIN_RULES, layout, odds as spinOdds, payback as spinPaybackOf, topMult } from './spin.js';
 import { ITEMS, SLOTS, BY_ID } from './catalog.js';
+import { MAX_MULT as DROP_TOP, BETS as DROP_BETS } from './plinko.js'; // Snowball Drop shares the Spin pool (Cody, 2026-09-30)
 import { KINDS } from './credits.js';
 
 const big = MACHINES.big;
@@ -70,6 +71,8 @@ export function check(s, rules = { spin: SPIN_RULES, slots: POOL_RULES }) {
   // a pool must be able to cover its biggest fixed prize after a top-off, or the game locks itself (LESSONS)
   if (rules.slots.topOffTo < topFixed) p.push(`the Slots top-off ($${rules.slots.topOffTo}) must cover the top prize ($${topFixed}), or the game can lock`);
   if (rules.spin.topOffTo < maxMult * s.prices.spin100) p.push(`the Spin top-off ($${rules.spin.topOffTo}) must cover the top prize ($${maxMult * s.prices.spin100})`);
+  const dropTop = DROP_TOP * Math.max(...DROP_BETS); // Snowball Drop pays from the same pool
+  if (rules.spin.topOffTo < dropTop) p.push(`the Spin top-off ($${rules.spin.topOffTo}) must cover Snowball Drop's top prize ($${dropTop}): they share the pool`);
   // real-win rate for Big Hat: simulated (lines interact), 20,000 pulls on a throwaway pool
   let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647); let ahead = 0; const pool = { pool: 1e9, prepaid: true };
   for (let i = 0; i < 20000; i++) if (pull(pool, m, rnd).ahead) ahead++;

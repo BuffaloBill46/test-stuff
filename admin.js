@@ -44,7 +44,8 @@ async function act(action, game, settings = {}) {
   let signature; try { signature = (await wallet.signMessage(new TextEncoder().encode(message), 'utf8')).signature; } catch { return msg('Signing was cancelled.', 'bad'); }
   const r = await post({ wallet: address, message, signature: hex(new Uint8Array(signature)) }, true);
   if (r.error) return msg('Refused: ' + r.error, 'bad');
-  msg(action === 'set-settings' ? `Published settings version ${r.version}. New plays use it now; it's in the public log.` : action === 'record-deposit' ? `Recorded: ${(r.arrived / 1e6).toLocaleString()} SANTA arrived in the ${game} pool (${(r.coveredTopOffs / 1e6).toLocaleString()} paid waiting top-offs, ${(r.addedToPool / 1e6).toLocaleString()} added to the pool).` : `Done: ${action} on the ${game} pool. It's in the public log.`, 'ok'); await load();
+  await load(); // refresh the pools and log FIRST, so "Done" never shows next to the old state (e.g. still "Running")
+  msg(action === 'set-settings' ? `Published settings version ${r.version}. New plays use it now; it's in the public log.` : action === 'record-deposit' ? `Recorded: ${(r.arrived / 1e6).toLocaleString()} SANTA arrived in the ${game} pool (${(r.coveredTopOffs / 1e6).toLocaleString()} paid waiting top-offs, ${(r.addedToPool / 1e6).toLocaleString()} added to the pool).` : `Done: ${action} on the ${game} pool. It's in the public log.`, 'ok');
 }
 $('#connect').addEventListener('click', async () => {
   wallet = window.phantom?.solana || window.solflare || window.backpack?.solana || window.solana || null;
