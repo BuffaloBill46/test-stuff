@@ -226,7 +226,16 @@ jackpot amount**, plus its jackpot odds and biggest fixed win (worked out from t
   easy to spot even though they're small.
 
 ### Proposals
-- **Provably fair results.** The server commits to a hidden seed before the spin, mixes in the player's own
+- **Fair results: the order (decided, Cody 2026-09-30; a safety rule, never change the order).**
+  1. The player pays and the payment is **confirmed on-chain**; credits are added. (Tapping Buy decides nothing.)
+  2. The player taps play; the server **spends one credit** first.
+  3. Only now the server makes a **fresh secret** for this play from a secure random source (not `Math.random`, which can be
+     predicted) and locks it in by showing its fingerprint (hash) to the player.
+  4. The player's browser adds its own random number. The result comes from secret + player number + play counter.
+  5. The result is paid, **then the secret is revealed**, so anyone can re-run it and check the fingerprint matched.
+  Why this order: if a secret existed or leaked before payment, a player could see the result and only pay for wins. The locked
+  fingerprint before step 4 stops the server from choosing a losing secret.
+- **Provably fair results (original proposal).** The server commits to a hidden seed before the spin, mixes in the player's own
   seed, and reveals it afterwards, so anyone can check a result wasn't changed. The wheel then animates to
   a random slice of the winning outcome.
 - **Paying per spin.** Either each spin is its own wallet transaction (simple and fully on-chain, but a
@@ -250,9 +259,12 @@ jackpot amount**, plus its jackpot odds and biggest fixed win (worked out from t
   Simulation: with $50 and the "must cover 5× the bet" rule, 5,000 busy runs of 3,000 spins never had to pause.
   The pool typically grew to about $220, and the worst 1% ended around $155. *(Spin-style numbers.
   With the jackpot, the Slots pool levels off instead. See "Spin and Slots pools".)*
-- **Pay per spin:** each spin is its own wallet transaction. No deposited balances; we never hold player funds.
-  *(Proposed replacement, Cody 2026-09-30, not yet final: buy 1–10 play credits in one transaction, stored on the account.
-  See TODO → "Play credits".)*
+- **Paying: play credits (Cody, 2026-09-30; replaces "pay per spin").** Players buy 1–10 plays in one wallet transaction and
+  get that many credits on their account; each play spends one. We only ever hold small prepaid plays, never deposits of money.
+  Rules: credits live only in the database (the server adds and removes them; the page just shows the number); the payment's
+  split happens at purchase (Spin credits pay the Spin pool, Slots credits the Slots pool); credits are per game and size
+  (10¢ Spin, $1 Spin, $1 Big Hat); no cash-out, no expiry, no bulk discount. A free daily spin would just add 1 credit.
+  Details and the tests that must pass: TODO → "Play credits".
 - **Slots numbers:** Cody is drafting the paytable. Claude checks it (payback % and a million-spin simulation) before launch.
 - **No daily play limit (Cody, 2026-09-30; replaces the earlier $10/day + $10 per level idea).** The math holds up under
   heavy play: one simulated grinder doing 100,000 pulls lost about 25% every time (never ahead in 100 tries), burned
