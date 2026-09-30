@@ -40,6 +40,15 @@ export function pickFee(info, epoch) {
 }
 // Token-2022's own rule: fee = amount × bps / 10,000, rounded UP, capped at the maximum. Amounts in the token's smallest unit.
 export const feeOn = (raw, fee) => Math.min(Math.ceil((raw * fee.bps) / 10000), fee.max);
+// How one payment splits (DESIGN_NOTES → "SANTA's 3% tax"): the tax comes first, so the burn % applies to what's left after
+// it; the burn itself is not a transfer (no tax); the pool/treasury send gets the remainder, and the token takes its fee
+// out of that send. All amounts in the token's smallest unit (whole numbers). burnBps: 1000 = 10%.
+export function splitPayment(totalRaw, burnBps, fee) {
+  const total = Math.floor(totalRaw);
+  const burn = Math.floor((total * burnBps * (10000 - fee.bps)) / 1e8);
+  const send = total - burn, tax = feeOn(send, fee);
+  return { total, burn, send, tax, arrives: send - tax };
+}
 export const santaFor = (usd, price) => usd / price.usd;
 export const fmtSanta = (n) => Math.round(n).toLocaleString('en-US');
 

@@ -3,6 +3,7 @@
 // its front; the ten symbols are low-poly models from the same kit as the plaza.
 import { THREE, C, part, build, toon, lights, glow, hatGeo, pineGeo, snowmanGeo, reindeerGeo, giftGeo, Burst } from './kit.js';
 import { SYMBOLS, SYM, MACHINES } from './slots.js';
+import { play as sfx } from './sfx.js';
 
 const G = THREE, V3 = THREE.Vector3;
 const CELL = 128;
@@ -271,7 +272,7 @@ export function createMachine(canvas) {
         }
       } else if (r.phase === 'land') {
         r.lt += dt; const k = Math.min(1, r.lt / r.dur); r.p = r.from + (r.target - r.from) * easeOutBack(k);
-        if (k >= 1) { r.phase = 'idle'; r.v = 0; r.p = r.stop; burst.spawn(new V3(r.x, winY - winH / 2, front + 0.2), 4, C.snow, 1, 1); }
+        if (k >= 1) { r.phase = 'idle'; r.v = 0; r.p = r.stop; sfx('reelStop'); burst.spawn(new V3(r.x, winY - winH / 2, front + 0.2), 4, C.snow, 1, 1); }
       }
       place(r);
     }

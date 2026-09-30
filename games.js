@@ -6,6 +6,7 @@ import { initSpin, showSpin, resetSpin, spinState, refreshSpin } from './spinui.
 import { initCredits, ready, play, short, refresh as refreshCredits, resetCredits, setPrice } from './playcredits.js';
 import { livePrice, liveFee, santaFor, fmtSanta } from './market.js';
 import { FEE } from './slots.js';
+import { play as sfx } from './sfx.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -138,12 +139,12 @@ async function doPull() {
   shownPool = state.pool; state.bal += r.received;
   const lines = r.wins.length, hatsTxt = r.hats ? `${r.hats} Santa Hat${r.hats > 1 ? 's' : ''} +${money(r.hatPay)}` : '';
   if (r.jackpot) {
-    card.classList.add('jackpot'); stamp('JACKPOT!');
+    card.classList.add('jackpot'); stamp('JACKPOT!'); sfx('jackpot');
     res.innerHTML = `<b>POOL JACKPOT!</b> ${money(r.pay)} · you get ${money(r.received)} after the 3% tax`;
     addWinner('slots', r.pay, M.bet, 'pool jackpot');
   } else if (r.ahead) { // only celebrate when the pull pays more than it cost
     const top = r.wins.some((w) => w.top), big = r.pay >= 10 * M.bet;
-    card.classList.add('won'); stamp(top ? '100×!' : big ? 'BIG WIN ' + money(r.pay) : 'WIN ' + money(r.pay));
+    sfx(big || top ? 'bigWin' : 'smallWin'); card.classList.add('won'); stamp(top ? '100×!' : big ? 'BIG WIN ' + money(r.pay) : 'WIN ' + money(r.pay));
     res.innerHTML = `<b>${top ? '5 Santa Hats!' : big ? 'Big win!' : 'Win!'}</b> ${money(r.pay)}` +
       ` <span class="dim">(${lines} line${lines === 1 ? '' : 's'}${hatsTxt ? ' + ' + hatsTxt : ''}) · you get ${money(r.received)}</span>`;
     addWinner('slots', r.pay, M.bet, top ? '5 Santa Hats' : lines > 1 ? lines + ' lines' : '');

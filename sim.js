@@ -130,10 +130,15 @@ export function createSim(rand = Math.random) {
     else { S.phase = 'break'; S.time = K.BREAK_TIME; ev('break', S.round); }
   }
 
+  // Bots sometimes use the same emotes players have, so they're harder to spot: 30% of the time on a moment worth
+  // reacting to, at most once every 8 s per bot. Rides in the snapshot's events, so it costs no extra messages.
+  // Emote numbers match online.js EMOTES: 0 Ho ho ho!, 1 Nice throw!, 2 Gimme the hat!, 3 Oops!
+  function botChat(e, i) { if (!e || !e.bot || (e.chat || 0) > 0 || rand() > 0.3) return; e.chat = 8; ev('emote', e.id, i); }
+
   // ---------- hat + snowballs (same rules as the single-player mockup)
   function giveHat(e, caught) {
     Object.assign(S.hat, { st: 'head', holder: e.id, acc: 0 });
-    if (caught) { if (S.phase !== 'lobby') addScore(e, PTS.header); ev('catch', e.id); } else ev('grab', e.id);
+    if (caught) { if (S.phase !== 'lobby') addScore(e, PTS.header); ev('catch', e.id); botChat(e, 0); } else ev('grab', e.id);
   }
   function knockHat(e, dir, by) {
     const h = S.hat; const l = hyp(dir.x, dir.z) || 1;
@@ -141,6 +146,7 @@ export function createSim(rand = Math.random) {
     h.vx = (dir.x / l) * 3.4 + (rand() - 0.5) * 2.5; h.vy = 10; h.vz = (dir.z / l) * 3.4 + (rand() - 0.5) * 2.5;
     if (by) addScore(by, PTS.knock);
     ev('knock', e.id, by ? by.id : 0);
+    botChat(e, 2);
   }
   function throwBall(e, tx, tz) {
     if (e.ammo <= 0 || e.cool > 0 || e.stun > 0) return false;
@@ -156,6 +162,7 @@ export function createSim(rand = Math.random) {
     const thrower = byId(b.owner);
     if (thrower) addScore(thrower, PTS.hit);
     ev('hit', e.id, r2(b.x), r2(b.y), r2(b.z));
+    if (rand() < 0.5) botChat(e, 3); else botChat(thrower, 1);
     if (S.hat.holder === e.id) knockHat(e, { x: b.vx, z: b.vz }, thrower);
   }
 
@@ -197,7 +204,7 @@ export function createSim(rand = Math.random) {
     const h = S.hat;
 
     for (const e of S.ents) {
-      e.wob += dt * 0.7; e.cool -= dt; e.throwT = Math.max(0, e.throwT - dt * 3.5);
+      e.wob += dt * 0.7; e.cool -= dt; if (e.chat > 0) e.chat -= dt; e.throwT = Math.max(0, e.throwT - dt * 3.5);
       const pile = nearestPile(e);
       e.regen += dt * (hyp(pile[0] - e.x, pile[1] - e.z) < 1.6 ? 9 : 1);
       if (e.regen > (e.bot ? 3 : 2.2) && e.ammo < e.max) { e.ammo++; e.regen = 0; }

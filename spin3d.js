@@ -3,6 +3,7 @@
 // mark the 4× and 5× slivers, and a Santa hat on the hub. The wheel always lands exactly on the slice the rules picked.
 import { THREE, C, part, build, toon, lights, glow, hatGeo, Burst } from './kit.js';
 import { SLICES, SEGMENTS, SEG_START, SLICE_MULT } from './spin.js';
+import { play as sfx } from './sfx.js';
 
 const G = THREE, V3 = THREE.Vector3, TAU = Math.PI * 2, TH = TAU / SLICES;
 export const MULT_STYLE = { // face colour, label colour
@@ -118,7 +119,7 @@ export function createWheel(canvas) {
     wheel.rotation.z = -turn;
     // flapper: pushed when a peg passes under it, springs back
     const at = mod(-turn); let near = Infinity; for (const p of pegAngles) { let d = mod(p - at); if (d > Math.PI) d -= TAU; if (Math.abs(d) < Math.abs(near)) near = d; }
-    if (Math.abs(near) < 0.03 && speed > 0.2) flapV -= speed * 0.06;
+    if (Math.abs(near) < 0.03 && speed > 0.2) { if (flapV > -speed * 0.05) sfx('spinTick'); flapV -= speed * 0.06; } // one tick per peg
     flapV += (-flapA * 90 - flapV * 9) * dt; flapA += flapV * dt; flapA = Math.max(-0.7, Math.min(0.25, flapA)); flap.rotation.z = flapA;
     if (fx.kind) fx.t += dt;
     const party = fx.kind && fx.t < (fx.kind === 'top' ? 4 : 1.6);

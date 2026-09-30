@@ -3,6 +3,7 @@
 import { SPIN_RULES, SLICES, odds, spin } from './spin.js';
 import { createWheel, MULT_STYLE } from './spin3d.js';
 import { ready, play, short, setSpinKind, spinKindFor } from './playcredits.js';
+import { play as sfx } from './sfx.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);
@@ -45,7 +46,7 @@ async function doSpin() {
   shownPool = st.pool; wallet.add(r.received);
   st.history.unshift(r.mult); st.history.length = Math.min(st.history.length, MAX_HISTORY);
   if (r.mult >= 2) { // a real win: more back than the spin cost
-    card().classList.add(r.mult >= 5 ? 'jackpot' : 'won'); stamp(r.mult >= 5 ? '5× !' : `${r.mult}× WIN`);
+    sfx(r.mult >= 4 ? 'bigWin' : 'smallWin'); card().classList.add(r.mult >= 5 ? 'jackpot' : 'won'); stamp(r.mult >= 5 ? '5× !' : `${r.mult}× WIN`);
     res.innerHTML = `<b>${r.mult}× win!</b> ${money(r.pay)} <span class="dim">· you get ${money(r.received)} after the 3% tax</span>`;
     addWinner(bet >= 1 ? 'spin100' : 'spin10', r.pay, bet, `${r.mult}×`);
   } else if (r.mult === 1) res.innerHTML = `<span class="dim">Money back: ${money(r.pay)} (you get ${money(r.received)} after the 3% tax).</span>`;
