@@ -28,6 +28,7 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
 | `santa-hat-game/DESIGN_NOTES.md` | Every design and economy decision Cody has made (lobbies, prices, burn splits, Spin odds, pools, limits). |
 | `santa-hat-game/MULTIPLAYER_PLAN.md` | How multiplayer works and the free-plan message budget. |
 | `santa-hat-game/RESEARCH.md` | Brand and visual research (the look we're matching). |
+| `santa-hat-game/FOR_MAIN_CLAUDE.md` | What this cloud workspace couldn't do (wallets, live deploys, real money). For the devnet move. |
 
 ## Where things live
 
