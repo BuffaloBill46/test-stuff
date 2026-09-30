@@ -137,7 +137,7 @@ between two devices has never been tested from here. Cody and friends testing on
 
 *(Update this section at the end of every session.)*
 
-**Last updated:** 2026-09-30 (second session of the day). Branch `claude/test-stuff-section-egujzy`; everything committed, pushed and published.
+**Last updated:** 2026-09-30 (third session of the day). Branch `claude/test-stuff-section-egujzy`; everything committed, pushed and published.
 
 **Built and live (all demo, no real money):**
 - **Play tab:** Snowball Square multiplayer (rooms, bots that now sometimes emote, idle kicks), unranked lobby, FFA RANKED layout
@@ -153,6 +153,20 @@ happened on paper, price manipulation, and equal payouts silently lost as duplic
 (`tests/solana/rehearsal.mjs`: books = wallets to the unit), the admin screen (`admin.html`). ("My plays" was removed on 2026-09-30 at Cody's call: players don't need it; every play stays in the backend `plays` table.) Cody's open
 economy questions from the focus group (payback level, Spin dry runs, top-offs: decided, Cody pays them himself) are in FOCUS_GROUP.md and
 FOR_MAIN_CLAUDE.md.
+
+**Third session (2026-09-30, late), from Cody's phone screenshots and requests:**
+- **Top-offs: Cody pays them himself** by sending SANTA to the pool wallet; the admin screen shows what to send and records
+  the deposit from the chain (`record-deposit`, books exactly what arrived; tested with books = wallet at every step).
+- **Phone layout fixed** (Galaxy S22+ upright and sideways): the old scoreboard no longer lingers after Leave; sideways matches
+  use a thin top strip; the top bar stays on one line (tablets too); the Avatar camera frames the whole character, hat included.
+  Check: `tests/browser/phone-shots.mjs` (6 sizes).
+- **"My plays" removed** (Cody: players don't need it; every play stays in the backend log).
+- **Spin is now two wheels** (Cody's option A): main 40 equal segments incl. 3 gold stars → bonus wheel 12 (3×/4×/5×),
+  75.0% payback, every segment readable. Re-check replays both draws.
+- **Snowball Drop (Plinko) preview** at `/plinko.html` (not linked from the game; Cody asked to see it): 8 rows of fair
+  50/50 bounces, equal-width presents, 75.47% payback. Rules `mockups/plinko.js`, tests `tests/plinko.test.mjs`,
+  `tests/browser/plinko-test.mjs`. Not wired into credits or the server: waiting on Cody's verdict.
+- **"What's SANTA?" draft copy** in `WHATS_SANTA.md` (short + long, from santahat.gold and on-chain facts): Cody to edit.
 
 **Server side, built and proven here but not deployed** (everything else for devnet is in `FOR_MAIN_CLAUDE.md`):
 - Edge Function `games` (Cody's choice): quote → buy → open → settle, stuck-play tidying, one play at a time per player,
@@ -177,7 +191,9 @@ Logic: `mockups/settings.js`. New item SHAPES (not colours) still need code.
 5. Where Cody's on-chain lottery program lives.
 6. The Slots pool jackpot %: 25% gives about $360–430 on a full pool, and ~14% would give about $250.
 7. Whether to build a free daily spin (it costs real money from the Spin pool; with credits it's just "add 1 credit a day").
-8. Which new click game to build next (Present Pick, Hat Drop, …) and its odds.
+8. Which new click game to build next (Present Pick, Hat Drop, …) and its odds. Snowball Drop (Plinko) is previewed at
+   `/plinko.html`: keep it, change it, or drop it?
+9. The "What's SANTA?" wording (`WHATS_SANTA.md`), and where it goes on the site.
 
 **Next big step:** connect the Games page to the Edge Function instead of the in-browser stand-in (`house.js`), apply `005`,
 deploy the function. Before real money: Cody's pool wallets (real money), Solana sign-in turned on, a payout worker (sends
