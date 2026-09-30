@@ -6,7 +6,7 @@
 //   Big Hat:  5 reels × 5 rows, 11 paylines (straight or diagonal, from the first reel), $1.00 a pull. 5 Santa Hats in a row on a line = 100× the price.
 //   WILD: the Santa Hat stands in for any symbol except Coal. A line pays the better of its Santa Hats alone or the
 //   symbol they help complete (e.g. Star, Hat, Star, Star = 4 Stars). 5 Santa Hats alone = the 100× top prize.
-//   HAT BONUS: every Santa Hat anywhere on the grid also pays `hatBonus` × the price (5¢ on the $1 Big Hat).
+//   HAT BONUS: every Santa Hat anywhere on the grid also pays `hatBonus` × the price (6¢ on the $1 Big Hat).
 //   Line wins count from the leftmost reel. Prizes are in "× the pull price" and every other prize scales down from the
 //   100×, with lots of small ("micro") wins. Target: line wins pay back about 75% of what's played.
 //
@@ -53,7 +53,7 @@ const LINES_5 = [
 export const MACHINES = {
   big: {
     // poolJackpotOdds: Cody wants the pool jackpot harder to hit than the 100× line.
-    id: 'big', name: 'Big Hat', bet: 1.00, reels: 5, rows: 5, lines: LINES_5, jackpotPct: 0.25, poolJackpotOdds: 1 / 25000, hatBonus: 0.05,
+    id: 'big', name: 'Big Hat', bet: 1.00, reels: 5, rows: 5, lines: LINES_5, jackpotPct: 0.25, poolJackpotOdds: 1 / 25000, hatBonus: 0.06, // 6¢ a hat: 78.1% from lines + hats, about 80% with the pool jackpot (Cody, 2026-09-30: around 80%; was 5¢)
     counts: { hat: 8, star: 3, reindeer: 3, snowman: 4, present: 4, lantern: 5, pine: 7, bell: 9, snowball: 8, coal: 25 },
     pays: { // every line prize is more than the $1 pull; Cody: 5 Stars = 50×, 5 Snowballs = 25×, 100× about 1 in 10,000
       hat: { 5: 100, 4: 5, 3: 1.4 }, star: { 5: 50, 4: 3.5, 3: 1.4 }, reindeer: { 5: 10, 4: 3, 3: 1.3 }, snowman: { 5: 7, 4: 2.5, 3: 1.2 },

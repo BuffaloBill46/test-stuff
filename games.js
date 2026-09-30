@@ -44,7 +44,7 @@ function render() {
 function facts() {
   const s = stats(M);
   $('#slots .machine .facts').innerHTML = [
-    ['Pays back', `${(s.payback * 100).toFixed(1)}% on average`],
+    ['Pays back', `${(s.payback * 100).toFixed(1)}% on average, plus the pool jackpot`], // about 80% with the jackpot (tests/slots.test.mjs simulates it)
     ['Top line prize (5 Santa Hats)', `about 1 in ${Math.round(1 / (s.topPerLine * s.lines)).toLocaleString()}`],
     ['Pool jackpot', `1 in ${Math.round(1 / M.poolJackpotOdds).toLocaleString()}`],
     ['Every Santa Hat on the grid', `+${Math.round(M.hatBonus * M.bet * 100)}¢`],
@@ -78,8 +78,8 @@ const EXAMPLES = [
   { title: 'Santa Hat is wild', note: 'The hat fills in for a Star, making 4 Stars in a row.', place: [[0, 2, 'star'], [1, 2, 'hat'], [2, 2, 'star'], [3, 2, 'star']] },
   { title: 'Diagonals count too', note: 'A diagonal from the first reel, stepping down a row each reel: 4 Reindeer.', place: [[0, 1, 'reindeer'], [1, 2, 'reindeer'], [2, 3, 'reindeer'], [3, 4, 'reindeer']] },
   { title: 'Two lines at once', note: 'Every winning line on a pull adds up.', place: [[0, 1, 'bell'], [1, 1, 'bell'], [2, 1, 'bell'], [0, 3, 'pine'], [1, 3, 'pine'], [2, 3, 'pine'], [3, 3, 'pine']] },
-  { title: 'Hat nickels', note: 'No line, but every Santa Hat on the grid still pays 5¢.', place: [[1, 0, 'hat'], [3, 4, 'hat'], [4, 2, 'hat']] },
-  { title: 'Top line prize: 100×', note: '5 Santa Hats in a row on a line, plus their nickels.', place: [0, 1, 2, 3, 4].map((r) => [r, 2, 'hat']), coal: true },
+  { title: 'Hat bonus', note: 'No line, but every Santa Hat on the grid still pays a little.', place: [[1, 0, 'hat'], [3, 4, 'hat'], [4, 2, 'hat']] },
+  { title: 'Top line prize: 100×', note: '5 Santa Hats in a row on a line, plus their hat bonus.', place: [0, 1, 2, 3, 4].map((r) => [r, 2, 'hat']), coal: true },
   { title: 'Pool jackpot', note: 'All 25 squares Santa Hats. Its own rare draw (1 in 25,000).', jackpot: true },
 ];
 function exampleGrid(ex) {
@@ -99,7 +99,7 @@ function howToWin() {
     grid.forEach((col, r) => col.forEach((x, row) => { if (ex.jackpot || SYMBOLS[x].id === 'hat') lit.add(r + ',' + row); }));
     const pay = wins.reduce((a, w) => a + w.pay, 0) + hats * M.hatBonus * M.bet;
     const parts = wins.map((w) => `${w.count} × ${SYMBOLS[w.sym].name} (line ${w.line + 1}) ${money(w.pay)}`);
-    if (hats) parts.push(`${hats} hat${hats > 1 ? 's' : ''} × 5¢`);
+    if (hats) parts.push(`${hats} hat${hats > 1 ? 's' : ''} × ${Math.round(M.hatBonus * M.bet * 100)}¢`);
     const cells = Array.from({ length: M.rows * M.reels }, (_, k) => { const row = Math.floor(k / M.reels), r = k % M.reels;
       return `<span class="${lit.has(r + ',' + row) ? 'on' : ''}"><img alt="" src="${src(SYMBOLS[grid[r][row]].id)}"></span>`; }).join('');
     const payTxt = ex.jackpot ? `${+(M.jackpotPct * 100).toFixed(2)}% of the pool · now ${money(jackpotAmount('big', shownPool))}` : money(pay);
@@ -232,6 +232,7 @@ function labelsFromSettings() {
     const b = $('#spin .' + cls), bet = KINDS[k].bet; b.dataset.bet = bet; $('b', b).textContent = c(bet); $('small', b).textContent = `win up to ${c(bet * top)}`;
   }
   $('#slots .machine header em').textContent = `${money(M.bet)} a pull · 5×5 · 11 lines`;
+  document.querySelectorAll('.hatc').forEach((e) => { e.textContent = c(M.hatBonus * M.bet); }); // the per-hat bonus as published
   $('#spin .wheelcard header em').textContent = `${c(KINDS.spin10.bet)} or ${c(KINDS.spin100.bet)} a spin · up to ${top}×`;
 }
 

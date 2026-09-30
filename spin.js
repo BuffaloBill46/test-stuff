@@ -1,10 +1,11 @@
 // Santa Hat Spin: game rules only (no graphics), so it can be tested in node and later run on the server.
 // Two wheels (Cody, 2026-09-30: "option A"; the old 400-slice wheel's 4× and 5× slivers were too thin to see).
-//   MAIN wheel, 40 equal segments:  0× ×21 · 1× (money back) ×12 · 2× ×4 · gold STAR ×3
+//   MAIN wheel, 40 equal segments:  0× ×20 · 1× (money back) ×12 · 2× ×5 · gold STAR ×3
 //   BONUS wheel, 12 equal segments: 3× ×9 · 4× ×2 · 5× ×1          (spun only when the main wheel lands on a star)
 // Every segment on a wheel is the same size, so what you see IS the odds: count the segments. One fair number picks
 // the main segment; on a star, the next fair number picks the bonus segment. The wheels land exactly there.
-//   0× 52.5% · 1× 30% · 2× 10% · 3× 5.625% · 4× 1.25% · 5× 0.625%                                  → pays back 75.0%
+//   0× 50% · 1× 30% · 2× 12.5% · 3× 5.625% · 4× 1.25% · 5× 0.625%                                  → pays back 80.0%
+// (Cody, 2026-09-30: "around 80%, remember we lose 16% to fees": 10% burn + 3% tax in + 3% tax out.)
 // Spin has its OWN pool (not the Slots pool). Both spin sizes ($0.10 and $1.00) share it.
 import { FEE, IN_PER_DOLLAR } from './slots.js';
 
@@ -12,7 +13,7 @@ export const MAIN_SLICES = 40, BONUS_SLICES = 12;
 export const STAR = -1;                     // a main-wheel segment that sends you to the bonus wheel
 export const BETS = [0.10, 1.00];
 export const MULTS = [0, 1, 2, 3, 4, 5];
-export const MAIN_COUNTS = { star: 3, 2: 4, 1: 12, 0: 21 }, BONUS_COUNTS = { 5: 1, 4: 2, 3: 9 };
+export const MAIN_COUNTS = { star: 3, 2: 5, 1: 12, 0: 20 }, BONUS_COUNTS = { 5: 1, 4: 2, 3: 9 };
 
 // Segments spread evenly around a wheel: at each position, the result that is furthest behind its fair share goes next
 // (ties: the rarer one). Deterministic, and in a FIXED order (star, then the biggest prize down), never the order the counts
