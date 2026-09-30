@@ -90,6 +90,12 @@ Read this before starting new work on the game. Add to it whenever something rea
   handling, so the test passed even with the recovery check deleted. Fixed by making the fake crash escape the worker; now
   deleting the check fails the test (double payment caught). Always break the code on purpose once to see the test go red.
 
+- **"On screen" must mean "not under the bottom tab bar".** On phones the fixed tab bar covers the page, so a result line can be
+  inside the screen and still hidden. A check measured against the screen edge passed while the screenshot showed the problem.
+  Look at the screenshot, and measure against the bar.
+- **A "must fail" check has to actually run the old code.** A `git stash` with a path that didn't match set nothing aside, so the
+  "old code" run was the new code. Back the files up, restore the old versions, run, restore; confirm with `git diff --stat`.
+
 ## Multiplayer notes
 
 - This workspace can't open WebSockets (proxy limit), so live Supabase play can't be tested here.

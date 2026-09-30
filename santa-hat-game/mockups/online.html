@@ -431,6 +431,8 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
 @media (prefers-reduced-motion: reduce) { .pop, #banner.show { animation-duration: .01s; } }
 /* Audit 2026-09-30. Rubber stamps in the site's lighter warning red: 6:1 contrast on the plaques (the hat red was 3:1). */
 .stamp { color: #ff7a6e; border-color: #ff7a6e; }
+/* The result line and credits stop above the bottom tab bar when scrolled into view (focus-group finding). */
+.machine .res, .credrow { scroll-margin-bottom: 96px; }
 /* Touch screens: every control at least 44 px tall so thumbs hit it (the tab bar and small buttons were 26–36 px). */
 @media (pointer: coarse), (max-width: 820px) {
   #nav .tabs button, .signin, .sec, .slots button, .lbtabs button, .paytable summary { min-height: 44px; }
@@ -607,6 +609,8 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
       </ol>
       <button class="go" id="proofCheck" type="button">Re-check it now</button>
       <p class="proofout" id="proofOut" aria-live="polite"></p>
+      <p class="dim"><b>Check it yourself, with any SHA-256 tool:</b> the SHA-256 of the secret must equal the fingerprint. The play's
+        numbers are HMAC-SHA256 with the secret's bytes as the key over "your number:play number:0", read 4 bytes at a time as fractions of 2<sup>32</sup>.</p>
       <p class="dim">Demo: the house runs in your browser for now. With real SANTA it runs on the game server, in the same order.</p>
     </dialog>
     <dialog id="howDlg" class="plaque howdlg" aria-labelledby="howTitle">

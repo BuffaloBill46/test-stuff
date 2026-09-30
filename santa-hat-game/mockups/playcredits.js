@@ -94,6 +94,7 @@ export function openBuy(kind) {
   $('#buyPool').textContent = POOL_NAME[K.game];
   setCount(count);
   const d = $('#buyDlg'); if (d.showModal) d.showModal(); else d.setAttribute('open', '');
+  $('#buyGo').focus(); // the main action, not '+' (focus-group finding: the ringed '+' looked pre-selected)
   return new Promise((res) => { resolveBuy = res; });
 }
 function closeBuy(ok) { const d = $('#buyDlg'); d.close?.() ?? d.removeAttribute('open'); resolveBuy?.(ok); resolveBuy = null; }
