@@ -50,6 +50,7 @@ create table public.plays (
   player_seed text,
   result jsonb,
   pay numeric(12, 2),
+  price_usd numeric,                                   -- the live SANTA price the play was settled at
   spent_at timestamptz not null default now(), opened_at timestamptz, settled_at timestamptz,
   unique (profile_id, play_no),
   check (state = 'spent' or state = 'refunded' or (commit is not null and secret is not null)),  -- open/settled have a locked secret
@@ -57,10 +58,12 @@ create table public.plays (
 );
 
 -- Pools (a mirror of the on-chain pool wallets) and every change to them, for the admin screen and public trust.
+-- Pools hold SANTA (Cody, 2026-09-30): balances are in the token's smallest unit and float in dollars with the price.
+-- Changes are added/subtracted (never overwritten), so two plays can't erase each other's change; it can't go below zero.
 create table public.pools (
   game text primary key check (game in ('spin', 'slots')),
-  pool numeric(14, 6) not null check (pool >= 0),
-  treasury_net numeric(14, 6) not null default 0,
+  santa_raw bigint not null check (santa_raw >= 0),
+  treasury_net_raw bigint not null default 0,
   rules jsonb not null,                                -- the same shape as SPIN_RULES / POOL_RULES; "paused" is the emergency stop
   updated_at timestamptz not null default now()
 );
@@ -72,6 +75,7 @@ create table public.pool_log (
 create table public.payouts (
   id bigserial primary key, play_id bigint not null unique references public.plays (id),
   to_wallet text not null, amount_usd numeric(12, 2) not null check (amount_usd > 0),
+  amount_raw bigint not null check (amount_raw > 0), price_usd numeric not null check (price_usd > 0),  -- SANTA fixed at the settle price
   status text not null default 'queued' check (status in ('queued', 'held', 'sent', 'failed')),
   tx text, created_at timestamptz not null default now()
 );
@@ -92,7 +96,7 @@ create view public.my_plays with (security_barrier) as
 grant select on public.my_plays to authenticated;
 
 -- Server-only functions ------------------------------------------------------------------------
-create function public.buy_credits(p_quote uuid, p_signature text, p_paid bigint, p_burned bigint, p_arrived bigint, p_arrived_usd numeric)
+create function public.buy_credits(p_quote uuid, p_signature text, p_paid bigint, p_burned bigint, p_arrived bigint)
 returns int language plpgsql security definer set search_path = '' as $$
 declare q public.quotes; left_now int;
 begin
@@ -105,8 +109,8 @@ begin
   insert into public.credits (profile_id, kind, left_n, bought) values (q.profile_id, q.kind, q.n, q.n)
     on conflict (profile_id, kind) do update set left_n = public.credits.left_n + q.n, bought = public.credits.bought + q.n
     returning left_n into left_now;
-  -- the entry money reaches that game's pool now (dollars at the quote's price; OPEN: how SANTA price swings count, see TODO)
-  update public.pools set pool = pool + p_arrived_usd, updated_at = now() where game = case when q.kind = 'big' then 'slots' else 'spin' end;
+  -- the SANTA that arrived reaches that game's pool now
+  update public.pools set santa_raw = santa_raw + p_arrived, updated_at = now() where game = case when q.kind = 'big' then 'slots' else 'spin' end;
   return left_now;
 end $$;
 
@@ -131,17 +135,20 @@ begin
 end $$;
 
 -- Steps 4–5: record the result (the server ran the game rules), update the pool, queue the payout.
-create function public.settle_play(p_play bigint, p_seed text, p_result jsonb, p_pay numeric, p_pool numeric, p_treasury_net numeric, p_to_wallet text, p_cap numeric)
+-- p_pool_delta_raw / p_treasury_delta_raw: the exact SANTA the pool gained or lost on this play (payout, skim, top-off).
+create function public.settle_play(p_play bigint, p_seed text, p_result jsonb, p_pay numeric, p_pay_raw bigint, p_price numeric,
+  p_pool_delta_raw bigint, p_treasury_delta_raw bigint, p_to_wallet text, p_cap numeric)
 returns void language plpgsql security definer set search_path = '' as $$
 declare pl public.plays;
 begin
-  update public.plays set state = 'settled', player_seed = p_seed, result = p_result, pay = p_pay, settled_at = now()
+  update public.plays set state = 'settled', player_seed = p_seed, result = p_result, pay = p_pay, price_usd = p_price, settled_at = now()
     where id = p_play and state = 'open' returning * into pl;
   if pl.id is null then raise exception 'play % is not open', p_play; end if;
-  update public.pools set pool = p_pool, treasury_net = p_treasury_net, updated_at = now()
+  update public.pools set santa_raw = santa_raw + p_pool_delta_raw, treasury_net_raw = treasury_net_raw + p_treasury_delta_raw, updated_at = now()
     where game = case when pl.kind = 'big' then 'slots' else 'spin' end;
   if p_pay > 0 then
-    insert into public.payouts (play_id, to_wallet, amount_usd, status) values (pl.id, p_to_wallet, p_pay, case when p_pay > p_cap then 'held' else 'queued' end);
+    insert into public.payouts (play_id, to_wallet, amount_usd, amount_raw, price_usd, status)
+      values (pl.id, p_to_wallet, p_pay, p_pay_raw, p_price, case when p_pay > p_cap then 'held' else 'queued' end);
   end if;
 end $$;
 
