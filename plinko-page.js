@@ -118,6 +118,6 @@ document.querySelectorAll('[data-bet]').forEach((b) => b.addEventListener('click
 }));
 // Odds legend, from the same numbers the game uses
 const groups = [...new Set(PAYS)].sort((a, b) => b - a).map((m) => ({ m, ways: PAYS.reduce((a, p, k) => a + (p === m ? WAYS[k] : 0), 0) }));
-$('#oddsTable').innerHTML = groups.map((g) => `<tr><td>${g.m}×</td><td>${g.m >= 10 ? 'an edge present' : g.m > 1 ? 'more back than it cost' : g.m === 1 ? 'money back' : g.m > 0 ? 'half back' : 'nothing'}</td><td>1 in ${(TOTAL / g.ways).toFixed(g.ways * 10 >= TOTAL ? 1 : 0)}</td></tr>`).join('');
+$('#oddsTable').innerHTML = groups.map((g) => `<tr><td>${g.m}×</td><td>${g.m >= 10 ? 'an edge present' : g.m > 1 ? 'more back than it cost' : g.m === 1 ? 'money back' : g.m > 0 ? 'part of it back' : 'nothing'}</td><td>1 in ${(TOTAL / g.ways).toFixed(g.ways * 10 >= TOTAL ? 1 : 0)}</td></tr>`).join('');
 $('#oddsNote').textContent = `Pays back ${(payback() * 100).toFixed(1)}% over time. About 1 drop in ${(1 / realWin()).toFixed(1)} gives back more than it cost. Winnings are paid in SANTA, and SANTA's 3% tax comes off on the way.`;
 window.__drop = { newBall, get bal() { return bal; }, get flying() { return balls.length; }, get recent() { return recent; }, get log() { return log; }, get dropped() { return dropped; } };
