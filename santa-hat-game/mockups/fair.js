@@ -8,15 +8,17 @@ const enc = new TextEncoder();
 const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 const unhex = (h) => new Uint8Array(h.match(/../g).map((x) => parseInt(x, 16)));
 
+// Hashing needs a secure (https) page; say so plainly instead of failing with a cryptic error.
+const subtle = () => { if (!globalThis.crypto?.subtle) throw new Error('fair results need a secure (https) page'); return crypto.subtle; };
 export function newSeed(bytes = 32) { const a = new Uint8Array(bytes); crypto.getRandomValues(a); return hex(a); }
-export async function fingerprint(secret) { return hex(await crypto.subtle.digest('SHA-256', unhex(secret))); }
+export async function fingerprint(secret) { return hex(await subtle().digest('SHA-256', unhex(secret))); }
 
 // `count` uniform numbers in [0, 1), 32 bits each.
 export async function numbers(secret, playerSeed, playNo, count) {
-  const key = await crypto.subtle.importKey('raw', unhex(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const key = await subtle().importKey('raw', unhex(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const out = [];
   for (let i = 0; out.length < count; i++) {
-    const mac = new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(`${playerSeed}:${playNo}:${i}`)));
+    const mac = new Uint8Array(await subtle().sign('HMAC', key, enc.encode(`${playerSeed}:${playNo}:${i}`)));
     for (let j = 0; j + 4 <= mac.length && out.length < count; j += 4) out.push((mac[j] * 2 ** 24 + (mac[j + 1] << 16) + (mac[j + 2] << 8) + mac[j + 3]) / 2 ** 32);
   }
   return out;

@@ -109,3 +109,19 @@ for (let run = 0; run < 60; run++) {
   console.log(`fair numbers: ${N.toLocaleString()} spins pay back ${(pb * 100).toFixed(2)}% (exact ${(payback() * 100).toFixed(2)}%)`);
 }
 console.log(`OK: ${plays} plays in Cody's order, ${checked} results re-checked, ${prepaidOk} prepaid pool moves, books balanced after every step`);
+
+// 9. Something breaks mid-play (e.g. hashing unavailable): the credit comes back, the books still balance.
+{
+  const { ledger, pools } = fresh();
+  const boom = () => { throw new Error('no hashing'); };
+  const h1 = createHouse(ledger, pools, { newSeed, fingerprint: boom, numbers });
+  buy(ledger, pools, 'big', 2, 'a');
+  const o = await h1.open('big');
+  assert.equal(o.failed, true); assert.equal(ledger.credits.big, 2, 'credit returned when the secret could not be made');
+  const h2 = createHouse(ledger, pools, { newSeed, fingerprint: (await import('../mockups/fair.js')).fingerprint, numbers: boom });
+  const o2 = await h2.open('big'); assert.ok(o2.ticket); assert.equal(ledger.credits.big, 1);
+  const s2 = await h2.settle(o2.ticket, 'x');
+  assert.equal(s2.failed, true); assert.equal(ledger.credits.big, 2, 'credit returned when the numbers could not be drawn');
+  assert.deepEqual(audit(ledger), []);
+  console.log('failures mid-play return the credit: OK');
+}

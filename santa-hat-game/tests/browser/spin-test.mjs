@@ -16,10 +16,10 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   await ctx.route('**/*', async (route) => { const url = route.request().url();
     if (url.includes('cdn.jsdelivr.net/npm/three@')) return route.fulfill({ body: readFileSync(path.resolve('node_modules/three/build', url.split('/build/')[1])), contentType: 'text/javascript' });
     if (/cdn\.jsdelivr\.net\/npm\/|fonts\.googleapis|fonts\.gstatic/.test(url)) { try { return route.fulfill({ body: fetchCurl(url), contentType: url.includes('googleapis') ? 'text/css' : url.includes('gstatic') ? 'font/woff2' : 'text/javascript' }); } catch { return route.abort(); } }
-    if (url.startsWith('http://local.test/')) { const p = url.replace('http://local.test/', '').split(/[?#]/)[0], f = path.join(ROOT, p); if (!existsSync(f)) return route.fulfill({ status: 404, body: 'nf' }); return route.fulfill({ body: readFileSync(f), contentType: p.endsWith('.js') ? 'text/javascript' : p.endsWith('.png') ? 'image/png' : 'text/html' }); }
+    if (url.startsWith('http://localhost/')) { const p = url.replace('http://localhost/', '').split(/[?#]/)[0], f = path.join(ROOT, p); if (!existsSync(f)) return route.fulfill({ status: 404, body: 'nf' }); return route.fulfill({ body: readFileSync(f), contentType: p.endsWith('.js') ? 'text/javascript' : p.endsWith('.png') ? 'image/png' : 'text/html' }); }
     return route.abort(); });
   const p = await ctx.newPage(); p.on('pageerror', (e) => errors.push(label + ': ' + e.message)); p.on('console', (m) => { if (m.type() === 'error') errors.push(label + ': ' + m.text()); });
-  await p.goto('http://local.test/online.html?net=local'); await p.waitForFunction(() => window.__sq, null, { timeout: 60000 }); await p.waitForTimeout(1200);
+  await p.goto('http://localhost/online.html?net=local'); await p.waitForFunction(() => window.__sq, null, { timeout: 60000 }); await p.waitForTimeout(1200);
   await p.evaluate(() => document.querySelector('#t-games').click());
   await p.waitForFunction(() => window.__spin, null, { timeout: 90000 }).catch((e) => { console.log('errors so far:', errors); throw e; });
   await p.waitForTimeout(2000);
@@ -43,11 +43,17 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
 
   // 5× on a $1 spin
   let { slice, before } = await forced(5, 1);
+  // no $1 spins yet: the buy counter opens. Buy 10 in one go.
+  await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
+  await p.evaluate(() => document.querySelector('#buyQuick [data-n="10"]').click());
+  check(await p.textContent('#buyGo') === 'Buy 10 · $10.00' && await p.textContent('#buyTitle') === 'Buy spins', `${label}: buy counter for $1 spins`);
+  await p.evaluate(() => document.querySelector('#buyGo').click());
   await p.waitForTimeout(1500); await p.screenshot({ path: `${OUT}/${label}-2-spinning.png` });
   await waitDone(); await p.waitForTimeout(300); let after = await money(); r = await read();
   check(await p.evaluate(() => window.__spin.view.shownSlice()) === slice, `${label}: wheel must stop on the picked slice`);
-  check(Math.abs(after.bal - (before.bal - 1 + 5 * 0.97)) < 1e-9, `${label}: 5× balance`);
-  check(Math.abs(after.pool - (before.pool + IN - 5)) < 1e-9, `${label}: 5× pool`);
+  check(Math.abs(after.bal - (before.bal - 10 + 5 * 0.97)) < 1e-9, `${label}: 10 spins bought ($10), then a 5× win`);
+  check(Math.abs(after.pool - (before.pool + 10 * IN - 5)) < 1e-9, `${label}: 5× pool (all 10 entries arrived at purchase)`);
+  check(await p.textContent('#crSpin') === '9', `${label}: 9 $1 spins left`);
   check(/5×/.test(r.stamp), `${label}: 5× stamp, got "${r.stamp}"`);
   check(r.winners.length === 1 && /\+400%/.test(r.winners[0]) && /Spin \$1/.test(r.winners[0]), `${label}: winners list entry: ${JSON.stringify(r.winners)}`);
   await p.screenshot({ path: `${OUT}/${label}-3-five.png` });
@@ -55,18 +61,26 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
 
   // 1× = money back: quiet, no winner entry
   ({ slice, before } = await forced(1, 1)); await waitDone(); after = await money(); r = await read();
-  check(Math.abs(after.bal - (before.bal - 1 + 0.97)) < 1e-9, `${label}: 1× balance`);
+  check(Math.abs(after.bal - (before.bal + 0.97)) < 1e-9, `${label}: 1× balance`);
   check(/Money back/.test(r.res) && r.winners.length === 1, `${label}: 1× should be quiet money back`);
 
   // 0×, with tap-to-land
   ({ slice, before } = await forced(0, 1)); await p.waitForTimeout(400); await p.evaluate(() => document.querySelector('#spin .spinbtn').click()); await waitDone();
   after = await money(); r = await read();
   check(await p.evaluate(() => window.__spin.view.shownSlice()) === slice, `${label}: tapped-to-land wheel must still stop on the picked slice`);
-  check(Math.abs(after.bal - (before.bal - 1)) < 1e-9 && /No win/.test(r.res), `${label}: 0×`);
+  check(Math.abs(after.bal - before.bal) < 1e-9 && /No win/.test(r.res), `${label}: 0×`);
 
   // 10¢ spin, 2× win
-  ({ slice, before } = await forced(2, 0.1)); await waitDone(); await p.waitForTimeout(200); after = await money(); r = await read();
+  ({ slice, before } = await forced(2, 0.1));
+  // 10¢ spins are their own credits: none yet, so the counter opens again
+  await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
+  await p.evaluate(() => document.querySelector('#buyQuick [data-n="1"]').click());
+  check(await p.textContent('#buyGo') === 'Buy 1 · $0.10', `${label}: 10¢ buy button says "${await p.textContent('#buyGo')}"`);
+  await p.evaluate(() => document.querySelector('#buyGo').click()); await waitDone(); await p.waitForTimeout(200); after = await money(); r = await read();
   check(Math.abs(after.bal - (before.bal - 0.1 + 0.2 * 0.97)) < 1e-9, `${label}: 10¢ 2× balance`);
+  check(await p.textContent('#crSpin') === '0', `${label}: 10¢ spins left 0`);
+  await p.evaluate(() => document.querySelector('#spin .bets button[data-bet="1"]').click());
+  check(await p.textContent('#crSpin') === '7' && /\$1 spins/.test(await p.textContent('#crSpinWhat')), `${label}: switching to $1 shows its own 7 spins`);
   check(r.winners.length === 2 && /Spin 10¢/.test(r.winners[0]) && /\+100%/.test(r.winners[0]), `${label}: 10¢ win in winners list: ${JSON.stringify(r.winners[0])}`);
   check(JSON.stringify(r.hist.slice(0, 4)) === JSON.stringify(['2×', '0×', '1×', '5×']), `${label}: last spins strip ${JSON.stringify(r.hist)}`);
 

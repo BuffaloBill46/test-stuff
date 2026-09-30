@@ -19,12 +19,21 @@ else
 fi
 
 cp "$SRC/online.html" "$OUT/index.html"
-cp "$SRC"/{kit,plaza,sim,net,online,catalog,tabs,slots,slots3d,games,spin,spin3d,spinui}.js "$SRC/hat-logo.png" "$OUT/"
+cp "$SRC"/{kit,plaza,sim,net,online,catalog,tabs,slots,slots3d,games,spin,spin3d,spinui,credits,fair,house,playcredits}.js "$SRC/hat-logo.png" "$OUT/"
 mkdir -p "$OUT/mockups"
 cp "$SRC"/{kit,plaza,village,snowball,bethehat,sleigh,hatchase}.js "$OUT/mockups/"
 { printf '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>\n'
   cat "$SRC/index.html"; printf '\n</body></html>\n'; } > "$OUT/mockups/index.html"
 touch "$OUT/.nojekyll"
+
+# Refuse to publish a build with a missing file: every './x.js' a published page imports must have been copied.
+missing=0
+for dir in "$OUT" "$OUT/mockups"; do
+  for f in $(grep -ohE "(from|import\() *'\./[A-Za-z0-9_-]+\.js'" "$dir"/*.js "$dir"/*.html 2>/dev/null | grep -oE "[A-Za-z0-9_-]+\.js" | sort -u); do
+    [ -f "$dir/$f" ] || { echo "MISSING in ${dir#$OUT}/: $f (add it to the cp list in deploy-pages.sh)"; missing=1; }
+  done
+done
+[ "$missing" = 0 ] || { echo "Not published."; exit 1; }
 
 git -C "$OUT" add -A
 if git -C "$OUT" diff --cached --quiet; then echo "Nothing changed."; exit 0; fi

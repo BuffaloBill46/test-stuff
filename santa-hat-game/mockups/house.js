@@ -11,11 +11,14 @@
 import { KINDS, spend, refund } from './credits.js';
 import { spin, canSpin, SLICES, SLICE_MULT } from './spin.js';
 import { pull, canPull, MACHINES } from './slots.js';
-import { newSeed, fingerprint, numbers, randFrom } from './fair.js';
+import * as fair from './fair.js';
+import { randFrom } from './fair.js';
 
 export const NUMS = 8; // numbers drawn per play (Slots uses 6: the jackpot draw + 5 reel stops; Spin uses 1)
 
-export function createHouse(ledger, pools) {
+// If anything fails after the credit is spent and before a result exists, the credit goes back (never a lost play).
+// `f` swaps the fair functions (tests only, to make them fail).
+export function createHouse(ledger, pools, f = fair) {
   const open_ = new Map(), steps = [];
   const can = (K, kind) => (K.game === 'spin' ? canSpin(pools.spin, K.bet) : canPull(pools.slots, kind));
 
@@ -25,9 +28,12 @@ export function createHouse(ledger, pools) {
     if (!c.ok) return { refused: true, stopped: !!c.stopped };
     if (!spend(ledger, kind)) return { noCredit: true };
     steps.push('spent');
-    const secret = newSeed(), commit = await fingerprint(secret), playNo = ++ledger.plays;
+    let secret, commit;
+    try { secret = f.newSeed(); commit = await f.fingerprint(secret); }
+    catch (e) { refund(ledger, kind); steps.push('refunded'); return { failed: true, why: e.message }; }
+    const playNo = ++ledger.plays;
     steps.push('locked');
-    const ticket = `${playNo}-${newSeed(4)}`;
+    const ticket = `${playNo}-${fair.newSeed(4)}`;
     open_.set(ticket, { kind, secret, commit, playNo });
     return { ticket, commit, playNo };
   }
@@ -38,10 +44,13 @@ export function createHouse(ledger, pools) {
     if (!t) throw new Error('unknown or already settled play');
     open_.delete(ticket);
     const K = KINDS[t.kind];
-    const nums = await numbers(t.secret, playerSeed, t.playNo, NUMS);
-    steps.push('drawn');
-    const rand = randFrom(nums);
-    const r = K.game === 'spin' ? spin(pools.spin, K.bet, rand, forced) : pull(pools.slots, t.kind, rand, forced);
+    let r;
+    try {
+      const nums = await f.numbers(t.secret, playerSeed, t.playNo, NUMS);
+      steps.push('drawn');
+      const rand = randFrom(nums);
+      r = K.game === 'spin' ? spin(pools.spin, K.bet, rand, forced) : pull(pools.slots, t.kind, rand, forced);
+    } catch (e) { refund(ledger, t.kind); steps.push('refunded'); return { failed: true, why: e.message }; }
     if (r.paused) { refund(ledger, t.kind); steps.push('refunded'); return { refused: true, stopped: !!r.stopped }; }
     steps.push('revealed');
     return { r, proof: { kind: t.kind, commit: t.commit, secret: t.secret, playerSeed, playNo: t.playNo, forced: forced !== undefined } };
@@ -59,7 +68,7 @@ export function outcomeFrom(kind, nums) {
 }
 // "Check this result": does the secret match the fingerprint shown before the play, and what do its numbers give?
 export async function check(proof) {
-  const matches = (await fingerprint(proof.secret)) === proof.commit;
-  const nums = await numbers(proof.secret, proof.playerSeed, proof.playNo, NUMS);
+  const matches = (await fair.fingerprint(proof.secret)) === proof.commit;
+  const nums = await fair.numbers(proof.secret, proof.playerSeed, proof.playNo, NUMS);
   return { matches, outcome: outcomeFrom(proof.kind, nums) };
 }
