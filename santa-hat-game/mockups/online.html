@@ -470,6 +470,13 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
   .avatar-page { grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); }
   .avatar-panel { grid-column: 2; margin-top: 0; }
 }
+/* In-between widths (tablets upright, small laptops): the tabs share the top bar with the chips, so it gets tight and
+   Sign in ran off the right edge (audit, 2026-09-30). Compact tabs; the tickets chip waits for a wider screen. */
+@media (min-width: 641px) and (max-width: 900px) {
+  #nav { gap: 10px; } #nav .brand { font-size: 22px; white-space: nowrap; }
+  #nav .tabs { gap: 2px; } #nav .tabs button { padding: 8px 8px; }
+  #tixchip { display: none; }
+}
 /* Touch screens: every control at least 44 px tall so thumbs hit it (the tab bar and small buttons were 26–36 px). */
 @media (pointer: coarse), (max-width: 820px) {
   #nav .tabs button, .signin, .sec, .slots button, .lbtabs button, .paytable summary { min-height: 44px; }

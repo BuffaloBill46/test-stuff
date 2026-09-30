@@ -4,7 +4,7 @@ import { createRequire } from 'module'; import { readFileSync, existsSync } from
 const require = createRequire(import.meta.url);
 const { chromium } = require(path.join(execSync('npm root -g').toString().trim(), 'playwright'));
 const ROOT = new URL('../../mockups', import.meta.url).pathname;
-const SIZES = [['up', 384, 740], ['side', 800, 300], ['up-small', 320, 620], ['side-small', 660, 320], ['desk', 1280, 800]];
+const SIZES = [['tablet', 768, 1024], ['up', 384, 740], ['side', 800, 300], ['up-small', 320, 620], ['side-small', 660, 320], ['desk', 1280, 800]];
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const problems = [];
 for (const [label, w, h] of SIZES) {
