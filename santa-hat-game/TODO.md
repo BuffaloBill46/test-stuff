@@ -94,7 +94,7 @@ stop cheating and spam:
 
 ## Later
 - [ ] Wager mode (players bet SANTA, FFA).
-- [ ] **Recent winners list shared across players:** today it shows this browser's wins only; the real list needs the server (every settled win over the pull price, with name, amount, +% and game).
+- [x] **Recent winners list shared across players (built, 2026-09-30):** the server's public `winners` action lists everyone's recent real wins (names only, never wallets); the page shows it in server mode. Tested in `tests/db/server.test.mjs` and `tests/browser/server-mode-test.mjs`. The demo still shows this browser's wins.
 - [ ] Tournaments.
 - [x] **Sound effects (2026-09-30):** made in code (`mockups/sfx.js`): sleigh bells, snow thumps, throws, knocks, reel clacks, wheel ticks, wins; mute button remembered. Test: `tests/browser/sfx-test.mjs`. Still to judge by ear on a real phone.
 - [x] **Bots use emotes sometimes (2026-09-30):** 30% on a catch, knock or hit, at most once per 8 s per bot, no extra messages. Checked in `tests/sim.test.mjs`.

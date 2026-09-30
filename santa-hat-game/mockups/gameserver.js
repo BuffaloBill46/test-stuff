@@ -14,7 +14,7 @@ export async function token() {
 }
 export async function call(action, body = {}) {
   const t = await token();
-  if (!t) return { error: 'sign in first' };
-  const r = await fetch(SERVER, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + t }, body: JSON.stringify({ action, ...body }) });
+  if (!t && action !== 'winners') return { error: 'sign in first' }; // the winners list is public
+  const r = await fetch(SERVER, { method: 'POST', headers: { 'content-type': 'application/json', ...(t ? { authorization: 'Bearer ' + t } : {}) }, body: JSON.stringify({ action, ...body }) });
   try { return await r.json(); } catch { return { error: `the game server answered ${r.status}` }; }
 }

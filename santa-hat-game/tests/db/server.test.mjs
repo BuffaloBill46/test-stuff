@@ -140,4 +140,11 @@ next = await server.open(me, 'spin100'); assert.ok(next.ticket);
 assert.equal(await stateOf(stuckOpen.ticket), 'settled', 'a play stuck after its secret is finished and paid');
 await server.settle(me, next.ticket, newSeed(16));
 const books = await db.query('select * from public.credits where bought <> used + left_n'); assert.equal(books.length, 0);
+// The shared winners list: only plays that paid more than they cost, newest first, names only (never a wallet).
+const wins = await server.winners();
+const realWins = (await db.query(`select count(*)::int as n from public.plays where state = 'settled' and pay > case kind when 'spin10' then 0.10 else 1 end`))[0].n;
+assert.equal(wins.length, Math.min(30, realWins));
+assert.ok(wins.every((w) => w.amount > (w.game === 'spin10' ? 0.1 : 1) && w.gainPct > 0), 'only real wins');
+assert.ok(!JSON.stringify(wins).includes('wa11et'), 'no wallet addresses in the public list');
+assert.ok(wins.every((w, i) => i === 0 || wins[i - 1].at >= w.at), 'newest first');
 console.log(`OK: quote → pay → buy → open → settle on real Postgres; 5 bad payments refused; 20 plays re-checked; 10 settles at once all counted (balances add/subtract, so none can be lost); price halving checked; paused pool keeps the credit`);

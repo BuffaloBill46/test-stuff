@@ -109,5 +109,13 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
       return { r, payRaw, poolDelta, price, poolUsd: state.pool, proof: { kind: pl.kind, commit: pl.commit, secret: pl.secret, playerSeed, playNo: +pl.play_no } };  // 5. revealed
     });
   }
-  return { quote, buy, open, settle, tidy };
+  // Recent winners for everyone: settled plays that paid more than they cost (display names only, never wallets).
+  async function winners(limit = 30) {
+    const rows = await db.query(`select pr.name, pl.kind, pl.pay, pl.settled_at, pl.result from public.plays pl join public.profiles pr on pr.id = pl.profile_id
+      where pl.state = 'settled' and pl.pay > case pl.kind when 'spin10' then 0.10 else 1 end order by pl.settled_at desc, pl.id desc limit $1`, [limit]);
+    return rows.map((w) => { const bet = KINDS[w.kind].bet, pay = +w.pay;
+      return { game: w.kind === 'big' ? 'slots' : w.kind, name: w.name, amount: pay, gainPct: ((pay - bet) / bet) * 100, at: new Date(w.settled_at).getTime(),
+        note: w.result?.jackpot ? 'pool jackpot' : w.result?.mult ? `${w.result.mult}×` : '', big: pay >= 10 * bet }; });
+  }
+  return { quote, buy, open, settle, tidy, winners };
 }

@@ -52,11 +52,19 @@ await ctx.route('**/*', async (route) => { const url = route.request().url();
   if (url.startsWith('http://localhost/')) { const p = url.replace('http://localhost/', '').split(/[?#]/)[0], f = path.join(ROOT, p); if (!existsSync(f)) return route.fulfill({ status: 404, body: 'nf' }); return route.fulfill({ body: readFileSync(f), contentType: p.endsWith('.js') ? 'text/javascript' : p.endsWith('.png') ? 'image/png' : 'text/html' }); }
   return route.fulfill({ status: 503, body: 'offline in tests' }); });
 const p = await ctx.newPage(); p.on('pageerror', (e) => errors.push(e.message)); p.on('console', (m) => { if (m.type() === 'error' && !/503/.test(m.text())) errors.push(m.text()); });
+// Someone else's big win, already settled on the server: it must show in this player's Recent winners list.
+const other = (await db.query('insert into auth.users default values returning id'))[0].id;
+await db.query(`insert into public.profiles (id, wallet, name, avatar) values ($1, 'THEMwa11et11111111111111111111111111111111', 'Rudolph', '{}')`, [other]);
+await db.query(`insert into public.plays (profile_id, kind, play_no, state, commit, secret, player_seed, result, pay, settled_at) values ($1, 'spin100', 1, 'settled', $2, 's', 'p', '{"mult":5}', 5, now())`, [other, 'f'.repeat(64)]);
 await p.goto('http://localhost:8787/online.html?net=local&server=' + encodeURIComponent('http://localhost:8787/api') + '&token=test-token', { timeout: 90000 });
 await p.waitForFunction(() => window.__sq, null, { timeout: 60000 });
 await p.evaluate(() => document.querySelector('#t-games').click()); await p.waitForFunction(() => window.__slots, null, { timeout: 90000 });
 await p.waitForFunction(() => document.querySelector('#crBig').textContent === '3', null, { timeout: 15000 }).catch(() => {});
 check(await p.textContent('#crBig') === '3', `the page shows the server's 3 pulls, got ${await p.textContent('#crBig')}`);
+await p.waitForFunction(() => /Rudolph/.test(document.querySelector('#winList')?.textContent || ''), null, { timeout: 15000 }).catch(() => {});
+const winText = (await p.textContent('#winList')).replace(/\s+/g, ' ');
+check(/Rudolph/.test(winText) && /\$5\.00/.test(winText) && /5×/.test(winText), `another player's win shows in the shared list: "${winText.slice(0, 120)}"`);
+check(!/wa11et/.test(winText), 'no wallet addresses on the page');
 const shown = [];
 for (let i = 0; i < 3; i++) {
   await p.evaluate(() => document.querySelector('.machine .pull').click()); await p.waitForTimeout(400);

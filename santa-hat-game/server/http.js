@@ -3,6 +3,7 @@
 //   credits                    → your credits per game/size        open   { kind }            → { ticket, commit }
 //   quote  { kind, n }         → a 60-second SANTA price quote      settle { ticket, seed }    → result + revealed secret
 //   buy    { quote, signature }→ checks the finalized payment, adds credits
+//   winners                    → the shared Recent winners list (public, no sign-in)
 // Only signed-in players (a Supabase login token); only our own website may call it from a browser.
 export const ALLOWED_ORIGINS = ['https://buffalobill46.github.io', 'http://localhost'];
 const allowed = (o) => ALLOWED_ORIGINS.includes(o) || /^http:\/\/localhost:\d+$/.test(o); // localhost = a player's own computer (tests)
@@ -27,10 +28,13 @@ export function makeHandler(deps) {
       try { const out = await deps.admin.run(body || {}); return reply(origin, out?.error ? 400 : 200, out); }
       catch (e) { console.error('admin error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
     }
+    let body; try { body = await req.json(); } catch { return reply(origin, 400, { error: 'send JSON' }); }
+    if (body?.action === 'winners') { // public: the shared Recent winners list (names and amounts only)
+      try { return reply(origin, 200, { winners: await deps.server.winners() }); } catch (e) { console.error('winners error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
+    }
     const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
     const profile = token ? await deps.profileFor(token).catch(() => null) : null;
     if (!profile) return reply(origin, 401, { error: 'sign in first' });
-    let body; try { body = await req.json(); } catch { return reply(origin, 400, { error: 'send JSON' }); }
     const s = deps.server;
     try {
       let out;
