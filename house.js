@@ -9,12 +9,12 @@
 // DEMO: this runs in the browser. For real money the same steps run on the server and the secret never reaches the page
 // before step 5. `steps` records the order for the tests.
 import { KINDS, spend, refund } from './credits.js';
-import { spin, canSpin, SLICES, SLICE_MULT } from './spin.js';
+import { spin, canSpin, STAR, DEFAULT_WHEEL } from './spin.js';
 import { pull, canPull, MACHINES } from './slots.js';
 import * as fair from './fair.js';
 import { randFrom } from './fair.js';
 
-export const NUMS = 8; // numbers drawn per play (Slots uses 6: the jackpot draw + 5 reel stops; Spin uses 1)
+export const NUMS = 8; // numbers drawn per play (Slots uses 6: the jackpot draw + 5 reel stops; Spin 1, or 2 on a bonus star)
 
 // If anything fails after the credit is spent and before a result exists, the credit goes back (never a lost play).
 // `f` swaps the fair functions (tests only, to make them fail).
@@ -62,7 +62,11 @@ export function createHouse(ledger, pools, f = fair) {
 // cfg (optional): the settings the play ran on (settings.js build()); without it, the built-in game.
 export function outcomeFrom(kind, nums, cfg = null) {
   const K = KINDS[kind];
-  if (K.game === 'spin') { const slice = Math.floor(nums[0] * SLICES); return { slice, mult: (cfg?.wheel.sliceMult || SLICE_MULT)[slice] }; }
+  if (K.game === 'spin') { // the first number picks the main segment; on a star, the second picks the bonus segment
+    const W = cfg?.wheel || DEFAULT_WHEEL, slice = Math.floor(nums[0] * W.main.length);
+    if (W.main[slice] !== STAR) return { slice, mult: W.main[slice] };
+    const bonusSlice = Math.floor(nums[1] * W.bonus.length); return { slice, bonusSlice, mult: W.bonus[bonusSlice] };
+  }
   const m = cfg?.machine || MACHINES[kind];
   if (nums[0] < m.poolJackpotOdds) return { jackpot: true };
   return { stops: nums.slice(1, 1 + m.reels).map((x) => Math.floor(x * m.stripLen)) };
