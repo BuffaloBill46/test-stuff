@@ -91,6 +91,9 @@ Read this before starting new work on the game. Add to it whenever something rea
 - Three.js r186 marks `THREE.Clock` deprecated; the loop uses `performance.now()` instead.
 - Headless Chromium (software rendering) runs about 8 fps. The game clamps each frame to
   1/20 s, so tests run in slow motion. Use headless runs to check logic, not game feel.
+- **Several 3D windows at once can starve a slow workspace.** On a 4-core machine, the lobby and link tests' 3rd/4th
+  window took over 30 s to finish loading (every file had arrived; the page was just CPU-starved), so they timed out.
+  Not a game bug (the Games tab loads only when opened). Those tests now allow 90 s per page load.
 
 ## Research access notes
 

@@ -17,7 +17,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function open(qs = '', wallet) {
   const p = await ctx.newPage(); p.on('pageerror', (e) => errors.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   if (wallet) await p.addInitScript((w) => { window.__testWallet = w; }, wallet);
-  await p.goto('http://local.test/online.html?net=local' + qs); await p.waitForFunction(() => window.__sq, null, { timeout: 60000 }); await wait(1200); return p;
+  await p.goto('http://local.test/online.html?net=local' + qs, { timeout: 90000 }); await p.waitForFunction(() => window.__sq, null, { timeout: 60000 }); await wait(1200); return p;
 }
 const st = (p) => p.evaluate(() => { const s = window.__sq, v = s.view; return { inRoom: !!s.room, host: s.isHost, watcher: !!s.me.w, phase: v?.phase, mode: v?.mode, humans: v?.ents.filter((e) => !e.bot).length, bots: v?.ents.filter((e) => e.bot).length }; });
 const A = await open(); await A.fill('#avname', '').catch(() => {});
