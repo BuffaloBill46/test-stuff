@@ -136,7 +136,8 @@ async function doPull() {
   store.set(state);
   res.textContent = `Spinning… result locked (${short(p.commit)}). Tap again to stop early.`;
   await view.spin(r.stops, r);
-  shownPool = state.pool; state.bal += r.received;
+  if (p.server) { state.pool = p.poolUsd; shownPool = state.pool; } // the server's pool; winnings go out as a real payout
+  else { shownPool = state.pool; state.bal += r.received; }
   const lines = r.wins.length, hatsTxt = r.hats ? `${r.hats} Santa Hat${r.hats > 1 ? 's' : ''} +${money(r.hatPay)}` : '';
   if (r.jackpot) {
     card.classList.add('jackpot'); stamp('JACKPOT!'); sfx('jackpot');
@@ -176,7 +177,9 @@ export function initGames(opts = {}) {
     const b = e.currentTarget.getBoundingClientRect();
     if (e.target === e.currentTarget && (e.clientX < b.left || e.clientX > b.right || e.clientY < b.top || e.clientY > b.bottom)) e.currentTarget.close?.();
   });
-  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) { const b = $('#fsBtn'); b.setAttribute('aria-pressed', 'false'); $('span', b).textContent = 'Full screen'; } });
+  // The label follows the browser's own report (entering can take longer than a moment on a busy or slow device).
+  document.addEventListener('fullscreenchange', () => { const c = $('#slots .machine'), b = $('#fsBtn'), on = document.fullscreenElement === c || c.classList.contains('max');
+    b.setAttribute('aria-pressed', String(on)); $('span', b).textContent = on ? 'Exit full screen' : 'Full screen'; });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#slots .machine').classList.remove('max'); });
   $('#demoReset').addEventListener('click', () => {
     if (busy) return;

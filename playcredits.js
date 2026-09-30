@@ -6,6 +6,8 @@ import { createHouse, check } from './house.js';
 import { newSeed } from './fair.js';
 import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js';
 import { play as sfx } from './sfx.js';
+import { SERVER, call } from './gameserver.js';
+export const serverMode = !!SERVER; // ?server=<address>: plays and credits come from the game server
 
 const $ = (s, el = document) => el.querySelector(s);
 const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);
@@ -42,7 +44,8 @@ export function initCredits(opts) {
   document.querySelectorAll('#buyQuick button').forEach((b) => b.addEventListener('click', () => setCount(+b.dataset.n)));
   $('#buyCancel').addEventListener('click', () => closeBuy(false));
   $('#buyDlg').addEventListener('cancel', (e) => { e.preventDefault(); closeBuy(false); });
-  $('#buyGo').addEventListener('click', () => {
+  $('#buyGo').addEventListener('click', async () => {
+    if (serverMode) return buyFromServer();
     const cost = costOf(buyKind, count);
     if (wallet.get() < cost - 1e-9) return; // button is disabled then anyway
     wallet.add(-cost);
@@ -56,7 +59,14 @@ export function initCredits(opts) {
   $('[data-proof="spin"]').addEventListener('click', () => showProof(spinKind));
   $('#proofClose').addEventListener('click', () => $('#proofDlg').close?.());
   $('#proofCheck').addEventListener('click', recheck);
+  if (serverMode) syncCredits();
   window.__credits = { ledger, house, get last() { return last; }, give(kind, n) { buy(ledger, pools, kind, n, 'test-' + newSeed(8)); store.set(ledger); changed(); } };
+}
+// Server mode: the credit numbers shown come from the server (the page never decides them).
+export async function syncCredits() {
+  const r = await call('credits');
+  if (r.credits) { for (const k of Object.keys(ledger.credits)) ledger.credits[k] = 0; for (const c of r.credits) ledger.credits[c.kind] = +c.left_n; refresh(); }
+  return r;
 }
 export function resetCredits() { Object.assign(ledger, newLedger()); last = {}; store.set(ledger); refresh(); }
 
@@ -89,7 +99,35 @@ export function openBuy(kind) {
 function closeBuy(ok) { const d = $('#buyDlg'); d.close?.() ?? d.removeAttribute('open'); resolveBuy?.(ok); resolveBuy = null; }
 
 // ---- one play, in the house's order. forced: tests only ----
+// Server mode buying: quote → the wallet pays (window.santaPay, not built here) → the server checks the payment → credits.
+async function buyFromServer() {
+  const note = $('#buyNote'); $('#buyGo').disabled = true; note.textContent = 'Getting a price…';
+  const q = await call('quote', { kind: buyKind, n: count });
+  if (q.error) { note.textContent = q.error; $('#buyGo').disabled = false; return; }
+  if (typeof window.santaPay !== 'function') { note.textContent = 'Wallet payments aren\'t connected yet.'; $('#buyGo').disabled = false; return; }
+  let signature; try { note.textContent = 'Approve the payment in your wallet…'; signature = await window.santaPay(q); }
+  catch (e) { note.textContent = 'Payment cancelled.'; $('#buyGo').disabled = false; return; }
+  note.textContent = 'Confirming the payment…';
+  const b = await call('buy', { quote: q.id, signature });
+  $('#buyGo').disabled = false;
+  if (b.error) { note.textContent = b.error; return; }
+  await syncCredits(); sfx('buy'); closeBuy(true);
+}
+
 export async function play(kind, forced) {
+  if (serverMode) {
+    try {
+      const o = await call('open', { kind });
+      if (o.busy) return { failed: true, why: 'your last play is still finishing' }; // one play at a time
+      if (!o.ticket) { await syncCredits(); return o.error ? { failed: true, why: o.error } : o; }
+      const s = await call('settle', { ticket: o.ticket, seed: newSeed(16) }); // our number goes in only after the fingerprint came back
+      await syncCredits();
+      if (!s.r) return s.error ? { failed: true, why: s.error } : s;
+      if (s.proof.commit !== o.commit) return { failed: true, why: 'the server changed its locked fingerprint' }; // never trust, check
+      last[kind] = s.proof; refresh();
+      return { r: s.r, proof: s.proof, commit: o.commit, poolUsd: s.poolUsd, server: true };
+    } catch (e) { refresh(); return { failed: true, why: 'the game server can\'t be reached' }; }
+  }
   try { return await play_(kind, forced); } catch (e) { refresh(); return { failed: true, why: e.message }; } // never leave a machine locked
 }
 async function play_(kind, forced) {

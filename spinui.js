@@ -43,7 +43,8 @@ async function doSpin() {
   store.set(st);
   res.textContent = `Spinning… result locked (${short(p.commit)}). Tap again to land it early.`;
   await view.spinTo(r.slice, r);
-  shownPool = st.pool; wallet.add(r.received);
+  if (p.server) { st.pool = p.poolUsd; shownPool = st.pool; } // the server's pool; winnings go out as a real payout
+  else { shownPool = st.pool; wallet.add(r.received); }
   st.history.unshift(r.mult); st.history.length = Math.min(st.history.length, MAX_HISTORY);
   if (r.mult >= 2) { // a real win: more back than the spin cost
     sfx(r.mult >= 4 ? 'bigWin' : 'smallWin'); card().classList.add(r.mult >= 5 ? 'jackpot' : 'won'); stamp(r.mult >= 5 ? '5× !' : `${r.mult}× WIN`);
@@ -71,7 +72,9 @@ export function initSpin(opts) {
   $('#spin canvas').addEventListener('click', doSpin);
   document.querySelectorAll('#spin .bets button').forEach((b) => b.addEventListener('click', () => { if (!busy) setBet(+b.dataset.bet); }));
   $('#spinFs').addEventListener('click', toggleFull);
-  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) { const b = $('#spinFs'); b.setAttribute('aria-pressed', 'false'); $('span', b).textContent = 'Full screen'; } });
+  // The label follows the browser's own report (entering can take longer than a moment on a busy or slow device).
+  document.addEventListener('fullscreenchange', () => { const c = card(), b = $('#spinFs'), on = document.fullscreenElement === c || c.classList.contains('max');
+    b.setAttribute('aria-pressed', String(on)); $('span', b).textContent = on ? 'Exit full screen' : 'Full screen'; });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') card().classList.remove('max'); });
   odds_(); render();
   window.__spin = { st, view, test, get busy() { return busy; }, get shownPool() { return shownPool; }, SLICES };
