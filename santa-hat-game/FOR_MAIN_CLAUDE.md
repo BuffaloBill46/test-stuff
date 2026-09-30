@@ -20,9 +20,14 @@ Tick items off here as they're done. Order is roughly the order to do them in fo
       (include those files in the upload). Set `SOLANA_RPC_URL` (Helius; devnet URL for the test).
 - [ ] **Prove the pool row lock on real Postgres:** two connections settling plays on the same pool at the same moment. (Balances
       add/subtract so no SANTA can be lost either way; the lock keeps each play's "can the pool pay?" check on the latest balance.)
-- [ ] **Real wallet signing in the browser:** the buy counter must build ONE transaction (burn + transferCheckedWithFee, exactly as
-      `tests/solana/split.test.mjs`) from the server's quote, have Phantom sign and send it, then call `buy` with the signature
-      once it's finalized. The instruction layout is proven; the wallet popup isn't (no wallet here).
+- [ ] **Real wallet signing in the browser: write `window.santaPay(quote)`.** The page already calls it (server mode,
+      `mockups/playcredits.js` → `buyFromServer`): given the server's quote `{ id, kind, n, usd, santaRaw, expiresAt }`, build ONE
+      transaction (burnChecked 10%-after-tax + transferCheckedWithFee to the pool wallet; amounts from `splitPayment` in
+      `mockups/market.js`; exactly the layout proven in `tests/solana/split.test.mjs`), have Phantom sign and send it, wait until
+      it's FINALIZED, and return its signature. The page then calls `buy`, and the server checks it (`server/verify.js`).
+- [ ] **Turn on server mode for real:** the page uses the server when opened with `?server=<Edge Function URL>`
+      (`mockups/gameserver.js`); proven end to end locally (`tests/browser/server-mode-test.mjs`). For launch, make the
+      Edge Function URL the default instead of the in-browser demo.
 - [ ] **Run the payout worker live:** `server/payouts.js` is built and proven on the real token program (never pays twice, even
       when it crashes before or after sending; `tests/solana/payouts.test.mjs`). Still needed: the live chain adapter (a Solana
       RPC: getLatestBlockhash, sendTransaction, getSignatureStatuses + isBlockhashValid; same shape as the test's), the pool

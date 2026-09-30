@@ -94,6 +94,7 @@ node tests/verify.test.mjs       # server payment checker: a good payment passes
 node tests/matchmaker.test.mjs   # ranked matchmaking rules, 2 simulated hours of traffic
 node tests/http.test.mjs         # the server's web door: sign-in, other websites refused, plain errors
 (cd tests/solana && node payouts.test.mjs)  # payout worker: winners paid exactly once, even through crashes
+(cd tests/browser && node server-mode-test.mjs)  # the Games page playing through the real server code + real SQL
 cd tests/solana && npm install && node split.test.mjs   # the payment split on the REAL Token-2022 program (LiteSVM, no network)
 cd tests/db && npm install && node credits-db.test.mjs && node server.test.mjs  # the SQL + server steps on real Postgres (PGlite)
 cd tests/browser && npm install  # once per fresh machine

@@ -5,11 +5,12 @@
 //   buy    { quote, signature }→ checks the finalized payment, adds credits
 // Only signed-in players (a Supabase login token); only our own website may call it from a browser.
 export const ALLOWED_ORIGINS = ['https://buffalobill46.github.io', 'http://localhost'];
+const allowed = (o) => ALLOWED_ORIGINS.includes(o) || /^http:\/\/localhost:\d+$/.test(o); // localhost = a player's own computer (tests)
 
 // deps: { server (games.js), profileFor(token) → profile id or null, credits(profile) → rows }
 export function makeHandler(deps) {
   const cors = (origin) => ({
-    'access-control-allow-origin': ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
+    'access-control-allow-origin': allowed(origin) ? origin : ALLOWED_ORIGINS[0],
     'access-control-allow-headers': 'authorization, content-type, apikey, x-client-info',
     'access-control-allow-methods': 'POST, OPTIONS', vary: 'origin',
   });
@@ -19,7 +20,7 @@ export function makeHandler(deps) {
     const origin = req.headers.get('origin') || '';
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(origin) });
     if (req.method !== 'POST') return reply(origin, 405, { error: 'POST only' });
-    if (origin && !ALLOWED_ORIGINS.includes(origin)) return reply(origin, 403, { error: 'not from the game\'s website' });
+    if (origin && !allowed(origin)) return reply(origin, 403, { error: 'not from the game\'s website' });
     const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
     const profile = token ? await deps.profileFor(token).catch(() => null) : null;
     if (!profile) return reply(origin, 401, { error: 'sign in first' });

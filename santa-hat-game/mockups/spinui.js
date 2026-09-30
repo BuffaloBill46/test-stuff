@@ -43,7 +43,8 @@ async function doSpin() {
   store.set(st);
   res.textContent = `Spinning… result locked (${short(p.commit)}). Tap again to land it early.`;
   await view.spinTo(r.slice, r);
-  shownPool = st.pool; wallet.add(r.received);
+  if (p.server) { st.pool = p.poolUsd; shownPool = st.pool; } // the server's pool; winnings go out as a real payout
+  else { shownPool = st.pool; wallet.add(r.received); }
   st.history.unshift(r.mult); st.history.length = Math.min(st.history.length, MAX_HISTORY);
   if (r.mult >= 2) { // a real win: more back than the spin cost
     sfx(r.mult >= 4 ? 'bigWin' : 'smallWin'); card().classList.add(r.mult >= 5 ? 'jackpot' : 'won'); stamp(r.mult >= 5 ? '5× !' : `${r.mult}× WIN`);

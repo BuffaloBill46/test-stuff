@@ -136,7 +136,8 @@ async function doPull() {
   store.set(state);
   res.textContent = `Spinning… result locked (${short(p.commit)}). Tap again to stop early.`;
   await view.spin(r.stops, r);
-  shownPool = state.pool; state.bal += r.received;
+  if (p.server) { state.pool = p.poolUsd; shownPool = state.pool; } // the server's pool; winnings go out as a real payout
+  else { shownPool = state.pool; state.bal += r.received; }
   const lines = r.wins.length, hatsTxt = r.hats ? `${r.hats} Santa Hat${r.hats > 1 ? 's' : ''} +${money(r.hatPay)}` : '';
   if (r.jackpot) {
     card.classList.add('jackpot'); stamp('JACKPOT!'); sfx('jackpot');
