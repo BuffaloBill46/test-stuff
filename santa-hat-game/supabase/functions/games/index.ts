@@ -10,6 +10,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { createGameServer } from '../../../server/games.js';
 import { makeHandler } from '../../../server/http.js';
 import { createAdmin } from '../../../server/admin.js';
+import { makePrice } from '../../../server/price.js';
 import { livePrice, liveFee } from '../../../mockups/market.js';
 
 const env = (k: string) => Deno.env.get(k) ?? '';
@@ -28,7 +29,8 @@ const chain = {
   },
 };
 const auth = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), { auth: { persistSession: false } });
-const server = createGameServer({ db, chain, livePrice, liveFee,
+// The game prices plays with the 10-minute median, not one live reading (audit: price manipulation).
+const server = createGameServer({ db, chain, livePrice: makePrice({ db, livePrice }), liveFee,
   poolWallets: { spin: env('SPIN_POOL_WALLET') || null, slots: env('SLOTS_POOL_WALLET') || null } });
 
 Deno.serve(makeHandler({

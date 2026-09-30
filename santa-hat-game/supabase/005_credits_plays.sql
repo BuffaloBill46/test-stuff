@@ -97,6 +97,11 @@ create table public.pool_transfers (
 alter table public.pool_transfers enable row level security;
 create policy pool_transfers_read on public.pool_transfers for select using (true);  -- public, like the pool log
 
+-- SANTA price samples (audit 2026-09-30): the game uses the middle value of the last 10 minutes, not one live reading, so a
+-- brief pump or dump of SANTA's thin trading pool can't be used to buy credits cheap or win extra SANTA.
+create table public.price_samples (at timestamptz primary key default now(), usd numeric not null check (usd > 0));
+alter table public.price_samples enable row level security;
+
 alter table public.quotes enable row level security;   alter table public.payments enable row level security;
 alter table public.credits enable row level security;  alter table public.plays enable row level security;
 alter table public.pools enable row level security;    alter table public.pool_log enable row level security;
