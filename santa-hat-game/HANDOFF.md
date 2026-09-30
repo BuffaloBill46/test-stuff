@@ -42,11 +42,19 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
   - `net.js`: all networking and accounts (Supabase rooms, games board, sign-in). `?net=local` swaps in
     one-computer stand-ins for testing.
   - `catalog.js`: every avatar item (slot, level or price).
+  - Games tab: `games.js` (Slots page), `spinui.js` (Spin page), `slots.js` / `spin.js` (rules), `slots3d.js` / `spin3d.js` (3D).
+  - Play credits and fair results: `credits.js` (ledger), `fair.js` (secrets, fingerprints, numbers), `house.js` (Cody's order;
+    a stand-in for the server), `playcredits.js` (buy counter, readouts, "Check this result").
+  - `market.js`: live SANTA price and the token's live tax (read-only), plus the payment split math. `sfx.js`: sound effects.
+  - `matchmaker.js`: ranked Auto match logic (not switched on yet).
+- **Server code (NOT deployed):** `santa-hat-game/server/`: `verify.js` (is this transaction a valid payment?) and `games.js`
+  (quote → buy → open → settle). Runs the same rule files as the demo.
   - `kit.js` / `plaza.js`: the low-poly art kit and the plaza scene.
   - `snowball.js`, `bethehat.js`, `sleigh.js`, `hatchase.js`, `village.js`, `index.html`: the four
     original single-player mockups (published under `/mockups/`). **Not dead code; keep them.**
-- **Database:** `santa-hat-game/supabase/001..004_*.sql`, all already applied to the live project, in order.
-  New changes go in a new numbered file, applied with the Supabase tools, then committed.
+- **Database:** `santa-hat-game/supabase/001..004_*.sql` are applied to the live project, in order.
+  **`005_credits_plays.sql` is NOT applied** (credits, plays, payouts for the server; apply when the server goes live, with Cody's OK).
+  New changes go in a new numbered file, checked with `tests/db/`, applied with the Supabase tools, then committed.
 
 ## Services and access
 
@@ -77,6 +85,12 @@ node tests/spin.test.mjs         # Spin rules: exact wheel odds, pool, skim, top
 node tests/slots.test.mjs        # Slots rules: exact wild-aware payback, every line, pool never negative, skim
 node tests/paytable.mjs          # regenerates PAYTABLE.md (the full payout table) from mockups/slots.js
 node tests/slots-tune.mjs        # tuning helper: scales prizes to a payback target
+node tests/credits.test.mjs      # play credits + fair results: Cody's order on every play, books balance, refunds on failure
+node tests/market.test.mjs       # live price + live token tax (reads mainnet; skips politely if offline)
+node tests/verify.test.mjs       # server payment checker: a good payment passes, 12 cheats refused
+node tests/matchmaker.test.mjs   # ranked matchmaking rules, 2 simulated hours of traffic
+cd tests/solana && npm install && node split.test.mjs   # the payment split on the REAL Token-2022 program (LiteSVM, no network)
+cd tests/db && npm install && node credits-db.test.mjs && node server.test.mjs  # the SQL + server steps on real Postgres (PGlite)
 cd tests/browser && npm install  # once per fresh machine
 node lobby-test.mjs              # 3 browser windows: auto match, join from list, Watch now
 node tabs-test.mjs               # tabs, store, avatar editor, sign-in sheet
@@ -86,7 +100,8 @@ node idle.mjs                    # 3-minute idle and hidden-tab kicks
 node live.mjs                    # loads the PUBLISHED site on a phone-sized screen
 node spin-test.mjs               # Games tab: Spin wheel (forced results, tap-to-land, money math, winners list)
 node games-test.mjs              # Games tab: Slots readouts, pulls, forced win and jackpot, money math
-node live-games.mjs              # pulls a lever on the PUBLISHED Games tab
+node sfx-test.mjs                # sound: waits for a tap, fires at the right moments, mute remembered
+node live-games.mjs              # buys + pulls + spins + re-checks a result on the PUBLISHED Games tab
 ```
 
 The browser tests need Playwright installed globally and use headless Chromium with software graphics
@@ -102,34 +117,34 @@ between two devices has never been tested from here. Cody and friends testing on
 
 *(Update this section at the end of every session.)*
 
-**Last updated:** 2026-09-30. Branch `claude/test-stuff-section-egujzy`; everything committed, pushed and published.
+**Last updated:** 2026-09-30 (second session of the day). Branch `claude/test-stuff-section-egujzy`; everything committed, pushed and published.
 
 **Built and live (all demo, no real money):**
-- **Play tab:** Snowball Square multiplayer (rooms, bots, idle kicks), unranked lobby (FFA/TEAM, Auto match, private code,
-  practice), FFA RANKED lobby layout (Auto match off until tickets + server exist), live games list with Watch now.
+- **Play tab:** Snowball Square multiplayer (rooms, bots that now sometimes emote, idle kicks), unranked lobby, FFA RANKED layout
+  (Auto match off until tickets + server exist), live games list with Watch now. Sound effects with a remembered mute button.
 - **Store / Avatar / Ranks tabs:** item catalog, avatar editor, wallet or email sign-in with linking, leaderboard.
-- **Games tab:**
-  - **Big Hat slots:** 5×5, 11 straight/diagonal lines from the first reel, Santa Hat wild, 5¢ per hat, 100× line about
-    1 in 11,000, pool jackpot 1 in 25,000 at 25%, "How to win" panel, full screen.
-  - **Santa Hat Spin:** 3D prize wheel, 10¢/$1, the agreed odds, own pool, full screen.
-  - A shared Recent winners list.
-  - Numbers for both games are in `PAYTABLE.md` and `mockups/spin.js`. Pool rules (skim, top-off, emergency stop) are
-    adjustable settings: `POOL_RULES` and `SPIN_RULES`.
+- **Games tab:** Big Hat slots and Santa Hat Spin, now paid with **play credits** (buy 1–10 in one go; Cody's decision, replaces
+  pay-per-spin), **fair results in Cody's order** (payment and credit first, then the secret) with a "Check this result" panel,
+  and the **live SANTA price and live token tax**. Numbers: `PAYTABLE.md`, `mockups/spin.js`.
+
+**Built but not switched on:** the payment checker and game server steps (`server/`), the credits/plays/payouts database file
+(`005`, not applied), ranked matchmaking (`matchmaker.js`). The one-transaction payment split is proven on the real token program.
 
 **Waiting on Cody** (don't build around these; ask if still open):
 1. Supabase: turn on Solana sign-in, set URL Configuration (Site URL `https://buffalobill46.github.io/test-stuff/`,
    Redirect `https://buffalobill46.github.io/test-stuff/**`), and connect an email service (Resend) for sign-in emails.
-2. Real-device testing with friends (multiplayer over the internet, Phantom sign-in, phone feel).
+2. Real-device testing with friends (multiplayer over the internet, Phantom sign-in, phone feel, how the sounds feel).
 3. The level table (points per level, what unlocks).
 4. The treasury wallet's public address, and the real starting amounts for the Spin and Slots pools (real money).
 5. Where Cody's on-chain lottery program lives.
 6. The Slots pool jackpot %: 25% gives about $360–430 on a full pool, and ~14% would give about $250.
-7. Whether to build a free daily spin (it costs real money from the Spin pool).
-8. Play credits (buy 1–10 plays in one transaction): four questions in TODO → "Play credits". It replaces "pay per spin".
+7. Whether to build a free daily spin (it costs real money from the Spin pool; with credits it's just "add 1 credit a day").
+8. **SANTA price swings:** prizes are in dollars but pools hold SANTA (options in TODO → Before anything paid goes live).
+9. **Where the Spin/Slots server runs:** Supabase Edge Functions (free tier) vs an always-on server (~$5–10/month).
+10. Which new click game to build next (Present Pick, Hat Drop, …) and its odds.
 
-**Next big step (needs Cody's OK, costs about $5–10/month):** the game server. It's needed for real SANTA in Slots and Spin
-(provably fair results, payments, payouts, escrow admin controls), ranked tickets and payouts, and a shared winners list.
-See TODO → "Before anything paid goes live", "Slots server: protect it from bots", and "Escrow admin controls".
+**Next big step (needs Cody's OK):** put `server/games.js` online (Edge Functions or a small server), apply `005`, and connect the
+page to it instead of the in-browser stand-in (`house.js`). Before real money: prove the pool lock on real Postgres, decide price swings.
 
 ## Handing over (for Cody)
 

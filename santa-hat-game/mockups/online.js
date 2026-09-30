@@ -5,6 +5,7 @@ import { createSim, K, PHASES, constrain } from './sim.js';
 import { openRoom, accounts, findWallet, gamesBoard } from './net.js';
 import { SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable } from './catalog.js';
 import { initTabs, avatarCharacter } from './tabs.js';
+import { play as sfx, initSoundButtons } from './sfx.js';
 
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
@@ -217,7 +218,7 @@ function controls(dt, v) {
 function tryThrow(tx, tz) {
   const v = currentView, e = myEnt(v);
   if (!e || e.stun || ctl.cool > 0 || e.ammo <= 0 || !(v.phase === 'lobby' || v.phase === 'play')) return;
-  ctl.t++; ctl.ax = tx; ctl.az = tz; ctl.cool = K.HUMAN_COOL; ctl.throwT = 1; ctl.dirty = true;
+  ctl.t++; ctl.ax = tx; ctl.az = tz; ctl.cool = K.HUMAN_COOL; ctl.throwT = 1; ctl.dirty = true; sfx('throw');
   const dx = tx - ctl.x, dz = tz - ctl.z, l = Math.hypot(dx, dz) || 1; ctl.face = Math.atan2(dx, dz);
   if (!isHost) { // show my own snowball instantly; the referee's copy of it is hidden on my screen
     const dist = Math.max(1.5, l), tt = dist / K.BALL_SPEED, mesh = toon(ballGeo, 0.02); mesh.material = ballMat(BY_ID.get(me.a.snow).color); scene.add(mesh);
@@ -258,14 +259,14 @@ function handleEvents(v) {
     if (!Array.isArray(e) || e[0] <= lastEv) continue;
     lastEv = e[0];
     const [, k, a, b, c, d] = e, mine = (id) => { const me2 = myEnt(v); return me2 && me2.id === id; };
-    if (k === 'hit') { const p = new V3(+b || 0, +c || 1.2, +d || 0); burst.spawn(p, 16, 0xffffff, 3.5, 3); const at = entPos(a, v); if (at) pop(at.setY(2.7), 'SPLAT', mine(a) ? 'bad' : 'white'); }
-    else if (k === 'knock') { const at = entPos(a, v); if (at) pop(at.setY(3.1), 'KNOCKED OFF!', mine(a) ? 'bad' : 'white'); const by = entPos(b, v); if (by && b) pop(by.setY(3.1), '+25', mine(b) ? '' : 'green'); }
-    else if (k === 'catch') { const at = entPos(a, v); if (at) { burst.spawn(at.clone().setY(2.2), 16, C.gold, 3, 3); pop(at.setY(3.1), 'HEADER +50', 'big'); } }
-    else if (k === 'boing') { const at = entPos(a, v); if (at) pop(at.setY(2.9), 'BOING', 'white'); }
+    if (k === 'hit') { sfx('splat'); const p = new V3(+b || 0, +c || 1.2, +d || 0); burst.spawn(p, 16, 0xffffff, 3.5, 3); const at = entPos(a, v); if (at) pop(at.setY(2.7), 'SPLAT', mine(a) ? 'bad' : 'white'); }
+    else if (k === 'knock') { sfx('knock'); const at = entPos(a, v); if (at) pop(at.setY(3.1), 'KNOCKED OFF!', mine(a) ? 'bad' : 'white'); const by = entPos(b, v); if (by && b) pop(by.setY(3.1), '+25', mine(b) ? '' : 'green'); }
+    else if (k === 'catch') { sfx('catch'); const at = entPos(a, v); if (at) { burst.spawn(at.clone().setY(2.2), 16, C.gold, 3, 3); pop(at.setY(3.1), 'HEADER +50', 'big'); } }
+    else if (k === 'boing') { sfx('boing'); const at = entPos(a, v); if (at) pop(at.setY(2.9), 'BOING', 'white'); }
     else if (k === 'pts') { const at = entPos(a, v); if (at) pop(at.setY(2.9), '+' + (+b || 0), mine(a) ? '' : 'green'); }
     else if (k === 'emote') showEmote('b' + a, +b); // a bot's emote (bots have no player id, so key by entity)
     else if (k === 'splat') burst.spawn(new V3(+a || 0, 0.1, +b || 0), 6, 0xffffff, 2, 1.5);
-    else if (k === 'round') banner(`Round ${+a || 1} of ${K.ROUNDS}`);
+    else if (k === 'round') { sfx('round'); banner(`Round ${+a || 1} of ${K.ROUNDS}`); }
     else if (k === 'break') banner(`Round ${+a || 1} done`);
     else if (k === 'end') banner('Match over');
   }
@@ -583,6 +584,7 @@ $('#practice').addEventListener('click', startPractice);
 $('#playUnranked').addEventListener('click', () => openLobby('unranked'));
 $('#homeClose').addEventListener('click', closeLobby);
 $('#leave').addEventListener('click', () => leaveRoom());
+initSoundButtons();
 $('#emotes').innerHTML = EMOTES.map((e, i) => `<button data-e="${i}" title="Key ${i + 1}">${esc(e)}</button>`).join('');
 $('#emotes').addEventListener('click', (e) => { const b = e.target.closest('[data-e]'); if (b) sendEmote(+b.dataset.e); });
 addEventListener('pagehide', () => { if (isHost) board.unpublish(); room?.leave(); });

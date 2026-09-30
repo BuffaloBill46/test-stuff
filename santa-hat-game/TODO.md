@@ -20,7 +20,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 
 ## Next to build
 - [ ] **Turn on ranked Auto match:** the FFA RANKED lobby is built, but its Auto match button stays off ("opening soon") until tickets and the server below exist.
-- [ ] **Auto match by rank points:** close ranks, then wider, then any real players, then bots at 30 seconds. At least 2 real players; 1–3 bots; 3–8 total.
+- [x] **Auto match by rank points (logic built and tested, 2026-09-30):** `mockups/matchmaker.js`: ±50, then ±150, then any real players, bots at 30 s; 2–7 real, 1–3 bots (fills toward 6: Claude's pick), 3–8 total. `tests/matchmaker.test.mjs` (2 simulated hours of traffic). Runs on the server once it exists.
 - [ ] **Ranked tickets:** 10 free a day (reset every 24 hours), spent when the match starts, refunded if you leave before.
 - [ ] **Ranked payouts on the server:** 10 points per player in the pot (bots too); 3 or fewer players pays 1st only; 4+ pays 60/20/20; not placing costs −5; bots can win.
 - [ ] **Match history and stats:** ranked matches, podiums, and the Today / This week / Events leaderboard tabs.
@@ -28,12 +28,15 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 
 ## Before anything paid goes live
 - [ ] **Cheat-proof referee server:** today the host player's browser runs the match and could fake scores. Paid tickets and points need a server we control. Roughly $5–10/month, ask Cody before any spending.
-- [ ] **SANTA payments:** USD prices paid in SANTA at the live price, with a quote locked for about a minute.
+- [ ] **SANTA payments:** USD prices paid in SANTA at the live price, with a quote locked for about a minute. *Built so far:* live price + live tax on the Games tab (`mockups/market.js`), server quotes (`server/games.js`).
+- [ ] **Where the Spin/Slots server runs (Cody):** Spin and Slots don't need an always-on server: Supabase Edge Functions (free plan: 500,000 calls a month) could run `server/games.js`. The multiplayer referee does need an always-on server (~$5–10/month). Claude's pick: Edge Functions for Spin/Slots first.
+- [ ] **Prove the pool lock on real Postgres** (two connections settling at once). The in-process test database runs one transaction at a time, so it can't catch a missing lock (checked).
+- [ ] **SANTA price swings (Cody):** prizes are in dollars but the pools hold SANTA. If SANTA's price falls, a pool's dollar value falls with it, even with no winners. Options: (a) track pools in dollars at purchase price (today's draft) and top up/skim on the chain to match; (b) track pools in SANTA and convert prizes at the live price; (c) keep a price buffer. Needs a decision before real pools.
 - [ ] **Set up the Spin pool and Slots pool wallets (two separate):** keys only on the server, a little SOL each for fees. Each keeps everything (no sweeping). Real money: Cody funds them ($50 each). See DESIGN_NOTES → Pool wallets.
 - [ ] **Security review of Cody's lottery program** before real SANTA goes into it on mainnet.
-- [ ] **Apply SANTA's transfer tax in every payment:** read the live fee from the token; tax first, then burn, treasury, pool; last split gets the remainder; no in-between wallets.
+- [x] **SANTA's transfer tax in every payment (built and proven, 2026-09-30):** the live fee is read from the token by epoch (`market.js`, confirmed 3% on mainnet); the one-transaction burn + send split is proven on the real Token-2022 program (`tests/solana/split.test.mjs`): exact to the last unit, nothing lost, fee enforced, all-or-nothing.
 - [ ] **Split every payment on-chain:** tickets and avatar items 50% burned / 50% to treasury; lottery 90% to winners / 10% burned.
-- [ ] **Confirm payments on the server** (via Helius) before granting tickets or items.
+- [ ] **Confirm payments on the server** (via Helius) before granting tickets or items. *Built:* the payment checker `server/verify.js` (12 cheating attempts refused, `tests/verify.test.mjs`); it needs a finalized transaction from Helius or any Solana RPC.
 - [ ] **Ticket refill limit:** 10 extra per 24 hours.
 - [ ] **Lottery:** daily and weekly draws, 90% to winners / 10% burned. Run by Cody's own on-chain lottery program (built, on devnet) or manually. This game doesn't build its own.
 - [ ] **Buying needs a wallet:** email-only accounts must link one first (linking already works).
@@ -43,25 +46,25 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [x] **Santa Hat Spin (demo built, 2026-09-30):** 3D prize wheel (pine-wreath rim, gold pegs, candy-cane flapper, gold stars marking the 4×/5× slivers, Santa hat hub), 10¢/$1 chips, exact agreed odds on a 400-slice wheel (29 segments), own $50 pool with $25 skim at $175 and a top-off below $10, tap-to-land, 1× shown as "money back", celebrations for 2×+, odds legend, last-spins strip, full screen, wins feed the shared Recent winners list. Tests: `tests/spin.test.mjs`, `tests/browser/spin-test.mjs`. Real SANTA needs the server.
 - [ ] **Slots with real SANTA:** server-picked reel stops (provably fair), payments and payouts. The game rules already take the random numbers from outside (`pull(state, 'big', rand)`), so server seeds plug straight in.
 - [ ] **Slots pool jackpot %:** 25% (Cody) gives about $360–430 on a full pool; about 14% would give about $250. Cody to confirm.
-- [ ] **Provably fair results** and a pool safety rule (a play only starts if the pool covers that game's biggest fixed win: Spin 5× the bet, Slots its top fixed prize).
+- [x] **Provably fair results, in Cody's order (built, 2026-09-30):** `fair.js` + `house.js` (demo) and `server/games.js` (server). "Check this result" on the page. The pool safety rule (a play only starts if the pool covers that game's biggest fixed win: Spin 5× the bet, Slots its top fixed prize).
 - [ ] **Entries split 90% to the pool, 10% burned** (after the 3% tax).
 - [x] **3% SANTA tax notice:** the Games tab intro covers Spin and Slots; each win message also says what arrives after the 3% tax.
 - [ ] **Simulate a million spins** to prove the payback % before launch. (Slots: exact payback from the reel math plus `tests/payout-ranges.mjs`, 5 million pulls. Re-run both after any change.)
-- [ ] More click games from the idea list (Hat Drop, Present Pick, Sleigh Climb, Advent Scratch, Naughty or Nice).
+- [ ] More click games from the idea list (Hat Drop, Present Pick, Sleigh Climb, Advent Scratch, Naughty or Nice). Needs Cody's pick of game and its odds/payback first.
 
 ### Play credits: buy 1–10 plays in one transaction (decided, Cody 2026-09-30)
 Tapping Spin (or the Big Hat's pull) with no credits pops up a counter: pick 1–10 plays, pay once, and the game shows a
 **credit count stored on the player's account**. Each play spends one credit. A free daily spin then becomes "add 1 credit".
 Why: one wallet popup and one network fee instead of ten. **Small amounts only** (at most 10 plays bought at a time), so we
 never hold much for anyone.
-- [ ] **Demo first (no money):** the 1–10 counter popup, a credits readout next to the Spin button and the pull, plays spend credits.
-- [ ] **Credits live in the database, never the browser (rule).** Only the server can add or remove them (row security, like
+- [x] **Demo built and live (2026-09-30):** the 1–10 counter popup, credits readouts, plays spend credits, "Check this result". Tests: `tests/credits.test.mjs`, `tests/browser/games-test.mjs`, `spin-test.mjs`.
+- [ ] **Credits live in the database, never the browser (rule).** *Drafted:* `supabase/005_credits_plays.sql` (NOT applied), checked on real Postgres (`tests/db/`). Only the server can add or remove them (row security, like
       profiles). The page only shows the number.
 - [ ] **The money moves at purchase (rule):** the single payment already does the 10% burn / 90% to that game's pool, so a credit
       is fully paid for before it's used. **All Spin credits pay the Spin pool; all Slots credits pay the Slots pool.** Price locked
       in dollars at purchase; later SANTA price moves don't change it.
 - [ ] **Credits are per game and size:** 10¢ Spin, $1 Spin, $1 Big Hat. **No cash-out, no expiry, no bulk discount** (Cody).
-- [ ] **Invariants to test as assertions:** credits bought = credits used + credits left, per player; a credit is spent at most
+- [x] **Invariants tested as assertions** (demo ledger, the 005 SQL on real Postgres, and the server steps): credits bought = credits used + credits left, per player; a credit is spent at most
       once (even with two taps or two tabs at once); one payment signature buys credits exactly once; a play that the pool
       refuses (paused or refilling) keeps its credit.
 - [ ] **Free daily spin:** the server adds 1 credit per player per day. Still needs Cody's yes (it costs real money from the Spin pool).
@@ -82,18 +85,18 @@ stop cheating and spam:
 - [ ] **Keep it a "PAR sheet" machine:** odds come only from symbol counts on the reel strips; change payback by changing counts or prizes in `mockups/slots.js`, then re-run `tests/slots.test.mjs`, `tests/paytable.mjs` and `tests/payout-ranges.mjs`.
 - [ ] **Provably fair, in Cody's order (see DESIGN_NOTES → "Fair results: the order"):** payment confirmed and the credit spent
       FIRST; only then does the server make and lock a fresh secret for that play. Anyone can re-check a play afterwards.
-- [ ] **Show every win clearly:** draw the winning paylines, light the winning symbols, show the hat-bonus nickels, then the total.
-- [ ] **Only celebrate real wins:** big effects only when the pull pays more than the $1 it cost (research: "losses disguised as wins"). Small returns show quietly.
-- [ ] **Reel timing:** reels stop left to right with a small bounce; about 250–500 ms between stops; a slower last reel only when hats are really lining up (honest anticipation, nothing staged).
-- [ ] **Let players stop early:** tapping during a spin lands the reels right away (same result, just faster).
-- [ ] **Paytable always one tap away,** with the 3% tax note and the odds.
+- [x] **Show every win clearly:** draw the winning paylines, light the winning symbols, show the hat-bonus nickels, then the total.
+- [x] **Only celebrate real wins:** big effects only when the pull pays more than the $1 it cost (research: "losses disguised as wins"). Small returns show quietly.
+- [x] **Reel timing:** reels stop left to right with a small bounce; about 250–500 ms between stops; a slower last reel only when hats are really lining up (honest anticipation, nothing staged).
+- [x] **Let players stop early:** tapping during a spin lands the reels right away (same result, just faster).
+- [x] **Paytable always one tap away,** with the 3% tax note and the odds.
 
 ## Later
 - [ ] Wager mode (players bet SANTA, FFA).
 - [ ] **Recent winners list shared across players:** today it shows this browser's wins only; the real list needs the server (every settled win over the pull price, with name, amount, +% and game).
 - [ ] Tournaments.
-- [ ] Sound effects: catches, hits, landings, wind.
-- [ ] Bots occasionally use emotes too, so they stay hard to spot.
+- [x] **Sound effects (2026-09-30):** made in code (`mockups/sfx.js`): sleigh bells, snow thumps, throws, knocks, reel clacks, wheel ticks, wins; mute button remembered. Test: `tests/browser/sfx-test.mjs`. Still to judge by ear on a real phone.
+- [x] **Bots use emotes sometimes (2026-09-30):** 30% on a catch, knock or hit, at most once per 8 s per bot, no extra messages. Checked in `tests/sim.test.mjs`.
 - [ ] Merging two accounts that both have progress (linking refuses this today).
 - [ ] Tune bot difficulty and the scoring and speed numbers after real play.
 - [ ] Move to our own game server when real traffic arrives. The free Supabase plan carries roughly 70 full matches a month.

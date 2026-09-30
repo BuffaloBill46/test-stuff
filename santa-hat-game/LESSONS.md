@@ -68,6 +68,22 @@ Read this before starting new work on the game. Add to it whenever something rea
   `hatBonus: 0.05`; payback dropped 9% with no error. Caught only because the number looked wrong. The Slots test now
   fails if the hat bonus or pool jackpot settings are missing, or payback leaves 70–80%. Put notes on their own line.
 
+- **A failure after a credit is spent must give the credit back.** The first play-credits version spent the credit, then hit an
+  error making the secret, and the machine stayed locked with the play lost. Found only by clicking through in a real browser.
+  Now every step after the spend refunds on failure, and a test forces each failure.
+- **Browser hashing (crypto.subtle) only works on secure pages** (https, or http://localhost). The live site is https; tests that
+  play the games must load `http://localhost/…`, not `http://local.test/…`.
+- **The stray-comment bug struck again, in a test:** a `//` note typed mid-line swallowed the rest of the line. Notes go on their own line.
+- **Rounded constants multiply their error.** A test's pool-income figure rounded to 7 digits was fine for 1 pull and failed for 5.
+  Use the exact formula, `(1 - 0.10 * 0.97) * 0.97`.
+- **When a new test fails, check the test's bookkeeping before the game.** The bot-emote check failed three times; every time it
+  was the test (event numbers restarting per match, two games sharing labels, warm-up events stamped late). The game was right.
+- **The in-process Postgres (PGlite) runs one transaction at a time,** so it can't catch a missing row lock. Proven by removing the
+  lock: the test still passed. Locks must be checked on a real multi-connection Postgres.
+- **Fake Solana addresses in tests must be valid base58** (no 0, O, I or l). The live database rule rejects them otherwise.
+- **The publish script now refuses a build with a missing file** (any `./x.js` a page imports must be copied). A forgotten file
+  would otherwise break the live site with no warning.
+
 ## Multiplayer notes
 
 - This workspace can't open WebSockets (proxy limit), so live Supabase play can't be tested here.

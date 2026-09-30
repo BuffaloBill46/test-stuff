@@ -134,6 +134,9 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 .chip b { font: 700 15px/1.2 var(--digits); color: var(--lamp); font-variant-numeric: tabular-nums; }
 .chip.soon b { color: var(--dim); }
 .signin { font: 700 15px/1 var(--body); color: var(--brim); background: var(--hat); border: 2px solid var(--ink); border-radius: 3px; padding: 9px 14px 11px; box-shadow: inset 0 -4px 0 var(--brim), 2px 2px 0 var(--ink); cursor: pointer; white-space: nowrap; }
+.sndbtn { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; color: var(--text); background: var(--plaque); border: 2px solid var(--ink); border-radius: 3px; box-shadow: 2px 2px 0 var(--ink); cursor: pointer; pointer-events: auto; }
+.sndbtn .x { display: none; } .sndbtn.off { color: var(--dim); } .sndbtn.off .x { display: inline; } .sndbtn.off .w { display: none; }
+#gamebar .sndbtn { margin-left: auto; } #gamebar .sndbtn + #leave { margin-left: 8px; }
 .signin.in { background: var(--plaque-hi); color: var(--text); box-shadow: 2px 2px 0 var(--ink); }
 #pages { position: fixed; z-index: 6; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 60px); bottom: 0; overflow-y: auto; padding: 22px 16px 40px; -webkit-overflow-scrolling: touch; touch-action: pan-y; -webkit-user-select: text; user-select: text; }
 .page { max-width: 1080px; display: grid; gap: 18px; }
@@ -437,6 +440,7 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
 <header class="bar" id="gamebar" hidden>
   <div class="brand"><img src="hat-logo.png" alt=""><span><b>Santa</b> Hat</span></div>
   <div id="roomchip" class="plaque" hidden></div>
+  <button class="sndbtn" type="button" aria-pressed="true" title="Sound on" aria-label="Sound"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M3 8h3l4-4v12l-4-4H3z" fill="currentColor"/><path class="w" d="M13 7c1.2 1.6 1.2 4.4 0 6M15.5 5c2.4 2.8 2.4 7.2 0 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path class="x" d="M13 7.5l5 5M18 7.5l-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
   <button id="leave" hidden>Leave</button>
 </header>
 <div id="hud" aria-live="polite"></div>
@@ -452,6 +456,7 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
     <button role="tab" id="t-ranks" data-tab="ranks" aria-selected="false">Ranks</button>
   </div>
   <div class="who">
+    <button class="sndbtn" type="button" aria-pressed="true" title="Sound on" aria-label="Sound"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M3 8h3l4-4v12l-4-4H3z" fill="currentColor"/><path class="w" d="M13 7c1.2 1.6 1.2 4.4 0 6M15.5 5c2.4 2.8 2.4 7.2 0 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path class="x" d="M13 7.5l5 5M18 7.5l-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     <span class="chip" id="rankchip"><i>Rank pts</i><b>—</b></span>
     <span class="chip soon" id="tixchip" title="Daily ranked tickets arrive when ranked opens"><i>Tickets</i><b>—/10</b></span>
     <button id="signin" class="signin">Sign in</button>

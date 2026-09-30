@@ -5,6 +5,7 @@ import { KINDS, MAX_BUY, newLedger, buy, costOf } from './credits.js';
 import { createHouse, check } from './house.js';
 import { newSeed } from './fair.js';
 import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js';
+import { play as sfx } from './sfx.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);
@@ -47,7 +48,7 @@ export function initCredits(opts) {
     wallet.add(-cost);
     const r = buy(ledger, pools, buyKind, count, 'demo-' + newSeed(8)); // real version: the confirmed payment's signature
     if (!r.ok) { wallet.add(cost); $('#buyNote').textContent = 'Couldn\'t buy: ' + r.why; return; }
-    store.set(ledger); changed(); closeBuy(true);
+    store.set(ledger); changed(); sfx('buy'); closeBuy(true);
   });
   $('[data-buy="big"]').addEventListener('click', () => openBuy('big'));
   $('[data-buy="spin"]').addEventListener('click', () => openBuy(spinKind));
