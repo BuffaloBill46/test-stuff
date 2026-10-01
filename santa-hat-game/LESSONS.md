@@ -257,3 +257,11 @@ done while it isn't.
 ## `pkill -f <name>` can match its own shell (2026-10-01)
 Killing a background test server with `pkill -f _pgserve.mjs` also matched the shell running the command (its command line
 contains the name) and stopped it. Use a pattern that can't match itself: `pgrep -f "node [_]pgserve"`.
+
+## On Windows, the real-Postgres tests skip unless run through WSL (2026-10-01)
+`tests/db/lock.test.mjs` and `edge-limit.mjs` print SKIP (exit 0) on plain Windows: `realpg.mjs` needs Linux Postgres
+binaries. A skip is not a pass; read the last line, not the exit code. WSL Ubuntu now has `postgresql` (14) installed, and a
+Linux Deno lives in `/tmp/denolx` (re-install with `npm install deno` there if /tmp was cleared). From Git Bash:
+`MSYS_NO_PATHCONV=1 wsl -d Ubuntu -- bash -c "cd /mnt/c/test-stuff/santa-hat-game/tests/db && node lock.test.mjs && DENO=/tmp/denolx/node_modules/.bin/deno node edge-limit.mjs"`
+(without `MSYS_NO_PATHCONV=1`, Git Bash rewrites `/mnt/c/...` into a Windows path and WSL can't find it). Never `npm install`
+inside WSL here without `--no-save` (see the lockfile lesson above).
