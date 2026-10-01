@@ -95,11 +95,43 @@ Cody wants only 2–3 to start:
 Burns need no wallet (they're destroyed straight from the player's wallet). The **treasury** is a separate
 wallet that only receives. **Cody is making a new wallet for it** and will send its public address.
 
-**Lottery (Cody's plan):** either run manually by Cody, or use **Cody's own on-chain lottery program**
-(a smart contract, so it's trustless: the rules run on Solana and nobody can take the pot). It's already
-built and running on devnet (Solana's free test network) in Cody's main Claude Code session, outside this repo.
-So **this game doesn't build its own lottery.** It links to or plugs into Cody's. Before real SANTA goes
-into it on mainnet, Claude recommends a security review of the program, since it would hold real money.
+**Lottery: (superseded 2026-10-01, see "Santa Lottery" below).** The earlier plan was to plug into Cody's own on-chain
+lottery program. That program is GREEN LIFE's `green-lottery` (devnet `8MHcM3iT1UCWw6e5hihNKYzFzhBRrv75ATPoWPCrR5GA`), and
+it can't hold SANTA as written: it books each ticket at the amount SENT, but SANTA's 3% tax comes out of what ARRIVES, so
+its vault would always hold 3% less than its books promise (the winner's claim or the last refunds would fail). It's also
+5% treasury / no burn, one winner. Cody chose a server-run lottery instead.
+
+### Santa Lottery (decided, Cody 2026-10-01)
+**Cody's calls:**
+- **Server-run, like Spin:** one lottery pool wallet whose key lives only on the server; provably fair draws; winners paid
+  automatically by the payout worker (no claim button); books = wallet checked like every other pool.
+- **Five lotteries:**
+  | Lottery | Ticket | Draws | Winners |
+  |---|---|---|---|
+  | Daily 10¢ | $0.10 | every day | 1 winner takes the 90% |
+  | Daily $1 | $1.00 | every day | 1 winner takes the 90% |
+  | Weekly 10¢ | $0.10 | every week | top 3: 60% / 25% / 15% of the 90% |
+  | Weekly $1 | $1.00 | every week | top 3: 60% / 25% / 15% of the 90% |
+  | Christmas | $1.00 | once, sales close December 23, 2026 | top 3: 60% / 25% / 15% of the 90% |
+- **No cap** on tickets per wallet per draw. Paid in SANTA at the live price (prices in dollars, like everything else).
+- **90% to winners, 10% burned** (already decided, Economy above).
+
+**Claude's picks (Cody can overrule):**
+- **The burn happens at purchase**, in the player's one transaction (10% burned, the rest straight to the lottery wallet), the
+  same as every game: never an in-between wallet, never a second 3% tax. So "90% to winners" means the whole pot (what
+  ARRIVED in the lottery wallet, after the tax) goes to the winners; winners absorb the 3% on the way out (decided rule).
+- **One lottery wallet for all five pots,** each draw with its own books. Fewer keys and less SOL for fees; the
+  reconciliation checks that every draw's pot adds up to the wallet.
+- **Draw times: 00:00 UTC** (7 PM US Eastern in winter, 8 PM in summer). Daily: every day. Weekly: Sunday 00:00 UTC (Saturday
+  evening in the US). Christmas: sales close and it draws at 00:00 UTC on December 24, 2026 (= 7 PM Eastern on the 23rd).
+- **A wallet wins at most one place per draw;** each ticket is one equal chance. If a draw has fewer wallets than places, the
+  unfilled places' shares go to 1st (nothing is left over or stuck). A draw with no tickets pays nothing and holds nothing.
+- **Fair draw:** when a draw opens, the server makes its secret and publishes the fingerprint (hash) before any ticket is sold.
+  At the draw, the result mixes that secret with a Solana blockhash from AFTER sales close (nobody, including us, knows it in
+  advance) and the full ticket list. Anyone can re-check: the secret matches the fingerprint, the blockhash is public, the
+  ticket list is public.
+- **Sales close 5 minutes before the draw** (no new quotes). A payment that confirms after its draw has already been drawn
+  moves its tickets to the next draw of the same lottery; for the Christmas draw (no next one) it's refunded in full.
 
 How the pool wallets are controlled (options; Claude's pick marked):
 - **A. A plain wallet whose key lives only on our server (pick, for the Spin and Slots pools).** The server pays winners
