@@ -105,9 +105,9 @@ export function createLottery({ db, chain, livePrice, liveFee, wallet, mint = MI
     const t = now(), open = [];
     for (const kind of Object.keys(LOTTERIES)) { const d = await drawFor(kind, t); if (d) open.push({ lottery: kind, name: LOTTERIES[kind].name, ticket: LOTTERIES[kind].ticket,
       split: LOTTERIES[kind].split, drawsAt: new Date(d.draws_at).getTime(), pot_raw: +d.pot_raw, tickets: d.tickets, commit: d.commit, sales: schedule.salesFor(kind, t) }); }
-    const recent = await db.query(`select id, kind, draws_at, secret, commit, blockhash, block_slot, pot_raw, tickets from public.lottery_draws where status = 'drawn' order by draws_at desc limit 10`);
-    const wins = await db.query(`select p.draw_id, p.place, pr.name, p.amount_raw from public.lottery_payouts p join public.profiles pr on pr.id = p.profile_id where p.place > 0 and p.draw_id = any($1::bigint[]) order by p.place`, [recent.map((r) => r.id)]);
-    return { open, recent: recent.map((r) => ({ ...r, id: +r.id, pot_raw: +r.pot_raw, winners: wins.filter((w) => +w.draw_id === +r.id).map((w) => ({ place: w.place, name: w.name, amount_raw: +w.amount_raw })) })) };
+    const recent = await db.query(`select id, kind, draws_at, secret, commit, blockhash, block_slot, pot_raw, tickets from public.lottery_draws where status = 'drawn' and tickets > 0 order by draws_at desc limit 10`); // empty draws aren't news
+    const wins = await db.query(`select p.draw_id, p.place, pr.name, p.amount_raw, left(p.to_wallet, 4) || '…' || right(p.to_wallet, 4) as wallet_short from public.lottery_payouts p join public.profiles pr on pr.id = p.profile_id where p.place > 0 and p.draw_id = any($1::bigint[]) order by p.place`, [recent.map((r) => r.id)]);
+    return { open, recent: recent.map((r) => ({ id: +r.id, kind: r.kind, draws_at: r.draws_at, commit: r.commit, secret: r.secret, blockhash: r.blockhash, block_slot: r.block_slot, tickets: r.tickets, pot_raw: +r.pot_raw, winners: wins.filter((w) => +w.draw_id === +r.id).map((w) => ({ place: w.place, name: w.name, wallet: w.wallet_short, amount_raw: +w.amount_raw })) })) };
   }
 
   // Public: a DRAWN draw's ticket list (wallets shortened) and its revealed inputs, so anyone can re-run it (mockups/lottery.js).

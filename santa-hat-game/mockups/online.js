@@ -7,6 +7,7 @@ import { SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules } from './
 import { initTabs, avatarCharacter, renderProgress } from './tabs.js';
 import { levelInfo, clampLevel } from './levels.js';
 import { SERVER, call } from './gameserver.js';
+import { initLottery } from './lotteryui.js';
 import { play as sfx, initSoundButtons } from './sfx.js';
 
 const V3 = THREE.Vector3;
@@ -691,6 +692,7 @@ const app = {
 let gamesMod = null; // Games tab code loads the first time it's opened
 const tabs = initTabs(app);
 renderProgress(app.profile); // the Play page's Player Progress box (guests: level 1; updated on sign-in)
+initLottery(); // the Store's Santa Lottery (lotteryui.js)
 $('#loading')?.remove();
 frame();
 
