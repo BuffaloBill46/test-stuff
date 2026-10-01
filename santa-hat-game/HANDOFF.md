@@ -169,6 +169,8 @@ FOR_MAIN_CLAUDE.md.
   50/50 bounces, equal-width presents, prizes 10× · 5× · 1× · 0.4× · 0× (edges to middle), 78.4% payback. Rules `mockups/plinko.js`, tests `tests/plinko.test.mjs`,
   `tests/browser/plinko-test.mjs`. **It shares the Spin pool** (Cody), simulated safe with both games playing. Not wired into
   credits or the server yet.
+- **Snowball Drop added to the Games tab** (2026-10-01): shares the Spin pool; **one dollar balance** pays for 10¢ or $1
+  drops in any mix (Cody). Built through to the server and SQL; tests `tests/browser/drop-test.mjs`, `tests/db/server.test.mjs`.
 - **"What's SANTA?" draft copy** in `WHATS_SANTA.md` (short + long, from santahat.gold and on-chain facts): Cody to edit.
 
 **Server side, built and proven here but not deployed** (everything else for devnet is in `FOR_MAIN_CLAUDE.md`):

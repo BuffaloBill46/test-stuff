@@ -44,7 +44,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 
 ## Santa Hat Games tab
 - [ ] **Spin pool skim:** when the Spin pool reaches $175, the server sends $25 to the treasury (decided).
-- [ ] **Snowball Drop (Plinko), previewed at `/plinko.html`:** prizes 10× · 5× · 1× · 0.4× · 0× (edges to middle, Cody), 78.4%; **shares the Spin pool** (Cody). Next when Cody says go: credits, server steps, Games-tab card (FOR_MAIN_CLAUDE lists them).
+- [x] **Snowball Drop in the arcade (2026-10-01):** a Games-tab card after Spin; prizes 10× · 5× · 1× · 0.4× · 0× (edges to middle, Cody), 78.4%; **shares the Spin pool**; **one dollar balance for 10¢ and $1 drops** (Cody: buy $10, play either size). Server and database steps built and tested. Preview page `/plinko.html` still there.
 - [x] **Santa Hat Spin (demo built, 2026-09-30):** 3D prize wheel (pine-wreath rim, gold pegs, candy-cane flapper, Santa hat hub), 10¢/$1 chips, **two wheels since 2026-09-30 (Cody's option A): main 40 equal segments with 3 gold stars → bonus wheel of 12 (3×/4×/5×), pays back 80.0%** (Cody's ~80% target), own $50 pool with $25 skim at $175 and a top-off below $10, tap-to-land, 1× shown as "money back", celebrations for 2×+, odds legend, last-spins strip, full screen, wins feed the shared Recent winners list. Tests: `tests/spin.test.mjs`, `tests/browser/spin-test.mjs`. Real SANTA needs the server.
 - [ ] **Slots with real SANTA:** server-picked reel stops (provably fair), payments and payouts. The game rules already take the random numbers from outside (`pull(state, 'big', rand)`), so server seeds plug straight in.
 - [ ] **Slots pool jackpot %:** 25% (Cody) gives about $360–430 on a full pool; about 14% would give about $250. Cody to confirm.

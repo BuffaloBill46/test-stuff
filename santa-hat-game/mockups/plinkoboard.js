@@ -1,0 +1,95 @@
+// Snowball Drop board (canvas): the hat, the pegs, the presents and their prizes, snowballs hopping along a path the RULES
+// already decided (plinko.js / the fair draw). Used by the Games tab (dropui.js) and the preview page (plinko-page.js).
+// createBoard(canvas) → { launch(path, bin) → Promise (resolves when that snowball lands), setActive(on), flying() }
+import { ROWS, BINS, PAYS } from './plinko.js';
+
+const W = 500, H = 560, CX = W / 2, GAP = 54, TOP = 100, ROW_H = 44, PEG_R = 6, BALL_R = 11;
+const BIN_Y = TOP + (ROWS - 1) * ROW_H + 36, BIN_H = 58, LABEL_Y = BIN_Y + BIN_H + 26; // prize labels sit on the snow bank
+const pegX = (i, j) => CX + (j - i / 2) * GAP, pegY = (i) => TOP + i * ROW_H, binX = (k) => CX + (k - (BINS - 1) / 2) * GAP;
+export const ASPECT = H / W;
+// Colours per prize: the rare 10× presents are Santa-hat red with a white brim; 5× gold; 1× frost; 0.4× plaque; 0× coal.
+const TIER = (m) => (m >= 10 ? { box: '#cf3128', rib: '#f5f1e8' } : m >= 2 ? { box: '#c98a1b', rib: '#fff6c8' } : m === 0 ? { box: '#151a30', rib: '#26305a' }
+  : m >= 1 ? { box: '#6f8fd0', rib: '#f5f1e8' } : { box: '#2e3a6e', rib: '#b9cdf2' });
+
+export function createBoard(cv) {
+  const ctx = cv.getContext('2d'), reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const balls = [], pegHit = new Map(), binHit = new Array(BINS).fill(-1e9);
+  const hat = new Image(); hat.src = 'hat-logo.png';
+  const flakes = Array.from({ length: 70 }, () => ({ x: Math.random() * W, y: Math.random() * H, r: 0.6 + Math.random() * 1.8, v: 8 + Math.random() * 18 }));
+  let active = false, raf = 0, last = performance.now();
+  function fit() { const dpr = Math.min(3, devicePixelRatio || 1), w = cv.clientWidth || 300; cv.width = Math.round(w * dpr); cv.height = Math.round(w * ASPECT * dpr); }
+  new ResizeObserver(fit).observe(cv); fit();
+
+  function peg(x, y, lit) {
+  if (lit > 0) { const g = ctx.createRadialGradient(x, y, 0, x, y, 20); g.addColorStop(0, `rgba(255,190,92,${0.55 * lit})`); g.addColorStop(1, 'rgba(255,190,92,0)'); ctx.fillStyle = g; ctx.fillRect(x - 20, y - 20, 40, 40); }
+  ctx.beginPath(); ctx.arc(x + 1.5, y + 1.5, PEG_R, 0, 7); ctx.fillStyle = '#0c0f1a'; ctx.fill();
+  ctx.beginPath(); ctx.arc(x, y, PEG_R, 0, 7); ctx.fillStyle = lit > 0 ? '#ffe2a8' : '#ffbe5c'; ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = '#0c0f1a'; ctx.stroke();
+  ctx.beginPath(); ctx.arc(x - 2, y - 2, 1.8, 0, 7); ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fill();
+}
+  function snowball(x, y, rot, squash) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(1 + squash, 1 - squash); ctx.rotate(rot);
+  const n = 8, pts = Array.from({ length: n }, (_, i) => [Math.cos((i / n) * Math.PI * 2) * BALL_R, Math.sin((i / n) * Math.PI * 2) * BALL_R]);
+  ctx.beginPath(); pts.forEach(([a, b], i) => (i ? ctx.lineTo(a, b) : ctx.moveTo(a, b))); ctx.closePath();
+  ctx.fillStyle = '#f5f1e8'; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(...pts[0]); ctx.lineTo(...pts[1]); ctx.lineTo(...pts[2]); ctx.lineTo(...pts[3]); ctx.lineTo(...pts[4]); ctx.lineTo(0, 1); ctx.closePath();
+  ctx.fillStyle = '#c9d6ee'; ctx.fill(); // shaded low-poly facets underneath
+  ctx.beginPath(); pts.forEach(([a, b], i) => (i ? ctx.lineTo(a, b) : ctx.moveTo(a, b))); ctx.closePath();
+  ctx.lineWidth = 2.2; ctx.strokeStyle = '#0c0f1a'; ctx.stroke();
+  ctx.restore();
+}
+  function present(k, now) {
+  const m = PAYS[k], c = TIER(m), since = (now - binHit[k]) / 1000, pop = since < 0.5 ? Math.sin((since / 0.5) * Math.PI) * 8 : 0;
+  const w = GAP - 6, x = binX(k) - w / 2, y = BIN_Y - pop;
+  ctx.fillStyle = '#0c0f1a'; ctx.fillRect(x + 3, y + 3, w, BIN_H);
+  ctx.fillStyle = c.box; ctx.fillRect(x, y, w, BIN_H);
+  ctx.fillStyle = c.rib; ctx.fillRect(binX(k) - 4, y, 8, BIN_H);                      // ribbon
+  if (m >= 10) { ctx.fillStyle = '#f5f1e8'; ctx.fillRect(x, y, w, 12); ctx.fillStyle = '#d9d2c2'; ctx.fillRect(x, y + 9, w, 3); } // the hat's brim
+  ctx.lineWidth = 2; ctx.strokeStyle = '#0c0f1a'; ctx.strokeRect(x, y, w, BIN_H);
+  if (since < 0.9) { ctx.fillStyle = `rgba(255,226,168,${0.5 * (1 - since / 0.9)})`; ctx.fillRect(x, y, w, BIN_H); }
+  // the prize, big and dark on the snow bank under its present (readable at phone size)
+  ctx.font = `800 ${m >= 10 ? 26 : 22}px 'Alegreya Sans', sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = m >= 10 ? '#cf3128' : m >= 2 ? '#9a6510' : m >= 1 ? '#34539a' : '#5a6485';
+  ctx.fillText(`${m}×`, binX(k), LABEL_Y - (since < 0.5 ? pop : 0));
+}
+  function draw(now, dt) {
+  const s = cv.width / W; ctx.setTransform(s, 0, 0, s, 0, 0);
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#16204a'); g.addColorStop(1, '#0f1530'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  const a = ctx.createRadialGradient(CX + 60, 30, 10, CX + 60, 30, 300); a.addColorStop(0, 'rgba(127,224,160,.16)'); a.addColorStop(1, 'rgba(127,224,160,0)');
+  ctx.fillStyle = a; ctx.fillRect(0, 0, W, H);                                            // a faint aurora glow, no edges
+  ctx.fillStyle = 'rgba(245,241,232,.55)';
+  for (const f of flakes) { if (!reduce) { f.y += f.v * dt; if (f.y > H) { f.y = -4; f.x = Math.random() * W; } } ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 7); ctx.fill(); }
+  ctx.fillStyle = '#eef2fb'; ctx.fillRect(0, BIN_Y + BIN_H - 4, W, H); // snow bank under the presents
+  ctx.fillStyle = '#eef2fb'; for (let x = -10; x < W; x += 26) { ctx.beginPath(); ctx.arc(x, BIN_Y + BIN_H - 2, 14, Math.PI, 0); ctx.fill(); }
+  if (hat.complete && hat.naturalWidth) ctx.drawImage(hat, CX - 30, 6, 60, 60 * (hat.naturalHeight / hat.naturalWidth));
+  for (let i = 0; i < ROWS; i++) for (let j = -1; j <= i + 1; j++) {
+    const x = pegX(i, j); if (x < 12 || x > W - 12) continue;
+    const hit = pegHit.get(`${i}:${j}`), lit = hit ? Math.max(0, 1 - (now - hit) / 400) : 0; peg(x, pegY(i), lit);
+  }
+  for (let k = 0; k < BINS; k++) present(k, now);
+  // balls: hop from peg to peg along the decided path
+  for (let n = balls.length - 1; n >= 0; n--) {
+    const b = balls[n], from = b.pts[b.leg], to = b.pts[b.leg + 1], dur = b.leg === 0 ? 0.22 : to.bin !== undefined ? 0.26 : 0.15;
+    b.t += dt / (reduce ? dur / 3 : dur);
+    if (b.t >= 1) {
+      b.t = 0; b.leg++;
+      if (to.peg) pegHit.set(to.peg, now);
+      if (b.leg >= b.pts.length - 1) { binHit[b.bin] = now; balls.splice(n, 1); b.done(); continue; }
+    }
+    const p = b.pts[b.leg], q = b.pts[b.leg + 1], t = b.t, arc = b.leg === 0 ? 0 : 12;
+    const x = p.x + (q.x - p.x) * t, y = p.y + (q.y - p.y) * t * t - arc * Math.sin(Math.PI * t) * (1 - t);
+    snowball(x, y, b.spin + (b.leg + t) * (q.x > p.x ? 0.9 : -0.9), t < 0.12 && b.leg > 0 ? 0.12 * (1 - t / 0.12) : 0);
+  }
+}
+  function frame(now) { raf = 0; if (!active) return; const dt = Math.min(0.05, (now - last) / 1000); last = now; draw(now, dt); raf = requestAnimationFrame(frame); }
+  // One snowball along `path` (0 = left, 1 = right at each row) into present `bin`. Resolves when it lands.
+  function launch(path, bin) {
+    const pts = [{ x: CX, y: 58 }]; let rights = 0;
+    for (let i = 0; i < ROWS; i++) { pts.push({ x: pegX(i, rights), y: pegY(i) - PEG_R - BALL_R + 2, peg: `${i}:${rights}` }); rights += path[i]; }
+    if (rights !== bin) throw new Error('path and present disagree');
+    pts.push({ x: binX(bin), y: BIN_Y + BIN_H / 2 - 4, bin });
+    return new Promise((done) => { balls.push({ pts, bin, leg: 0, t: 0, spin: Math.random() * 6, done }); if (!active) setActive(true); });
+  }
+  function setActive(on) { active = on; if (on && !raf) { last = performance.now(); fit(); raf = requestAnimationFrame(frame); } }
+  return { launch, setActive, flying: () => balls.length };
+}

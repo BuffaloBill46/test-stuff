@@ -158,7 +158,15 @@ jackpot) was tried and rejected: the treasury got only about $123 per 20,000 pul
 emergency stop); a drop only starts if the pool covers its top prize (10×). Simulated 6 million mixed plays (half drops, and
 80% drops): 0 refused, 4–5 top-offs (Drop's 10× wins are bigger than Spin's 5×; Spin alone needed none), lowest pool
 about $10, treasury about $650–700 per 20,000 plays. Guard rail: Spin's top-off must cover Drop's top prize ($10).
-Logic `mockups/plinko.js` (`play`, `canPlay`), test `tests/plinko.test.mjs`. Still a preview: not in the arcade, no credits yet.
+Logic `mockups/plinko.js` (`play`, `canPlay`), test `tests/plinko.test.mjs`.
+
+**Snowball Drop is in the arcade (Cody, 2026-10-01), paid from ONE dollar balance.** "When someone buys $10.00 in tokens
+they can play either the 0.10 or 1.00 game." So unlike Spin and Big Hat (credits per game and size), Snowball Drop credits
+are a balance: buy $1–$10 in one payment; a 10¢ drop takes 10¢ of it, a $1 drop $1, in any mix. Kept in whole 10¢ units
+(never fractions): $10 = 100 units, a 10¢ drop 1 unit, a $1 drop 10. A size the balance can't cover is refused before
+anything is taken; a refused or failed drop gives back exactly what it took. Same fairness order; the 8 bounces come from
+the fair numbers (one per row), and "Check this result" replays them. Tested: `tests/credits.test.mjs` (to the cent),
+`tests/db/server.test.mjs` (real Postgres, the real buy flow), `tests/browser/drop-test.mjs` (the Games tab).
 
 **Slots, current rules (decided by Cody, 2026-09-30; full numbers in `PAYTABLE.md`, always regenerate it after changes):**
 - **One machine: the Big Hat, $1.00 a pull, 5×5 grid, 11 paylines: straight or diagonal only, always starting on the first

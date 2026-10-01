@@ -153,7 +153,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     const rows = await db.query(`select pr.name, pl.kind, pl.pay, pl.bet, pl.settled_at, pl.result from public.plays pl join public.profiles pr on pr.id = pl.profile_id
       where pl.state = 'settled' and pl.pay > pl.bet order by pl.settled_at desc, pl.id desc limit $1`, [limit]);
     const list = rows.map((w) => { const bet = +w.bet || KINDS[w.kind].bet, pay = +w.pay;
-      return { game: w.kind === 'big' ? 'slots' : w.kind, name: w.name, amount: pay, gainPct: ((pay - bet) / bet) * 100, at: new Date(w.settled_at).getTime(),
+      return { game: w.kind === 'big' ? 'slots' : w.kind === 'drop' ? (bet >= 1 ? 'drop100' : 'drop10') : w.kind, name: w.name, amount: pay, gainPct: ((pay - bet) / bet) * 100, at: new Date(w.settled_at).getTime(),
         note: w.result?.jackpot ? 'pool jackpot' : w.result?.mult ? `${w.result.mult}×` : '', big: pay >= 10 * bet }; });
     winnersCache = { at: Date.now(), list }; return list;
   }
