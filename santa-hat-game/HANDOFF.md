@@ -123,6 +123,12 @@ node tests/reconcile.test.mjs    # audit: books + everything owed = wallet
 node tests/settings.test.mjs     # game settings: version 0 = today exactly; guard rails; changes do what they say
 (cd tests/db && node settings-db.test.mjs)      # settings on the server: never mid-play, old plays re-check, runs keep their price
 (cd tests/browser && node settings-mode-test.mjs)  # the page draws published settings; plays land and re-check on them
+node tests/levels.test.mjs       # levels: Cody's table exactly; 5 top-3 finishes per level, 9→10 = 10 first-place wins; buy to 5 ($8)
+(cd tests/db && node levels-db.test.mjs)        # levels in the database + the server's progress/finish actions; database = levels.js
+(cd tests/browser && node controls-test.mjs)    # phone controls: joystick only moves, any other tap throws; zoom; whole ring reachable (slow: ~30 min)
+(cd tests/solana && node chain.devnet.mjs)      # REAL devnet: the payout worker's live adapter, crash cases, never pays twice
+(cd tests/solana && node devnet-setup.mjs)      # REAL devnet: makes/tops up the test token and wallets (keys in C:\santa-devnet-keys)
+# On Windows: tests/solana, tests/browser and the real-Postgres db tests run inside WSL (see LESSONS for the exact commands).
 cd tests/solana && npm install && node split.test.mjs   # the payment split on the REAL Token-2022 program (LiteSVM, no network)
 cd tests/db && npm install && node credits-db.test.mjs && node server.test.mjs  # the SQL + server steps on real Postgres (PGlite)
 cd tests/browser && npm install  # once per fresh machine

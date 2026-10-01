@@ -32,8 +32,9 @@ async function open(name, qs = '') {
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(name + ' pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push(name + ' console: ' + m.text()); });
-  await page.goto('http://local.test/online.html?net=local' + qs);
-  await page.waitForFunction(() => window.__sq, null, { timeout: 60000 });
+  // slow machines: the 3rd and 4th 3D window can take over 30 s to load (LESSONS), so allow 90 s
+  await page.goto('http://local.test/online.html?net=local' + qs, { timeout: 90000 });
+  await page.waitForFunction(() => window.__sq, null, { timeout: 90000 });
   if (!(await page.isVisible('#name'))) await page.click('#playUnranked');
   await page.fill('#name', name);
   return page;
