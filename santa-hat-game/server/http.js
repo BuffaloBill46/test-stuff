@@ -1,8 +1,8 @@
 // SERVER: the web door to the game server (runs inside the Supabase Edge Function; plain JS so it's tested in node too).
 // One address, POST JSON { action, ... }:
-//   credits                    → your credits per game/size        open   { kind }            → { ticket, commit }
-//   quote  { kind, n }         → a 60-second SANTA price quote      settle { ticket, seed }    → result + revealed secret
-//   buy    { quote, signature }→ checks the finalized payment, adds credits
+//   quote  { kind, n, bet }    → a 60-second SANTA price for a run of 1, 5 or 10 plays at one size
+//   buy    { quote, signature }→ checks the finalized payment → the run's plays, each with its locked fingerprint
+//   settle { ticket, seed }    → result + revealed secret; the run's last play also says what was sent to the wallet
 //   winners                    → the shared Recent winners list (public, no sign-in)
 //   settings { version? }      → public game settings (prices, odds, prizes); any version, for re-checking old plays
 //   pools                      → public pool status: balances, settings, pending transfers, change log (admin screen)
@@ -10,7 +10,7 @@
 export const ALLOWED_ORIGINS = ['https://buffalobill46.github.io', 'http://localhost'];
 const allowed = (o) => ALLOWED_ORIGINS.includes(o) || /^http:\/\/localhost:\d+$/.test(o); // localhost = a player's own computer (tests)
 
-// deps: { server (games.js), profileFor(token) → profile id or null, credits(profile) → rows }
+// deps: { server (games.js), profileFor(token) → profile id or null }
 export function makeHandler(deps) {
   const cors = (origin) => ({
     'access-control-allow-origin': allowed(origin) ? origin : ALLOWED_ORIGINS[0],
@@ -47,10 +47,8 @@ export function makeHandler(deps) {
     try {
       let out;
       switch (body?.action) {
-        case 'credits': out = { credits: await deps.credits(profile) }; break;
-        case 'quote': out = await s.quote(profile, String(body.kind), Number(body.n)); break;
+        case 'quote': out = await s.quote(profile, String(body.kind), Number(body.n), Number(body.bet)); break;
         case 'buy': out = await s.buy(profile, String(body.quote), String(body.signature)); break;
-        case 'open': out = await s.open(profile, String(body.kind), Number(body.bet)); break;
         case 'settle': out = await s.settle(profile, String(body.ticket), String(body.seed)); break;
         default: return reply(origin, 400, { error: 'unknown action' });
       }

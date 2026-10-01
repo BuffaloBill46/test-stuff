@@ -12,21 +12,20 @@ const noThrow = async (label, fn) => { try { const r = await fn(); assert.ok(r &
 
 // 1. Names every JavaScript object carries are not games.
 for (const k of ['toString', 'constructor', '__proto__', 'hasOwnProperty', '', 'BIG', null, 7]) {
-  await noThrow(`quote ${k}`, () => server.quote(me, k, 1));
-  await noThrow(`open ${k}`, () => server.open(me, k));
+  await noThrow(`quote ${k}`, () => server.quote(me, k, 1, 1));
 }
 // 2. Junk ids and signatures are refused politely.
 for (const t of ['abc', '1; drop table plays', '-1', '1e9', '99999999999999999999999', '']) await noThrow(`settle ${t}`, () => server.settle(me, t, 'ab12cd34'));
 for (const s of ['', 'x', 'sig', '0'.repeat(88), 'O'.repeat(88), '<script>']) await noThrow(`buy ${s}`, () => server.buy(me, '00000000-0000-0000-0000-000000000000', s));
 await noThrow('buy junk quote', () => server.buy(me, "' or 1=1 --", '5'.repeat(88)));
-// 3. An account with no wallet can't start a play (its winnings would have nowhere to go).
+// 3. An account with no wallet can't buy (its winnings would have nowhere to go).
 const emailOnly = (await db.query('insert into auth.users default values returning id'))[0].id; // 003 lets email-only profiles have no wallet
 await db.query(`insert into public.profiles (id, wallet, name, avatar) values ($1, null, 'Emma', '{}')`, [emailOnly]);
-await db.query(`insert into public.credits (profile_id, kind, bet, left_n, bought) values ($1, 'big', 1, 1, 1)`, [emailOnly]);
-assert.match((await server.open(emailOnly, 'big')).error, /needs a linked wallet/);
-assert.equal((await db.query(`select left_n from public.credits where profile_id = $1`, [emailOnly]))[0].left_n, 1, 'credit untouched');
+assert.match((await server.buy(emailOnly, '00000000-0000-0000-0000-000000000000', '5'.repeat(88))).error, /unknown quote|linked wallet/);
+assert.match((await server.quote(emailOnly, 'big', 1, 1)).error, /needs a linked wallet/, 'no quote, so no payment, without a wallet');
+assert.equal((await db.query('select count(*)::int as n from public.quotes where profile_id = $1', [emailOnly]))[0].n, 0);
 // 4. Quote spam stops at the hourly limit.
-let last; for (let i = 0; i < QUOTES_PER_HOUR + 3; i++) last = await server.quote(me, 'spin', 1);
+let last; for (let i = 0; i < QUOTES_PER_HOUR + 3; i++) last = await server.quote(me, 'spin', 1, 0.1);
 assert.match(last.error, /too many price quotes/);
 assert.equal((await db.query('select count(*)::int as n from public.quotes where profile_id = $1', [me]))[0].n, QUOTES_PER_HOUR);
 // 5. The public winners list is cached (10 s), so hammering it doesn't hammer the database.

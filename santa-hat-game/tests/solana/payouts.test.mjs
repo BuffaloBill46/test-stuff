@@ -67,10 +67,12 @@ for (const f of ['001_profiles.sql', '003_email_profiles.sql', '004_linked_login
 const db = { query: async (q, p) => (await pg.query(q, p)).rows };
 const uid = (await db.query('insert into auth.users default values returning id'))[0].id;
 await db.query(`insert into public.profiles (id, wallet, name, avatar) values ($1, $2, 'W', '{}')`, [uid, winners[0].address]);
-let playNo = 0;
+let sigNo = 0;
+// One finished run's payout (Cody: a run's winnings are sent as one transfer when it ends).
 async function payout(winner, santa, status = 'queued') {
-  const id = (await db.query(`insert into public.plays (profile_id, kind, play_no, state, commit, secret, player_seed, result) values ($1, 'big', $2, 'settled', $3, 's', 'p', '{}') returning id`, [uid, ++playNo, 'a'.repeat(64)]))[0].id;
-  return (await db.query(`insert into public.payouts (play_id, to_wallet, amount_usd, amount_raw, price_usd, status) values ($1, $2, 1, $3, 0.00085, $4) returning id`, [id, winner.address, santa * 1e6, status]))[0].id;
+  const q = (await db.query(`insert into public.quotes (profile_id, kind, n, bet, usd, santa_raw, price_usd) values ($1, 'big', 1, 1, 1, 1, 0.00085) returning id`, [uid]))[0].id;
+  const run = (await db.query('select public.buy_run($1, $2, 1, 0, 0) as id', [q, 'PAY' + String(++sigNo).padStart(4, '9') + '5'.repeat(80)]))[0].id;
+  return (await db.query(`insert into public.payouts (run_id, to_wallet, amount_usd, amount_raw, price_usd, status) values ($1, $2, 1, $3, 0.00085, $4) returning id`, [run, winner.address, santa * 1e6, status]))[0].id;
 }
 const row = async (id) => (await db.query('select * from public.payouts where id = $1', [id]))[0];
 const got = (santa) => Math.floor(santa * 1e6) - Math.ceil(santa * 1e6 * BPS / 10000); // what arrives after the 3% tax

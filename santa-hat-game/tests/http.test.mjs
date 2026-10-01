@@ -4,27 +4,28 @@ import { makeHandler } from '../server/http.js';
 
 const calls = [];
 const server = new Proxy({}, { get: (_, action) => async (...a) => { calls.push([action, ...a]); if (a[1] === 'boom') throw new Error('db password=secret'); return action === 'quote' && a[2] > 10 ? { error: 'buy 1 to 10' } : { ok: action }; } });
-const h = makeHandler({ server, profileFor: async (t) => (t === 'good' ? 'profile-1' : null), credits: async () => [{ kind: 'big', left_n: 3 }] });
+const h = makeHandler({ server, profileFor: async (t) => (t === 'good' ? 'profile-1' : null) });
 const req = (body, { token = 'good', origin = 'https://buffalobill46.github.io', method = 'POST' } = {}) =>
   h(new Request('https://x.supabase.co/functions/v1/games', { method, headers: { origin, ...(token ? { authorization: 'Bearer ' + token } : {}), 'content-type': 'application/json' }, body: method === 'POST' ? JSON.stringify(body) : undefined }));
 const json = async (r) => ({ status: r.status, body: await r.json(), allow: r.headers.get('access-control-allow-origin') });
 
 let r = await h(new Request('https://x/f', { method: 'OPTIONS', headers: { origin: 'https://buffalobill46.github.io' } }));
 assert.equal(r.status, 204); assert.equal(r.headers.get('access-control-allow-origin'), 'https://buffalobill46.github.io');
-assert.equal((await json(await req({ action: 'open', kind: 'big' }, { token: '' }))).status, 401, 'not signed in');
-assert.equal((await json(await req({ action: 'open', kind: 'big' }, { token: 'forged' }))).status, 401, 'a bad token');
-assert.equal((await json(await req({ action: 'open', kind: 'big' }, { origin: 'https://evil.example' }))).status, 403, 'another website');
+assert.equal((await json(await req({ action: 'settle', ticket: '7', seed: 'ab12cd34' }, { token: '' }))).status, 401, 'not signed in');
+assert.equal((await json(await req({ action: 'settle', ticket: '7', seed: 'ab12cd34' }, { token: 'forged' }))).status, 401, 'a bad token');
+assert.equal((await json(await req({ action: 'settle', ticket: '7', seed: 'ab12cd34' }, { origin: 'https://evil.example' }))).status, 403, 'another website');
 assert.equal((await json(await req({ action: 'nope' }))).status, 400);
-assert.deepEqual((await json(await req({ action: 'credits' }))).body, { credits: [{ kind: 'big', left_n: 3 }] });
-for (const [body, action] of [[{ action: 'quote', kind: 'big', n: 3 }, 'quote'], [{ action: 'buy', quote: 'q', signature: 's' }, 'buy'], [{ action: 'open', kind: 'spin', bet: 0.1 }, 'open'], [{ action: 'settle', ticket: '7', seed: 'ab12cd34' }, 'settle']]) {
+assert.equal((await json(await req({ action: 'credits' }))).status, 400, 'no credits any more (runs: Cody)');
+assert.equal((await json(await req({ action: 'open', kind: 'big' }))).status, 400, 'no separate open: the run\'s plays come with the payment');
+for (const [body, action] of [[{ action: 'quote', kind: 'spin', n: 5, bet: 0.1 }, 'quote'], [{ action: 'buy', quote: 'q', signature: 's' }, 'buy'], [{ action: 'settle', ticket: '7', seed: 'ab12cd34' }, 'settle']]) {
   const out = await json(await req(body)); assert.equal(out.status, 200); assert.deepEqual(out.body, { ok: action });
   assert.equal(calls.at(-1)[0], action); assert.equal(calls.at(-1)[1], 'profile-1', 'always the signed-in player, never one named in the request');
 }
 assert.equal((await json(await req({ action: 'quote', kind: 'big', n: 11 }))).status, 400, 'game refusals come back as 400');
-const boom = await json(await req({ action: 'open', kind: 'boom' }));
+const boom = await json(await req({ action: 'quote', kind: 'boom', n: 1 }));
 assert.equal(boom.status, 500); assert.ok(!JSON.stringify(boom.body).includes('secret'), 'server internals never reach the player');
 // Admin: its own door (no player sign-in; the wallet signature is the proof, checked in server/admin.js).
-const h2 = makeHandler({ server, profileFor: async () => null, credits: async () => [], admin: { run: async (b) => (b.message === 'ok' ? { ok: true } : { error: 'not an admin message' }) } });
+const h2 = makeHandler({ server, profileFor: async () => null, admin: { run: async (b) => (b.message === 'ok' ? { ok: true } : { error: 'not an admin message' }) } });
 const adm = (body) => h2(new Request('https://x/f', { method: 'POST', headers: { origin: 'https://buffalobill46.github.io', 'x-santa-admin': '1' }, body: JSON.stringify(body) }));
 assert.equal((await adm({ message: 'ok' })).status, 200); assert.equal((await adm({ message: 'x' })).status, 400);
 assert.equal((await h2(new Request('https://x/f', { method: 'POST', headers: { origin: 'https://evil.example', 'x-santa-admin': '1' }, body: '{}' }))).status, 403, 'other websites refused for admin too');

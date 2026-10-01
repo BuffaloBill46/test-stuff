@@ -43,5 +43,4 @@ Deno.serve(makeHandler({
     const rows = await db.query('select profile_id from public.logins where user_id = $1', [data.user.id]) as unknown as { profile_id: string }[];
     return rows[0]?.profile_id ?? null;
   },
-  credits: (profile: string) => db.query('select kind, left_n from public.credits where profile_id = $1', [profile]),
 }));

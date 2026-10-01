@@ -43,15 +43,15 @@ await give(player, 100_000); await give(spinPool, 50 / PRICE); await give(slotsP
 const bal = async (w) => Number(T22.decodeToken(svm.getAccount(await ata(w.address))).data.amount);
 say(`test SANTA (3% transfer tax); player holds ${(await bal(player) / 1e6).toLocaleString()}; pools hold $50 and $500 worth`);
 
-console.log('2–3. Database, server, and buying credits with a real signed transaction');
+console.log('2–3. Database, server, and buying runs of plays with a real signed transaction');
 const db = await makeDb();
 const me = await db.player(player.address, 'Cody');
 await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', $1, '{}'), ('slots', $2, '{}')`, [await bal(spinPool), await bal(slotsPool)]);
 const finalized = new Map(); // what an RPC's getTransaction(jsonParsed, finalized) would return, by signature
 const chain = { getTransaction: async (sig) => finalized.get(sig) ?? null };
 const server = createGameServer({ db, chain, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: { spin: spinPool.address, slots: slotsPool.address }, mint }); // the test token (SANTA_MINT on devnet)
-async function buy(kind, n) {
-  const q = await server.quote(me, kind, n);
+async function buy(kind, n, bet) {
+  const q = await server.quote(me, kind, n, bet); assert.ok(q.id, JSON.stringify(q));
   const pool = kind === 'big' ? slotsPool : spinPool, before = { p: await bal(player), pool: await bal(pool) };
   const { instructions, split } = await purchaseInstructions(T22, q, player);          // the page's own builder
   const sig = await send(player, instructions);                                          // the wallet signs and sends
@@ -60,27 +60,27 @@ async function buy(kind, n) {
     preTokenBalances: [tb(1, player.address, before.p), tb(2, pool.address, before.pool)], postTokenBalances: [tb(1, player.address, await bal(player)), tb(2, pool.address, await bal(pool))] },
     transaction: { message: { accountKeys: [{ pubkey: player.address, signer: true }], instructions: [{ program: 'spl-token', parsed: { type: 'burnChecked', info: { mint, authority: player.address, tokenAmount: { amount: String(split.burn) } } } }] } } });
   const r = await server.buy(me, q.id, sig); assert.ok(r.ok, r.error);
-  assert.equal((await server.buy(me, (await server.quote(me, kind, n)).id, sig)).error, 'payment already used', 'the same payment can\'t buy twice');
-  say(`bought ${n} ${kind}: paid ${(q.santaRaw / 1e6).toFixed(2)} SANTA, ${(split.burn / 1e6).toFixed(2)} burned, ${(split.arrives / 1e6).toFixed(2)} arrived in the pool`);
+  assert.equal((await server.buy(me, q.id, sig)).error, 'quote already used', 'the same payment can\'t buy twice');
+  say(`bought a run of ${n} ${kind} at $${bet}: paid ${(q.santaRaw / 1e6).toFixed(2)} SANTA, ${(split.burn / 1e6).toFixed(2)} burned, ${(split.arrives / 1e6).toFixed(2)} arrived in the pool`);
+  return r;
 }
-await buy('big', 10); await buy('spin', 10); await buy('drop', 5); // Spin and Snowball Drop are dollar balances
-
-console.log('4. Playing (a skim is forced on the Slots pool so it gets exercised)');
-const slotsUsd = (await db.query(`select santa_raw from public.pools where game = 'slots'`))[0].santa_raw / 1e6 * PRICE;
-await db.query(`update public.pools set rules = $1 where game = 'slots'`, [JSON.stringify({ skimAt: Math.floor(slotsUsd) - 2, skim: 5 })]);
-let wins = 0, won = 0;
-for (const [kind, bet] of [...Array(10).fill(['big']), ...Array(10).fill(['spin', 1]), ...[0.1, 1, 0.1, 1, 1].map((b) => ['drop', b])]) {
-  const o = await server.open(me, kind, bet); assert.ok(o.ticket, JSON.stringify(o));
-  const s = await server.settle(me, o.ticket, newSeed(16)); assert.ok(s.r, JSON.stringify(s));
-  if (s.r.pay > 0) { wins++; won += s.r.pay; }
+console.log('4. Playing each run straight away (a skim is forced on the Slots pool so it gets exercised)');
+let wins = 0, won = 0, plays = 0;
+for (const [kind, n, bet] of [['big', 10, 1], ['spin', 10, 1], ['drop', 5, 0.1], ['drop', 5, 1]]) {
+  const r = await buy(kind, n, bet);
+  if (kind === 'big') { const slotsUsd = (await db.query(`select santa_raw from public.pools where game = 'slots'`))[0].santa_raw / 1e6 * PRICE;
+    await db.query(`update public.pools set rules = $1 where game = 'slots'`, [JSON.stringify({ skimAt: Math.floor(slotsUsd) - 2, skim: 5 })]); }
+  let last;
+  for (const p of r.plays) { last = await server.settle(me, p.ticket, newSeed(16)); assert.ok(last.r, JSON.stringify(last)); plays++; if (last.r.pay > 0) { wins++; won += last.r.pay; } }
+  assert.equal(last.runDone, true, 'the run\'s last play queues its payout');
 }
 const queued = await db.query(`select count(*)::int as n, coalesce(sum(amount_raw),0)::bigint as raw from public.payouts where status = 'queued'`);
 const skims = await db.query(`select count(*)::int as n from public.pool_transfers where kind = 'skim'`);
-say(`25 plays (10 Big Hat, 10 Spin, 5 Snowball Drop); ${wins} paid something ($${won.toFixed(2)} in prizes); ${queued[0].n} payouts queued; ${skims[0].n} skim(s) queued`);
+say(`${plays} plays in 4 runs (10 Big Hat, 10 Spin, 5 + 5 Snowball Drop); ${wins} paid something ($${won.toFixed(2)} in prizes); ${queued[0].n} payouts queued; ${skims[0].n} skim(s) queued`);
 assert.ok(skims[0].n >= 1, 'a skim was queued');
 
 console.log('5. The payout worker sends winnings and skims on the chain');
-const poolFor = async (row) => { const g = row.game || ((await db.query('select kind from public.plays where id = $1', [row.play_id]))[0].kind === 'big' ? 'slots' : 'spin'); return g === 'slots' ? slotsPool : spinPool; };
+const poolFor = async (row) => { const g = row.game || ((await db.query('select kind from public.runs where id = $1', [row.run_id]))[0].kind === 'big' ? 'slots' : 'spin'); return g === 'slots' ? slotsPool : spinPool; };
 const workerChain = {}; // the payout worker's chain adapter (the live one uses an RPC: same four steps)
 // A memo instruction (SPL Memo program): a short note written on the chain. Makes every payout transaction unique.
 const memo = (text) => ({ programAddress: 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr', accounts: [], data: new TextEncoder().encode(text) });
@@ -113,21 +113,20 @@ const adminSrv = createAdmin({ db, adminWallets: [codyAddr] });
 const signed = async (action) => { const message = adminMessage({ action, game: 'slots', at: new Date().toISOString(), nonce: newSeed(16) });
   const sig = new Uint8Array(await crypto.subtle.sign('Ed25519', codyKey.privateKey, new TextEncoder().encode(message)));
   return { wallet: codyAddr, message, signature: [...sig].map((b) => b.toString(16).padStart(2, '0')).join('') }; };
-await buy('big', 1);
 assert.ok((await adminSrv.run(await signed('pause'))).ok);
-assert.deepEqual(await server.open(me, 'big'), { refused: true, stopped: true }); say('paused: the pull was refused and the credit kept');
+assert.deepEqual(await server.quote(me, 'big', 1, 1), { refused: true, stopped: true }); say('paused: no new run can be bought (no payment taken)');
 assert.ok((await adminSrv.run(await signed('resume'))).ok);
-const o = await server.open(me, 'big'); await server.settle(me, o.ticket, newSeed(16)); await runPayouts({ db, chain: workerChain }); await runPayouts({ db, chain: workerChain, table: 'pool_transfers' });
+const o = await buy('big', 1, 1); await server.settle(me, o.plays[0].ticket, newSeed(16)); await runPayouts({ db, chain: workerChain }); await runPayouts({ db, chain: workerChain, table: 'pool_transfers' });
 say('resumed: played, and anything it owed was sent');
 
 console.log('7. Reconcile: do the books match the wallets?');
 for (const [game, w] of [['spin', spinPool], ['slots', slotsPool]]) {
   const book = Number((await db.query('select santa_raw from public.pools where game = $1', [game]))[0].santa_raw);
-  const payouts = await db.query(`select po.id, po.status, po.amount_raw from public.payouts po join public.plays pl on pl.id = po.play_id where (pl.kind = 'big') = ($1 = 'slots')`, [game]);
+  const payouts = await db.query(`select po.id, po.status, po.amount_raw from public.payouts po join public.runs r on r.id = po.run_id where (r.kind = 'big') = ($1 = 'slots')`, [game]);
   const transfers = await db.query('select id, kind, status, amount_raw from public.pool_transfers where game = $1', [game]);
   const r = reconcile({ bookRaw: book, walletRaw: await bal(w), payouts, transfers });
   say(`${game}: books ${(book / 1e6).toFixed(2)} · wallet ${((await bal(w)) / 1e6).toFixed(2)} SANTA · drift ${r.drift}`);
   assert.ok(r.ok, `${game} drift ${r.drift}`);
 }
-const books = await db.query('select * from public.credits where bought <> used + left_n'); assert.equal(books.length, 0);
+const unpaid = await db.query(`select id from public.runs where paid_at is null`); assert.equal(unpaid.length, 0, 'every run finished and paid');
 console.log('OK: dress rehearsal passed: real signed purchases, fair plays, payouts and skims sent once, admin stop/resume, books = wallets to the unit');

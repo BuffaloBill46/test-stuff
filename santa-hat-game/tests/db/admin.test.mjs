@@ -31,17 +31,16 @@ const admin = createAdmin({ db, adminWallets: [cody.address] });
 const rules = async (g) => (await db.query('select rules from public.pools where game = $1', [g]))[0].rules;
 const logs = async () => (await db.query('select count(*)::int as n from public.pool_log'))[0].n;
 
-// Emergency stop: the game server refuses plays (credits untouched), then resumes.
+// Emergency stop: the game server takes no new payment (no quote), then resumes.
 const me = (await db.query('insert into auth.users default values returning id'))[0].id;
 await db.query(`insert into public.profiles (id, wallet, name, avatar) values ($1, 'PLAYERwa11et111111111111111111111111111111', 'P', '{}')`, [me]);
-await db.query(`insert into public.credits (profile_id, kind, bet, left_n, bought) values ($1, 'big', 1, 1, 1)`, [me]);
 const server = createGameServer({ db, chain: {}, livePrice: async () => ({ usd: 0.00085 }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: {} });
 const pause = await signed(cody, { action: 'pause', game: 'slots' });
 assert.deepEqual(await admin.run(pause), { ok: true, game: 'slots', rules: { paused: true } });
-assert.deepEqual(await server.open(me, 'big'), { refused: true, stopped: true }, 'stopped pool refuses the pull');
+assert.deepEqual(await server.quote(me, 'big', 1, 1), { refused: true, stopped: true }, 'a stopped pool takes no payment');
 assert.equal((await admin.run(pause)).error, 'this signed message was already used', 'a copied signature can\'t be replayed');
 assert.ok((await admin.run(await signed(cody, { action: 'resume', game: 'slots' }))).ok);
-assert.ok((await server.open(me, 'big')).ticket, 'resumed: plays work again');
+assert.ok((await server.quote(me, 'big', 1, 1)).id, 'resumed: plays can be bought again');
 
 // Refused: another wallet, a tampered message, a stale message, a signature from a different message, junk.
 assert.equal((await admin.run(await signed(stranger, { action: 'pause', game: 'spin' }))).error, 'not an admin wallet');
