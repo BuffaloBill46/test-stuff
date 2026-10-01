@@ -218,7 +218,7 @@ export async function initGames(opts = {}) {
   // Snowball Drop plays from the Spin pool (Cody): its readout is the Spin pool's, and a drop updates both cards.
   const sp = spinState();
   initDrop({ wallet, addWinner, pool: () => sp.pool, onPool: (usd) => { if (usd !== undefined) sp.pool = usd; refreshSpin(); refreshDrop(); } });
-  // Play credits: buying moves the entry money into that game's pool straight away, so the pool readouts update on purchase.
+  // Runs: buying moves the entry money into that game's pool straight away, so the pool readouts update on purchase.
   initCredits({ wallet, pools: { slots: state, spin: spinState() }, onChange: () => { shownPool = state.pool; store.set(state); render(); refreshSpin(); refreshDrop(); } });
   refreshCredits();
   showMarket();

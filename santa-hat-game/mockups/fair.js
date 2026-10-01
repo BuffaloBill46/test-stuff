@@ -2,7 +2,7 @@
 // A secret (random bytes) is locked in by publishing its fingerprint (SHA-256 hash): a code that can't be turned back into
 // the secret, but anyone can check a revealed secret against it. The play's random numbers come from
 // HMAC-SHA256(secret, "playerSeed:playNumber:i"), so neither side alone decides them.
-// The ORDER these are used in is Cody's safety rule and lives in house.js: payment, credit spent, THEN the secret.
+// The ORDER these are used in is Cody's safety rule and lives in house.js: payment confirmed, THEN the secret.
 // Secrets come from crypto.getRandomValues (secure). Never Math.random: it can be predicted.
 const enc = new TextEncoder();
 const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');

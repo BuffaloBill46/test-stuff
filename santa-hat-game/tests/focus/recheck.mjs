@@ -1,4 +1,4 @@
-// Re-check the focus-group fixes on a phone: the result line is on screen after a play; the buy counter focuses Buy.
+// Re-check the focus-group fixes on a phone: the result line is on screen after a play; the buy confirm focuses Pay.
 import { createRequire } from 'module'; import { readFileSync, existsSync } from 'fs'; import { execSync } from 'child_process'; import path from 'path';
 const require = createRequire(import.meta.url); const { chromium } = require(path.join(execSync('npm root -g').toString().trim(), 'playwright'));
 const ROOT = new URL('../../mockups', import.meta.url).pathname, THREE = new URL('../browser/node_modules/three/build/', import.meta.url).pathname;
@@ -16,10 +16,10 @@ const inView = (sel) => p.evaluate((s) => { const r = document.querySelector(s).
 for (const [game, btn, res] of [['spin', '#spin .spinbtn', '#spin .res'], ['slots', '.machine .pull', '#slots .machine .res']]) {
   await p.evaluate((s) => document.querySelector(s).scrollIntoView({ block: 'end' }), btn); await p.waitForTimeout(300);
   await p.evaluate((s) => document.querySelector(s).click(), btn); await p.waitForTimeout(400);
-  if (!(await p.evaluate(() => document.activeElement?.id === 'buyGo'))) fails.push(`${game}: the buy counter should focus Buy`);
+  if (!(await p.evaluate(() => document.activeElement?.id === 'buyGo'))) fails.push(`${game}: the buy confirm should focus Pay`);
   await p.evaluate(() => document.querySelector('#buyGo').click());
   await p.waitForTimeout(600); await p.waitForFunction(() => !(window.__slots?.busy || window.__spin?.busy), null, { timeout: 120000 }); await p.waitForTimeout(900);
   if (!(await inView(res))) fails.push(`${game}: the result line is off-screen after the play`);
   await p.screenshot({ path: `out/recheck-${game}.png` });
 }
-await b.close(); console.log(fails.length ? 'FAILED:\n - ' + fails.join('\n - ') : 'OK: results on screen after a play on a phone; the buy counter focuses Buy');
+await b.close(); console.log(fails.length ? 'FAILED:\n - ' + fails.join('\n - ') : 'OK: results on screen after a play on a phone; the buy confirm focuses Pay');

@@ -23,47 +23,48 @@ async function session(name, vp, touch, fn) {
   const t = (sel) => p.evaluate((s) => document.querySelector(s)?.textContent.replace(/\s+/g, ' ').trim() || '', sel);
   const click = (sel) => p.evaluate((s) => document.querySelector(s).click(), sel);
   const shot = (tag) => p.screenshot({ path: `${OUT}/${name.replace(/\W+/g, '-')}-${tag}.png` });
-  const done = () => p.waitForFunction(() => !(window.__slots?.busy || window.__spin?.busy), null, { timeout: 120000 });
-  try { await fn({ p, t, click, shot, done, log }); } catch (e) { log.push('STOPPED: ' + e.message.split('\n')[0]); }
+  const done = () => p.waitForFunction(() => !(window.__slots?.busy || window.__spin?.busy), null, { timeout: 400000 });
+  const skip = async () => { await p.waitForTimeout(800); await p.evaluate(() => document.querySelectorAll('.skip:not([hidden])').forEach((b) => b.click())); }; // headless draws ~3 frames a second
+  try { await fn({ p, t, click, shot, done, skip, log }); } catch (e) { log.push('STOPPED: ' + e.message.split('\n')[0]); }
   notes[name] = { log, errors }; await ctx.close(); console.log('done:', name);
 }
 const phone = { width: 390, height: 844 }, desk = { width: 1366, height: 860 };
 
-await session('Phone newcomer', phone, true, async ({ p, t, click, shot, done, log }) => {
+await session('Phone newcomer', phone, true, async ({ p, t, click, shot, done, skip, log }) => {
   log.push('lands on: ' + (await t('#tab-play .hero')).slice(0, 160)); await shot('1-land');
   await click('#t-games'); await p.waitForFunction(() => window.__slots); await p.waitForTimeout(3000);
   log.push('Games intro: ' + (await t('#tab-games .hero')).slice(0, 260)); await shot('2-games');
-  await p.evaluate(() => document.querySelector('#spin').scrollIntoView()); await click('#spin .spinbtn'); await p.waitForTimeout(600);
-  log.push('taps Spin with no credits → dialog open: ' + (await p.evaluate(() => document.querySelector('#buyDlg').open)) + ' | says: ' + (await t('#buyDlg')).slice(0, 300)); await shot('3-buy');
-  await click('#buyQuick [data-n="5"]'); await click('#buyGo'); await p.waitForTimeout(500); await done();
-  log.push('after first spin: ' + (await t('#spin .res')) + ' | credits line: ' + (await t('#spin .credrow'))); await shot('4-first-spin');
+  await p.evaluate(() => document.querySelector('#spin').scrollIntoView()); await click('#spin [data-run="5"]'); await p.waitForTimeout(600);
+  log.push('taps Spin 5 → dialog open: ' + (await p.evaluate(() => document.querySelector('#buyDlg').open)) + ' | says: ' + (await t('#buyDlg')).slice(0, 300)); await shot('3-buy');
+  await click('#buyGo'); await skip(); await done();
+  log.push('after 5 spins: ' + (await t('#spin .res'))); await shot('4-after-run');
 });
-await session('Careful budgeter', { width: 360, height: 760 }, true, async ({ p, t, click, shot, done, log }) => {
+await session('Careful budgeter', { width: 360, height: 760 }, true, async ({ p, t, click, shot, done, skip, log }) => {
   await click('#t-games'); await p.waitForFunction(() => window.__spin); await p.waitForTimeout(2500);
   await p.evaluate(() => document.querySelector('#spin').scrollIntoView());
   log.push('odds legend: ' + (await t('#oddsList'))); log.push('spin sizes: ' + (await t('#spin .bets')));
-  await click('#spin .spinbtn'); await p.waitForTimeout(500);
-  log.push('buy dialog default count & total: ' + (await t('#buyCount')) + ' / ' + (await t('#buyGo')) + ' | SANTA line: ' + (await t('#buySanta')));
-  await click('#buyQuick [data-n="1"]'); log.push('after picking 1: ' + (await t('#buyGo'))); await click('#buyGo'); await p.waitForTimeout(500); await done();
+  log.push('run buttons: ' + (await t('#spin .runbtns')));
+  await click('#spin [data-run="1"]'); await p.waitForTimeout(500);
+  log.push('buy dialog: ' + (await t('#buyWhat')) + ' / ' + (await t('#buyGo')) + ' | SANTA line: ' + (await t('#buySanta')));
+  await click('#buyGo'); await p.waitForTimeout(500); await done();
   log.push('result: ' + (await t('#spin .res'))); log.push('demo balance now: ' + (await t('#demoBal'))); await shot('1-after');
 });
-await session('Skeptic', desk, false, async ({ p, t, click, shot, done, log }) => {
+await session('Skeptic', desk, false, async ({ p, t, click, shot, done, skip, log }) => {
   await click('#t-games'); await p.waitForFunction(() => window.__slots); await p.waitForTimeout(2500);
   log.push('facts shown: ' + (await t('#slots .facts')));
   await click('#howBtn'); await p.waitForTimeout(400); log.push('how-to-win rules: ' + (await t('.howrules')).slice(0, 400)); await shot('1-how'); await p.keyboard.press('Escape');
-  await p.evaluate(() => window.__credits.give('big', 1)); await click('.machine .pull'); await p.waitForTimeout(500); await done();
+  await click('#slots [data-run="1"]'); await p.waitForTimeout(300); await click('#buyGo'); await p.waitForTimeout(500); await done();
   log.push('check button visible: ' + (await p.isVisible('[data-proof="big"]')));
   await click('[data-proof="big"]'); await click('#proofCheck'); await p.waitForFunction(() => /atch/.test(document.querySelector('#proofOut').textContent));
   log.push('check says: ' + (await t('#proofOut'))); log.push('how a skeptic would check it themselves (text): ' + (await t('#proofDlg .dim'))); await shot('2-check');
 });
-await session('High roller', desk, false, async ({ p, t, click, shot, done, log }) => {
+await session('High roller', desk, false, async ({ p, t, click, shot, done, skip, log }) => {
   await click('#t-games'); await p.waitForFunction(() => window.__slots); await p.waitForTimeout(2500);
-  await p.evaluate(() => { window.__slots.state.bal = 200; }); await click('[data-buy="big"]'); await click('#buyQuick [data-n="10"]');
-  log.push('max buy: ' + (await t('#buyGo')) + ' | can buy more than 10 at once: ' + (await p.evaluate(() => !document.querySelector('#buyPlus').disabled)));
-  await click('#buyGo'); const t0 = Date.now();
-  for (let i = 0; i < 10; i++) { await click('.machine .pull'); await p.waitForTimeout(250); await click('.machine .pull'); await done(); }
-  log.push(`10 pulls with tap-to-stop took ${Math.round((Date.now() - t0) / 1000)} s in this slow test browser`); log.push('pool/jackpot readouts: ' + (await t('#slots .jp')));
-  log.push('after 10: ' + (await t('#slots .machine .res')) + ' | ' + (await t('#slots .credrow'))); await shot('1-after-10');
+  await p.evaluate(() => { window.__slots.state.bal = 200; }); await click('#slots [data-run="10"]'); await p.waitForTimeout(300);
+  log.push('biggest buy: ' + (await t('#buyWhat')) + ' / ' + (await t('#buyGo')));
+  await click('#buyGo'); const t0 = Date.now(); await skip(); await done();
+  log.push(`Pull 10 with Skip took ${Math.round((Date.now() - t0) / 1000)} s in this slow test browser`); log.push('pool/jackpot readouts: ' + (await t('#slots .jp')));
+  log.push('after 10: ' + (await t('#slots .machine .res'))); await shot('1-after-10');
 });
 await session('Competitive gamer', desk, false, async ({ p, t, click, shot, log }) => {
   await click('#playRanked'); await p.waitForTimeout(600); log.push('ranked lobby: ' + (await t('#lobby, .lobby, #home')).slice(0, 300)); await shot('1-ranked');
@@ -82,14 +83,15 @@ await session('Crypto regular', desk, false, async ({ p, t, click, shot, log }) 
 await session('Keyboard-only player', desk, false, async ({ p, t, log }) => {
   await p.evaluate(() => document.querySelector('#t-games').click()); await p.waitForFunction(() => window.__slots); await p.waitForTimeout(2500);
   await p.evaluate(() => document.activeElement?.blur()); let n = 0, found = false;
-  for (; n < 80; n++) { await p.keyboard.press('Tab'); if (await p.evaluate(() => document.activeElement?.classList.contains('pull'))) { found = true; break; } }
+  for (; n < 80; n++) { await p.keyboard.press('Tab'); if (await p.evaluate(() => document.activeElement?.matches('#slots [data-run]'))) { found = true; break; } }
   log.push(found ? `reached the Pull button after ${n + 1} Tab presses` : 'could not reach Pull with Tab in 80 presses');
-  if (found) { await p.keyboard.press('Enter'); await p.waitForTimeout(500); log.push('Enter on Pull opens the buy counter: ' + (await p.evaluate(() => document.querySelector('#buyDlg').open)) + ' | focus is on: ' + (await p.evaluate(() => document.activeElement?.textContent?.trim().slice(0, 30) || document.activeElement?.tagName))); }
+  if (found) { await p.keyboard.press('Enter'); await p.waitForTimeout(500); log.push('Enter on Pull 1 opens the buy confirm: ' + (await p.evaluate(() => document.querySelector('#buyDlg').open)) + ' | focus is on: ' + (await p.evaluate(() => document.activeElement?.textContent?.trim().slice(0, 30) || document.activeElement?.tagName))); }
 });
 await session('Returning daily player', phone, true, async ({ p, t, click, log }) => {
   await click('#t-games'); await p.waitForFunction(() => window.__slots); await p.waitForTimeout(2000);
-  await p.evaluate(() => window.__credits.give('spin', 1)); await p.reload(); await p.waitForFunction(() => window.__sq); await click('#t-games'); await p.waitForFunction(() => window.__slots); await p.waitForTimeout(2000);
-  log.push('after coming back: spin credits line: ' + (await t('#spin .credrow')) + ' | demo balance ' + (await t('#demoBal')) + ' | winners: ' + (await t('#winList')).slice(0, 120));
+  await click('#spin [data-run="1"]'); await p.waitForTimeout(300); await click('#buyGo'); await p.waitForTimeout(500); await p.waitForFunction(() => !window.__spin.busy, null, { timeout: 400000 });
+  await p.reload(); await p.waitForFunction(() => window.__sq); await click('#t-games'); await p.waitForFunction(() => window.__slots); await p.waitForTimeout(2000);
+  log.push('after coming back: demo balance ' + (await t('#demoBal')) + ' | winners: ' + (await t('#winList')).slice(0, 120));
 });
 await session('Small-phone player', { width: 320, height: 640 }, true, async ({ p, t, click, shot, log }) => {
   for (const tab of ['play', 'games', 'store']) { await click('#t-' + tab); await p.waitForTimeout(tab === 'games' ? 3000 : 1000); await shot(tab); }

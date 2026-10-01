@@ -56,7 +56,7 @@ export function spin(state, bet, rand = Math.random, forced, wheel = null) {
   if (R.paused) return { paused: true, stopped: true };
   const before = topOff(state, R);
   if (state.pool < top * bet) return { paused: true, topOff: before }; // must cover the biggest prize
-  if (!state.prepaid) state.pool += bet * IN_PER_DOLLAR; // with play credits the entry already reached the pool at purchase
+  if (!state.prepaid) state.pool += bet * IN_PER_DOLLAR; // with runs the entry already reached the pool at purchase
   const f = Array.isArray(forced) ? forced : [forced];
   const slice = f[0] ?? Math.floor(rand() * W.main.length);
   let mult = W.main[slice], bonusSlice;
@@ -69,7 +69,7 @@ export function spin(state, bet, rand = Math.random, forced, wheel = null) {
   return res;
 }
 // Would the pool accept this spin right now? Changes nothing. Mirrors spin()'s own checks exactly (a top-off counts), so the
-// server can ask BEFORE spending a credit: a refused spin keeps its credit.
+// server can ask BEFORE taking a payment: a spin refused after payment refunds its price.
 export function canSpin(state, bet, wheel = null) {
   const R = { ...SPIN_RULES, ...(state.rules || {}) };
   if (R.paused) return { ok: false, stopped: true };

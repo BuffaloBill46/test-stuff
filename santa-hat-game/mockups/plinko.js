@@ -42,7 +42,7 @@ export function play(state, bet, rand = Math.random, forced) {
   if (R.paused) return { paused: true, stopped: true };
   const before = topOff(state, R);
   if (state.pool < MAX_MULT * bet) return { paused: true, topOff: before };
-  if (!state.prepaid) state.pool += bet * IN_PER_DOLLAR; // with play credits the entry already reached the pool at purchase
+  if (!state.prepaid) state.pool += bet * IN_PER_DOLLAR; // with runs the entry already reached the pool at purchase
   const r = forced ? { ...drop(bet, (() => { let i = 0; return () => (forced[i++] ? 0.75 : 0.25); })()) } : drop(bet, rand);
   state.pool -= r.pay;
   const res = { ...r, received: r.pay * (1 - FEE) };

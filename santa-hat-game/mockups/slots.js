@@ -151,7 +151,7 @@ export function pull(state, machineId, rand = Math.random, forcedStops) {
   // Top off BEFORE the pull too: the pool may have been lowered outside play (e.g. an emergency withdrawal).
   const before = topOff(state);
   if (state.pool < MAX_FIXED(m)) return { paused: true, topOff: before };
-  if (!state.prepaid) state.pool += m.bet * IN_PER_DOLLAR; // with play credits the entry already reached the pool at purchase
+  if (!state.prepaid) state.pool += m.bet * IN_PER_DOLLAR; // with runs the entry already reached the pool at purchase
   // Pool jackpot: its own draw. When it hits, the whole grid shows Santa Hats and only the jackpot is paid.
   const jackpot = forcedStops === 'JACKPOT' || (!forcedStops && rand() < m.poolJackpotOdds);
   if (jackpot) {
@@ -172,7 +172,7 @@ export function pull(state, machineId, rand = Math.random, forcedStops) {
 }
 
 // Would the pool accept this pull right now? Changes nothing. Mirrors pull()'s own checks exactly (a top-off counts), so the
-// server can ask BEFORE spending a credit: a refused pull keeps its credit.
+// server can ask BEFORE taking a payment: a pull refused after payment refunds its price.
 export function canPull(state, machineId) {
   const R = { ...POOL_RULES, ...(state.rules || {}) };
   if (R.paused) return { ok: false, stopped: true };

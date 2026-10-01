@@ -212,7 +212,7 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
 .machine.jackpot .flash.show { animation-duration: 4.2s; }
 @keyframes stamp { 0% { opacity: 0; transform: scale(1.9) rotate(-4deg); } 10% { opacity: 1; transform: scale(1) rotate(-4deg); } 80% { opacity: 1; } 100% { opacity: 0; transform: scale(1) rotate(-4deg); } }
 .machine .pullrow { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-/* play credits: a ticket-stub strip under the play button */
+/* the run strip under the play buttons: "Spin 3 of 10", Skip ahead, Check last result */
 .credrow { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 8px; background: rgba(12,15,26,.55); border: 2px dashed #3a4570; border-radius: 3px; }
 .credrow .cred { margin-right: auto; font-size: 14px; color: #d6ddf0; }
 .credrow .cred b { font: 700 20px/1 var(--digits); color: var(--lamp); margin-right: 2px; }
@@ -427,7 +427,7 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
 @media (prefers-reduced-motion: reduce) { .pop, #banner.show { animation-duration: .01s; } }
 /* Audit 2026-09-30. Rubber stamps in the site's lighter warning red: 6:1 contrast on the plaques (the hat red was 3:1). */
 .stamp { color: #ff7a6e; border-color: #ff7a6e; }
-/* The result line and credits stop above the bottom tab bar when scrolled into view (focus-group finding). */
+/* The result line and the run strip stop above the bottom tab bar when scrolled into view (focus-group finding). */
 .machine .res, .credrow { scroll-margin-bottom: 96px; }
 /* Phones (Cody's Galaxy S22+, 2026-09-30). Upright, in a match: the game's name gives way so the room chip, sound and Leave
    fit on one row and the stats sit right under them. */
@@ -659,13 +659,13 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
       <p class="buysanta" id="buySanta"></p>
       <p class="dim">Demo: paid from your demo balance. Winnings arrive 3% lighter (SANTA's token tax).</p>
       <p class="warnline" id="buyNote" aria-live="polite"></p>
-      <div class="buyacts"><button class="sec" id="buyCancel" type="button">Cancel</button><button class="go" id="buyGo" type="button">Buy 1 · $1.00</button></div>
+      <div class="buyacts"><button class="sec" id="buyCancel" type="button">Cancel</button><button class="go" id="buyGo" type="button">Pay $1.00 &amp; play</button></div>
     </dialog>
     <dialog id="proofDlg" class="plaque howdlg proofdlg" aria-labelledby="proofTitle">
       <div class="howhead"><div><div class="eyebrow">Fair results</div><h2 id="proofTitle">Check this result</h2></div>
         <button class="sec" id="proofClose" type="button">Close</button></div>
       <ol class="howrules proofsteps">
-        <li><b>Your payment went through</b> and one play was taken off your credits.</li>
+        <li><b>Your payment went through</b> for the run this play is part of (1, 5 or 10 plays).</li>
         <li><b>Only then</b> the house made a secret for this play and locked it in by showing you its fingerprint:<code id="proofCommit"></code></li>
         <li><b>Your browser added its own number</b> (after seeing the fingerprint, so the house couldn't pick a secret to beat it):<code id="proofSeed"></code></li>
         <li>Play number <b id="proofNo">#1</b>. The result comes from the secret, your number and the play number together.</li>
