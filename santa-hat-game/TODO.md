@@ -8,7 +8,6 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Email service so friends get sign-in emails:** connect Resend (free tier) to one of Cody's GoDaddy domains, then paste its SMTP settings into Supabase. Until then, email sign-in only reaches Supabase team members.
 - [ ] **Level table:** how many rank points reach each level, and which items unlock at each.
 - [ ] **Treasury wallet:** Cody is making a new one. Send Claude its public address (never the secret key or recovery phrase).
-- [ ] **Lottery program:** when ready, share where Cody's on-chain lottery lives (its repo, or its program address on devnet) so the Store's Lottery block can link to it or plug into it.
 - [ ] **Escrow admin controls (Cody, must exist before real pools go live):** for every pool wallet (Spin, Slots). *Built on the server (2026-09-30, `server/admin.js`, `tests/db/admin.test.mjs`):* wallet-signed emergency stop, resume and threshold/jackpot-% changes, no replays, sane-value checks, never mid-pull, all logged publicly. *Left for main Claude:* the admin screen (wallet signs the message) and the withdrawal transfer (needs the pool key). Jackpot odds stay a code change so old plays still re-check.
   - **Adjust thresholds** without a code change: starting amount, skim point and amount, top-off levels, jackpot % and odds. (The game logic already reads these from one settings object, `POOL_RULES`.)
   - **Emergency withdrawal:** move funds out of a pool to a safe wallet if something goes wrong.
@@ -34,12 +33,11 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Prove the pool lock on real Postgres** (two connections settling at once). Balances are now added/subtracted in the database, so no SANTA movement can be lost either way; the lock keeps each play's rule check (e.g. "can the pool cover the top prize?") seeing the latest balance. The in-process test database can't test locks (checked).
 - [x] **SANTA price swings (decided, Cody 2026-09-30): the pools hold SANTA and float with the token price,** so the pool jackpot's dollar size floats too. Fixed prizes stay in dollars, paid in SANTA at the live price; pool rules (skim, top-off, cover the top prize) use the pool's live dollar value (Claude's reading).
 - [ ] **Set up the Spin pool and Slots pool wallets (two separate):** keys only on the server, a little SOL each for fees. Each keeps everything (no sweeping). Real money: Cody funds them ($50 each). See DESIGN_NOTES → Pool wallets.
-- [ ] **Security review of Cody's lottery program** before real SANTA goes into it on mainnet.
 - [x] **SANTA's transfer tax in every payment (built and proven, 2026-09-30):** the live fee is read from the token by epoch (`market.js`, confirmed 3% on mainnet); the one-transaction burn + send split is proven on the real Token-2022 program (`tests/solana/split.test.mjs`): exact to the last unit, nothing lost, fee enforced, all-or-nothing.
 - [ ] **Split every payment on-chain:** tickets and avatar items 50% burned / 50% to treasury; lottery 90% to winners / 10% burned.
 - [ ] **Confirm payments on the server** (via Helius) before granting tickets or items. *Built:* the payment checker `server/verify.js` (12 cheating attempts refused, `tests/verify.test.mjs`); it needs a finalized transaction from Helius or any Solana RPC.
 - [ ] **Ticket refill limit:** 10 extra per 24 hours.
-- [ ] **Lottery:** daily and weekly draws, 90% to winners / 10% burned. Run by Cody's own on-chain lottery program (built, on devnet) or manually. This game doesn't build its own.
+- [ ] **Santa Lottery (decided, Cody 2026-10-01; being built):** server-run like Spin (one lottery wallet, key on the server only), five lotteries: Daily 10¢ and Daily $1 (1 winner), Weekly 10¢, Weekly $1 and Christmas $1 (closes Dec 23, 2026) (top 3: 60/25/15), no ticket cap, 90% to winners / 10% burned at purchase. Full rules: DESIGN_NOTES → "Santa Lottery". (Cody's GREEN LIFE `green-lottery` program can't hold SANTA as written: it books the amount sent, not what arrives after the 3% tax.)
 - [ ] **Buying needs a wallet:** email-only accounts must link one first (linking already works).
 
 ## Santa Hat Games tab

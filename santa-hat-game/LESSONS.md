@@ -217,3 +217,12 @@ has v20.20.2, which prints an `EBADENGINE` warning but every test still runs and
 upgrading WSL's Node before relying on anything that might actually need the newer runtime, but not urgent.
 **The general rule this generalizes to: never run a bare `npm install` from a DIFFERENT platform than the one
 that owns the lockfile — use `--no-save` (or a separate lockfile) whenever testing cross-platform.**
+
+## An escrow must book what ARRIVED, never what was sent: the tax breaks "sent" books (2026-10-01)
+Checked before plugging the Santa Lottery into Cody's `green-lottery` program (GREEN LIFE, devnet): its `buy_tickets` adds
+the `transfer_checked` amount to the books, but a Token-2022 transfer fee comes out of what lands in the vault. With SANTA
+(3%) the vault would hold 3% less than the books promise, its own "pot is funded" check compares books to books (so it
+passes), and the failure would only show up at the end: a winner's claim or the last refunds bouncing. Same rule as the
+top-off deposits above: for any token with a transfer fee, book the vault's balance change (or the fee-adjusted amount),
+and check books against the WALLET, not against themselves. Also: this Windows machine has no Python; script edits with
+Node or the Edit tool.

@@ -76,7 +76,7 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
 - **SANTA has a 3% transfer tax** built into the token. Every payment design must account for it (DESIGN_NOTES → SANTA's 3% tax).
   Winners absorb it, and it must be stated on the Play page and at the top of every SANTA game's description.
 - **Pool wallets:** a Spin pool and a separate Slots pool (keys only on the server), plus a new treasury wallet Cody is making. The
-  lottery runs on Cody's own on-chain lottery program (or manually). None of these are hooked up yet.
+  lottery is server-run with its own lottery wallet (Cody, 2026-10-01; DESIGN_NOTES → "Santa Lottery"). None of these are hooked up yet.
 - **Escrow admin controls are a must before any real pool goes live:** adjustable thresholds, emergency withdrawal, and an
   emergency stop (see TODO). The game logic already reads all thresholds from `POOL_RULES` and supports the stop switch.
 - Money: nothing paid is live. No wallet has ever been charged. Keep it that way until Cody signs off.
@@ -211,7 +211,7 @@ Logic: `mockups/settings.js`. New item SHAPES (not colours) still need code.
 2. Real-device testing with friends (multiplayer over the internet, Phantom sign-in, phone feel, how the sounds feel).
 3. The level table (points per level, what unlocks).
 4. The treasury wallet's public address, and the real starting amounts for the Spin and Slots pools (real money).
-5. Where Cody's on-chain lottery program lives.
+5. ~~Where Cody's on-chain lottery program lives.~~ Answered 2026-10-01: the Santa Lottery is server-run (DESIGN_NOTES → "Santa Lottery").
 6. The Slots pool jackpot %: 25% gives about $360–430 on a full pool, and ~14% would give about $250.
 7. Whether to build a free daily spin (it costs real money from the Spin pool; with runs it would be a free run of 1 a day).
 8. Which new click game to build next (Present Pick, Hat Drop, …) and its odds.
