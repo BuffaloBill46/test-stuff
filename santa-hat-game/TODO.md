@@ -54,29 +54,22 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Simulate a million spins** to prove the payback % before launch. (Slots: exact payback from the reel math plus `tests/payout-ranges.mjs`, 5 million pulls. Re-run both after any change.)
 - [ ] More click games from the idea list (Hat Drop, Present Pick, Sleigh Climb, Advent Scratch, Naughty or Nice). Needs Cody's pick of game and its odds/payback first.
 
-### Play credits: buy 1–10 plays in one transaction (decided, Cody 2026-09-30)
-Tapping Spin (or the Big Hat's pull) with no credits pops up a counter: pick 1–10 plays, pay once, and the game shows a
-**credit count stored on the player's account**. Each play spends one credit. A free daily spin then becomes "add 1 credit".
-Why: one wallet popup and one network fee instead of ten. **Small amounts only** (at most 10 plays bought at a time), so we
-never hold much for anyone.
-- [x] **Demo built and live (2026-09-30):** the 1–10 counter popup, credits readouts, plays spend credits, "Check this result". Tests: `tests/credits.test.mjs`, `tests/browser/games-test.mjs`, `spin-test.mjs`.
-- [ ] **Credits live in the database, never the browser (rule).** *Drafted:* `supabase/005_credits_plays.sql` (NOT applied), checked on real Postgres (`tests/db/`). Only the server can add or remove them (row security, like
-      profiles). The page only shows the number.
-- [ ] **The money moves at purchase (rule):** the single payment already does the 10% burn / 90% to that game's pool, so a credit
-      is fully paid for before it's used. **All Spin credits pay the Spin pool; all Slots credits pay the Slots pool.** Price locked
-      in dollars at purchase; later SANTA price moves don't change it.
-- [ ] **Credits are per game and size:** 10¢ Spin, $1 Spin, $1 Big Hat. **No cash-out, no expiry, no bulk discount** (Cody).
-- [x] **Invariants tested as assertions** (demo ledger, the 005 SQL on real Postgres, and the server steps): credits bought = credits used + credits left, per player; a credit is spent at most
-      once (even with two taps or two tabs at once); one payment signature buys credits exactly once; a play that the pool
-      refuses (paused or refilling) keeps its credit.
-- [ ] **Free daily spin:** the server adds 1 credit per player per day. Still needs Cody's yes (it costs real money from the Spin pool).
+### Runs: buy 1, 5 or 10 plays that play straight away; winnings sent automatically (decided, Cody 2026-10-01)
+Replaces play credits (2026-09-30). Each game has Play 1 / 5 / 10 at the size picked on the card; one confirm and one payment,
+then the plays run; when the last one lands, the run's winnings are sent to the player's wallet in one transfer, with no claim
+button and no player signature. **We never hold a player balance.** Rules and why: DESIGN_NOTES → "No credits".
+- [x] **Demo built (2026-10-01):** the buttons, the confirm, auto-play with Skip ahead, the end-of-run summary, "Check this result". Tests: `tests/credits.test.mjs`, `tests/browser/games-test.mjs`, `spin-test.mjs`, `drop-test.mjs`.
+- [x] **Server + SQL built (NOT deployed / applied):** `buy_run` makes the plays only after the payment is confirmed; `finish_run` queues ONE payout per run. Tests: `tests/db/server.test.mjs`, `credits-db.test.mjs`, `tests/solana/rehearsal.mjs`.
+- [x] **The money moves at purchase (rule):** the single payment does the 10% burn / the rest to that game's pool (Spin and Drop: the Spin pool; Big Hat: the Slots pool). Price locked in dollars at purchase.
+- [x] **Invariants tested as assertions** (demo ledger, real Postgres, real token program): a payment buys one run, once; a run is paid exactly once, exactly its winnings + refunds, never before its last play; a play the pool refuses after payment refunds its price into the run's payout.
+- [ ] **Free daily spin:** a free run of 1 per player per day. Still needs Cody's yes (it costs real money from the Spin pool).
 
 ### Slots server: protect it from bots and abuse (no daily play limit, so this matters more)
 The math can't be beaten by grinding (a simulated 100,000-pull grinder lost about 25% every time), but the server still has to
 stop cheating and spam:
-- [x] **One play at a time per player (built, 2026-09-30):** enforced in the database (`spend_credit`, a per-player lock), so 10 taps at once give 1 play and spend 1 credit. Stuck plays are tidied first, so nobody is blocked forever.
-- [ ] **Every payment used once.** Each SANTA payment's transaction signature buys its 1–10 credits exactly once; record it and refuse repeats.
-- [ ] **Confirm the payment on-chain (Helius) before any credits are added.** No confirmed payment, no credits, no pull.
+- [x] **One play at a time per player (built, 2026-09-30):** a player can't start a new run while one is unfinished (checked at the quote and in the database); stuck runs are finished by the server (`tidy`), so nobody is blocked forever.
+- [ ] **Every payment used once.** Each SANTA payment's transaction signature buys its run exactly once; record it and refuse repeats.
+- [ ] **Confirm the payment on-chain (Helius) before any plays are made.** No confirmed payment, no plays.
 - [ ] **Rate limit per wallet and per IP** (e.g. a few pulls a second at most) to stop scripted floods; slow down, don't ban, on the first hits.
 - [ ] **Bot signals:** flag wallets pulling at perfectly regular intervals for hours; review before acting (a real grinder is fine).
 - [ ] **Results only from the server.** The page just animates what the server decided; the browser never picks outcomes or amounts.
@@ -85,7 +78,7 @@ stop cheating and spam:
 
 ### Slots: tips for building it right (from the research, see RESEARCH.md)
 - [ ] **Keep it a "PAR sheet" machine:** odds come only from symbol counts on the reel strips; change payback by changing counts or prizes in `mockups/slots.js`, then re-run `tests/slots.test.mjs`, `tests/paytable.mjs` and `tests/payout-ranges.mjs`.
-- [ ] **Provably fair, in Cody's order (see DESIGN_NOTES → "Fair results: the order"):** payment confirmed and the credit spent
+- [ ] **Provably fair, in Cody's order (see DESIGN_NOTES → "Fair results: the order"):** payment confirmed
       FIRST; only then does the server make and lock a fresh secret for that play. Anyone can re-check a play afterwards.
 - [x] **Show every win clearly:** draw the winning paylines, light the winning symbols, show the hat-bonus nickels, then the total.
 - [x] **Only celebrate real wins:** big effects only when the pull pays more than the $1 it cost (research: "losses disguised as wins"). Small returns show quietly.

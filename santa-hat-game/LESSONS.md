@@ -167,3 +167,22 @@ first fair number for the main wheel, the second for the bonus). `tests/credits.
 The admin screen said "Done: pause" and only then re-read the pools, so for a moment it said Done beside "Running".
 A browser test caught it intermittently. An intermittent failure is a timing gap to find, not a flake to re-run away.
 Rule: refresh, then confirm.
+
+## Hold nothing: a run beats a balance (2026-10-01)
+Cody went from credits per game, to dollar balances, to RUNS (buy 1/5/10, they play at once, winnings sent automatically at
+the end). Each step removed money we hold for players: a balance is a liability that needs its own rules (expiry, cash-out,
+stuck credit), while a finished run holds nothing. When a design keeps growing rules to protect a stored balance, ask whether
+the balance needs to exist at all. Invariant for runs: paid exactly once, exactly winnings + refunds, never before the last play.
+
+## Keep money exact until the screen (2026-10-01)
+Rounding each play's prize to cents while summing a run made the books disagree with the pool by a fraction of a cent (a pool
+jackpot is a share of the pool, not whole cents). Keep sums exact (or in the token's smallest units); round only for display.
+
+## Headless browsers draw about 3 frames a second (2026-10-01)
+A run of 10 animated spins with a bonus wheel took minutes in the test browser (swiftshader) and looked like a hang. Tests
+press Skip ahead (the same button players have) instead of raising timeouts. Related: a canvas that keeps drawing while off
+screen costs every phone; the Snowball Drop board rests unless it's visible or snowballs are still falling.
+
+## A flex row splits mixed text into columns (2026-10-01)
+The result line is `display: flex` (to centre it vertically), so a summary made of bold text + plain text + a span became three
+squashed columns on a phone. Wrap rich text in ONE element when its parent is flex. Caught only by looking at a phone screenshot.

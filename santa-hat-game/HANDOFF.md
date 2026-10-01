@@ -46,19 +46,21 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
     one-computer stand-ins for testing.
   - `catalog.js`: every avatar item (slot, level or price).
   - Games tab: `games.js` (Slots page), `spinui.js` (Spin page), `slots.js` / `spin.js` (rules), `slots3d.js` / `spin3d.js` (3D).
-  - Play credits and fair results: `credits.js` (ledger), `fair.js` (secrets, fingerprints, numbers), `house.js` (Cody's order;
-    a stand-in for the server), `playcredits.js` (buy counter, readouts, "Check this result").
+  - Snowball Drop: `plinko.js` (rules), `plinkoboard.js` (the board), `dropui.js` (its Games-tab card); preview `plinko.html`.
+  - Runs (buy 1/5/10 plays that play straight away) and fair results: `credits.js` (the run ledger; the file name is older
+    than the design), `fair.js` (secrets, fingerprints, numbers), `house.js` (Cody's order; a stand-in for the server),
+    `playcredits.js` (the buy confirm, playing a run, "Check this result"), `runui.js` (the end-of-run summary).
   - `market.js`: live SANTA price and the token's live tax (read-only), plus the payment split math. `sfx.js`: sound effects.
   - `matchmaker.js`: ranked Auto match logic (not switched on yet).
 - **Server code (NOT deployed):** `santa-hat-game/server/`: `verify.js` (is this transaction a valid payment?), `games.js`
-  (quote → buy → open → settle, plus tidying stuck plays) and `http.js` (the web door: sign-in, our website only).
+  (quote → buy a run → settle each play → one payout per run, plus tidying stuck runs) and `http.js` (the web door: sign-in, our website only).
   It runs as the Supabase **Edge Function** `supabase/functions/games/index.ts` (Cody's choice; thin wiring, type-checked and
   smoke-run with Deno: `npm install deno` gives a runnable Deno). Pools hold SANTA and float with the price (Cody).
   - `kit.js` / `plaza.js`: the low-poly art kit and the plaza scene.
   - `snowball.js`, `bethehat.js`, `sleigh.js`, `hatchase.js`, `village.js`, `index.html`: the four
     original single-player mockups (published under `/mockups/`). **Not dead code; keep them.**
 - **Database:** `santa-hat-game/supabase/001..004_*.sql` are applied to the live project, in order.
-  **`005_credits_plays.sql` is NOT applied** (credits, plays, payouts for the server; apply when the server goes live, with Cody's OK).
+  **`005_credits_plays.sql` is NOT applied** (runs, plays, payouts for the server; despite the name, no credits; apply when the server goes live, with Cody's OK).
   New changes go in a new numbered file, checked with `tests/db/`, applied with the Supabase tools, then committed.
 
 ## Services and access
@@ -90,7 +92,7 @@ node tests/spin.test.mjs         # Spin rules: exact wheel odds, pool, skim, top
 node tests/slots.test.mjs        # Slots rules: exact wild-aware payback, every line, pool never negative, skim
 node tests/paytable.mjs          # regenerates PAYTABLE.md (the full payout table) from mockups/slots.js
 node tests/slots-tune.mjs        # tuning helper: scales prizes to a payback target
-node tests/credits.test.mjs      # play credits + fair results: Cody's order on every play, books balance, refunds on failure
+node tests/credits.test.mjs      # runs + fair results: Cody's order on every play, one send per run, refunds on failure
 node tests/market.test.mjs       # live price + live token tax (reads mainnet; skips politely if offline)
 node tests/verify.test.mjs       # server payment checker: a good payment passes, 12 cheats refused
 node tests/matchmaker.test.mjs   # ranked matchmaking rules, 2 simulated hours of traffic
@@ -107,7 +109,7 @@ node tests/reconcile.test.mjs    # audit: books + everything owed = wallet
 (cd tests/solana && node rehearsal.mjs)         # DRESS REHEARSAL of the devnet test: buy, play, pay out, admin, books = wallets
 (cd tests/browser && node admin-test.mjs)       # the admin screen: connect, Stop, bad setting refused, save, Resume, game settings editor
 node tests/settings.test.mjs     # game settings: version 0 = today exactly; guard rails; changes do what they say
-(cd tests/db && node settings-db.test.mjs)      # settings on the server: never mid-play, old plays re-check, credits keep their price
+(cd tests/db && node settings-db.test.mjs)      # settings on the server: never mid-play, old plays re-check, runs keep their price
 (cd tests/browser && node settings-mode-test.mjs)  # the page draws published settings; plays land and re-check on them
 cd tests/solana && npm install && node split.test.mjs   # the payment split on the REAL Token-2022 program (LiteSVM, no network)
 cd tests/db && npm install && node credits-db.test.mjs && node server.test.mjs  # the SQL + server steps on real Postgres (PGlite)
@@ -137,14 +139,15 @@ between two devices has never been tested from here. Cody and friends testing on
 
 *(Update this section at the end of every session.)*
 
-**Last updated:** 2026-09-30 (third session of the day). Branch `claude/test-stuff-section-egujzy`; everything committed, pushed and published.
+**Last updated:** 2026-10-01. Branch `claude/test-stuff-section-egujzy`; everything committed, pushed and published.
 
 **Built and live (all demo, no real money):**
 - **Play tab:** Snowball Square multiplayer (rooms, bots that now sometimes emote, idle kicks), unranked lobby, FFA RANKED layout
   (Auto match off until tickets + server exist), live games list with Watch now. Sound effects with a remembered mute button.
 - **Store / Avatar / Ranks tabs:** item catalog, avatar editor, wallet or email sign-in with linking, leaderboard.
-- **Games tab:** Big Hat slots and Santa Hat Spin, now paid with **play credits** (buy 1–10 in one go; Cody's decision, replaces
-  pay-per-spin), **fair results in Cody's order** (payment and credit first, then the secret) with a "Check this result" panel,
+- **Games tab:** Big Hat slots, Santa Hat Spin and Snowball Drop, each with **Play 1 / 5 / 10 buttons** (one payment, the plays
+  run straight away, winnings sent automatically at the end; no credits, no claim button; Cody 2026-10-01),
+  **fair results in Cody's order** (payment first, then the secret) with a "Check this result" panel,
   and the **live SANTA price and live token tax**. Numbers: `PAYTABLE.md`, `mockups/spin.js`.
 
 **Pre-hand-over pass (2026-09-30, evening):** an audit (`AUDIT.md`: 9 findings, all fixed or handed over, incl. skims that only
@@ -171,22 +174,27 @@ FOR_MAIN_CLAUDE.md.
   credits or the server yet.
 - **Spin credits are a dollar balance too** (2026-10-01, Cody: per-game credits, either size): buy $10 of Spin, play 10¢
   or $1 spins in any mix. Big Hat still counts pulls.
-- **Snowball Drop added to the Games tab** (2026-10-01): shares the Spin pool; **one dollar balance** pays for 10¢ or $1
-  drops in any mix (Cody). Built through to the server and SQL; tests `tests/browser/drop-test.mjs`, `tests/db/server.test.mjs`.
+- **Snowball Drop added to the Games tab** (2026-10-01): shares the Spin pool; 10¢ or $1 drops (Cody). Built through to the server and SQL; tests `tests/browser/drop-test.mjs`, `tests/db/server.test.mjs`.
 - **"What's SANTA?" draft copy** in `WHATS_SANTA.md` (short + long, from santahat.gold and on-chain facts): Cody to edit.
+- **Credits removed; RUNS instead (2026-10-01, Cody):** every game has Play 1 / 5 / 10 at the size picked on the card. One
+  confirm, one payment, the plays run one after another (Skip ahead finishes the animations), and when the last one lands the
+  run's winnings (plus the price of any play the pool refused) are **sent to the player's wallet automatically, in one
+  transfer**: no claim button, the player never signs to get paid. We never hold a player balance. Built through the page,
+  server, SQL (`runs` table, `buy_run`, `finish_run`: one payout per run) and the payout worker; every test passes, including
+  the on-chain rehearsal. Decision and rules: DESIGN_NOTES → "No credits".
 
 **Server side, built and proven here but not deployed** (everything else for devnet is in `FOR_MAIN_CLAUDE.md`):
-- Edge Function `games` (Cody's choice): quote → buy → open → settle, stuck-play tidying, one play at a time per player,
+- Edge Function `games` (Cody's choice): quote → buy a run → settle each play → one payout per run, stuck-run tidying, one play at a time per player,
   pools in SANTA floating with the price (Cody), escrow admin controls (wallet-signed stop/resume/settings, logged).
 - Payout worker: never pays twice, even through crashes (proven on the real token program).
 - The Games page's server mode (`?server=<address>`), proven end to end against the real server code and SQL.
 
 **Game settings (Cody, 2026-09-30):** the admin screen edits prices, the Spin wheel, Big Hat odds/prizes/symbols, the jackpot
 % and odds, and the store (price/level changes, new colour items), with a guard-rail preview. Versioned and wallet-signed;
-changes apply to new plays only; every play records its version and price; credits keep the price they were bought at.
+changes apply to new plays only; every play records its version and price; a run keeps the price it was bought at.
 Logic: `mockups/settings.js`. New item SHAPES (not colours) still need code.
 
-**Built but not switched on:** the payment checker and game server steps (`server/`), the credits/plays/payouts database file
+**Built but not switched on:** the payment checker and game server steps (`server/`), the runs/plays/payouts database file
 (`005`, not applied), ranked matchmaking (`matchmaker.js`). The one-transaction payment split is proven on the real token program.
 
 **Waiting on Cody** (don't build around these; ask if still open):
@@ -197,9 +205,8 @@ Logic: `mockups/settings.js`. New item SHAPES (not colours) still need code.
 4. The treasury wallet's public address, and the real starting amounts for the Spin and Slots pools (real money).
 5. Where Cody's on-chain lottery program lives.
 6. The Slots pool jackpot %: 25% gives about $360–430 on a full pool, and ~14% would give about $250.
-7. Whether to build a free daily spin (it costs real money from the Spin pool; with credits it's just "add 1 credit a day").
-8. Which new click game to build next (Present Pick, Hat Drop, …) and its odds. Snowball Drop (Plinko) is previewed at
-   `/plinko.html`: keep it, change it, or drop it?
+7. Whether to build a free daily spin (it costs real money from the Spin pool; with runs it would be a free run of 1 a day).
+8. Which new click game to build next (Present Pick, Hat Drop, …) and its odds.
 9. The "What's SANTA?" wording (`WHATS_SANTA.md`), and where it goes on the site.
 
 **Next big step:** connect the Games page to the Edge Function instead of the in-browser stand-in (`house.js`), apply `005`,

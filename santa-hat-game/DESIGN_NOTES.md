@@ -160,14 +160,34 @@ emergency stop); a drop only starts if the pool covers its top prize (10×). Sim
 about $10, treasury about $650–700 per 20,000 plays. Guard rail: Spin's top-off must cover Drop's top prize ($10).
 Logic `mockups/plinko.js` (`play`, `canPlay`), test `tests/plinko.test.mjs`.
 
-**Credits are per game; Spin and Snowball Drop are dollar balances (Cody, 2026-10-01).** "Let's just do credits per game:
+**No credits: buy a RUN of 1, 5 or 10 plays that plays straight away; winnings are sent automatically (Cody, 2026-10-01;
+replaces every credit design below).** "Remove the credit system. Leave the 3 options to buy 1, 5, 10 on each game. Whatever
+they buy auto plays ... This way we don't really hold player funds." Then: "I'm ok with us sending the winnings to the player
+without the player signing it, it makes it better and safer for the player", and "just after their 1, 5 or 10 roll it auto
+sends" (no claim button). How it works:
+- Each game card has three buttons (Pull/Spin/Drop 1, 5, 10) at the size picked on the card (Spin and Drop: 10¢ or $1;
+  Big Hat: $1). One confirm, one payment; the plays start the moment the payment is confirmed. Skip ahead finishes the
+  animations (results are already decided; Skip only stops showing them slowly).
+- The server makes the run's plays (and locks each secret) only after the payment is confirmed. The plays settle one after
+  another; the run's LAST play queues ONE payout of everything the run won, plus the price of any play the pool refused
+  (emergency stop or refilling). Nothing waits on the player, so nothing is left behind if they close the tab: the server
+  finishes a stuck run itself (`tidy`).
+- Refused up front (before any payment): the pool can't take the play, the player already has an unfinished run, or the
+  account has no linked wallet to send to.
+- Invariant (tested as assertions in the demo ledger, on real Postgres and on the real token program): every run is paid
+  exactly once, exactly what its plays won + refunded, never before its last play; payout ≤ 205 × plays + jackpots.
+- Why not credits: a credit balance is player money we hold; a run holds nothing once it's done. Options weighed: per-game
+  credits (built, then dropped), one shared balance (needs one shared wallet or a second 3% tax), claim button (built, then
+  dropped for auto-send: one fewer step and the player never signs to get paid).
+
+**(Superseded by runs, above.) Credits were per game; Spin and Snowball Drop were dollar balances (Cody, 2026-10-01).** "Let's just do credits per game:
 they buy 10 on spin, the spin credit counter shows 10 and other games show 0." Spin now works like Snowball Drop below
 (buy $1–$10 of Spin balance; 10¢ or $1 spins in any mix); Big Hat (one size) still counts pulls. Each game's money still
 goes to its own pool at purchase (Spin and Snowball Drop: the Spin pool; Big Hat: the Slots pool). Cody first asked about
 ONE balance for all games; that would have needed one shared game wallet (or a second 3% tax on every play), so he chose
 per-game credits. Guard rail: Spin's sizes in the admin settings must be whole 10¢ (the balance is kept in 10¢ units).
 
-**Snowball Drop is in the arcade (Cody, 2026-10-01), paid from ONE dollar balance.** "When someone buys $10.00 in tokens
+**Snowball Drop is in the arcade (Cody, 2026-10-01).** (The balance below was superseded by runs, above.) "When someone buys $10.00 in tokens
 they can play either the 0.10 or 1.00 game." So unlike Spin and Big Hat (credits per game and size), Snowball Drop credits
 are a balance: buy $1–$10 in one payment; a 10¢ drop takes 10¢ of it, a $1 drop $1, in any mix. Kept in whole 10¢ units
 (never fractions): $10 = 100 units, a 10¢ drop 1 unit, a $1 drop 10. A size the balance can't cover is refused before
@@ -271,8 +291,8 @@ jackpot amount**, plus its jackpot odds and biggest fixed win (worked out from t
 
 ### Proposals
 - **Fair results: the order (decided, Cody 2026-09-30; a safety rule, never change the order).**
-  1. The player pays and the payment is **confirmed on-chain**; credits are added. (Tapping Buy decides nothing.)
-  2. The player taps play; the server **spends one credit** first.
+  1. The player pays and the payment is **confirmed on-chain**; the run's plays are made. (Tapping Buy decides nothing.)
+  2. (Runs, 2026-10-01: the plays start straight away, one after another; each is already paid for.)
   3. Only now the server makes a **fresh secret** for this play from a secure random source (not `Math.random`, which can be
      predicted) and locks it in by showing its fingerprint (hash) to the player.
   4. The player's browser adds its own random number. The result comes from secret + player number + play counter.
@@ -303,7 +323,7 @@ jackpot amount**, plus its jackpot odds and biggest fixed win (worked out from t
   Simulation: with $50 and the "must cover 5× the bet" rule, 5,000 busy runs of 3,000 spins never had to pause.
   The pool typically grew to about $220, and the worst 1% ended around $155. *(Spin-style numbers.
   With the jackpot, the Slots pool levels off instead. See "Spin and Slots pools".)*
-- **Paying: play credits (Cody, 2026-09-30; replaces "pay per spin").** Players buy 1–10 plays in one wallet transaction and
+- **(Superseded 2026-10-01 by runs; see "No credits" above.) Paying: play credits (Cody, 2026-09-30; replaces "pay per spin").** Players buy 1–10 plays in one wallet transaction and
   get that many credits on their account; each play spends one. We only ever hold small prepaid plays, never deposits of money.
   Rules: credits live only in the database (the server adds and removes them; the page just shows the number); the payment's
   split happens at purchase (Spin credits pay the Spin pool, Slots credits the Slots pool); credits are per game and size

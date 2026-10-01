@@ -23,10 +23,19 @@ Tick items off here as they're done. Order is roughly the order to do them in fo
       any extra to the pool (tested on real Postgres with books = wallet at every step, `tests/db/admin.test.mjs`). No key needed.
       Left for you: check it once with a real devnet deposit (the Edge Function already passes its `chain` to the admin).
 
-- [x] **Snowball Drop is in the arcade** (2026-10-01): credit kinds `spin` and `drop` are dollar BALANCES in 10¢ units
-      (Cody: buy $10, play 10¢ or $1 from it; per game). `big` still counts pulls. Built end to end: `005` SQL (`credits.kind 'drop'`, `plays.units/credit_bet`,
-      `spend_credit(..., p_units, p_bet)`, exact refunds), server `quote`/`open(kind, bet)`/`settle`, the page card. Nothing
-      extra for you beyond the normal deploy: the payment for a drop balance goes to the **Spin** pool wallet.
+- [x] **Snowball Drop is in the arcade** (2026-10-01): shares the Spin pool; its payments go to the **Spin** pool wallet.
+
+- [x] **Credits removed; RUNS with automatic payouts (Cody, 2026-10-01).** A payment buys a run of 1, 5 or 10 plays of one game at
+      one size; the plays run straight away and the run's last play queues ONE payout (its winnings + any refused play's price)
+      to the player's linked wallet. No claim, no player signature. What changed in `005_credits_plays.sql` (still NOT applied;
+      the file name is older than the design): no `credits` table; new `runs` (one per payment signature); `quotes.n` in 1/5/10
+      with `usd = n × bet`; `plays.run_id` (required) and `plays.pay_raw`; `payouts.run_id` unique (was `play_id`); functions
+      `buy_run`, `lock_play`, `settle_play` (no payout insert), `refund_play`, `finish_run(p_run, p_to_wallet, p_cap)`, with
+      cap = 205 × plays + jackpots. The server refuses a quote up front when the player has an unfinished run, has no linked
+      wallet, or the pool can't take the play; `tidy` finishes runs left behind (closed tab). The web door's actions are now
+      `quote {kind, n, bet}`, `buy`, `settle` (`credits` and `open` are gone). The payout worker is unchanged: it sends whatever
+      is queued, so a run's payout goes out on its next pass. Proven: `tests/db/server.test.mjs`, `tests/solana/rehearsal.mjs`
+      (one payout per run, books = wallets).
 
 ## Needs live systems (this workspace can't reach them)
 - [ ] **Apply `supabase/005_credits_plays.sql`** to the project (checked on real Postgres in `tests/db/`), then insert the two
@@ -37,7 +46,7 @@ Tick items off here as they're done. Order is roughly the order to do them in fo
 - [ ] **Prove the pool row lock on real Postgres:** two connections settling plays on the same pool at the same moment. (Balances
       add/subtract so no SANTA can be lost either way; the lock keeps each play's "can the pool pay?" check on the latest balance.)
 - [ ] **Real wallet signing in the browser: write `window.santaPay(quote)`.** The page already calls it (server mode,
-      `mockups/playcredits.js` → `buyFromServer`) with the server's quote (it includes `mint`, `pool`, `fee`, `burnBps`).
+      `mockups/playcredits.js` → `payOnServer`) with the server's quote (it includes `mint`, `pool`, `fee`, `burnBps`).
       The transaction is ALREADY BUILT for you: `purchaseInstructions(lib, quote, walletSigner)` in `mockups/pay.js` (pass the
       `@solana-program/token-2022` module as `lib`), proven on the real token program and accepted by the server's checker
       (`tests/solana/pay.test.mjs`). Left: wrap Phantom as a @solana/kit transaction signer, sign + send, wait until FINALIZED,
