@@ -57,3 +57,9 @@ for (const bad of [{ id: 'face_alien', slot: 'face', name: 'Alien', face: 'alien
   assert.deepEqual(build(a).machine.strips, build(b).machine.strips, 'same reels whatever the key order');
   assert.deepEqual(build(a).wheel, build(b).wheel, 'same wheels whatever the key order'); }
 console.log('OK: settings: version 0 = today exactly; 14 unsafe changes refused; odds, prices, wheel and store changes do what they say');
+// Hats and backpacks (2026-10-01): a new colour of an existing shape is fine; a brand-new shape or no colour is refused.
+{ const { checkItem: ci } = await import('../mockups/settings.js');
+  assert.deepEqual(ci({ id: 'hat_beanie_red', slot: 'hat', name: 'Red Beanie', hat: 'beanie', color: 0xcc2222, level: 2 }), []);
+  assert.match(ci({ id: 'hat_crown', slot: 'hat', name: 'Crown', hat: 'crown', color: 0xffd060, level: 2 }).join(), /existing shape/);
+  assert.match(ci({ id: 'pack_sack_blue', slot: 'pack', name: 'Blue Sack', pack: 'sack', level: 2 }).join(), /needs a colour/);
+  console.log('OK: store editor: new hat/backpack colours allowed, new shapes need code'); }

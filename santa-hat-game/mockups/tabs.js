@@ -24,6 +24,8 @@ function thumbnail(item) {
     const ch = avatarCharacter(a); ch.rotation.y = -0.35; scene.add(ch);
     if (item.slot === 'face' || item.slot === 'skin') { const h = toon(hatGeo({ scale: 0.88 }), 0.03); h.position.y = 2.05; h.rotation.y = Math.PI / 2 - 0.35; scene.add(h); cam.position.set(0, 1.92, 1.75); cam.lookAt(0, 1.86, 0); }
     else if (item.slot === 'pants') { cam.position.set(0, 0.9, 3.4); cam.lookAt(0, 0.65, 0); }
+    else if (item.slot === 'hat') { cam.position.set(0, 2.15, 1.9); cam.lookAt(0, 1.98, 0); }
+    else if (item.slot === 'pack') { ch.rotation.y = Math.PI - 0.6; cam.position.set(0, 1.5, 2.9); cam.lookAt(0, 1.25, 0); } // from behind
     else { cam.position.set(0, 1.5, 3.6); cam.lookAt(0, 1.25, 0); }
   }
   thumbR.render(scene, cam);
@@ -34,7 +36,9 @@ function thumbnail(item) {
 
 export function avatarCharacter(a, extra = {}) {
   const av = cleanAvatar(a), get = (s) => BY_ID.get(av[s]);
-  return character({ shirt: extra.shirt ?? get('shirt').color, pants: get('pants').color, skin: get('skin').color, face: get('face').face, seed: 3, ...extra });
+  const hat = get('hat'), pack = get('pack');
+  return character({ shirt: extra.shirt ?? get('shirt').color, pants: get('pants').color, skin: get('skin').color, face: get('face').face, seed: 3,
+    hat: hat.hat !== 'none' ? { shape: hat.hat, color: hat.color } : null, pack: pack.pack !== 'none' ? { shape: pack.pack, color: pack.color } : null, ...extra });
 }
 
 export function initTabs(app) {

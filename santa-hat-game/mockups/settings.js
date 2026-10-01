@@ -97,6 +97,9 @@ export function checkItem(it) {
   if (!base) { // a NEW item: only looks the game can already draw (a colour on shirts, pants, snowballs; or an existing face)
     if (['shirt', 'pants', 'snow'].includes(it.slot)) { if (!Number.isInteger(it.color) || it.color < 0 || it.color > 0xffffff) p.push(`new item ${it.id}: needs a colour`); }
     else if (it.slot === 'face') { if (!ITEMS.some((x) => x.slot === 'face' && x.face === it.face)) p.push(`new face ${it.id}: must reuse an existing face look (a brand-new shape needs code)`); }
+    else if (it.slot === 'hat' || it.slot === 'pack') { // a new colour of a hat or backpack the game can already draw
+      const k = it.slot; if (!ITEMS.some((x) => x.slot === k && x[k] === it[k] && it[k] !== 'none')) p.push(`new ${k === 'hat' ? 'hat' : 'backpack'} ${it.id}: must reuse an existing shape (a brand-new shape needs code)`);
+      if (!Number.isInteger(it.color) || it.color < 0 || it.color > 0xffffff) p.push(`new item ${it.id}: needs a colour`); }
     else p.push(`new ${it.slot} items need code (skin tones are fixed)`);
   }
   return p;
