@@ -285,3 +285,9 @@ land first made the test pass even with an adapter that said "expired" too early
 JavaScript's `s.replace(find, replacement)` treats `$$`, `$&`, `` $` ``, `$'` and `$1` in the REPLACEMENT as codes: an edit that
 inserted SQL turned the function opener `as $$` into `as $`, and only the test database's syntax error caught it. When a
 replacement contains `$` (SQL, templates, money), use `s.replace(find, () => replacement)` or `split(find).join(replacement)`.
+
+## A setup script must never change a wallet the books track (2026-10-01)
+`devnet-setup.mjs` "topped up" the pool wallets to $50 / $500 at the LIVE price; re-run after SANTA's price fell, it minted
+~16% more test SANTA into both pools, and the live database's pool books silently stopped matching the wallets. Caught only
+because the printed balances looked different. Rule: once a pool's wallet is booked, only booked actions move its money
+(plays, payouts, skims, Cody's recorded deposits). The setup now funds a pool once, when empty, and never again.

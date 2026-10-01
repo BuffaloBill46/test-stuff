@@ -54,11 +54,11 @@ const exists = async (a) => (await rpc.getAccountInfo(a, { encoding: 'base64', c
 console.log('1. Keys (kept in ' + KEYS + ', never in the repo)');
 const funder = await createKeyPairSignerFromBytes(new Uint8Array(JSON.parse(readFileSync(FUNDER, 'utf8'))));
 const w = {};
-for (const n of ['admin', 'mint', 'spinPool', 'slotsPool', 'lotteryPool', 'treasury', 'player']) w[n] = await key(n);
+for (const n of ['admin', 'mint', 'spinPool', 'slotsPool', 'lotteryPool', 'treasury', 'player', 'codyAdmin']) w[n] = await key(n);
 say(`funder ${funder.address}: ${Number(await sol(funder.address)) / 1e9} devnet SOL`);
 
 console.log('2. Devnet SOL for fees');
-const needs = [['admin', 300_000_000n], ...['spinPool', 'slotsPool', 'lotteryPool', 'treasury', 'player'].map((n) => [n, SOL_EACH])];
+const needs = [['admin', 300_000_000n], ...['spinPool', 'slotsPool', 'lotteryPool', 'treasury', 'player', 'codyAdmin'].map((n) => [n, SOL_EACH])];
 const top = [];
 for (const [n, want] of needs) { const have = await sol(w[n].address); if (have < want / 2n) top.push(getTransferSolInstruction({ source: funder, destination: w[n].address, amount: lamports(want - have) })); }
 if (top.length) { await send(funder, top); say(`topped up ${top.length} wallet(s)`); } else say('every wallet already has enough');
@@ -87,11 +87,27 @@ if (!(price > 0)) throw new Error('could not read the SANTA price');
 const raw = (usd) => BigInt(Math.round((usd / price) * 10 ** DEC));
 const want = { spinPool: raw(POOLS_USD.spin), slotsPool: raw(POOLS_USD.slots), lotteryPool: 0n, treasury: 0n, player: raw(PLAYER_USD) };
 const mints = [];
-for (const n of holders) { const have = await bal(n); if (have < want[n]) mints.push(T22.getMintToInstruction({ mint, token: await ata(w[n].address), mintAuthority: w.admin, amount: want[n] - have })); }
+// Pool wallets are BOOKED by the game database (pools.santa_raw = the wallet): they get their starting SANTA once, when empty,
+// and are never topped up here afterwards (that would make the books and the wallet disagree; found 2026-10-01 when a re-run
+// at a lower SANTA price minted extra into both pools). Top-ups are Cody's deposits, recorded with record-deposit.
+// Only the test player is topped up again.
+const POOLS = new Set(['spinPool', 'slotsPool', 'lotteryPool']);
+for (const n of holders) { const have = await bal(n); if (have < want[n] && (!POOLS.has(n) || have === 0n)) mints.push(T22.getMintToInstruction({ mint, token: await ata(w[n].address), mintAuthority: w.admin, amount: want[n] - have })); }
 if (mints.length) await send(w.admin, mints);
 const out = { network: 'devnet', rpc: RPC, mint, priceUsdAtSetup: price, wallets: {} };
 for (const n of holders) { out.wallets[n] = w[n].address; say(`${n.padEnd(11)} ${w[n].address}  ${(Number(await bal(n)) / 1e6).toLocaleString()} test SANTA`); }
-out.wallets.admin = w.admin.address;
+out.wallets.admin = w.admin.address; out.wallets.codyAdmin = w.codyAdmin.address; out.wallets.funder = funder.address;
+// What each one is, in plain words (Cody: "create and label it on devnet"; real wallets come at launch).
+out.labels = {
+  spinPool: 'Drop pool (was the Spin pool): Snowball Drop entries in, Drop winners paid out; the game server sends from it',
+  slotsPool: 'Slots pool: Big Hat entries in, Big Hat winners paid out; the game server sends from it',
+  lotteryPool: 'Lottery wallet: ticket money in (10% burned first); winners paid by hand by Cody for now',
+  treasury: 'Treasury: skims from the pools; 50% of level and Store purchases',
+  player: 'Test player: buys runs, tickets and levels in the tests',
+  codyAdmin: 'Stand-in for Cody\'s admin wallet (signs pause/settings/lottery-paid on devnet); his Phantom replaces it at launch',
+  admin: 'Test-token authority: makes the test SANTA (not used by the game)',
+  funder: 'Pays devnet setup fees (devnet SOL only)',
+};
 writeFileSync(join(here, '..', '..', 'devnet.json'), JSON.stringify(out, null, 2) + '\n');
 console.log(`OK: devnet ready (SANTA price $${price}); public addresses in santa-hat-game/devnet.json`);
 process.exit(0);

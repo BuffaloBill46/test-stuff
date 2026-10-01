@@ -2,7 +2,7 @@
   "network": "devnet",
   "rpc": "https://api.devnet.solana.com",
   "mint": "Jx95so9XYhtSJJoqup7Xb3T9Ptr9ZuUTXSgPcu6uttg",
-  "priceUsdAtSetup": 0.000439,
+  "priceUsdAtSetup": 0.0003713,
   "wallets": {
     "spinPool": "2jXwJrxysw1wxZd8cUJnqBiP8h67M9kP4VuMKvjkhKbY",
     "slotsPool": "8J3FiJh7inqRWnMsBEzy26vzBcmBxNyQy3AwCAMTVahn",
@@ -10,6 +10,17 @@
     "treasury": "5prvqU48sERNpUq7YQLxSHsvUr24gJRGA4L4ge4YZy4E",
     "player": "8d9PLEZCD7KVThwsaPRNgDBv6amkvKUwFVLmQFCG6Gkx",
     "admin": "6sy1FKsJUJU5XZ4HoRuaG4e9Rv3GRyPWb3fr6wsAGdJo",
+    "codyAdmin": "3jRok1Ah1i4T2NsxsTLC7DWN5uQp6NMSJQCc52dGyNPA",
     "funder": "3dGDmcfu7f6DTjYtyL2xZV9E5qzKiCBWMD88aZEakGog"
+  },
+  "labels": {
+    "spinPool": "Drop pool (was the Spin pool): Snowball Drop entries in, Drop winners paid out; the game server sends from it",
+    "slotsPool": "Slots pool: Big Hat entries in, Big Hat winners paid out; the game server sends from it",
+    "lotteryPool": "Lottery wallet: ticket money in (10% burned first); winners paid by hand by Cody for now",
+    "treasury": "Treasury: skims from the pools; 50% of level and Store purchases",
+    "player": "Test player: buys runs, tickets and levels in the tests",
+    "codyAdmin": "Stand-in for Cody's admin wallet (signs pause/settings/lottery-paid on devnet); his Phantom replaces it at launch",
+    "admin": "Test-token authority: makes the test SANTA (not used by the game)",
+    "funder": "Pays devnet setup fees (devnet SOL only)"
   }
 }
