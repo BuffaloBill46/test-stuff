@@ -4,7 +4,7 @@ import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount } f
 import { createMachine, symbolImages } from './slots3d.js';
 import { initSpin, showSpin, resetSpin, spinState, refreshSpin, showResult } from './spinui.js';
 import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js';
-import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice } from './playcredits.js';
+import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js';
 import { runSummary } from './runui.js';
 import { livePrice, liveFee, santaFor, fmtSanta } from './market.js';
 import { FEE } from './slots.js';
@@ -221,6 +221,8 @@ export async function initGames(opts = {}) {
   // Runs: buying moves the entry money into that game's pool straight away, so the pool readouts update on purchase.
   initCredits({ wallet, pools: { slots: state, spin: spinState() }, onChange: () => { shownPool = state.pool; store.set(state); render(); refreshSpin(); refreshDrop(); } });
   refreshCredits();
+  // A payment from an earlier visit the server never received (closed tab, dropped network): hand it over and play it now.
+  if (SERVER) resumePaid().then((r) => { if (r) { console.info('finished a paid run from an earlier visit', r.run); refreshCredits(); } }).catch(() => {});
   showMarket();
   loadWinners();
   window.__slots = { state, view, test, get shownPool() { return shownPool; }, get busy() { return busy; } };

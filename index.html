@@ -183,6 +183,9 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 p.taxnote { margin: 12px 0 0; line-height: 1.6; font-size: 16px; color: #e8ecf7; max-width: 56ch; text-shadow: 1px 1px 0 var(--ink), 0 0 6px var(--ink); }
 p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; font: 700 11px/1 var(--digits); color: var(--ink); background: var(--lamp); border: 2px solid var(--ink); padding: 5px 7px; text-transform: uppercase; }
 .lottery p.taxnote { flex-basis: 100%; order: 3; margin: 0; }
+/* Test version notice (Cody 2026-10-01: people are testing already; nothing paid is ready). Same tag + sentence as the tax note. */
+p.testnote { margin: 12px 0 0; line-height: 1.6; font-size: 16px; color: #fff; max-width: 56ch; text-shadow: 1px 1px 0 var(--ink), 0 0 6px var(--ink); }
+p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; font: 700 11px/1 var(--digits); color: #fff; background: var(--hat); border: 2px solid var(--ink); padding: 5px 7px; text-transform: uppercase; }
 .slotshead { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; margin-bottom: 14px; }
 .slotshead h2 { margin: 0 0 4px; }
 .pool i, .jp small { display: block; font: 700 11px/1.3 var(--body); text-transform: uppercase; letter-spacing: 1.4px; color: var(--dim); font-style: normal; }
@@ -528,6 +531,7 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
       <h1>Play for Free</h1>
       <p>Grab the Santa hat, keep it on your head, and knock it off everyone else's.</p>
       <p class="taxnote"><b>3% SANTA tax</b> SANTA takes 3% on every transfer; the token does that, not this game. Anything you win in SANTA arrives 3% lighter: a 100 SANTA prize lands as 97.</p>
+      <p class="testnote"><b>Test version</b> Snowball Square is free and works now. Ranked tickets, wagers and SANTA prizes aren't switched on yet.</p>
     </div>
     <div class="modes3">
       <article class="mode plaque fur">
@@ -592,6 +596,7 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
     <div class="hero"><div class="eyebrow">Santa Hat Games · single player</div><h1>Santa Hat Games</h1>
       <p>Quick games you play on your own. Every entry: 10% burned, 90% into that game's prize pool.</p>
       <p class="taxnote"><b>3% SANTA tax</b> Winnings are paid in SANTA and arrive 3% lighter; the token does that, not this game.</p>
+      <p class="testnote"><b>Test version</b> These games use pretend money for now. Nothing costs SANTA and nothing pays out SANTA yet; real payments open after testing.</p>
       <p class="livechip" id="liveMarket" aria-live="polite">Checking the live SANTA price…</p></div>
     <section class="block plaque slotsbox fur" id="slots">
       <div class="slotshead">
@@ -704,7 +709,8 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
 
   <section id="tab-store" class="page" role="tabpanel" aria-labelledby="t-store" hidden>
     <div class="hero"><div class="eyebrow">Store</div><h1>Snowball Supply</h1>
-      <p>Prices are in dollars, paid in SANTA at the live price. <b>Payments open soon</b>; you can try everything on now.</p></div>
+      <p>Prices are in dollars, paid in SANTA at the live price. <b>Payments open soon</b>; you can try everything on now.</p>
+      <p class="testnote"><b>Test version</b> Nothing can be bought yet and the lottery isn't running. Try items on for free; payments open after testing.</p></div>
     <section class="block plaque">
       <h2>Ranked tickets</h2><p class="dim">Up to 10 extra tickets every 24 hours. Buying needs a wallet sign-in.</p>
       <div class="packs">
@@ -714,7 +720,7 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
       </div>
     </section>
     <section class="block plaque lottery">
-      <h2>Santa Lottery</h2><p>Daily and weekly draws.</p><p class="taxnote"><b>3% SANTA tax</b> Prizes are paid in SANTA and arrive 3% lighter.</p><span class="stamp">Coming soon</span>
+      <h2>Santa Lottery</h2><p>Daily draws (10¢ and $1 tickets), weekly draws (10¢ and $1) and a $1 Christmas draw that closes December 23. Every ticket: 10% burned, the rest into the pot for the winners.</p><p class="taxnote"><b>3% SANTA tax</b> Prizes are paid in SANTA and arrive 3% lighter.</p><span class="stamp">Coming soon</span>
     </section>
     <section class="block plaque"><h2>Items</h2><div id="carousels"><p class="dim">Wrapping presents…</p></div></section>
   </section>

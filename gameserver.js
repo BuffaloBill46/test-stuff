@@ -7,6 +7,8 @@ import { accounts } from './net.js';
 const params = new URLSearchParams(location.search);
 export const SERVER = params.get('server') || null;
 const testToken = params.get('token'); // tests only, and only against a local server
+// The wallet step (window.santaPay): loaded only in server mode, so the demo never fetches the Solana libraries.
+export const walletReady = SERVER ? import('./wallet.js').catch((e) => { console.warn('wallet step unavailable:', e); }) : Promise.resolve();
 
 export async function token() {
   if (testToken && /^http:\/\/localhost[:/]/.test(SERVER || '')) return testToken;

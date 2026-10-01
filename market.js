@@ -14,9 +14,9 @@ async function getJSON(url, body, ms = 8000) {
     return await r.json();
   } finally { clearTimeout(t); }
 }
-async function rpc(method, params) {
+async function rpc(method, params, urls = RPCS) {
   let last;
-  for (const u of RPCS) {
+  for (const u of urls) {
     try { const j = await getJSON(u, { jsonrpc: '2.0', id: 1, method, params }); if (j.result !== undefined) return j.result; last = new Error(j.error?.message || 'no result'); }
     catch (e) { last = e; }
   }
@@ -58,7 +58,9 @@ export async function livePrice() {
   if (!p) throw new Error('no SANTA price found');
   return { ...p, at: Date.now() };
 }
-export async function liveFee() {
-  const [acct, ep] = await Promise.all([rpc('getAccountInfo', [MINT, { encoding: 'jsonParsed' }]), rpc('getEpochInfo', [])]);
+// mint / urls: the server passes the token it accepts and its own network (the devnet test token on devnet), so the tax it
+// checks payments against is that token's, never real SANTA's by accident. The page uses the defaults (real SANTA, mainnet).
+export async function liveFee(mint = MINT, urls = RPCS) {
+  const [acct, ep] = await Promise.all([rpc('getAccountInfo', [mint, { encoding: 'jsonParsed' }], urls), rpc('getEpochInfo', [], urls)]);
   return { ...pickFee(acct?.value?.data?.parsed?.info, ep.epoch), epoch: ep.epoch };
 }
