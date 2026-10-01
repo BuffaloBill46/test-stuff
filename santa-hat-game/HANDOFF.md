@@ -163,7 +163,21 @@ branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from
 
 **Main Claude session 1 (2026-10-01), devnet move. Done and verified:**
 - All suites pass on this machine (Node, PGlite, real Postgres 14 + Deno in WSL, LiteSVM in WSL, browser tests in WSL Playwright).
-- **Santa Lottery decided** (Cody): server-run, five lotteries; DESIGN_NOTES → "Santa Lottery". NOT BUILT YET (next).
+- **Santa Lottery: backend BUILT** (Cody: server-run, five lotteries, no VRF; DESIGN_NOTES → "Santa Lottery"): `mockups/lottery.js`
+  (rules), `supabase/011_lottery.sql` (NOT applied), `server/lottery.js` (draws with sealed secrets, checked ticket payments, fair
+  re-checkable draws, exact splits, late payments moved/refunded), admin `lottery-mode` / `lottery-paid`, web door + Edge Function
+  (`LOTTERY_WALLET`). **Payout mode is one setting** (Cody hasn't decided escrow vs by hand; starts 'manual'). Tests:
+  `tests/lottery.test.mjs`, `tests/db/lottery-db.test.mjs`. **NOT built yet: the lottery page (Store block) and its admin-screen panel.**
+- **Levels: rules, database and server BUILT** (`mockups/levels.js`, `supabase/010_levels.sql` NOT applied, `server/levels.js`:
+  progress + finish; level 9 → 10 = 10 first-place wins). **NOT built yet: the Player Progress box, starting snowballs by level in
+  matches, the host reporting Auto match finishes, buying levels (needs the treasury wallet).** Trust limit: until the referee
+  server exists, finishes come from the host's browser (stated in server/levels.js).
+- **Phone controls BUILT and published-ready:** floating joystick (only way to move), tap anywhere else throws, zoom +/− (up to 4×).
+- **Removed:** Santa Hat Spin (pool lives on as the Drop pool; server refuses new Spin runs), the gold snowball (Gilded).
+- **Renamed:** Santa Hat Legends (brand). Test-version notes on Play/Games/Store. All published.
+- **Decided, NOT built:** special snowballs + special gear (DESIGN_NOTES, Cody's handwritten pages), plaza themes picked on the
+  Avatar screen (Halloween first), hat immunity 2 s, −1 point per hit.
+- **Old browser tests fixed:** mp.mjs, idle.mjs. `live.mjs` is still stale (see the test list).
 - **Devnet:** test SANTA `Jx95so9XYhtSJJoqup7Xb3T9Ptr9ZuUTXSgPcu6uttg` (Token-2022, 6 dec, 3%), Spin/Slots/Lottery pools, treasury,
   test player, Santa's own funding wallet; public addresses in `devnet.json`, keys in `C:\santa-devnet-keys` (never the repo).
   Setup: `tests/solana/devnet-setup.mjs` (safe to re-run).
@@ -174,7 +188,11 @@ branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from
   server's network; waits for finalized; a paid-but-unconfirmed run is retried on the next visit). Proven on real devnet in a
   browser: pay → 5 plays → ONE payout sent, books = wallets (`tests/browser/devnet-pay-test.mjs`).
 - **Not done yet:** Edge Function deploy + its settings (waits on `npx supabase login` by Cody), a real-Phantom check in Cody's
-  Chrome, the lottery, the scheduled payout worker, skims on chain, reconcile on a schedule.
+  Chrome, the scheduled payout worker, skims on chain, reconcile on a schedule, applying 010/011 live (with their pages).
+- **Waiting on Cody:** `npx supabase login`; devnet SOL to `3dGDmcfu7f6DTjYtyL2xZV9E5qzKiCBWMD88aZEakGog`; treasury wallet address
+  (needed for buying levels and items); lottery payout mode (escrow or by hand).
+- **Next, in order:** Player Progress box + levels in matches → lottery page + admin panel → special snowballs → special gear →
+  themes; deploy + devnet test of everything once the login is done.
 
 **Built and live (all demo, no real money):**
 - **Play tab:** Snowball Square multiplayer (rooms, bots that now sometimes emote, idle kicks), unranked lobby, FFA RANKED layout
