@@ -209,6 +209,10 @@ function localAccounts(rules) {
       if (!n) throw new Error("Name can't be empty");
       const owned = new Set(db.inv[l.pid] || []), clean = {};
       for (const s of rules.SLOTS) { const it = rules.BY_ID.get(avatar?.[s]); if (!it || it.slot !== s || !rules.usable(it, p.level, owned)) throw new Error(`Item "${avatar?.[s]}" isn't unlocked for ${s}`); clean[s] = it.id; }
+      // special snowball slots, same rules as the database (012): owned specials only, no special in two slots, empty = sb_none
+      for (const s of rules.SB_SLOTS || []) { const id = avatar?.[s] ?? 'sb_none', it = rules.BY_ID.get(id);
+        if (!it || it.slot !== 'sball' || !rules.usable(it, p.level, owned)) throw new Error(`Special snowball "${id}" isn't unlocked`);
+        if (id !== 'sb_none' && Object.values(clean).includes(id)) throw new Error('The same special snowball can\x27t fill two slots'); clean[s] = id; }
       p.name = n; p.avatar = clean; put(db); return p;
     },
     async logins() { const db = get(), l = db.logins[me]; return l ? kindsOf(db, l.pid) : []; },

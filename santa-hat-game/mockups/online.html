@@ -37,6 +37,12 @@ header.bar { position: fixed; left: 0; right: 0; top: 0; z-index: 5; display: fl
 #roomchip .idle { font-style: normal; font-weight: 700; color: var(--lamp); }
 #leave { margin-left: auto; pointer-events: auto; font: 700 14px/1 var(--body); color: var(--text); background: var(--plaque); border: 2px solid var(--ink); border-radius: 3px; padding: 8px 12px; box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
 
+/* SB1–SB3 under the snowball counter (Cody): the HUD lets taps through to the game, so these buttons take them back. */
+.sbrow { display: flex; gap: 4px; margin-top: 6px; pointer-events: auto; flex-wrap: wrap; }
+.sbrow button { font: 700 12px/1 var(--body); color: var(--ink); background: var(--brim); border: 2px solid var(--ink); border-radius: 3px; padding: 6px 7px; min-height: 36px; cursor: pointer; box-shadow: 2px 2px 0 var(--ink); }
+.sbrow button b { font-family: var(--digits); font-size: 10px; margin-right: 3px; } .sbrow button small { opacity: .7; margin-left: 2px; }
+.sbrow button[aria-pressed="true"] { background: var(--lamp); outline: 2px solid var(--hat); }
+.sbrow button:disabled { opacity: .45; cursor: default; }
 #hud { position: fixed; z-index: 4; left: 16px; top: calc(env(safe-area-inset-top, 0px) + 64px); display: flex; gap: 8px; flex-wrap: wrap; pointer-events: none; max-width: calc(100% - 32px); }
 .stat { padding: 6px 10px 5px; min-width: 70px; }
 .stat i { display: block; font: 700 11px/1 var(--body); text-transform: uppercase; letter-spacing: 1.4px; color: var(--dim); font-style: normal; margin-bottom: 4px; }

@@ -3,8 +3,8 @@
 import { levelInfo } from './levels.js';
 import { SPECIALS, SPECIAL_KINDS, DROP_HIT_RADIUS, cantThrow, costOf } from './specials.js';
 // Ball kinds in snapshots (B[9]): 0 normal, 1 ice, 2 split (before it splits), 3 giant, 4 fire, 5 a split piece.
-const BALL_KIND = { '': 0, ice: 1, split: 2, giant: 3, fire: 4, piece: 5 }, KIND_OF = ['', 'ice', 'split', 'giant', 'fire', 'piece'];
-const DROP_KIND = { sky: 1, rain: 2 }, DROP_OF = ['', 'sky', 'rain'];
+const BALL_KIND = { '': 0, ice: 1, split: 2, giant: 3, fire: 4, piece: 5 }, DROP_KIND = { sky: 1, rain: 2 };
+export const KIND_OF = ['', 'ice', 'split', 'giant', 'fire', 'piece'], DROP_OF = ['', 'sky', 'rain']; // the page reads snapshots with these
 export const HAT_IMMUNE = 2; // seconds a player can't be hit after getting the Santa hat (Cody: fully untouchable)
 export const K = {
   ARENA: 13.2, HEAD_Y: 2.05, BALL_G: 7, BALL_SPEED: 18, HAT_G: 16, PED_TOP: 1.71,
