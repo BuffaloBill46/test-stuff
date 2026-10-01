@@ -1,153 +1,117 @@
-// Play credits on the page: the 1–10 buy counter, the credits readouts, and "Check this result".
-// DEMO ONLY: credits are kept in this browser and paid from the demo balance. The real credits live on the server
-// (the page will only show the number), and the house steps below run there. Rules: credits.js, the order: house.js.
-import { KINDS, MAX_BUY, newLedger, buy, costOf, balanceOf, unitsFor } from './credits.js';
+// Buying and playing RUNS on the page (Cody, 2026-10-01): "buy 1, 5 or 10 on each game; whatever they buy auto plays", and
+// the run's winnings are sent to the player's wallet automatically when its last play is done. No stored credits.
+// One run: the confirm dialog (price, SANTA amount) → the payment → the plays, played one after another by the game's own
+// card (spinui.js, dropui.js, games.js) → the run's winnings sent. Plus "Check this result" for the last play of each game.
+// DEMO: the house runs in this browser and pays from / to the demo balance. Server mode (?server=): the game server does it.
+import { KINDS, newLedger, costOf } from './credits.js';
 import { createHouse, check } from './house.js';
 import { newSeed } from './fair.js';
 import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js';
+import { FEE } from './slots.js';
 import { play as sfx } from './sfx.js';
 import { SERVER, call } from './gameserver.js';
-export const serverMode = !!SERVER; // ?server=<address>: plays and credits come from the game server
+export const serverMode = !!SERVER; // ?server=<address>: plays come from the game server
 
 const $ = (s, el = document) => el.querySelector(s);
 const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);
-const KEY = 'sh_credits_demo';
-const store = { get() { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } }, set(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {} } };
+const cents = (v) => (v < 1 ? Math.round(v * 100) + '¢' : '$' + (Number.isInteger(v) ? v : v.toFixed(2)));
 const POOL_NAME = { spin: 'Spin', slots: 'Slots' };
 
-let ledger, house, wallet, onChange = () => {}, last = {}; // last proof per kind
-const saved = store.get();
-ledger = saved && saved.credits && saved.bought ? { ...newLedger(), ...saved } : newLedger();
+let ledger = newLedger(), house, wallet, onChange = () => {}, last = {}, price = null; // last proof per game
+const busy = {}; // a run in progress, per game
 
-export const creditsOf = (kind) => ledger.credits[kind];
-// Which spin size a price belongs to (prices can change in the settings, so compare with the small spin's price).
-// The readouts under each play button.
 export function refresh() {
-  for (const [kind, id] of [['big', 'crBig']]) {
-    const n = ledger.credits[kind], el = document.getElementById(id); if (!el) continue;
-    el.textContent = n; document.getElementById(id + 'What').textContent = n === 1 ? KINDS[kind].one : KINDS[kind].many;
-    el.closest('.credrow').classList.toggle('none', n === 0);
-  }
-  for (const [kind, id] of [['spin', 'crSpin'], ['drop', 'crDrop']]) { // a dollar balance for both sizes (Cody)
-    const d = document.getElementById(id); if (d) { d.textContent = money(balanceOf(ledger, kind)); d.closest('.credrow').classList.toggle('none', ledger.credits[kind] === 0); }
-  }
-  const pb = $('[data-proof="big"]'), ps = $('[data-proof="spin"]'), pd = $('[data-proof="drop"]');
-  if (pb) pb.hidden = !last.big; if (ps) ps.hidden = !last.spin; if (pd) pd.hidden = !last.drop;
+  for (const k of Object.keys(KINDS)) { const b = $(`[data-proof="${k}"]`); if (b) b.hidden = !last[k]; }
 }
-const changed = () => { refresh(); onChange(); };
-
 export function initCredits(opts) {
   wallet = opts.wallet; onChange = opts.onChange || onChange;
-  opts.pools.spin.prepaid = true; opts.pools.slots.prepaid = true; // entries reach the pool when credits are bought
+  opts.pools.spin.prepaid = true; opts.pools.slots.prepaid = true; // entries reach the pool at purchase
   house = createHouse(ledger, opts.pools);
-  const pools = opts.pools;
-  $('#buyMinus').addEventListener('click', () => setCount(count - 1));
-  $('#buyPlus').addEventListener('click', () => setCount(count + 1));
-  document.querySelectorAll('#buyQuick button').forEach((b) => b.addEventListener('click', () => setCount(+b.dataset.n)));
   $('#buyCancel').addEventListener('click', () => closeBuy(false));
   $('#buyDlg').addEventListener('cancel', (e) => { e.preventDefault(); closeBuy(false); });
-  $('#buyGo').addEventListener('click', async () => {
-    if (serverMode) return buyFromServer();
-    const cost = costOf(buyKind, count);
-    if (wallet.get() < cost - 1e-9) return; // button is disabled then anyway
-    wallet.add(-cost);
-    const r = buy(ledger, pools, buyKind, count, 'demo-' + newSeed(8)); // real version: the confirmed payment's signature
-    if (!r.ok) { wallet.add(cost); $('#buyNote').textContent = 'Couldn\'t buy: ' + r.why; return; }
-    store.set(ledger); changed(); sfx('buy'); closeBuy(true);
-  });
-  $('[data-buy="big"]').addEventListener('click', () => openBuy('big'));
-  $('[data-buy="spin"]').addEventListener('click', () => openBuy('spin'));
-  $('[data-proof="big"]').addEventListener('click', () => showProof('big'));
-  $('[data-proof="spin"]').addEventListener('click', () => showProof('spin'));
-  $('[data-buy="drop"]')?.addEventListener('click', () => openBuy('drop'));
-  $('[data-proof="drop"]')?.addEventListener('click', () => showProof('drop'));
+  $('#buyGo').addEventListener('click', () => resolveGo?.());
+  for (const k of Object.keys(KINDS)) $(`[data-proof="${k}"]`)?.addEventListener('click', () => showProof(k));
   $('#proofClose').addEventListener('click', () => $('#proofDlg').close?.());
   $('#proofCheck').addEventListener('click', recheck);
-  if (serverMode) syncCredits();
-  window.__credits = { ledger, house, get last() { return last; }, give(kind, n) { buy(ledger, pools, kind, n, 'test-' + newSeed(8)); store.set(ledger); changed(); } };
+  window.__credits = { ledger, house, get last() { return last; } };
 }
-// Server mode: the credit numbers shown come from the server (the page never decides them).
-export async function syncCredits() {
-  const r = await call('credits');
-  if (r.credits) { for (const k of Object.keys(ledger.credits)) ledger.credits[k] = 0; for (const c of r.credits) ledger.credits[c.kind] += +c.left_n; refresh(); } // rows bought at different prices add up
-  return r;
-}
-export function resetCredits() { Object.assign(ledger, newLedger()); last = {}; store.set(ledger); refresh(); }
+export const resetCredits = () => { last = {}; refresh(); };
+export function setPrice(p) { price = p; }
 
-// ---- the buy counter ----
-let count = 1, buyKind = 'big', resolveBuy = null, price = null;
-export function setPrice(p) { price = p; if (resolveBuy) setCount(count); }
-function setCount(n) {
-  count = Math.max(1, Math.min(MAX_BUY, n));
-  const K = KINDS[buyKind], cost = costOf(buyKind, count), short = wallet.get() < cost - 1e-9;
-  $('#buyCount').textContent = K.balance ? '$' + count : count; // Snowball Drop: dollars of balance
-  $('#buyWhat').textContent = K.balance ? K.one : count === 1 ? K.one : K.many;
-  $('#buyMinus').disabled = count <= 1; $('#buyPlus').disabled = count >= MAX_BUY;
-  document.querySelectorAll('#buyQuick button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.n === count)));
-  $('#buyGo').textContent = K.balance ? `Add ${money(cost)} to your balance` : `Buy ${count} · ${money(cost)}`; $('#buyGo').disabled = short;
-  $('#buyQuick').querySelectorAll('button').forEach((b) => { b.textContent = K.balance ? '$' + b.dataset.n : b.dataset.n; });
-  $('#buySanta').innerHTML = price ? `≈ <b>${fmtSanta(santaFor(cost, price))} SANTA</b> at today's price. The real checkout locks the price for ${QUOTE_SECONDS} seconds.` : '';
-  $('#buyNote').textContent = short ? `Not enough demo money (${money(wallet.get())}). Tap Reset above the Slots.` : '';
-}
-// Resolves true once credits are there (bought now or already), false if the player backed out.
-// bet: a balance kind's play size (Snowball Drop: a $1 drop needs $1 of balance, a 10¢ drop 10¢).
-export function ready(kind, bet) { return ledger.credits[kind] >= unitsFor(kind, bet ?? KINDS[kind].bet) ? Promise.resolve(true) : openBuy(kind); }
-export function openBuy(kind) {
+// ---- the confirm dialog: what this run costs; Pay & play ----
+let resolveBuy = null, resolveGo = null;
+function confirmRun(kind, bet, n) {
   if (resolveBuy) return Promise.resolve(false);
-  const K = KINDS[kind]; buyKind = kind;
-  $('#buyTitle').textContent = K.balance ? 'Add to your balance' : K.game === 'spin' ? 'Buy spins' : 'Buy pulls';
-  $('#buyEyebrow').textContent = K.balance ? (kind === 'spin' ? 'Santa Hat Spin · play either size from it' : 'Snowball Drop · play 10¢ or $1 drops from it') : K.game === 'spin' ? `Santa Hat Spin · ${K.bet < 1 ? '10¢' : '$1'} a spin` : 'Big Hat · $1.00 a pull';
+  const K = KINDS[kind], cost = costOf(n, bet), poor = !serverMode && wallet.get() < cost - 1e-9;
+  $('#buyEyebrow').textContent = `${K.name} · ${cents(bet)} a ${K.one}`;
+  $('#buyTitle').textContent = `Play ${n} ${n === 1 ? K.one : K.many}`;
+  $('#buyWhat').textContent = `${n} × ${cents(bet)} = ${money(cost)}`;
   $('#buyPool').textContent = POOL_NAME[K.game];
-  setCount(count);
+  $('#buySanta').innerHTML = price ? `≈ <b>${fmtSanta(santaFor(cost, price))} SANTA</b> at today's price. The real checkout locks the price for ${QUOTE_SECONDS} seconds.` : '';
+  $('#buyNote').textContent = poor ? `Not enough demo money (${money(wallet.get())}). Tap Reset above the Slots.` : '';
+  $('#buyGo').textContent = `Pay ${money(cost)} & play`; $('#buyGo').disabled = poor;
   const d = $('#buyDlg'); if (d.showModal) d.showModal(); else d.setAttribute('open', '');
-  $('#buyGo').focus(); // the main action, not '+' (focus-group finding: the ringed '+' looked pre-selected)
-  return new Promise((res) => { resolveBuy = res; });
+  $('#buyGo').focus();
+  return new Promise((res) => { resolveBuy = res; resolveGo = () => res(true); });
 }
-function closeBuy(ok) { const d = $('#buyDlg'); d.close?.() ?? d.removeAttribute('open'); resolveBuy?.(ok); resolveBuy = null; }
+function closeBuy(ok) { const d = $('#buyDlg'); d.close?.() ?? d.removeAttribute('open'); resolveBuy?.(ok); resolveBuy = null; resolveGo = null; }
 
-// ---- one play, in the house's order. forced: tests only ----
-// Server mode buying: quote → the wallet pays (window.santaPay, not built here) → the server checks the payment → credits.
-async function buyFromServer() {
+// Server mode paying: quote → the wallet pays (window.santaPay, not built here) → the server checks the payment → the plays.
+async function payOnServer(kind, bet, n) {
   const note = $('#buyNote'); $('#buyGo').disabled = true; note.textContent = 'Getting a price…';
-  const q = await call('quote', { kind: buyKind, n: count });
-  if (q.error) { note.textContent = q.error; $('#buyGo').disabled = false; return; }
-  if (typeof window.santaPay !== 'function') { note.textContent = 'Wallet payments aren\'t connected yet.'; $('#buyGo').disabled = false; return; }
+  const q = await call('quote', { kind, n, bet });
+  if (q.busy) { note.textContent = 'Your last run is still finishing. Try again in a moment.'; $('#buyGo').disabled = false; return null; }
+  if (q.refused) { note.textContent = q.stopped ? 'This game is paused right now. Nothing was charged.' : 'The prize pool is refilling. Try again soon; nothing was charged.'; $('#buyGo').disabled = false; return null; }
+  if (q.error) { note.textContent = q.error; $('#buyGo').disabled = false; return null; }
+  if (typeof window.santaPay !== 'function') { note.textContent = 'Wallet payments aren\'t connected yet.'; $('#buyGo').disabled = false; return null; }
   let signature; try { note.textContent = 'Approve the payment in your wallet…'; signature = await window.santaPay(q); }
-  catch (e) { note.textContent = 'Payment cancelled.'; $('#buyGo').disabled = false; return; }
+  catch (e) { note.textContent = 'Payment cancelled.'; $('#buyGo').disabled = false; return null; }
   note.textContent = 'Confirming the payment…';
   const b = await call('buy', { quote: q.id, signature });
   $('#buyGo').disabled = false;
-  if (b.error) { note.textContent = b.error; return; }
-  await syncCredits(); sfx('buy'); closeBuy(true);
+  if (b.error) { note.textContent = b.error; return null; }
+  return b;
 }
 
-// bet: the size, for a balance kind (Snowball Drop).
-export async function play(kind, forced, bet) {
-  if (serverMode) {
-    try {
-      const o = await call('open', { kind, bet });
-      if (o.busy) return { failed: true, why: 'your last play is still finishing' }; // one play at a time
-      if (!o.ticket) { await syncCredits(); return o.error ? { failed: true, why: o.error } : o; }
-      const s = await call('settle', { ticket: o.ticket, seed: newSeed(16) }); // our number goes in only after the fingerprint came back
-      await syncCredits();
-      if (!s.r) return s.error ? { failed: true, why: s.error } : s;
-      if (s.proof.commit !== o.commit) return { failed: true, why: 'the server changed its locked fingerprint' }; // never trust, check
-      last[kind] = s.proof; refresh();
-      return { r: s.r, proof: s.proof, commit: o.commit, poolUsd: s.poolUsd, server: true };
-    } catch (e) { refresh(); return { failed: true, why: 'the game server can\'t be reached' }; }
-  }
-  try { return await play_(kind, forced, bet); } catch (e) { refresh(); return { failed: true, why: e.message }; } // never leave a machine locked
-}
-async function play_(kind, forced, bet) {
-  const o = await house.open(kind, bet);
-  if (!o.ticket) { store.set(ledger); refresh(); return o; } // refused or failed (credit kept) or no credit
-  refresh();
-  const s = await house.settle(o.ticket, newSeed(16), forced); // the player's number is made only after the fingerprint arrived
-  if (!s.r) { store.set(ledger); refresh(); return s; }
-  store.set(ledger);
-  if (s.proof) last[kind] = s.proof;
-  refresh();
-  return { ...s, commit: o.commit };
+// ---- one run ----
+// Asks, pays, then plays each play in the house's order, calling onPlay(result, i, n) after each so the card can animate it
+// (the card awaits its animation; the next play is drawn only after). forced (tests only): a list, one per play.
+// Returns { n, results, won, sent } once the run is done, or null if the player backed out (nothing charged).
+export async function playRun(kind, bet, n, onPlay, forced = []) {
+  if (busy[kind]) return null;
+  busy[kind] = true;
+  try {
+    // The dialog stays open until the run is paid for or the player cancels (a refused quote can be retried).
+    let b = null, ok = await confirmRun(kind, bet, n);
+    while (ok) {
+      if (serverMode) b = await payOnServer(kind, bet, n);
+      else {
+        const cost = costOf(n, bet); wallet.add(-cost); sfx('buy');
+        b = await house.buy(kind, bet, n, 'demo-' + newSeed(8)); // real version: the confirmed payment's signature
+        if (b.failed) { wallet.add(cost); $('#buyNote').textContent = 'Couldn\'t buy: ' + b.why; b = null; }
+      }
+      if (b) break;
+      ok = await new Promise((res) => { resolveBuy = res; resolveGo = () => res(true); });
+    }
+    if (!b) return null;
+    closeBuy(true); onChange();
+    const results = []; let won = 0, sent = b.sent ?? null;
+    for (const [i, p] of b.plays.entries()) {
+      let s;
+      try { s = serverMode ? await call('settle', { ticket: p.ticket, seed: newSeed(16) }) : await house.settle(p.ticket, newSeed(16), forced[i]); }
+      catch (e) { s = { failed: true, why: 'the game server can\'t be reached' }; }
+      if (s.r && s.proof && s.proof.commit !== p.commit) s = { failed: true, why: 'the server changed its locked fingerprint' }; // never trust, check
+      if (s.proof) last[kind] = s.proof;
+      if (s.r) won += s.r.pay;
+      if (s.sent !== undefined) sent = s.sent;
+      results.push(s); refresh(); onChange();
+      await onPlay(s, i, n);
+    }
+    // demo: the house "sends" the run's winnings to the demo balance, 3% lighter (SANTA's tax), all at once
+    if (!serverMode && sent) wallet.add(sent * (1 - FEE));
+    onChange();
+    return { n, results, won: Math.round(won * 100) / 100, sent: sent ?? 0, received: (sent ?? 0) * (1 - FEE) };
+  } finally { busy[kind] = false; }
 }
 export const short = (h) => h.slice(0, 8);
 

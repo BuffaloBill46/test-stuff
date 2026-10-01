@@ -1,6 +1,6 @@
 // Snowball Drop board (canvas): the hat, the pegs, the presents and their prizes, snowballs hopping along a path the RULES
 // already decided (plinko.js / the fair draw). Used by the Games tab (dropui.js) and the preview page (plinko-page.js).
-// createBoard(canvas) → { launch(path, bin) → Promise (resolves when that snowball lands), setActive(on), flying() }
+// createBoard(canvas) → { launch(path, bin) → Promise (resolves when that snowball lands), setActive(on), hurry(), flying() }
 import { ROWS, BINS, PAYS } from './plinko.js';
 
 const W = 500, H = 560, CX = W / 2, GAP = 54, TOP = 100, ROW_H = 44, PEG_R = 6, BALL_R = 11;
@@ -16,7 +16,7 @@ export function createBoard(cv) {
   const balls = [], pegHit = new Map(), binHit = new Array(BINS).fill(-1e9);
   const hat = new Image(); hat.src = 'hat-logo.png';
   const flakes = Array.from({ length: 70 }, () => ({ x: Math.random() * W, y: Math.random() * H, r: 0.6 + Math.random() * 1.8, v: 8 + Math.random() * 18 }));
-  let active = false, raf = 0, last = performance.now();
+  let active = false, raf = 0, last = performance.now(), speed = 1;
   function fit() { const dpr = Math.min(3, devicePixelRatio || 1), w = cv.clientWidth || 300; cv.width = Math.round(w * dpr); cv.height = Math.round(w * ASPECT * dpr); }
   new ResizeObserver(fit).observe(cv); fit();
 
@@ -70,7 +70,7 @@ export function createBoard(cv) {
   // balls: hop from peg to peg along the decided path
   for (let n = balls.length - 1; n >= 0; n--) {
     const b = balls[n], from = b.pts[b.leg], to = b.pts[b.leg + 1], dur = b.leg === 0 ? 0.22 : to.bin !== undefined ? 0.26 : 0.15;
-    b.t += dt / (reduce ? dur / 3 : dur);
+    b.t += (dt * speed) / (reduce ? dur / 3 : dur);
     if (b.t >= 1) {
       b.t = 0; b.leg++;
       if (to.peg) pegHit.set(to.peg, now);
@@ -88,8 +88,10 @@ export function createBoard(cv) {
     for (let i = 0; i < ROWS; i++) { pts.push({ x: pegX(i, rights), y: pegY(i) - PEG_R - BALL_R + 2, peg: `${i}:${rights}` }); rights += path[i]; }
     if (rights !== bin) throw new Error('path and present disagree');
     pts.push({ x: binX(bin), y: BIN_Y + BIN_H / 2 - 4, bin });
-    return new Promise((done) => { balls.push({ pts, bin, leg: 0, t: 0, spin: Math.random() * 6, done }); if (!active) setActive(true); });
+    return new Promise((done) => { balls.push({ pts, bin, leg: 0, t: 0, spin: Math.random() * 6, done: () => { if (!balls.length) speed = 1; done(); } }); if (!active) setActive(true); });
   }
-  function setActive(on) { active = on; if (on && !raf) { last = performance.now(); fit(); raf = requestAnimationFrame(frame); } }
-  return { launch, setActive, flying: () => balls.length };
+  function setActive(on) { active = on || balls.length > 0; if (active && !raf) { last = performance.now(); fit(); raf = requestAnimationFrame(frame); } } // never freeze a falling snowball
+  // Skip ahead: the snowballs in the air (and any launched before they all land) fall four times as fast.
+  const hurry = () => { speed = 4; };
+  return { launch, setActive, hurry, flying: () => balls.length };
 }
