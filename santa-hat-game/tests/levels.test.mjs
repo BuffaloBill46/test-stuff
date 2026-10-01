@@ -1,4 +1,4 @@
-// Levels (Cody, 2026-10-01): the table from his notes exactly; 5 top-3 Auto match finishes per level; buy up to level 5
+// Levels (Cody, 2026-10-01): the table from his notes exactly; 5 top-3 Auto match finishes per level (9 → 10: 10 FIRST-place wins); buy up to level 5
 // ($1 each for 2–4, $5 for 5); max 10. Run: node tests/levels.test.mjs
 import assert from 'node:assert/strict';
 import { LEVELS, MAX_LEVEL, levelInfo, buyPrice, afterMatch, afterBuy, countsForLevels, progressLine } from '../mockups/levels.js';
@@ -17,8 +17,14 @@ assert.ok(countsForLevels(AUTO) && !countsForLevels(PRIVATE) && !countsForLevels
 let p = { level: 1, xp: 0 };
 for (const [place, game] of [[1, PRIVATE], [2, PRACTICE], [4, AUTO], [8, AUTO], [0, AUTO]]) assert.deepEqual(afterMatch(p, place, game), { level: 1, xp: 0, up: false }, `place ${place} ${JSON.stringify(game)} doesn't count`);
 let wins = 0, ups = 0;
-while (p.level < MAX_LEVEL) { const r = afterMatch(p, 1 + (wins % 3), AUTO); wins++; if (r.up) ups++; p = r; assert.ok(wins < 1000); }
-assert.equal(wins, 45, '5 top-3 finishes per level, 9 level-ups from 1 to 10'); assert.equal(ups, 9);
+while (p.level < 9) { const r = afterMatch(p, 1 + (wins % 3), AUTO); wins++; if (r.up) ups++; p = r; assert.ok(wins < 1000); }
+assert.equal(wins, 40, '5 top-3 finishes for each of levels 2–9');
+// Level 9 → 10 (Cody): 10 FIRST-place wins; 2nd and 3rd don't count there.
+assert.deepEqual(afterMatch(p, 2, AUTO), { level: 9, xp: 0, up: false }, 'at level 9, 2nd place does not count');
+assert.deepEqual(afterMatch(p, 3, AUTO), { level: 9, xp: 0, up: false }, 'nor 3rd');
+assert.equal(progressLine(p).text, '0 of 10 first-place wins to level 10');
+let firsts = 0; while (p.level < MAX_LEVEL) { const r = afterMatch(p, 1, AUTO); firsts++; if (r.up) ups++; p = r; assert.ok(firsts < 100); }
+assert.equal(firsts, 10, '10 first-place wins from 9 to 10'); assert.equal(ups, 9);
 assert.deepEqual(afterMatch(p, 1, AUTO), { level: 10, xp: 0, up: false }, 'level 10 is the top for now');
 assert.equal(progressLine(p).max, true);
 assert.equal(progressLine({ level: 3, xp: 2 }).text, '2 of 5 top-3 finishes to level 4');
@@ -32,4 +38,4 @@ assert.match(afterBuy({ level: 7, xp: 0 }).error, /earned/);
 // Bought to 5, then earned: 5 more top-3 finishes (minus the 3 already counted) reach 6.
 let e = b; for (let i = 0; i < 2; i++) e = afterMatch(e, 1, AUTO); assert.equal(e.level, 6, 'progress carried through buying');
 
-console.log('OK: levels: Cody\'s table exactly, never drops; 5 top-3 Auto match finishes per level (45 to level 10, then stops); buy to 5 for $8 ($1, $1, $1, $5), progress kept');
+console.log('OK: levels: Cody\'s table exactly, never drops; 5 top-3 Auto match finishes per level to 9, then 10 FIRST-place wins to 10 (2nd/3rd don\'t count there), then stops; buy to 5 for $8 ($1, $1, $1, $5), progress kept');

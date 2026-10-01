@@ -280,3 +280,8 @@ Breaking `server/solanachain.js` on purpose: `git diff --stat` printed nothing b
 untracked, so it proved nothing about the restore. Back up with `cp`, restore, and confirm with `cmp backup file`.
 Also from that check: the payout crash test must restart the worker while the payout is STILL IN FLIGHT. Waiting for it to
 land first made the test pass even with an adapter that said "expired" too early (which would pay twice).
+
+## A scripted text replace can silently eat `$` (2026-10-01)
+JavaScript's `s.replace(find, replacement)` treats `$$`, `$&`, `` $` ``, `$'` and `$1` in the REPLACEMENT as codes: an edit that
+inserted SQL turned the function opener `as $$` into `as $`, and only the test database's syntax error caught it. When a
+replacement contains `$` (SQL, templates, money), use `s.replace(find, () => replacement)` or `split(find).join(replacement)`.

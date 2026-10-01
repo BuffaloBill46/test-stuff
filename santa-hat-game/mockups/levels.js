@@ -1,8 +1,9 @@
 // LEVELS (Cody, 2026-10-01; DESIGN_NOTES → "Levels, special snowballs and special gear"). Pure rules, no graphics, no network:
 // the page, the match referee and the server all read these. Max level 10 for now.
 //   Earned: 5 top-3 finishes per level, in Auto match games only (ranked or unranked; not practice or private rooms).
+//   Except level 9 → 10: 10 FIRST-place wins (Cody, 2026-10-01); 2nd and 3rd don't count there.
 //   Bought: up to level 5 only. Levels 2–4 cost $1.00 each; level 5 costs $5.00. Paid in SANTA, 50% burned / 50% treasury.
-// A player's progress is { level, xp }: xp = top-3 finishes counted toward the NEXT level (0–4). Buying a level keeps it.
+// A player's progress is { level, xp }: xp = finishes counted toward the NEXT level (0 to need-1). Buying a level keeps it.
 export const MAX_LEVEL = 10, WINS_PER_LEVEL = 5, MAX_BOUGHT_LEVEL = 5;
 
 // What each level gives (Cody's table). start = snowballs held at the start (and the most you can hold);
@@ -20,6 +21,10 @@ export const LEVELS = {
   10: { start: 12, sb: 3, gear: 2 },
 };
 
+// What the next level takes: how many finishes, and which places count.
+export const needFor = (level) => (level === 9 ? 10 : WINS_PER_LEVEL);
+export const placeCounts = (level, place) => (level === 9 ? place === 1 : place >= 1 && place <= 3);
+
 export const clampLevel = (n) => Math.min(MAX_LEVEL, Math.max(1, Math.floor(Number(n)) || 1));
 export const levelInfo = (n) => LEVELS[clampLevel(n)];
 
@@ -36,9 +41,9 @@ export const countsForLevels = (game) => !!game && game.auto === true && !game.p
 // A finished Auto match: place = 1-based finishing place. Returns the new progress and whether a level was gained.
 export function afterMatch(progress, place, game) {
   const p = { level: clampLevel(progress?.level), xp: Math.max(0, Math.floor(Number(progress?.xp) || 0)) };
-  if (!countsForLevels(game) || !(place >= 1 && place <= 3) || p.level >= MAX_LEVEL) return { ...p, up: false };
+  if (!countsForLevels(game) || !placeCounts(p.level, place) || p.level >= MAX_LEVEL) return { ...p, up: false };
   p.xp += 1;
-  if (p.xp >= WINS_PER_LEVEL) { p.level += 1; p.xp = 0; return { ...p, up: true }; }
+  if (p.xp >= needFor(p.level)) { p.level += 1; p.xp = 0; return { ...p, up: true }; }
   return { ...p, up: false };
 }
 
@@ -54,5 +59,6 @@ export function afterBuy(progress) {
 export function progressLine(progress) {
   const level = clampLevel(progress?.level), xp = Math.max(0, Math.floor(Number(progress?.xp) || 0));
   if (level >= MAX_LEVEL) return { level, max: true, text: `Level ${MAX_LEVEL}: the top, for now` };
-  return { level, xp, need: WINS_PER_LEVEL, text: `${xp} of ${WINS_PER_LEVEL} top-3 finishes to level ${level + 1}` };
+  const need = needFor(level), what = level === 9 ? 'first-place wins' : 'top-3 finishes';
+  return { level, xp, need, text: `${xp} of ${need} ${what} to level ${level + 1}` };
 }
