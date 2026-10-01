@@ -24,5 +24,5 @@ assert.ok(near(normal, K.STUN), `a normal snowball stuns ${K.STUN} s (got ${norm
 assert.ok(near(ice, K.STUN * 1.5), `the Ice Ball stuns 50% longer, ${K.STUN * 1.5} s (got ${ice.toFixed(2)})`);
 assert.ok(near(iceHandover, K.STUN * 1.5), `still 50% longer after a host handover mid-flight (got ${iceHandover.toFixed(2)})`);
 assert.deepEqual(BY_ID.get('snow_iceball').rules, { stun: 1.5 });
-for (const color of ['snow_ice', 'snow_gold', 'snow_ember']) assert.deepEqual(ballRules({ snow: color }), {}, `${color} is colour only`);
+for (const color of ['snow_ice', 'snow_pink', 'snow_ember']) assert.deepEqual(ballRules({ snow: color }), {}, `${color} is colour only`);
 console.log(`OK: snowball rules: normal ${normal.toFixed(2)} s, Ice Ball ${ice.toFixed(2)} s (+50%), same after a host handover; colour snowballs unchanged`);

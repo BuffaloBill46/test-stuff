@@ -46,7 +46,6 @@ export const ITEMS = [
   { id: 'snow_ice', slot: 'snow', name: 'Glacier', color: 0x9fd8ff, level: 2 },
   { id: 'snow_pink', slot: 'snow', name: 'Sugarplum', color: 0xff9ccf, level: 3 },
   { id: 'snow_green', slot: 'snow', name: 'Mint', color: 0x9dffb0, level: 4 },
-  { id: 'snow_gold', slot: 'snow', name: 'Gilded', color: 0xffd060, level: 5 },
   { id: 'snow_ember', slot: 'snow', name: 'Ember', color: 0xff7a3a, price: 0.25 },
   // The first special snowball (Cody's example): stuns 50% longer than normal. Bought in the Store for now (Cody); levels later.
   { id: 'snow_iceball', slot: 'snow', name: 'Ice Ball', color: 0xbfeaff, price: 0.50, rules: { stun: 1.5 }, note: 'Stuns 50% longer' },
