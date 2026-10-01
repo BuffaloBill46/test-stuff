@@ -38,7 +38,7 @@ console.log('B logins panel:', (await panel(B)).slice(0, 200));
 await B.screenshot({ path: `${OUT}-2-linked.png` });
 // rename from the wallet browser; the email browser sees it after reload
 await B.click('#acctClose'); await B.click('#t-avatar'); await wait(600); await B.fill('#avname', 'Cody W'); await B.click('#avsave'); await wait(600);
-await A.reload(); await A.waitForFunction(() => window.__sq, null, { timeout: 60000 }); await wait(1500);
+await A.reload({ timeout: 90000 }); await A.waitForFunction(() => window.__sq, null, { timeout: 90000 }); // slow machines: allow 90 s (LESSONS) await wait(1500);
 console.log('A after reload (email login):', JSON.stringify(await who(A)));
 
 // B2: wallet player links an email in the same browser
@@ -57,7 +57,7 @@ await D.close();
 const E = await open('', 'Wa11etWithItsOwnProgress333333333333333');
 await E.click('#signin'); await E.click('#walletBtn'); await wait(700);
 await E.evaluate(() => { const db = JSON.parse(localStorage.getItem('sq-local-db')); const pid = db.logins['wallet:Wa11etWithItsOwnProgress333333333333333'].pid; db.profiles[pid].rank_points = 25; localStorage.setItem('sq-local-db', JSON.stringify(db)); });
-await E.goto('http://local.test/online.html?net=local&link=' + code2); await E.waitForFunction(() => window.__sq, null, { timeout: 60000 }); await wait(1500);
+await E.goto('http://local.test/online.html?net=local&link=' + code2, { timeout: 90000 }); await E.waitForFunction(() => window.__sq, null, { timeout: 60000 }); await wait(1500);
 console.log('E (has 25 pts) opening link:', await E.textContent('#acctMsg'), '| still own account:', (await who(E)).nav);
 console.log('errors:', errors.length ? errors.slice(0, 8).join('\n  ') : 'none');
 await browser.close();

@@ -2,6 +2,7 @@
 import { THREE, character, lights, toon, part, build, hatGeo } from './kit.js';
 import { ITEMS, BY_ID, SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable } from './catalog.js';
 import { settingsReady } from './gameserver.js';
+import { levelInfo, progressLine, buyPrice } from './levels.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -41,6 +42,20 @@ export function avatarCharacter(a, extra = {}) {
     hat: hat.hat !== 'none' ? { shape: hat.hat, color: hat.color } : null, pack: pack.pack !== 'none' ? { shape: pack.pack, color: pack.color } : null, ...extra });
 }
 
+// The Player Progress box on the Play page (Cody, 2026-10-01). Guests see level 1; a signed-in player sees their own.
+export function renderProgress(profile) {
+  const el = document.querySelector('#progress'); if (!el) return;
+  const p = profile || { level: 1, xp: 0 }, pl = progressLine(p), g = levelInfo(pl.level), price = buyPrice(pl.level);
+  el.querySelector('#pgLevel').textContent = pl.level;
+  el.querySelector('#pgText').textContent = profile ? pl.text : 'Sign in to keep your level. Guests play at level 1.';
+  el.querySelector('#pgBar').style.width = (pl.max ? 100 : Math.round((pl.xp / pl.need) * 100)) + '%';
+  el.querySelector('#pgGives').innerHTML = [['Starting snowballs', g.start], ['Special ball slots', g.sb], ['Gear slots', g.gear]]
+    .map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+  el.querySelector('#pgPts').textContent = profile ? String(profile.rank_points ?? 0) : '—';
+  const buy = el.querySelector('#pgBuy');
+  buy.hidden = price === null; // levels above 5 are earned, not bought
+  if (price !== null) buy.textContent = `Buy level ${pl.level + 1} · $${price.toFixed(2)} · payments open soon`;
+}
 export function initTabs(app) {
   const state = { tab: 'play', slot: 'shirt', draft: null, owned: new Set(), board: null };
 
@@ -68,7 +83,7 @@ export function initTabs(app) {
     btn.title = p ? (p.wallet ? `Signed in with wallet ${p.wallet}` : 'Signed in with email') : 'Sign in with a wallet or email';
   }
   async function afterSignIn(p) {
-    app.profile = p; app.setIdentity(p.name, cleanAvatar(p.avatar));
+    app.profile = p; app.setIdentity(p.name, cleanAvatar(p.avatar)); renderProgress(p);
     try { state.owned = new Set(await app.accounts.inventory()); } catch { state.owned = new Set(); }
     renderWho(); if (state.tab === 'avatar') { state.draft = { name: p.name, a: cleanAvatar(p.avatar) }; renderAvatar(); }
     if (state.tab === 'ranks') renderRanks();
@@ -145,7 +160,7 @@ export function initTabs(app) {
         } catch (e) { store.del('sq_link'); acctMsg(`Couldn't send the email: ${e.message}`); }
       });
       $('#signOut').addEventListener('click', async () => {
-        await app.accounts.signOut(); app.profile = null; state.owned = new Set(); linkBox = null;
+        await app.accounts.signOut(); app.profile = null; state.owned = new Set(); linkBox = null; renderProgress(null);
         app.setIdentity(store.get('sq_name') || app.me.n, cleanAvatar(safeJSON(store.get('sq_avatar'))));
         renderWho(); $('#acct').hidden = true; show(state.tab);
       });
@@ -223,7 +238,8 @@ export function initTabs(app) {
       return `<button class="pick ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${d.a[i.slot] === i.id}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${ok ? 'Unlocked' : i.price != null ? '$' + i.price.toFixed(2) + ' in Store' : 'Level ' + i.level}</small></button>`;
     }).join('');
     const blocked = SLOTS.map((s) => BY_ID.get(d.a[s])).filter((i) => !usable(i, lvl, state.owned));
-    $('#avlevel').innerHTML = `Level ${lvl}<div class="bar"><div style="width:${app.profile ? Math.min(100, (app.profile.xp % 100)) : 0}%"></div></div>Match XP starts counting when ranked opens.`;
+    const pl = progressLine(app.profile || { level: 1, xp: 0 });
+    $('#avlevel').innerHTML = `Level ${pl.level}<div class="bar"><div style="width:${pl.max ? 100 : Math.round((pl.xp / pl.need) * 100)}%"></div></div>${app.profile ? pl.text : 'Sign in to keep your level.'}`;
     const save = $('#avsave');
     save.disabled = blocked.length > 0;
     save.textContent = app.profile ? 'Save look' : 'Save on this device';
@@ -243,7 +259,7 @@ export function initTabs(app) {
     btn.disabled = true; msg.textContent = 'Saving…';
     try {
       const p = await app.accounts.save(name, d.a);
-      app.profile = p; app.setIdentity(p.name, cleanAvatar(p.avatar)); renderWho();
+      app.profile = p; app.setIdentity(p.name, cleanAvatar(p.avatar)); renderWho(); renderProgress(p);
       msg.textContent = app.profile.wallet ? 'Saved to your wallet.' : 'Saved to your account.';
     } catch (e) { msg.textContent = e.message; }
     finally { btn.disabled = false; }

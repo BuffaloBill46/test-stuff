@@ -1,5 +1,6 @@
 // Snowball Square match referee. Runs only on the host's browser; everyone else renders its snapshots.
 // Pure game logic, no rendering, so it can be tested headless.
+import { levelInfo } from './levels.js';
 export const K = {
   ARENA: 13.2, HEAD_Y: 2.05, BALL_G: 7, BALL_SPEED: 18, HAT_G: 16, PED_TOP: 1.71,
   ROUND_TIME: 90, ROUNDS: 3, BREAK_TIME: 6, END_TIME: 12, MAX_HUMANS: 8, MIN_BODIES: 4,
@@ -24,7 +25,9 @@ export function constrain(p) {
 }
 
 // rulesOf(ent) → that player's snowball rules (catalog.js ballRules); none = normal snowballs.
-export function createSim(rand = Math.random, { rulesOf = () => ({}) } = {}) {
+// startOf(ent) → that player's starting snowballs, from their level (levels.js; Cody 2026-10-01). Default: level 1. Bots keep 4.
+export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = () => levelInfo(1).start } = {}) {
+  const startCount = (e) => (e.bot ? 4 : Math.min(20, Math.max(1, Math.floor(Number(startOf(e))) || levelInfo(1).start)));
   const S = {
     phase: 'lobby', mode: 'ffa', round: 0, time: 0, seq: 0, ents: [], balls: [], ev: [], evId: 0,
     nextId: 1, nextBall: 1, team: [0, 0], result: null,
@@ -80,7 +83,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}) } = {}) {
     const humans = peers.slice(0, K.MAX_HUMANS);
     S.ents.filter((e) => !e.bot && !humans.includes(e.peer)).forEach(removeEnt);
     let added = false;
-    for (const p of humans) if (!S.ents.some((e) => e.peer === p)) { const e = mkEnt(p, false, -1); spawn(e); S.ents.push(e); added = true; }
+    for (const p of humans) if (!S.ents.some((e) => e.peer === p)) { const e = mkEnt(p, false, -1); e.max = e.ammo = startCount(e); spawn(e); S.ents.push(e); added = true; }
     balance(S.phase === 'lobby');
     return added;
   }
@@ -105,7 +108,8 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}) } = {}) {
 
   // ---------- flow
   function resetRound() {
-    S.ents.forEach((e, i) => { spawn(e, i, S.ents.length); e.ammo = e.max; e.cool = e.bot ? 0.8 + rand() : 0; e.regen = 0; });
+    S.ents.forEach((e, i) => { spawn(e, i, S.ents.length); e.max = startCount(e); e.ammo = e.max; // a level-up shows from the next round
+      e.cool = e.bot ? 0.8 + rand() : 0; e.regen = 0; });
     Object.assign(S.hat, { st: 'ped', holder: -1, last: -1, x: 0, y: K.PED_TOP, z: 0, vx: 0, vy: 0, vz: 0, acc: 0 });
     S.balls = [];
   }

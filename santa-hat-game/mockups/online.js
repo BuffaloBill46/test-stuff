@@ -4,7 +4,8 @@ import { buildPlaza, makeHat, shadowBlob } from './plaza.js';
 import { createSim, K, PHASES, constrain } from './sim.js';
 import { openRoom, accounts, findWallet, gamesBoard } from './net.js';
 import { SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules } from './catalog.js';
-import { initTabs, avatarCharacter } from './tabs.js';
+import { initTabs, avatarCharacter, renderProgress } from './tabs.js';
+import { levelInfo, clampLevel } from './levels.js';
 import { play as sfx, initSoundButtons } from './sfx.js';
 
 const V3 = THREE.Vector3;
@@ -92,7 +93,7 @@ const nameOf = (e) => (e.bot ? BOT_NAMES[botHash(e.id) % BOT_NAMES.length] : (e.
 
 // ---------- referee hand-off
 function becomeHost() {
-  isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)) }); // each player's snowball rules (Ice Ball etc.)
+  isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)), startOf }); // each player's snowball rules (Ice Ball etc.) and starting snowballs (level)
   if (lastRaw) sim.load(lastRaw);
   room?.setHost(true);
   sim.S.ev.forEach((v) => { lastEv = Math.max(lastEv, v[0]); });
@@ -156,7 +157,7 @@ async function enterRoom(code, quick, opts = {}) {
 
 function startPractice() {
   if (!profile) { me.n = cleanName($('#name')?.value) || me.n; store.set('sq_name', me.n); }
-  practice = true; room = null; roomCode = ''; isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)) }); me.j = Date.now(); me.w = false; ctl.ep = -1; snaps = []; lastEv = 0;
+  practice = true; room = null; roomCode = ''; isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)), startOf }); me.j = Date.now(); me.w = false; ctl.ep = -1; snaps = []; lastEv = 0;
   roomMode = null; autoStart = false; sim.S.mode = lobbyMode; closeLobby(); renderChrome();
 }
 
@@ -289,6 +290,14 @@ function sendEmote(i) {
 }
 
 // ---------- entity meshes
+// A player's level (their profile's, announced with their look; guests 1). Until the referee runs on our server, this is what
+// each player's browser says (the same trust as today's unranked matches; server/levels.js).
+function levelOf(e) {
+  if (e.bot) return 1;
+  if (e.peer === me.id) return me.l || 1;
+  return clampLevel(room?.peers().find((q) => q.id === e.peer)?.l);
+}
+const startOf = (e) => levelInfo(levelOf(e)).start;
 function avatarOf(e) {
   if (e.bot) return botAvatar(e.id);
   if (e.peer === me.id) return me.a;
@@ -431,7 +440,7 @@ function renderChrome() {
     setHud(`<div class="stat plaque"><i>Round</i><b>${v.round}/${K.ROUNDS}</b></div>
       <div class="stat plaque ${v.time < 10 && v.phase === 'play' ? 'warn' : ''}"><i>${v.phase === 'break' ? 'Next round' : 'Time'}</i><b>${Math.ceil(v.time)}</b></div>
       ${m ? `<div class="stat plaque nice"><i>You</i><b>${m.score}</b></div>` : ''}
-      ${m ? `<div class="stat plaque"><i>Snowballs</i><div class="pips">${Array.from({ length: 6 }, (_, i) => `<u class="${i < m.ammo ? '' : 'off'}"></u>`).join('')}</div></div>` : ''}`);
+      ${m ? `<div class="stat plaque"><i>Snowballs</i><div class="pips">${Array.from({ length: startOf(m) }, (_, i) => `<u class="${i < m.ammo ? '' : 'off'}"></u>`).join('')}</div></div>` : ''}`);
   } else setHud('');
   // scoreboard
   let board = '';
@@ -655,7 +664,7 @@ const app = {
   me, accounts: acct,
   hasWallet: () => LOCAL || !!findWallet(),
   get profile() { return profile; }, set profile(p) { profile = p; },
-  setIdentity(name, a) { me.n = cleanName(name) || me.n; me.a = cleanAvatar(a); $('#name').value = me.n; $('#name').readOnly = !!profile; setPreview(me.a); },
+  setIdentity(name, a) { me.n = cleanName(name) || me.n; me.a = cleanAvatar(a); me.l = clampLevel(profile?.level); $('#name').value = me.n; $('#name').readOnly = !!profile; setPreview(me.a); },
   preview: (a) => setPreview(a),
   onTab: (tab) => {
     ui.lastBoard = '';
@@ -664,6 +673,7 @@ const app = {
 };
 let gamesMod = null; // Games tab code loads the first time it's opened
 const tabs = initTabs(app);
+renderProgress(app.profile); // the Play page's Player Progress box (guests: level 1; updated on sign-in)
 $('#loading')?.remove();
 frame();
 

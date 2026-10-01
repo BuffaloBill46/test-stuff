@@ -149,6 +149,20 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
   background: linear-gradient(90deg, rgba(12,15,26,.8), rgba(12,15,26,.68) 80%, rgba(12,15,26,0)); }
 .hero h1 { font-size: 56px; margin: 4px 0 6px; }
 .hero p { margin: 0; font-size: 18px; color: #d6ddf0; max-width: 60ch; text-shadow: 1px 1px 0 var(--ink); }
+/* Player Progress box: the level badge, what the next level takes, what this level gives (Cody's table), gear, pass, stats. */
+.progress { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 220px); gap: 16px; align-items: center; margin-bottom: 14px; }
+.progress .pglevel { text-align: center; padding: 8px 14px; background: var(--hat); border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); }
+.progress .pglevel i { display: block; font: 700 10px/1 var(--digits); letter-spacing: 1.5px; text-transform: uppercase; font-style: normal; color: var(--brim); }
+.progress .pglevel b { font: 800 40px/1.1 var(--digits); color: var(--brim); }
+.progress .pgmain p { margin: 4px 0 6px; }
+.progress .bar { height: 10px; background: var(--ink); border: 2px solid var(--ink); }
+.progress .bar div { height: 100%; width: 0; background: var(--lamp); transition: width .4s; }
+.progress .pggives { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 8px 0 0; font-size: 14px; color: var(--dim); }
+.progress .pggives div { display: flex; gap: 6px; } .progress .pggives dd { margin: 0; color: var(--text); font-weight: 700; }
+.progress .pgside { display: grid; gap: 6px; }
+.progress .pgside div { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.progress .pgside i { color: var(--dim); font-style: normal; } .progress .pgside b { text-align: right; }
+@media (max-width: 640px) { .progress { grid-template-columns: auto minmax(0, 1fr); } .progress .pgside { grid-column: 1 / -1; } }
 .modes3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .mode { padding: 14px 16px 16px; display: flex; flex-direction: column; background: rgba(27,35,68,.94); }
 .mode h3 { font: 800 32px/1 var(--display); margin: 0; color: var(--brim); text-shadow: 2px 2px 0 var(--ink); }
@@ -543,6 +557,22 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
       <p class="taxnote"><b>3% SANTA tax</b> SANTA takes 3% on every transfer; the token does that, not this game. Anything you win in SANTA arrives 3% lighter: a 100 SANTA prize lands as 97.</p>
       <p class="testnote"><b>Test version</b> Snowball Square is free and works now. Ranked tickets, wagers and SANTA prizes aren't switched on yet.</p>
     </div>
+    <!-- Player Progress (Cody, 2026-10-01): level and what it gives, special gear, season pass, stats. Filled by tabs.js. -->
+    <section class="block plaque progress" id="progress" aria-label="Your progress">
+      <div class="pglevel"><i>Level</i><b id="pgLevel">1</b></div>
+      <div class="pgmain">
+        <div class="eyebrow">Player progress</div>
+        <p id="pgText">Sign in to keep your level. Guests play at level 1.</p>
+        <div class="bar" aria-hidden="true"><div id="pgBar"></div></div>
+        <dl class="pggives" id="pgGives"></dl>
+      </div>
+      <div class="pgside">
+        <div><i>Special gear</i><b id="pgGear">None yet</b></div>
+        <div><i>Season pass</i><b>Coming soon</b></div>
+        <div><i>Rank points</i><b id="pgPts">—</b></div>
+        <button class="sec" id="pgBuy" disabled>Buy level 2 · $1.00</button>
+      </div>
+    </section>
     <div class="modes3">
       <article class="mode plaque fur">
         <h3>Unranked</h3><p class="tagline">Free · no sign-in needed</p>
