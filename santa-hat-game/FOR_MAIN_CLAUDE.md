@@ -41,6 +41,8 @@ Details of each decision: DESIGN_NOTES.md. Audit of the money changes: AUDIT.md 
   must cover Drop's $10 top prize. Simulated 6 million mixed plays: never refused. Rules `mockups/plinko.js`.
 
 **Server and admin**
+- **Bot signals (2026-10-01):** new admin action `bot-signals` (game `all`, wallet-signed, READ only: not logged, not public) →
+  players whose timing looks scripted (`server/bots.js`); "Check for bots" on the admin screen. Signals only.
 - **Speed limit (2026-10-01):** 60 requests a connection and 40 a player per 10 s, then 429 "slow down" (`server/ratelimit.js`,
   wired in `index.ts`). Needs `007_rate_limits.sql`. Plan (Cody): move it to the always-on game server later (`memoryStore()`).
 - **Payout worker: overlapping runs were a double-payment bug, fixed 2026-10-01** (`server/payouts.js`: a worker sends only if

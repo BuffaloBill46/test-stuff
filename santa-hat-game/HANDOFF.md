@@ -108,6 +108,8 @@ node tests/http.test.mjs         # the server's web door: sign-in, other website
 (cd tests/db && node tickets.test.mjs)          # ranked tickets: 10 free a day, held/spent/released, 10 bought per 24 h
 (cd tests/db && node security.test.mjs && node price.test.mjs)  # audit: attacks refused cleanly; price manipulation guard
 (cd tests/db && node lock.test.mjs)             # locks on a REAL Postgres server: plays take turns, payouts never sent twice
+node tests/bots.test.mjs        # bot signals: 900 simulated people never strong; timer scripts caught
+(cd tests/db && node bots-db.test.mjs)          # bot signals through the admin door: private, read only
 (cd tests/db && node ratelimit.test.mjs)        # speed limit counts: same rules in memory, PGlite and real Postgres (200 at once)
 (cd tests/db && DENO=<path>/deno node edge-limit.mjs)  # the REAL Edge Function under Deno: flood → 60 answered, then 429
 node tests/reconcile.test.mjs    # audit: books + everything owed = wallet
@@ -211,6 +213,10 @@ FOR_MAIN_CLAUDE.md.
   counts in the database for now (`007_rate_limits.sql`, NOT applied), one-line move to the always-on server later.
 - Proven on the real Edge Function code under Deno against real Postgres. Open: check the live visitor-address header (TODO).
 - Found: the Edge Function's type check had been failing since record-deposit (a type note fixed it); HANDOFF had said it passed.
+
+**Same day, bot signals:** "Check for bots" on the admin screen (private, wallet-signed, read only): clockwork or instant
+reactions (strong), no breaks / round the clock (weak). Signals only. The admin screen change is NOT published yet (this
+session could only push its work branch): run `deploy-pages.sh` next time.
 
 **For the other Claude:** `FOR_MAIN_CLAUDE.md` → "Read first" lists every change since the first hand-over that touches the
 server, the database or payments.

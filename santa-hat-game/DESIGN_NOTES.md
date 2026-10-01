@@ -360,6 +360,20 @@ because an Edge Function call may run in a fresh copy that remembers nothing. On
 ask Cody before spending) the counts move into the server's memory: one line in the wiring (`memoryStore()`), same rules,
 same tests (`tests/db/ratelimit.test.mjs` runs the rules on both). Internet addresses in the table are deleted after an hour.
 
+## Bot signals (built 2026-10-01)
+TODO's rule: flag players who play like a script, **review before acting; a real grinder is fine**. So: signals only, on the
+admin screen ("Check for bots"), wallet-signed, private (a guess is never shown publicly), read only (not logged, changes
+nothing). Options weighed: a public list (rejected: labels players on a guess), automatic slow-down or ban (rejected: the
+rule above), a scheduled job that alerts Cody (later, on the always-on server), on-demand admin check (built).
+**What it measures:** reaction time, from a run ending (its last play settled) to that player asking for the next price. Both
+moments are on our server, so the chain's confirmation time (which varies for bots too) doesn't blur it. A first version timed
+the gaps between purchases; rejected before shipping, because the chain's few seconds of variation would hide a timer.
+- **clockwork** (strong): 30+ reactions with a spread under 15% (people simulated: 39% at the very lowest).
+- **instant** (strong): typical reaction under 1 second.
+- **no breaks** (weak): 4+ hours without a 10-minute pause. **round the clock** (weak): active in 20+ of 24 hours.
+Numbers in `BOT_RULES` (`server/bots.js`), Claude's first guess; re-tune once there's real play. **Limit:** a script that
+adds random waits won't look like clockwork; the speed limit and the game's math (it can't be beaten) still apply to it.
+
 ## Technical notes for when this gets built
 
 - The live games list needs a server-side list of running rooms (a lobby channel or a database table
