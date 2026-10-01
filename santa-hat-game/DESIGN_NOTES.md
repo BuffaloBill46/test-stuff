@@ -175,7 +175,13 @@ sends" (no claim button). How it works:
 - Refused up front (before any payment): the pool can't take the play, the player already has an unfinished run, or the
   account has no linked wallet to send to.
 - Invariant (tested as assertions in the demo ledger, on real Postgres and on the real token program): every run is paid
-  exactly once, exactly what its plays won + refunded, never before its last play; payout ≤ 205 × plays + jackpots.
+  exactly once, exactly what its plays won + refunded, never before its last play; a payout above the most the run could possibly win is frozen (see below).
+- **A winner is never held (Cody, 2026-10-01: "I don't want a hold on a player that wins. It's not cool to hold someone's
+  money just because it was a big win.")** The payout safety cap is the most the run could POSSIBLY win from its own prize
+  table, so luck can never trip it; only an amount the game can't produce (a bug or a break-in) is frozen. Cody sees frozen
+  payouts on the admin screen (player and amount) and can Release one with a wallet signature, "just in case". Options
+  weighed: no cap at all (a bug could empty a pool in one payout), a fixed dollar cap (the old $205: a real big pull could
+  pass it, rejected), the proven per-run maximum (picked).
 - Why not credits: a credit balance is player money we hold; a run holds nothing once it's done. Options weighed: per-game
   credits (built, then dropped), one shared balance (needs one shared wallet or a second 3% tax), claim button (built, then
   dropped for auto-send: one fewer step and the player never signs to get paid).
@@ -203,7 +209,7 @@ the fair numbers (one per row), and "Check this result" replays them. Tested: `t
 - **Hat bonus: every Santa Hat anywhere on the grid pays 6¢** (was 5¢; raised 2026-09-30 for the 80% target below). About 2.6 hats a pull, 15.8% of the payback.
 - **Every line prize is more than the $1 pull** (smallest: 3 Snowballs, Bells or Pine Trees = $1.05).
 - **Pays back 78.1%, about 80% with the pool jackpot** (simulated 79.5%): line prizes 62.3% + hat bonus 15.8%. **A win over $1 on about 34% of pulls (1 in 3)**; about 96% of pulls
-  pay something. Reels: 8 Santa Hats and 25 Coal each (strip of 76). Normal pulls range from $0 to about $205 (several lines at once).
+  pay something. Reels: 8 Santa Hats and 25 Coal each (strip of 76). Normal pulls seen in simulation range from $0 to about $205 (several lines at once; the most one pull could ever pay is $1,101.50).
 - **Pool jackpot is separate:** its own draw, **1 in 25,000 pulls** (harder than the 100× line), **pays 25% of the Slots pool**,
   and **all 25 squares show Santa Hats**. The reels alone can never make a full grid of hats. Typical size about $360–430.
 - **Slots pool skim (Cody): when it reaches $1,775, $25 goes to the treasury** (helps cover the tax on winnings).

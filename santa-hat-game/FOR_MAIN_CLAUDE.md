@@ -17,9 +17,18 @@ Details of each decision: DESIGN_NOTES.md. Audit of the money changes: AUDIT.md 
 - **Removed server actions:** `credits`, `open` (runs replaced them) and the player `history` action ("My plays" was removed
   by Cody: players don't need it; every play stays in the `plays` table). Web door actions now: `quote`, `buy`, `settle`
   (signed in) and `pools`, `settings`, `winners` (public).
-- **Payout cap → `held`:** a run payout above $205 × plays (+ jackpots) is saved with status `held` and the worker skips it.
-  **Not built: a way to release it** (an admin action + a row on the admin screen), and the page's summary says "sent to
-  your wallet" even then. Needed before real money; see the open item below.
+- **Payout safety cap never holds a real win** (Cody, 2026-10-01: "I don't want a hold on a player that wins"). The cap is
+  the most the run could POSSIBLY win from its own prize table: n × `maxPerPlay(cfg, kind, bet)` (`server/games.js`; $1 Big
+  Hat: 11 lines × the $100 top prize + a hat bonus on all 25 squares = $1,101.50 a pull; Spin/Drop: exactly their top
+  prize), + the price of any refunded play, + any pool jackpot. It was a fixed $205 before: that was only the biggest pull
+  a simulation had SEEN, and a real pull could pass it. Proven as assertions over 600,036 results incl. bigger-prize
+  settings (`tests/payoutcap.test.mjs`). Only an amount above it (a fault or break-in) is `held` ("frozen").
+- **Frozen payouts + Release (built):** the admin screen lists frozen payouts (player name, wallet shortened to first 4 …
+  last 4 because the `pools` answer is public, run, amount in $ and SANTA, when) with a **Release** button: a new
+  wallet-signed admin action `release-payout` (`settings: {payout: id}`, game = the pool it pays from) that sets it back to
+  `queued` (the worker sends it next pass) and logs it publicly as "release payout". Only a held payout, only from its own
+  pool, once. If a payout is ever frozen, the player's run summary says "being checked before it's sent" (server `settle`
+  returns `held: true`), never "sent". Tests: `tests/db/admin.test.mjs`, `tests/browser/admin-test.mjs`.
 
 **The games (numbers are Cody's calls; about 80% payback on every game because "we lose 16% to fees")**
 - **Spin is two wheels:** main wheel 40 equal segments (0× 20, 1× 12, 2× 5, gold star 3) → a star spins the bonus wheel of 12
@@ -39,7 +48,8 @@ Details of each decision: DESIGN_NOTES.md. Audit of the money changes: AUDIT.md 
 - **Top-offs: Cody sends SANTA himself;** admin action `record-deposit` books what ARRIVED on the chain (ticked item below).
 - **Price-pump guard:** plays are priced at the median of the last 10 minutes of once-a-minute samples
   (`server/price.js`, table `price_samples`). It samples itself when a quote comes in; no schedule needed.
-- **Admin actions (all wallet-signed, replay-proof, logged):** `pause`, `resume`, `set-rules`, `set-settings`, `record-deposit`.
+- **Admin actions (all wallet-signed, replay-proof, logged):** `pause`, `resume`, `set-rules`, `set-settings`, `record-deposit`,
+  `release-payout`.
 - **Edge Function settings it reads:** `SOLANA_RPC_URL`, `SPIN_POOL_WALLET`, `SLOTS_POOL_WALLET`, `SANTA_MINT` (test token;
   unset = real SANTA), `ADMIN_WALLETS`, plus Supabase's own `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_DB_URL`
   (provided by Supabase; never in the site or repo).
@@ -79,7 +89,7 @@ through the real server code and checks ONE payout equal to the plays' winnings,
       the file name is older than the design): no `credits` table; new `runs` (one per payment signature); `quotes.n` in 1/5/10
       with `usd = n × bet`; `plays.run_id` (required) and `plays.pay_raw`; `payouts.run_id` unique (was `play_id`); functions
       `buy_run`, `lock_play`, `settle_play` (no payout insert), `refund_play`, `finish_run(p_run, p_to_wallet, p_cap)`, with
-      cap = 205 × plays + jackpots. The server refuses a quote up front when the player has an unfinished run, has no linked
+      cap = the most the run could possibly win (see "Payout safety cap" above). The server refuses a quote up front when the player has an unfinished run, has no linked
       wallet, or the pool can't take the play; `tidy` finishes runs left behind (closed tab). The web door's actions are now
       `quote {kind, n, bet}`, `buy`, `settle` (`credits` and `open` are gone). The payout worker is unchanged: it sends whatever
       is queued, so a run's payout goes out on its next pass. Proven: `tests/db/server.test.mjs`, `tests/solana/rehearsal.mjs`
@@ -106,10 +116,6 @@ through the real server code and checks ONE payout equal to the plays' winnings,
       signed purchases, plays, payouts + skims, admin stop/resume, books = wallets). Repeat its steps on devnet; the only stand-in
       is the "finalized transaction" record, which the RPC provides for real. Payout transactions MUST carry a unique memo
       (`Santa Hat payout #<id>`), as in the rehearsal's adapter; the worker refuses to reuse a signature.
-- [ ] **Release held payouts (NOT BUILT; needed before real money):** a run payout above the cap is saved as `held` and
-      nothing sends it. Add a wallet-signed admin action (e.g. `release-payout` / `refuse-payout`, logged in `pool_log`) and a
-      "held payouts" list on the admin screen; and in server mode, have the page's run summary say "waiting for a check" instead
-      of "sent to your wallet" when the payout is held (`settle`'s last result would need to return the payout status).
 - [ ] **Run the payout worker live:** `server/payouts.js` is built and proven on the real token program (never pays twice, even
       when it crashes before or after sending; `tests/solana/payouts.test.mjs`). Still needed: the live chain adapter (a Solana
       RPC: getLatestBlockhash, sendTransaction, getSignatureStatuses + isBlockhashValid; same shape as the test's), the pool

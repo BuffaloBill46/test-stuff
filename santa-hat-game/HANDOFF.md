@@ -183,9 +183,13 @@ FOR_MAIN_CLAUDE.md.
   transfer**: no claim button, the player never signs to get paid. We never hold a player balance. Built through the page,
   server, SQL (`runs` table, `buy_run`, `finish_run`: one payout per run) and the payout worker; every test passes, including
   the on-chain rehearsal. Decision and rules: DESIGN_NOTES → "No credits".
+- **A winner is never held (2026-10-01, Cody):** the payout safety cap is now the most a run could POSSIBLY win from its
+  prize table (it was a $205 guess a real pull could pass). Only an impossible amount (a fault or break-in) is frozen; it
+  shows on the admin screen under **Frozen payouts** (player, short wallet, amount) with a **Release** button you sign with
+  your wallet. Proven over 600,036 results (`tests/payoutcap.test.mjs`).
 
 **For the other Claude:** `FOR_MAIN_CLAUDE.md` → "Read first" lists every change since the first hand-over that touches the
-server, the database or payments. Known gap: payouts held by the safety cap can't be released yet (listed there).
+server, the database or payments.
 
 **Server side, built and proven here but not deployed** (everything else for devnet is in `FOR_MAIN_CLAUDE.md`):
 - Edge Function `games` (Cody's choice): quote → buy a run → settle each play → one payout per run, stuck-run tidying, one play at a time per player,

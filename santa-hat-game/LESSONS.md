@@ -186,3 +186,10 @@ screen costs every phone; the Snowball Drop board rests unless it's visible or s
 ## A flex row splits mixed text into columns (2026-10-01)
 The result line is `display: flex` (to centre it vertically), so a summary made of bold text + plain text + a span became three
 squashed columns on a phone. Wrap rich text in ONE element when its parent is flex. Caught only by looking at a phone screenshot.
+
+## "Biggest seen" is not "biggest possible" (2026-10-01)
+The payout safety cap was $205 a pull: the biggest Big Hat pull a simulation had SEEN. Several lines can pay at once, so a
+real pull could pass it, and a genuine winner would have been frozen (Cody: never hold a winner). A safety limit must come
+from the structure (every line at the top prize + every square's bonus), not from a sample. Then prove it as an assertion,
+including against bigger prize settings Cody might publish (`tests/payoutcap.test.mjs`). The same check found that a frozen
+payout had no way out (no Release) and the player would have been told "sent": a safety net needs its exit built with it.

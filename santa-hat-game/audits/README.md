@@ -16,6 +16,7 @@ Taken on the code that went live on 2026-10-01.
 | `screens/recheck-*.png` | The result line is visible after a play on a phone, above the tab bar. | `tests/focus/recheck.mjs` |
 | `screens/phone-*.png` | Galaxy S22+-sized screens upright and sideways, small phones, tablet, desktop: matches and the Avatar tab. | `tests/browser/phone-shots.mjs` |
 | `screens/server-mode.png`, `settings-mode.png` | The Games page running against the real server code and database (a run of 5 pulls, paid and auto-sent). | `tests/browser/server-mode-test.mjs`, `settings-mode-test.mjs` |
+| `screens/admin-frozen.png`, `admin.png` | The admin screen's Frozen payouts box (player, short wallet, run, amount, Release) and the whole screen on a phone (added after the payout-cap fix). | `tests/browser/admin-test.mjs` |
 | `screens/audit-320-games.png`, `plinko-phone.png`, `sfx-nav.png` | Games tab on a 320 px phone, the Snowball Drop preview, the phone top bar with the sound button. | audit-ux, plinko-test, sfx-test |
 
 To make a new one: run the scripts above, then copy their `out/` files into a new dated folder here.
