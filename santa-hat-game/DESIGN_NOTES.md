@@ -101,6 +101,64 @@ it can't hold SANTA as written: it books each ticket at the amount SENT, but SAN
 its vault would always hold 3% less than its books promise (the winner's claim or the last refunds would fail). It's also
 5% treasury / no burn, one winner. Cody chose a server-run lottery instead.
 
+### Levels, special snowballs and special gear (decided, Cody 2026-10-01, from his handwritten pages; NOT BUILT YET)
+**Controls and match rules**
+- After you get the Santa hat you're **immune for 2 seconds**.
+- **Zoom in/out** (at least on phones).
+- **Floating joystick**: appears where the thumb lands; the only way to move. Any other tap throws.
+- **Getting hit costs 1 point**; a score never goes below 0.
+
+**Levels** (max 10 for now)
+- Earned: **5 top-3 finishes per level**, in **Auto match games only** (unranked or ranked).
+- Bought: **up to level 5 only. $1.00 per level for levels 2–4; level 5 costs $5.00.** Paid in SANTA, 50% burned, 50% treasury.
+- Cody on paying to level 5: "In this game a skilled player can still keep up. There will be ways to get free special items."
+
+| Level | Starting snowballs | Special ball slots | Special gear slots |
+|---|---|---|---|
+| 1 | 5 | 1 | 1 |
+| 2 | 6 | 1 | 1 |
+| 3 | 7 | 1 | 1 |
+| 4 | 7 | 2 | 1 |
+| 5 | 8 | 2 | 1 |
+| 6 | 9 | 2 | 1 |
+| 7 | 10 | 2 | 1 |
+| 8 | 10 | 3 | 2 |
+| 9 | 11 | 3 | 2 |
+| 10 | 12 | 3 | 2 |
+
+**Special snowballs (kept forever).** A throw uses up that many snowballs from the counter. Buttons **SB1 / SB2 / SB3** under the
+snowball counter, one per slot; players fill the slots on the Avatar screen in a new **Special Snowballs** slot.
+| Ball | Uses | Effect | Look |
+|---|---|---|---|
+| Ice Ball | 2 | 2-second stun (normal hit stays 0.9 s) | icy ball |
+| Split Ball | 3 | splits into 3 after 1 s, fanning out; one player can be hit by only one piece | 3-colour ball |
+| Giant Ball | 3 | 3× a normal ball's size | the player's chosen snowball colour |
+| Fire Ball | 2 | 2× speed | fire tail |
+| Sky Ball | 5 | goes up and rains down on a small area where you aim, in 2 waves | |
+| Snowball Rain | all | the whole ring rains snowballs for 3 s; needs a FULL counter; level 5+ | |
+
+**Special gear (wears out).** The 7-day clock starts at the **first match wearing it** and never stops; it can be taken off and put
+back on until then. The Avatar screen's **Backpacks** slot becomes **Special Gear**, holding all gear. Existing items keep their
+names (Cody: "use the names from already made items").
+| Gear | Effect |
+|---|---|
+| Pumpkin Costume | +1 hit (2 balls to stun) |
+| I.C.E. Kevlar Vest | +1 hit |
+| Heated Coat | +1 hit |
+| Santa Costume | +2 hits; level 3+ |
+| Present Box | one random gear at match start, following level rules |
+| Santa Bag | +50% snowballs held (round up) |
+| Elf Satchel | snowballs come back 25% faster |
+| Elf Shoes | +25% move speed |
+| Elf Hat | half-size player, but snowballs do 2× their effect on you (stun twice as long; an extra hit counts double) |
+| Backpack | +25% snowballs held (round up) |
+- Extra hits come back after each stun, all game.
+- Every item follows level rules (Present Box never picks the Santa Costume below level 3; no Snowball Rain before level 5).
+- Prices: Claude sets base prices for now; Cody will change them.
+
+**Still open (asked 2026-10-01):** −1 per hit on top of the thrower's +5?; bots and levels/gear; hat immunity untouchable vs only
+un-stunnable; which existing item is which gear (Toy Sack = Santa Bag? Gift Box = Present Box?); does gear show on the avatar.
+
 ### Santa Hat Spin removed; the name is Santa Hat Legends (decided, Cody 2026-10-01)
 - **Spin is removed** ("Its not very fun"). Cody's pick: **its pool stays as the Drop pool** (same wallet, same money; shown
   as "Drop pool"; inside the database and server it's still called `spin`, to avoid a migration). Spin's card is hidden on the
