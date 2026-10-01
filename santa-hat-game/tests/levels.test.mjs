@@ -50,5 +50,9 @@ sim.startMatch('ffa'); assert.deepEqual([ent('p1').ammo, ent('p2').ammo], [5, 12
 lv.p1 = 5; for (let t = 0; t < 2000 && sim.S.round < 2; t++) sim.step(0.05);
 assert.equal(ent('p1').max, 8, 'a level-up (to 5) shows from the next round');
 for (let t = 0; t < 4000; t++) { sim.step(0.05); for (const e of sim.S.ents) assert.ok(e.ammo <= e.max, 'never more than the most you can hold'); }
+// A host handover mid-match: the new host keeps each player's level-based maximum and the same match id (reported once).
+const snap = sim.snapshot(), heir = createSim(Math.random, { startOf: (e) => levelInfo(lv[e.peer]).start }); heir.load(snap);
+assert.equal(heir.S.ents.find((e) => e.peer === 'p2').max, 12, 'a level-10 player keeps 12 after a handover');
+assert.ok(/^[0-9a-f]{32}$/.test(sim.S.mid) && heir.S.mid === sim.S.mid, 'the match id survives the handover');
 assert.equal(createSim().S.ents.length, 0); { const d = createSim(); d.syncRoster(['x']); assert.equal(d.S.ents.find((e) => e.peer === 'x').max, 5, 'default (guest): level 1 = 5'); }
 console.log('OK: levels: Cody\'s table exactly, never drops; 5 top-3 Auto match finishes per level to 9, then 10 FIRST-place wins to 10 (2nd/3rd don\'t count there), then stops; buy to 5 for $8 ($1, $1, $1, $5), progress kept; in matches each player starts with their level\'s snowballs (5…12), bots 4');

@@ -35,7 +35,7 @@ async function supabaseRoom(code, me) {
   const main = c.channel(base, { config: { broadcast: { self: false }, presence: { key: me.id } } });
   main.on('presence', { event: 'sync' }, () => {
     const st = main.presenceState();
-    peers = Object.entries(st).map(([id, metas]) => ({ id, n: String(metas?.[0]?.n ?? '').slice(0, 14), j: Number(metas?.[0]?.j) || 0, a: metas?.[0]?.a, w: !!metas?.[0]?.w, l: Number(metas?.[0]?.l) || 1 }));
+    peers = Object.entries(st).map(([id, metas]) => ({ id, n: String(metas?.[0]?.n ?? '').slice(0, 14), j: Number(metas?.[0]?.j) || 0, a: metas?.[0]?.a, w: !!metas?.[0]?.w, l: Number(metas?.[0]?.l) || 1, pid: /^[0-9a-f-]{36}$/.test(String(metas?.[0]?.pid)) ? metas[0].pid : null }));
     L.fire('peers', peers); refreshHostChans();
   });
   main.on('broadcast', { event: 'snap' }, ({ payload }) => L.fire('snap', payload));
@@ -43,7 +43,7 @@ async function supabaseRoom(code, me) {
   const mine = c.channel(base + '-u-' + me.id, { config: { broadcast: { self: false } } });
   try {
     await subscribe(main);
-    await main.track({ n: me.n, j: me.j, a: me.a, w: me.w ? 1 : 0, l: me.l || 1 });
+    await main.track({ n: me.n, j: me.j, a: me.a, w: me.w ? 1 : 0, l: me.l || 1, pid: me.pid || null });
     await subscribe(mine);
   } catch (e) { // don't leave the client retrying in the background
     c.removeChannel(main); c.removeChannel(mine); throw e;
@@ -79,7 +79,7 @@ async function localRoom(code, me) {
   const recompute = () => {
     const now = Date.now();
     for (const [id, p] of seen) if (now - p.at > 3500) seen.delete(id);
-    peers = [{ id: me.id, n: me.n, j: me.j, a: me.a, w: !!me.w, l: me.l || 1 }, ...[...seen.values()].map(({ id, n, j, a, w, l }) => ({ id, n, j, a, w: !!w, l: Number(l) || 1 }))];
+    peers = [{ id: me.id, n: me.n, j: me.j, a: me.a, w: !!me.w, l: me.l || 1, pid: me.pid || null }, ...[...seen.values()].map(({ id, n, j, a, w, l, pid }) => ({ id, n, j, a, w: !!w, l: Number(l) || 1, pid: pid || null }))];
     L.fire('peers', peers);
   };
   bc.onmessage = ({ data: m }) => {
