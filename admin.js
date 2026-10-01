@@ -1,6 +1,7 @@
 // The escrow admin screen (admin.html): pool status, Stop / Resume, settings. Every action is a message Cody's wallet signs
 // (adminmsg.js); the server checks it (server/admin.js). Open with ?server=<the games Edge Function address>.
 import { adminMessage } from './adminmsg.js';
+import { LOTTERIES } from './lottery.js';
 import { POOL_RULES } from './slots.js';
 import { SPIN_RULES, MAIN_SLICES, BONUS_SLICES } from './spin.js';
 import { DEFAULT_SETTINGS, check, itemsWith } from './settings.js';
@@ -48,6 +49,8 @@ async function act(action, game, settings = {}) {
   let signature; try { signature = (await wallet.signMessage(new TextEncoder().encode(message), 'utf8')).signature; } catch { return msg('Signing was cancelled.', 'bad'); }
   const r = await post({ wallet: address, message, signature: hex(new Uint8Array(signature)) }, true);
   if (r.error) return msg('Refused: ' + r.error, 'bad');
+  if (action === 'lottery-owed') { owedList(r); return msg(r.owed.length ? `${r.owed.length} lottery payment(s) to send.` : 'No lottery winners waiting.', 'ok'); }
+  if (action === 'lottery-paid' || action === 'lottery-mode') { msg(action === 'lottery-paid' ? `Recorded: payout #${r.payout} paid (${(r.arrived / 1e6).toLocaleString()} SANTA arrived). It's in the public log.` : `Lottery payouts are now ${r.mode}. It's in the public log.`, 'ok'); return act('lottery-owed', 'lottery'); }
   if (action === 'bot-signals') { bots(r); return msg(`Checked ${r.checkedRuns} runs from the last 24 hours: ${r.flagged.length ? r.flagged.length + ' player(s) to look at.' : 'nothing looks scripted.'}`, 'ok'); }
   await load(); // refresh the pools and log FIRST, so "Done" never shows next to the old state (e.g. still "Running")
   msg(action === 'set-settings' ? `Published settings version ${r.version}. New plays use it now; it's in the public log.` : action === 'record-deposit' ? `Recorded: ${(r.arrived / 1e6).toLocaleString()} SANTA arrived in the ${game} pool (${(r.coveredTopOffs / 1e6).toLocaleString()} paid waiting top-offs, ${(r.addedToPool / 1e6).toLocaleString()} added to the pool).` : action === 'release-payout' ? `Released payout #${r.payout} ($${r.usd.toFixed(2)}): it goes to the player's wallet on the next payout pass. It's in the public log.` : `Done: ${action} on the ${game} pool. It's in the public log.`, 'ok');
@@ -65,6 +68,19 @@ function bots(r) {
   $('#bots').innerHTML = r.flagged.length ? `<table><tr><th>Player</th><th>Wallet</th><th>Runs</th><th>Signals</th></tr>${r.flagged.map((f) => `<tr><td>${esc(f.name || 'player')}</td><td><code>${esc(f.wallet || '')}</code></td><td>${f.runs}</td><td><ul>${f.reasons.map((x) => `<li${x.strong ? ' class="strong"' : ''}>${esc(x.signal)}${x.strong ? ' (strong)' : ''}: ${esc(x.why)}</li>`).join('')}</ul></td></tr>`).join('')}</table>` : 'Nothing looks scripted in the last 24 hours.';
 }
 $('#botCheck').addEventListener('click', () => act('bot-signals', 'all'));
+// The lottery's manual payouts: who, their FULL wallet (to send to), what for, and how much to send; paste the transaction to record it.
+function owedList(r) {
+  $('#lotMode').textContent = 'Payouts are ' + r.mode + '.';
+  $('#lotteryBox').classList.toggle('alert', r.owed.length > 0);
+  const what = (o) => (o.place === 0 ? 'refund (paid after the Christmas draw)' : ['', '1st', '2nd', '3rd'][o.place] + ' place');
+  $('#lotOwed').innerHTML = r.owed.length ? `<table><tr><th>Player</th><th>Send to</th><th>For</th><th>Send</th><th>Transaction</th></tr>${r.owed.map((o) => `<tr><td>${esc(o.name || 'player')}</td><td><code>${esc(o.wallet)}</code></td><td>${esc(LOTTERIES[o.lottery]?.name || o.lottery)} · ${esc(new Date(o.drawsAt).toLocaleDateString())} · ${what(o)}</td><td><b>${(o.raw / 1e6).toLocaleString(undefined, { maximumFractionDigits: 6 })} SANTA</b></td><td><input type="text" placeholder="paste the signature" data-lottx="${o.id}"><button type="button" data-lotpaid="${o.id}">Record</button></td></tr>`).join('')}</table>` : 'Nobody waiting.';
+}
+$('#lotLoad').addEventListener('click', () => act('lottery-owed', 'lottery'));
+$('#lotAuto').addEventListener('click', () => act('lottery-mode', 'lottery', { mode: 'auto' }));
+$('#lotManual').addEventListener('click', () => act('lottery-mode', 'lottery', { mode: 'manual' }));
+$('#lotOwed').addEventListener('click', (e) => { const b = e.target.closest('[data-lotpaid]'); if (!b) return;
+  const tx = document.querySelector(`[data-lottx="${b.dataset.lotpaid}"]`).value.trim(); if (!tx) return msg('Paste the transaction signature first.', 'bad');
+  act('lottery-paid', 'lottery', { payout: +b.dataset.lotpaid, tx }); });
 $('#game').addEventListener('change', fields);
 $('#depSave').addEventListener('click', () => { const tx = $('#depTx').value.trim(); if (!tx) return msg('Paste the transaction signature first.', 'bad'); act('record-deposit', $('#depGame').value, { tx }); });
 $('#save').addEventListener('click', () => {
