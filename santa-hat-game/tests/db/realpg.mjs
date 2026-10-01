@@ -16,7 +16,8 @@ function binDir() {
   return v ? join(base, v, 'bin') : null;
 }
 
-export async function startPostgres() {
+// tcp: also listen on 127.0.0.1 (for programs that can't use the socket folder, e.g. the Edge Function's database library).
+export async function startPostgres({ tcp = false } = {}) {
   const bin = binDir();
   if (!bin || !existsSync(join(bin, 'initdb'))) return null;
   const dir = mkdtempSync(join(tmpdir(), 'santa-pg-')); chmodSync(dir, 0o777);
@@ -27,7 +28,7 @@ export async function startPostgres() {
     : execFileSync(join(bin, cmd), args, { stdio: 'pipe' });
   run('initdb', ['-D', data, '-U', 'postgres', '--auth=trust', '-E', 'UTF8']);
   writeFileSync(join(dir, 'log'), ''); chmodSync(join(dir, 'log'), 0o666);
-  run('pg_ctl', ['-D', data, '-l', join(dir, 'log'), '-w', '-o', `-p ${port} -k ${dir} -c listen_addresses=''`, 'start']);
+  run('pg_ctl', ['-D', data, '-l', join(dir, 'log'), '-w', '-o', `-p ${port} -k ${dir} -c listen_addresses=${tcp ? '127.0.0.1' : "''"}`, 'start']);
   const stop = () => { try { run('pg_ctl', ['-D', data, '-m', 'immediate', 'stop']); } catch {} rmSync(dir, { recursive: true, force: true }); };
   process.on('exit', stop);
   const pool = new pg.Pool({ host: dir, port, user: 'postgres', database: 'postgres', max: 20 });
