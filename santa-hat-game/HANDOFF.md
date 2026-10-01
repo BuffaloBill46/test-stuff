@@ -151,10 +151,23 @@ between two devices has never been tested from here. Cody and friends testing on
 
 *(Update this section at the end of every session.)*
 
-**Last updated:** 2026-10-01 (end of the cloud session on branch `ccr-55527f21-p10a6h`, which contains all of
-`claude/test-stuff-section-egujzy` plus `main`). Everything committed and pushed; **`008` applied to the live database; the
-site was PUBLISHED from this branch** (so publish only from this branch or one that contains it). Cody is moving to his main
-Claude next: FOR_MAIN_CLAUDE.md starts with a summary of this session.
+**Last updated:** 2026-10-01, main Claude on Cody's Windows machine, branch `claude/test-stuff-section-egujzy` (the cloud
+branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from it, so publish only from this branch).
+
+**Main Claude session 1 (2026-10-01), devnet move. Done and verified:**
+- All suites pass on this machine (Node, PGlite, real Postgres 14 + Deno in WSL, LiteSVM in WSL, browser tests in WSL Playwright).
+- **Santa Lottery decided** (Cody): server-run, five lotteries; DESIGN_NOTES → "Santa Lottery". NOT BUILT YET (next).
+- **Devnet:** test SANTA `Jx95so9XYhtSJJoqup7Xb3T9Ptr9ZuUTXSgPcu6uttg` (Token-2022, 6 dec, 3%), Spin/Slots/Lottery pools, treasury,
+  test player, Santa's own funding wallet; public addresses in `devnet.json`, keys in `C:\santa-devnet-keys` (never the repo).
+  Setup: `tests/solana/devnet-setup.mjs` (safe to re-run).
+- **Live database:** `005`, `007` applied (checked identical to the files), `009` closes a hole the advisor found (AUDIT #11);
+  `pools` rows = the devnet pool wallets to the unit. **The live project now books devnet SANTA: reset `pools` before mainnet.**
+- **Payout worker live chain adapter** `server/solanachain.js`, proven on devnet incl. both crash cases (`tests/solana/chain.devnet.mjs`).
+- **Real wallet payments** `mockups/wallet.js` (`window.santaPay`, Wallet Standard; pays only from the account's wallet, on the
+  server's network; waits for finalized; a paid-but-unconfirmed run is retried on the next visit). Proven on real devnet in a
+  browser: pay → 5 plays → ONE payout sent, books = wallets (`tests/browser/devnet-pay-test.mjs`).
+- **Not done yet:** Edge Function deploy + its settings (waits on `npx supabase login` by Cody), a real-Phantom check in Cody's
+  Chrome, the lottery, the scheduled payout worker, skims on chain, reconcile on a schedule.
 
 **Built and live (all demo, no real money):**
 - **Play tab:** Snowball Square multiplayer (rooms, bots that now sometimes emote, idle kicks), unranked lobby, FFA RANKED layout
