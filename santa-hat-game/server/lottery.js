@@ -82,12 +82,18 @@ export function createLottery({ db, chain, livePrice, liveFee, wallet, mint = MI
     const due = await db.query(`select * from public.lottery_draws where status = 'open' and draws_at <= $1 order by draws_at`, [new Date(now()).toISOString()]);
     const done = [];
     for (const d of due) {
-      const buys = await db.query('select first_no, n, profile_id, wallet from public.lottery_buys where draw_id = $1 order by first_no', [d.id]);
-      const tickets = buys.flatMap((b) => Array.from({ length: b.n }, (_, i) => ({ id: b.first_no + i, wallet: b.wallet, profile: b.profile_id })));
+      // The draw runs on EXACTLY the public ticket list (lottery_ticket_list: ticket numbers + SHORTENED wallets), so anyone can
+      // re-run it from public data and get the same winners; each winning ticket number is then mapped back to its owner.
+      // (One place per wallet is judged on the shortened form: two different wallets sharing their first 4 and last 4 characters,
+      // about 1 in 10^14, would count as one wallet in that draw. Stated, not hidden.)
+      const pub = await db.query('select first_no, n, wallet_short from public.lottery_ticket_list where draw_id = $1 order by first_no', [d.id]);
+      const owners = await db.query('select first_no, profile_id, wallet from public.lottery_buys where draw_id = $1', [d.id]);
+      const ownerOf = new Map(owners.map((o) => [o.first_no, o]));
+      const tickets = pub.flatMap((b) => Array.from({ length: b.n }, (_, i) => ({ id: b.first_no + i, wallet: b.wallet_short, first: b.first_no })));
       const block = await chain.latestBlock();
       const L = LOTTERIES[d.kind], winners = await drawWinners({ secret: d.secret, blockhash: block.blockhash, tickets, drawId: +d.id, places: L.split.length });
       const shares = splitPot(+d.pot_raw, L.split, winners.length);
-      const list = winners.map((w, i) => ({ place: w.place, profile: w.ticket.profile, wallet: w.ticket.wallet, amount_raw: String(shares[i]) })).filter((w) => w.amount_raw !== '0');
+      const list = winners.map((w, i) => { const o = ownerOf.get(w.ticket.first); return { place: w.place, profile: o.profile_id, wallet: o.wallet, amount_raw: String(shares[i]) }; }).filter((w) => w.amount_raw !== '0');
       try { await db.query('select public.finish_lottery_draw($1, $2, $3, $4)', [d.id, block.blockhash, block.slot, JSON.stringify(list)]); done.push(+d.id); }
       catch (e) { if (!/already drawn/.test(e.message)) throw e; } // another request drew it first: fine
     }
@@ -104,5 +110,14 @@ export function createLottery({ db, chain, livePrice, liveFee, wallet, mint = MI
     return { open, recent: recent.map((r) => ({ ...r, id: +r.id, pot_raw: +r.pot_raw, winners: wins.filter((w) => +w.draw_id === +r.id).map((w) => ({ place: w.place, name: w.name, amount_raw: +w.amount_raw })) })) };
   }
 
-  return { quote, buy, runDraws, draws, drawFor };
+  // Public: a DRAWN draw's ticket list (wallets shortened) and its revealed inputs, so anyone can re-run it (mockups/lottery.js).
+  async function tickets(drawId) {
+    if (!/^[0-9]{1,18}$/.test(String(drawId))) return { error: 'which draw?' };
+    const d = await row('select * from public.lottery_public where id = $1', [drawId]);
+    if (!d || d.status !== 'drawn') return { error: 'that draw has not been drawn yet' };
+    const list = await db.query('select first_no, n, wallet_short from public.lottery_ticket_list where draw_id = $1 order by first_no', [drawId]);
+    return { id: +d.id, lottery: d.kind, secret: d.secret, commit: d.commit, blockhash: d.blockhash, tickets: list.map((b) => [b.first_no, b.n, b.wallet_short]) };
+  }
+
+  return { quote, buy, runDraws, draws, drawFor, tickets };
 }

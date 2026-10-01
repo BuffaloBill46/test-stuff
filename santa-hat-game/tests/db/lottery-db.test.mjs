@@ -11,7 +11,8 @@ import { drawWinners, LOTTERIES } from '../../mockups/lottery.js';
 
 const db = await makeDb([...FILES.filter((f) => f !== '009_lock_my_plays.sql'), '009_lock_my_plays.sql', '010_levels.sql', '011_lottery.sql']);
 const PRICE = 0.00085, FEE = { bps: 300, max: 1e15 }, LOTTERY = 'LoTTERYwa11et'.padEnd(44, '1').replace(/[0OIl]/g, '9');
-let wn = 0; const W = () => ('LTwa11et' + 'ABCDEFGHJK'[wn++]).padEnd(44, '1');
+// Test wallets that differ at BOTH ends, like real (random) addresses: the public ticket list shows them shortened (4…4).
+let wn = 0; const W = () => { const c = 'ABCDEFGHJK'[wn++]; return (c + 'Twa11et').padEnd(43, '1') + c; };
 const mk = async (name) => { const id = (await db.query('insert into auth.users default values returning id'))[0].id, w = W();
   await db.query('insert into public.profiles (id, wallet, name, avatar) values ($1, $2, $3, $4)', [id, w, name, '{}']); return { id, w }; };
 const [A, B, C, D] = [await mk('Ann'), await mk('Ben'), await mk('Cy'), await mk('Dee')];
@@ -35,9 +36,7 @@ async function buyTickets(p, kind, n) { const q = await lot.quote(p.id, kind, n)
 async function recheck(drawId) {
   const d = (await db.query('select * from public.lottery_public where id = $1', [drawId]))[0];
   const list = await db.query('select first_no, n, wallet_short from public.lottery_ticket_list where draw_id = $1 order by first_no', [drawId]);
-  const full = await db.query('select first_no, wallet from public.lottery_buys where draw_id = $1 order by first_no', [drawId]); // to map short → full in this test
-  const byFirst = new Map(full.map((r) => [r.first_no, r.wallet]));
-  const tickets = list.flatMap((b) => Array.from({ length: b.n }, (_, i) => ({ id: b.first_no + i, wallet: byFirst.get(b.first_no) })));
+  const tickets = list.flatMap((b) => Array.from({ length: b.n }, (_, i) => ({ id: b.first_no + i, wallet: b.wallet_short })));
   return drawWinners({ secret: d.secret, blockhash: d.blockhash, tickets, drawId: +d.id, places: LOTTERIES[d.kind].split.length });
 }
 
@@ -69,7 +68,8 @@ assert.equal(pays.reduce((a, p) => a + +p.amount_raw, 0), potWant, 'the payouts 
 assert.deepEqual(pays.slice(1).map((p) => +p.amount_raw), [Math.floor(potWant * 25 / 100), Math.floor(potWant * 15 / 100)], '2nd 25%, 3rd 15%');
 assert.ok(pays.every((p) => p.status === 'manual'), 'payout mode starts as manual (Cody hasn\'t decided): they wait for Cody');
 const again = await recheck(drawId);
-assert.deepEqual(again.map((w) => [w.place, w.ticket.wallet]), pays.map((p) => [p.place, p.to_wallet]), 'anyone re-running the draw from public data gets the same winners');
+const short = (w) => w.slice(0, 4) + '…' + w.slice(-4);
+assert.deepEqual(again.map((w) => [w.place, w.ticket.wallet]), pays.map((p) => [p.place, short(p.to_wallet)]), 'anyone re-running the draw from public data alone gets the same winners');
 
 console.log('3. Daily (1 winner) and an empty draw');
 await waitOpenWindow();
@@ -159,7 +159,7 @@ const other = (await db.query(`select id from public.lottery_payouts where statu
 assert.match((await admin.run(await signed({ action: 'lottery-paid', game: 'lottery', settings: { payout: +other.id, tx: good } }))).error, /already recorded/, 'one transaction, one payout');
 assert.match((await admin.run(await signed({ action: 'lottery-paid', game: 'lottery', settings: { payout: +due.id, tx: handTx(due.to_wallet, +due.amount_raw) } }))).error, /isn't waiting/, 'already paid: refused');
 const list = await admin.run(await signed({ action: 'lottery-owed', game: 'lottery' }));
-assert.ok(list.ok && list.mode && list.owed.length >= 1 && list.owed.every((o) => /^LTwa11et/.test(o.wallet) && o.raw > 0 && o.lottery), 'the private list: full wallets and amounts to send by hand');
+assert.ok(list.ok && list.mode && list.owed.length >= 1 && list.owed.every((o) => /^[A-K]Twa11et/.test(o.wallet) && o.raw > 0 && o.lottery), 'the private list: full wallets and amounts to send by hand');
 assert.ok(!list.owed.some((o) => o.id === due.id), 'a recorded payment is off the list');
 const replay = await signed({ action: 'lottery-mode', game: 'lottery', settings: { mode: 'manual' } });
 assert.equal((await admin.run(replay)).mode, 'manual'); assert.match((await admin.run(replay)).error, /already used/, 'a signed message works once');
@@ -173,6 +173,12 @@ const ask = async (token, body) => { const r = await door(new Request('http://lo
 const pub = await ask(null, { action: 'lottery' });
 assert.equal(pub.status, 200); assert.deepEqual(pub.open.map((o) => o.lottery).sort(), ['daily-10', 'daily-100', 'weekly-10', 'weekly-100'], 'every lottery with a draw ahead is listed (the one-off Christmas-style test draw has run, so it is not)'); assert.ok(pub.recent.length >= 1 && pub.recent[0].secret, 'recent draws show their revealed secret');
 assert.ok(pub.open.every((o) => !('secret' in o)), 'open draws never show the secret');
+const tk = await ask(null, { action: 'lottery-tickets', draw: drawId });
+assert.ok(tk.status === 200 && tk.secret && tk.tickets.length === 4 && tk.tickets.every((t) => /…/.test(t[2])), 'a drawn draw\'s inputs are public (wallets shortened)');
+const { drawWinners: dw } = await import('../../mockups/lottery.js');
+const rechk = await dw({ secret: tk.secret, blockhash: tk.blockhash, tickets: tk.tickets.flatMap(([f, n, w]) => Array.from({ length: n }, (_, i) => ({ id: f + i, wallet: w }))), drawId: tk.id, places: 3 });
+assert.deepEqual(rechk.map((w) => w.ticket.id), again.map((w) => w.ticket.id), 're-run from the public answer alone: the same winning tickets');
+assert.equal((await ask(null, { action: 'lottery-tickets', draw: (await lot.drawFor('weekly-10', Date.now())).id })).status, 400, 'an undrawn draw\'s list stays closed');
 assert.equal((await ask(null, { action: 'lottery-quote', lottery: 'daily-10', n: 1 })).status, 401, 'buying needs sign-in');
 await waitOpenWindow(); const wq = await ask('ann', { action: 'lottery-quote', lottery: 'daily-10', n: 2 });
 assert.ok(wq.id && wq.pool === LOTTERY && wq.burnBps === 1000 && wq.payer === A.w, 'a signed-in quote: pay the lottery wallet, 10% burned, from your own wallet');
