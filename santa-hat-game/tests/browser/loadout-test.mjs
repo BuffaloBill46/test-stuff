@@ -42,7 +42,7 @@ await p.screenshot({ path: 'out/loadout-avatar.png' });
 
 console.log('3. The match: the SB buttons are the saved loadout');
 await p.evaluate(() => window.__sq.startPractice()); await p.waitForTimeout(2500); await p.evaluate(() => document.querySelector('#start')?.click());
-await p.waitForFunction(() => window.__sq.view?.phase === 'play', null, { timeout: 60000 });
+await p.waitForFunction(() => { const s = window.__sq; if (/^(intro|count)$/.test(s.sim?.S.phase)) s.sim.S.time = 0; return s.view?.phase === 'play'; }, null, { timeout: 60000 });
 await p.waitForFunction(() => document.querySelectorAll('#hud .sbrow button').length > 0, null, { timeout: 20000 }).catch(() => {});
 const btns = await p.evaluate(() => [...document.querySelectorAll('#hud .sbrow button')].map((b) => b.textContent.replace(/\s+/g, ' ').trim()));
 check(btns.length === 2 && /^SB2 Sky Ball/.test(btns[0]) && /^SB3 Ice Ball/.test(btns[1]), 'buttons keep their slot numbers (SB1 is empty): ' + btns.join(' | '));

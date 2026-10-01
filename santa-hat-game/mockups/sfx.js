@@ -47,6 +47,7 @@ const SOUNDS = {
   catch: (t) => { [0, 0.07, 0.14].forEach((d, i) => bell(t + d, 1700 + i * 260)); },                                         // sleigh bells
   boing: (t) => tone(180, t, 0.3, { type: 'triangle', vol: 0.22, to: 420 }),
   round: (t) => { bell(t, 1320, 0.1); bell(t + 0.18, 1760, 0.1); },
+  tick: (t) => bell(t, 1100, 0.07),                                                                                            // the 5…1 countdown
   throw: (t) => noise(t, 0.15, { vol: 0.12, filter: 'bandpass', freq: 600, to: 2400, q: 1.2 }),                             // whoosh
   reelStop: (t) => { tone(300, t, 0.07, { type: 'square', vol: 0.06, to: 180 }); noise(t, 0.04, { vol: 0.15, filter: 'bandpass', freq: 1800 }); }, // wooden clack
   spinTick: (t) => noise(t, 0.025, { vol: 0.12, filter: 'bandpass', freq: 3200, q: 3 }),                                   // peg past the flapper

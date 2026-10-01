@@ -298,3 +298,9 @@ step) and added a refusal reason to the referee to prove it; the data said other
 throw and the referee had not READ it yet (it reads once per frame; test browsers draw ~3 a second). A wrong theory with a
 plausible story is the expensive kind: record the actual state on failure first, then explain it. Tests wait for the referee's
 throw counter (lastTh) to catch up, never for a fixed time.
+
+## A client-side allow-list must be tested against the server it mirrors (2026-10-01)
+The page skipped the server for signed-out players unless the action was on its own short public list (winners, settings,
+pools). The server had since made lottery, lottery-tickets and stats public too, so a guest's lottery cards and draw
+re-checks silently never asked; both halves looked right on their own. The list is now one export (PUBLIC_ACTIONS) and
+`tests/public-actions.test.mjs` fails if it differs from the actions server/http.js answers before its sign-in check.

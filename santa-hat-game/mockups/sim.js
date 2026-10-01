@@ -8,13 +8,15 @@ export const KIND_OF = ['', 'ice', 'split', 'giant', 'fire', 'piece'], DROP_OF =
 export const HAT_IMMUNE = 2; // seconds a player can't be hit after getting the Santa hat (Cody: fully untouchable)
 export const K = {
   ARENA: 13.2, HEAD_Y: 2.05, BALL_G: 7, BALL_SPEED: 18, HAT_G: 16, PED_TOP: 1.71,
-  ROUND_TIME: 90, ROUNDS: 3, BREAK_TIME: 6, END_TIME: 12, MAX_HUMANS: 8, MIN_BODIES: 4,
+  ROUND_TIME: 90, ROUNDS: 3, BREAK_TIME: 6, END_TIME: 12, INTRO_TIME: 5, COUNT_TIME: 5, MAX_HUMANS: 8, MIN_BODIES: 4,
   HUMAN_SPEED: 6.4, BOT_SPEED: 5.2, HOLD_SLOW: 0.86, MAX_BALLS: 18, HUMAN_COOL: 0.26,
   STUN: 0.9, // seconds a normal snowball hit knocks you down (special snowballs multiply it: catalog.js → rules.stun)
 };
 export const PTS = { hatSec: 10, header: 50, knock: 25, hit: 5 };
 export const PILES = [[-8, -5], [8, -6], [-7, 8], [8, 7]];
-export const PHASES = ['lobby', 'play', 'break', 'end'];
+// intro: the match load screen (every player, their stats and loadout; also gives every phone time to load in); count: 5…1.
+// Nobody moves, throws or grabs the hat in either (Cody, 2026-10-01). Added at the end so the older numbers keep their meaning.
+export const PHASES = ['lobby', 'play', 'break', 'end', 'intro', 'count'];
 const HAT = ['ped', 'head', 'air', 'ground'];
 
 const hyp = Math.hypot;
@@ -120,14 +122,20 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     Object.assign(S.hat, { st: 'ped', holder: -1, last: -1, x: 0, y: K.PED_TOP, z: 0, vx: 0, vy: 0, vz: 0, acc: 0 });
     S.balls = []; S.drops = []; S.gh = {};
   }
-  function startMatch(mode) {
+  // Set up a new match: mode, match id, teams, scores to 0, everyone on their spawn spot with a full counter.
+  function prepMatch(mode) {
     S.mode = mode === 'team' ? 'team' : 'ffa';
-    S.phase = 'play'; S.round = 1; S.time = K.ROUND_TIME; S.team = [0, 0]; S.result = null;
+    S.round = 1; S.team = [0, 0]; S.result = null;
     S.mid = Array.from({ length: 4 }, () => Math.floor(rand() * 2 ** 32).toString(16).padStart(8, '0')).join('');
     balance(true);
     S.ents.forEach((e) => { e.score = 0; });
-    resetRound(); ev('round', 1);
+    resetRound();
   }
+  const go = () => { S.phase = 'play'; S.time = K.ROUND_TIME; ev('round', 1); };
+  // Straight to round 1 (the rules tests use this).
+  function startMatch(mode) { prepMatch(mode); go(); }
+  // How the page starts a match: the load screen (INTRO_TIME), then the countdown (COUNT_TIME), then round 1.
+  function introMatch(mode) { prepMatch(mode); S.phase = 'intro'; S.time = K.INTRO_TIME; ev('intro'); }
   function computeResult() {
     const sorted = [...S.ents].sort((a, b) => b.score - a.score);
     if (S.mode === 'team') {
@@ -240,6 +248,12 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     if (S.phase === 'play') { S.time -= dt; if (S.time <= 0) endRound(); }
     else if (S.phase === 'break') { S.time -= dt; if (S.time <= 0) { S.round++; S.phase = 'play'; S.time = K.ROUND_TIME; resetRound(); ev('round', S.round); } }
     else if (S.phase === 'end') { S.time -= dt; if (S.time <= 0) { S.phase = 'lobby'; S.time = 0; resetRound(); balance(true); } }
+    if (S.phase === 'intro' || S.phase === 'count') { // everyone stands on their spawn spot until the countdown ends
+      S.time -= dt;
+      if (S.time <= 0) { if (S.phase === 'intro') { S.phase = 'count'; S.time = K.COUNT_TIME; ev('count'); } else go(); }
+      for (const e of S.ents) e.wob += dt * 0.7;
+      return;
+    }
     const h = S.hat;
 
     for (const e of S.ents) {
@@ -367,5 +381,5 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     return true;
   }
 
-  return { S, step, syncRoster, setReport, startMatch, snapshot, load, byId };
+  return { S, step, syncRoster, setReport, startMatch, introMatch, snapshot, load, byId };
 }

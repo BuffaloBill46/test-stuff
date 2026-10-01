@@ -33,7 +33,7 @@ existing bot (frozen/failed payouts, books ≠ wallet, top-off waiting, server d
 - [x] **Slots payouts decided** (Big Hat, 11 straight/diagonal lines, 100× top line, 6¢ hat bonus, 78.1% payback + the pool jackpot ≈ 80%: Cody's target, 2026-09-30). The live numbers are always in `PAYTABLE.md`; regenerate it with `node tests/paytable.mjs` after any change.
 
 ## Next to build
-- [ ] **Match load screen (5 s) + 5-second countdown (Cody 2026-10-01):** every player's games played, top-3 %, level, rank points, specials and gear. Needs every finish counted (DESIGN_NOTES → "Match load screen").
+- [x] **Match load screen (5 s) + 5-second countdown (Cody 2026-10-01): built** (referee phases intro/count, `tests/match-intro.test.mjs`, `tests/browser/match-intro-test.mjs`). Still to go live: apply 013 (match stats) and deploy the game server, or the numbers stay dashes. Gear line says "coming soon" until special gear is built.
 - [x] **`specials-play.mjs` intermittent (2026-10-01): found.** The test checked 250 ms after a throw, but the referee reads throws once per frame and test browsers draw ~3 a second; the throw always happened, sometimes after the check. The test now waits until the referee has processed each throw (3 clean runs). Not a game bug: the referee had refused nothing.
 - [ ] **Plaza themes, picked on the Avatar screen (Cody 2026-10-01):** a theme layer for `plaza.js`, then Halloween (less snow). Each player sees their own pick. DESIGN_NOTES → "Plaza themes".
 - [ ] **Levels, special snowballs, special gear, hat immunity, −1 per hit (Cody 2026-10-01):** DESIGN_NOTES → "Levels, special snowballs and special gear".

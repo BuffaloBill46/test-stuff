@@ -59,7 +59,8 @@ await A.screenshot({ path: `${OUT}-1-lobby-host.png` });
 await B.screenshot({ path: `${OUT}-1-lobby-guest.png` });
 
 // referee picks teams and starts
-await A.click('[data-mode="team"]'); await wait(500); await A.click('#start');
+await A.click('[data-mode="team"]'); await wait(500); await A.click('#start'); // (the load screen + countdown are skipped here: match-intro-test covers them)
+await A.waitForFunction(() => { const s = window.__sq; if (/^(intro|count)$/.test(s.sim.S.phase)) s.sim.S.time = 0; return s.sim.S.phase === 'play'; }, null, { timeout: 60000 });
 await wait(3000);
 await log('started', pages);
 

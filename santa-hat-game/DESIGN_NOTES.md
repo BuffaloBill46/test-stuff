@@ -101,12 +101,17 @@ it can't hold SANTA as written: it books each ticket at the amount SENT, but SAN
 its vault would always hold 3% less than its books promise (the winner's claim or the last refunds would fail). It's also
 5% treasury / no burn, one winner. Cody chose a server-run lottery instead.
 
-### Match load screen + countdown (decided, Cody 2026-10-01; NOT BUILT YET)
+### Match load screen + countdown (decided, Cody 2026-10-01; BUILT 2026-10-01, stats need 013 + the game server)
 - Before a match starts: a **load screen held 5 seconds** showing every player: total games played, top-3 win %, level, rank
   points, special snowballs equipped, special gear equipped. It also gives every phone/PC time to load in.
 - Then a **5-second countdown** before play starts.
 - Games played and top-3 % aren't tracked yet: the end-of-match report must count every finish (not only top 3) for players
   with accounts. Bots and guests show as such (no stats).
+- **How it is built:** the referee has two new phases before round 1, `intro` (5 s) then `count` (5 s); nobody can move, throw
+  or grab the hat in either (the referee refuses it, not just the screen), and the timer survives a referee handover. Every
+  match the page starts (Start button, Auto match, practice) goes through them. The load screen lists your row first, then
+  players, then bots. Numbers come from the server's public `stats` action once per match; without the server they show as
+  dashes with a note. **Special gear shows "coming soon"** until gear is built. Rounds 2 and 3 keep the old 6 s break.
 
 ### Plaza themes (decided, Cody 2026-10-01; NOT BUILT YET)
 - The plaza gets **themes** ("skins"): same ring, hat, snowballs, scoring and bots; only the look changes. First new one: **Halloween,

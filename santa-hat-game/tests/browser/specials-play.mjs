@@ -19,7 +19,7 @@ async function practice(viewport, touch) {
   // a level-10 player with Ice Ball, Sky Ball and Snowball Rain in SB1–SB3
   await p.evaluate(() => { const s = window.__sq; s.me.l = 10; Object.assign(s.me.a, { sb1: 'sb_ice', sb2: 'sb_sky', sb3: 'sb_rain' }); s.startPractice(); });
   await p.waitForTimeout(2500); await p.evaluate(() => document.querySelector('#start')?.click());
-  await p.waitForFunction(() => window.__sq.view?.phase === 'play', null, { timeout: 60000 });
+  await p.waitForFunction(() => { const s = window.__sq; if (/^(intro|count)$/.test(s.sim?.S.phase)) s.sim.S.time = 0; return s.view?.phase === 'play'; }, null, { timeout: 60000 });
   // bots disarmed for this test (as in iceball.test): a stunned player can't throw, and that's not what is being tested here
   await p.evaluate(() => setInterval(() => { for (const e of window.__sq.sim.S.ents) if (e.bot) { e.ammo = 0; e.cool = 99; } }, 50));
   await p.waitForTimeout(3500);

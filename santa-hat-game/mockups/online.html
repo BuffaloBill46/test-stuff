@@ -114,6 +114,23 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 @keyframes rise { from { opacity: 1; margin-top: 0; } 70% { opacity: 1; } to { opacity: 0; margin-top: -54px; } }
 #banner { position: fixed; z-index: 5; left: 50%; top: 32%; transform: translate(-50%, -50%); font: 800 54px/1 var(--display); color: var(--brim); text-shadow: 3px 3px 0 var(--ink), -2px -2px 0 var(--ink); pointer-events: none; white-space: nowrap; }
 #banner.show { animation: slam .45s cubic-bezier(.2,1.4,.4,1); }
+/* The match load screen (5 s): every player in the match, their numbers and loadout. Then the 5…1 countdown. */
+#panel.intro { left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 64px); bottom: auto; width: min(760px, calc(100% - 32px)); max-height: calc(100% - 80px); }
+.lineup { list-style: none; margin: 0 0 8px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); align-items: start; gap: 6px; }
+.lineup li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 5px 8px; padding: 8px 10px; background: var(--plaque-hi); border: 1px solid var(--ink); border-radius: 3px; }
+.lineup li.me { box-shadow: inset 0 0 0 2px var(--lamp); } .lineup li.bot { padding: 6px 10px; opacity: .75; }
+.lineup .who { font: 700 16px/1.2 var(--body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lineup .who i { font-style: normal; font-size: 12px; color: var(--dim); margin-left: 4px; }
+.lineup .who em { font-style: normal; font: 700 10px/1 var(--digits); color: var(--lamp); margin-left: 4px; }
+.lineup u { text-decoration: none; font-size: 12px; margin-left: 6px; }
+.lineup .lv { font: 700 13px/1 var(--digits); color: var(--lamp); }
+.lineup dl { grid-column: 1 / -1; display: flex; gap: 14px; margin: 0; }
+.lineup dt { font: 700 9px/1 var(--digits); letter-spacing: 1px; text-transform: uppercase; color: var(--dim); }
+.lineup dd { margin: 3px 0 0; font: 700 16px/1 var(--digits); font-variant-numeric: tabular-nums; }
+#panel .lineup .kit { grid-column: 1 / -1; margin: 0; font-size: 13px; line-height: 1.3; color: var(--text); }
+.lineup .kit span { font: 700 9px/1 var(--digits); letter-spacing: 1px; text-transform: uppercase; color: var(--frost); margin-right: 6px; }
+#count { position: fixed; z-index: 5; left: 50%; top: 40%; transform: translate(-50%, -50%); font: 800 min(170px, 40vh, 45vw)/1 var(--display); color: var(--brim); text-shadow: 4px 4px 0 var(--ink), -2px -2px 0 var(--ink); pointer-events: none; }
+#count.show { animation: slam .45s cubic-bezier(.2,1.4,.4,1); }
 @keyframes slam { from { transform: translate(-50%, -50%) scale(1.6); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
 #emotes { position: fixed; z-index: 4; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: 50%; }
 #emotes button { font: 700 14px/1 var(--body); color: var(--ink); background: var(--brim); border: 2px solid var(--ink); border-radius: 3px; padding: 7px 9px; box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
@@ -540,6 +557,7 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
 <div id="tags"></div>
 <div id="pops"></div>
 <div id="banner" hidden></div>
+<div id="count" hidden aria-live="assertive"></div>
 <header class="bar" id="gamebar" hidden>
   <div class="brand"><img src="hat-logo.png" alt=""><span class="wordmark"><span><b>Santa</b> Hat</span><small>Legends</small></span></div>
   <div id="roomchip" class="plaque" hidden></div>

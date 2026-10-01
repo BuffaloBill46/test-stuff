@@ -88,7 +88,7 @@ function decode(s) {
     balls: (Array.isArray(s.B) ? s.B : []).map((b) => ({ id: n(b[0]), x: n(b[1]), y: n(b[2]), z: n(b[3]), vx: n(b[4]), vy: n(b[5]), vz: n(b[6]), owner: n(b[7]), kind: KIND_OF[n(b[9])] || '', r: n(b[10], 1) || 1 })),
     drops: (Array.isArray(s.D) ? s.D : []).map((p) => ({ x: n(p[0]), z: n(p[1]), t: n(p[2]), owner: n(p[3]), kind: DROP_OF[n(p[4])] || 'rain' })),
     ev: Array.isArray(s.V) ? s.V : [], res: Array.isArray(s.R) ? { team: s.R[0], top: s.R[1], mvp: s.R[2] } : null,
-    cd: n(s.cd), pub: !!s.pub,
+    cd: n(s.cd), pub: !!s.pub, mid: typeof s.mid === 'string' ? s.mid : '',
   };
 }
 
@@ -330,6 +330,25 @@ async function reportFinish(v) {
     if (mine && profile) { profile.level = mine.level; profile.xp = mine.xp; me.l = mine.level; renderProgress(profile); }
   } catch { /* the next match counts; nothing is lost but this one finish */ }
 }
+// The match load screen (Cody, 2026-10-01): each player's level, games played, top-3 %, rank points, special snowballs and
+// special gear. The numbers come from the game server's public 'stats' action, once per match; without the server (or for a
+// guest) they show as a dash. Level and loadout come from each player's presence (what their own browser announces).
+const statsOf = new Map(); let statsFor = '';
+const infoOf = (e) => (e.peer === me.id ? { a: me.a, l: me.l, pid: me.pid } : room?.peers().find((q) => q.id === e.peer) || {});
+function loadStats(v) {
+  if (!SERVER || !v.mid || statsFor === v.mid) return; statsFor = v.mid;
+  const ids = v.ents.filter((e) => !e.bot).map((e) => infoOf(e).pid).filter(Boolean);
+  if (ids.length) call('stats', { profiles: ids }).then((r) => { for (const p of r?.players || []) statsOf.set(p.id, p); }).catch(() => { statsFor = ''; });
+}
+function lineupRow(e, v) {
+  const team = v.mode === 'team' ? ` <u class="t${e.team}">${TEAM_NAME[e.team]}</u>` : '';
+  if (e.bot) return `<li class="bot"><span class="who">${esc(nameOf(e))} <i>elf bot</i>${team}</span></li>`;
+  const p = infoOf(e), st = p.pid ? statsOf.get(p.pid) : null, lvl = clampLevel(st?.level ?? p.l), dash = (x) => (st ? x : '–');
+  const sbs = specialsIn(p.a || {}, lvl, levelInfo(lvl).sb).map((k) => SPECIALS[k].name);
+  return `<li class="${e.peer === me.id ? 'me' : ''}"><span class="who">${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}${team}</span><b class="lv">LV ${lvl}</b>
+    <dl><div><dt>Games</dt><dd>${dash(st?.games)}</dd></div><div><dt>Top 3</dt><dd>${dash(st?.top3Pct + '%')}</dd></div><div><dt>Rank pts</dt><dd>${dash(st?.rankPoints)}</dd></div></dl>
+    <p class="kit"><span>Snowballs</span>${sbs.length ? sbs.map(esc).join(' · ') : 'plain only'}</p><p class="kit"><span>Gear</span>coming soon</p></li>`;
+}
 // The SB buttons under the counter: one per open slot with a special in it (name and how many snowballs it uses). A button is
 // off when it can't be thrown now (not enough snowballs; Rain: a full counter and level 5). Pressed = armed for the next throw.
 function sbRow(m) {
@@ -428,7 +447,7 @@ $('#zoomOut').addEventListener('click', () => setZoom(zoom * 1.15));
 addEventListener('pointerup', endJoy); addEventListener('pointercancel', endJoy);
 
 // ---------- chrome: home, lobby, HUD, board
-const ui = { lastHud: '', lastBoard: '', lastCard: '' };
+const ui = { lastHud: '', lastBoard: '', lastCard: '', lastCount: 0 };
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 function renderChrome() {
@@ -444,6 +463,8 @@ function renderChrome() {
     $('#roomchip').innerHTML = practice ? '<i>Practice</i><b>vs bots</b>'
       : `<i>${me.w ? 'Watching' : autoStart ? 'Auto match' : 'Room'}</i><b>${esc(autoStart ? (roomMode === 'team' ? 'TEAM' : 'FFA') : roomCode)}</b><span>${idleLeft ? `<em class="idle">Still there? Leaving in ${idleLeft}s</em>` : `${count} playing${watchers ? ` · ${watchers} watching` : ''}${isHost ? ' · you referee' : ''}`}</span>`;
   }
+  const cnt = inRoom() && v && v.phase === 'count' ? Math.max(1, Math.ceil(v.time)) : 0;
+  if (cnt !== ui.lastCount) { ui.lastCount = cnt; const c = $('#count'); c.hidden = !cnt; if (cnt) { c.textContent = cnt; c.classList.remove('show'); void c.offsetWidth; c.classList.add('show'); sfx('tick'); } }
   // Out of a match: clear the scoreboard too (it used to linger after Leave, showing over the Avatar tab on Cody's phone).
   if (!inRoom() || !v) { if (ui.lastCard) { $('#panel').hidden = true; ui.lastCard = ''; } setHud(''); ui.lastBoard = ''; $('#board').hidden = true; return; }
   const m = myEnt(v);
@@ -462,6 +483,10 @@ function renderChrome() {
       <ul class="roster">${roster}</ul><p class="dim">${bots ? `${bots} elf bot${bots > 1 ? 's' : ''} fill empty spots.` : ''} Up to 8 players.</p>
       ${isHost && !me.w ? `<div class="modes" role="radiogroup" aria-label="Match mode"><button data-mode="ffa" aria-checked="${v.mode === 'ffa'}" role="radio">Everyone vs the hat</button><button data-mode="team" aria-checked="${v.mode === 'team'}" role="radio">Nice vs Naughty</button></div>
       <button class="go" id="start">Start match</button>` : `<p class="wait">Mode: <b>${v.mode === 'team' ? 'Nice vs Naughty' : 'Everyone vs the hat'}</b>. Waiting for the referee to start…</p>`}`;
+  } else if (v.phase === 'intro') {
+    loadStats(v);
+    card = `<div class="eyebrow">${practice ? 'Practice' : autoStart ? 'Auto match' : 'Room'} · ${v.mode === 'team' ? 'Nice vs Naughty' : 'Everyone vs the hat'}</div><h2>Starting in ${Math.ceil(v.time + K.COUNT_TIME)}</h2>
+      <ul class="lineup">${[...v.ents].sort((a, b) => (b.peer === me.id) - (a.peer === me.id) || a.bot - b.bot).map((e) => lineupRow(e, v)).join('')}</ul>${SERVER ? '' : '<p class="dim">Games played, top-3 % and rank points show once the game server is live.</p>'}`;
   } else if (v.phase === 'end' && v.res) {
     reportFinish(v); // levels: once per Auto match, from the host (server mode)
     const sorted = [...v.ents].sort((a, b) => b.score - a.score);
@@ -474,9 +499,9 @@ function renderChrome() {
       <p class="dim">Back to the lobby in ${Math.ceil(v.time)}s</p>`;
   }
   if (card !== ui.lastCard) {
-    ui.lastCard = card; const p = $('#panel'); p.hidden = !card; p.innerHTML = card;
+    ui.lastCard = card; const p = $('#panel'); p.hidden = !card; p.innerHTML = card; p.classList.toggle('intro', v.phase === 'intro');
     p.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { if (isHost && sim) { sim.S.mode = b.dataset.mode; sim.syncRoster(sim.S.ents.filter((e) => !e.bot).map((e) => e.peer)); } }));
-    p.querySelector('#start')?.addEventListener('click', () => { if (isHost && sim) sim.startMatch(sim.S.mode); });
+    p.querySelector('#start')?.addEventListener('click', () => { if (isHost && sim) sim.introMatch(sim.S.mode); });
   }
   // HUD
   if (v.phase === 'play' || v.phase === 'break') {
@@ -624,7 +649,7 @@ function frame() {
       if (autoStart && sim.S.phase === 'lobby') {
         const humans = sim.S.ents.filter((e) => !e.bot).length, want = humans >= 2 ? 15000 : 25000;
         if (cdEnd === null || cdEnd - now > want) cdEnd = now + want;
-        if (now >= cdEnd) { sim.startMatch(sim.S.mode); cdEnd = null; }
+        if (now >= cdEnd) { sim.introMatch(sim.S.mode); cdEnd = null; }
       } else cdEnd = null;
       if (ctl.ep >= 0) sim.setReport(me.id, report());
       sim.step(dt);
@@ -686,7 +711,7 @@ function renderGames(list = lastGames) {
   const label = ranked ? 'ranked' : lobbyMode === 'team' ? 'TEAM' : 'FFA';
   $('#gamesList').innerHTML = games.length ? games.map((g) => {
     const full = (Number(g.watchers) || 0) >= MAX_WATCHERS;
-    const state = g.phase === 'lobby' ? 'Starting soon' : g.phase === 'end' ? 'Final scores' : `Round ${Number(g.round) || 1}/3 · ${Number(g.time) || 0}s`;
+    const state = g.phase === 'lobby' || g.phase === 'intro' || g.phase === 'count' ? 'Starting soon' : g.phase === 'end' ? 'Final scores' : `Round ${Number(g.round) || 1}/3 · ${Number(g.time) || 0}s`;
     return `<div class="game"><div><b>${g.mode === 'team' ? 'TEAM' : 'FFA'}</b><span>${Number(g.humans) || 0}/8 players${g.watchers ? ` · ${Number(g.watchers)} watching` : ''}</span></div>
       <div><span>${esc(state)}</span>${g.leader ? `<span>Leader: ${esc(String(g.leader).slice(0, 14))} · ${Number(g.lscore) || 0}</span>` : ''}</div>
       <button class="sec" data-watch="${esc(cleanCode(g.code))}" ${full ? 'disabled' : ''}>${full ? 'Watchers full' : 'Watch now'}</button></div>`;

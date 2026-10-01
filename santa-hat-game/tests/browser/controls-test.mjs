@@ -21,7 +21,7 @@ const tap = async (x, y) => { await touch('touchStart', [[x, y]]); await p.waitF
 async function practice() {
   await p.goto('http://localhost/online.html?net=local', { timeout: 90000 }); await p.waitForFunction(() => window.__sq, null, { timeout: 60000 }); await p.waitForTimeout(1500);
   await p.evaluate(() => window.__sq.startPractice()); await p.waitForTimeout(2500); await p.evaluate(() => document.querySelector('#start')?.click());
-  await p.waitForFunction(() => window.__sq.view?.phase === 'play', null, { timeout: 60000 }); await p.waitForTimeout(4000); // the round-start throw cooldown
+  await p.waitForFunction(() => { const s = window.__sq; if (/^(intro|count)$/.test(s.sim?.S.phase)) s.sim.S.time = 0; return s.view?.phase === 'play'; }, null, { timeout: 60000 }); await p.waitForTimeout(4000); // the round-start throw cooldown
 }
 const me = () => p.evaluate(() => { const v = window.__sq.view, e = v.ents.find((x) => x.peer === window.__sq.me.id); return { x: e.x, z: e.z, ammo: e.ammo }; });
 const joyBox = () => p.evaluate(() => { const j = document.querySelector('#joy'); const r = j.getBoundingClientRect(); return { hidden: j.hidden, x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
@@ -76,7 +76,7 @@ const dctx = await browser.newContext({ viewport: { width: 1280, height: 800 } }
 const desk = await dctx.newPage(); desk.on('pageerror', (e) => errors.push(e.message));
 await desk.goto('http://localhost/online.html?net=local', { timeout: 90000 }); await desk.waitForFunction(() => window.__sq, null, { timeout: 60000 }); await desk.waitForTimeout(1500);
 await desk.evaluate(() => window.__sq.startPractice()); await desk.waitForTimeout(2500); await desk.evaluate(() => document.querySelector('#start')?.click());
-await desk.waitForFunction(() => window.__sq.view?.phase === 'play', null, { timeout: 60000 }); await desk.waitForTimeout(2500);
+await desk.waitForFunction(() => { const s = window.__sq; if (/^(intro|count)$/.test(s.sim?.S.phase)) s.sim.S.time = 0; return s.view?.phase === 'play'; }, null, { timeout: 60000 }); await desk.waitForTimeout(2500);
 check(await desk.evaluate(() => document.querySelector('#joy').hidden), 'no joystick on a computer (keys + mouse)');
 check(!(await desk.evaluate(() => document.querySelector('#zoom').hidden)), 'zoom buttons on a computer too');
 const w0 = await desk.evaluate(() => window.__sq.camDist()); await desk.mouse.move(640, 400); for (let i = 0; i < 3; i++) await desk.mouse.wheel(0, 120); await desk.waitForTimeout(2500);
@@ -91,7 +91,7 @@ for (const [w, h] of [[384, 740], [320, 620], [768, 1024], [800, 300], [660, 320
   const q = await c.newPage(); q.on('pageerror', (e) => errors.push(e.message));
   await q.goto('http://localhost/online.html?net=local', { timeout: 90000 }); await q.waitForFunction(() => window.__sq, null, { timeout: 60000 }); await q.waitForTimeout(1200);
   await q.evaluate(() => window.__sq.startPractice()); await q.waitForTimeout(2500); await q.evaluate(() => document.querySelector('#start')?.click());
-  await q.waitForFunction(() => window.__sq.view?.phase === 'play', null, { timeout: 60000 });
+  await q.waitForFunction(() => { const s = window.__sq; if (/^(intro|count)$/.test(s.sim?.S.phase)) s.sim.S.time = 0; return s.view?.phase === 'play'; }, null, { timeout: 60000 });
   await q.evaluate(() => { window.__sq.ctl.x = 12.8; window.__sq.ctl.z = 3; }); // the worst place to stand: at the ring edge
   let presses = 0, r;
   for (;;) { await settle(q); r = await q.evaluate(() => window.__sq.ringFit());

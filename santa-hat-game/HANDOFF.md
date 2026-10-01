@@ -180,8 +180,17 @@ branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from
 - **Phone controls BUILT and published-ready:** floating joystick (only way to move), tap anywhere else throws, zoom +/− (up to 4×).
 - **Removed:** Santa Hat Spin (pool lives on as the Drop pool; server refuses new Spin runs), the gold snowball (Gilded).
 - **Renamed:** Santa Hat Legends (brand). Test-version notes on Play/Games/Store. All published.
-- **Decided, NOT built:** special snowballs + special gear (DESIGN_NOTES, Cody's handwritten pages), plaza themes picked on the
-  Avatar screen (Halloween first), hat immunity 2 s, −1 point per hit.
+- **Special snowballs BUILT, NOT published** (DESIGN_NOTES, Cody's handwritten pages): Ice/Split/Giant/Fire/Sky/Rain in the
+  referee (`mockups/specials.js`, `sim.js`), SB1–SB3 buttons + Q/E/R in matches (numbered by their real slot), the Avatar
+  screen's Special Snowballs tab, the Store shelf; hat immunity 2 s and −1 per hit are in. **Publish only together with
+  `supabase/012_special_snowballs.sql` applied** (the live save_profile would silently drop loadouts). Tests:
+  `tests/specials.test.mjs`, `tests/db/sball-db.test.mjs`, `tests/browser/specials-play.mjs`, `tests/browser/loadout-test.mjs`.
+- **Match load screen + 5…1 countdown BUILT, NOT published** (Cody): referee phases `intro` (5 s) and `count` (5 s), nobody
+  moves/throws in either; every player's level, games, top-3 %, rank points, special snowballs; gear says "coming soon". Numbers
+  need `supabase/013_match_stats.sql` + the deployed server (dashes until then). Tests: `tests/match-intro.test.mjs`,
+  `tests/browser/match-intro-test.mjs`. Browser tests that start matches skip the 10 s (they set the timer to 0).
+- **Decided, NOT built:** special gear (items, effects, Special Gear tab, shows on the character, 7-day timer), plaza themes
+  picked on the Avatar screen (Halloween first).
 - **Old browser tests fixed:** mp.mjs, idle.mjs. `live.mjs` is still stale (see the test list).
 - **Devnet:** test SANTA `Jx95so9XYhtSJJoqup7Xb3T9Ptr9ZuUTXSgPcu6uttg` (Token-2022, 6 dec, 3%), Spin/Slots/Lottery pools, treasury,
   test player, Santa's own funding wallet; public addresses in `devnet.json`, keys in `C:\santa-devnet-keys` (never the repo).
@@ -193,11 +202,12 @@ branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from
   server's network; waits for finalized; a paid-but-unconfirmed run is retried on the next visit). Proven on real devnet in a
   browser: pay → 5 plays → ONE payout sent, books = wallets (`tests/browser/devnet-pay-test.mjs`).
 - **Not done yet:** Edge Function deploy + its settings (waits on `npx supabase login` by Cody), a real-Phantom check in Cody's
-  Chrome, the scheduled payout worker, skims on chain, reconcile on a schedule, applying 010/011 live (with their pages).
+  Chrome, the scheduled payout worker, skims on chain, reconcile on a schedule, applying 012/013 live (then publish the specials + load screen pages).
 - **Waiting on Cody:** `npx supabase login` typed in a real terminal (the CLI refuses non-interactive logins; Claude won't handle
   account tokens). Decided: devnet wallets are Claude's to make and fund (labelled in `devnet.json`; the funder was topped up from
   Cody's general devnet key); lottery payouts manual; real wallets at launch.
-- **Next, in order:** deploy the Edge Function + settings once logged in, then a full devnet test through it → special snowballs → special gear → themes.
+- **Next, in order:** apply 012 + 013 live (hash-checked), advisors, browser suite, publish; deploy the Edge Function + settings once
+  Cody has logged in, then a full devnet test through it → special gear → themes.
 
 **Built and live (all demo, no real money):**
 - **Play tab:** Snowball Square multiplayer (rooms, bots that now sometimes emote, idle kicks), unranked lobby, FFA RANKED layout

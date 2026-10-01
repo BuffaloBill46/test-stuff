@@ -18,7 +18,7 @@ for (const [label, w, h] of SIZES) {
   await page.goto('http://localhost/online.html?net=local', { timeout: 90000 }); await page.waitForFunction(() => window.__sq, null, { timeout: 60000 }); await page.waitForTimeout(1500);
   await page.evaluate(() => document.querySelector('#playUnranked')?.click()); await page.waitForTimeout(800);
   await page.evaluate(() => window.__sq.startPractice()); await page.waitForTimeout(2500); await page.evaluate(() => document.querySelector('#start')?.click());
-  await page.waitForFunction(() => window.__sq.view?.phase === 'play', null, { timeout: 60000 }); await page.waitForTimeout(6000);
+  await page.waitForFunction(() => { const s = window.__sq; if (/^(intro|count)$/.test(s.sim?.S.phase)) s.sim.S.time = 0; return s.view?.phase === 'play'; }, null, { timeout: 60000 }); await page.waitForTimeout(6000);
   await page.screenshot({ path: `out/phone-${label}-match.png` });
   // How much of the screen the floating UI covers during play, and whether any of it overlaps.
   const m = await page.evaluate(() => {

@@ -47,7 +47,7 @@ check(m && m.places.filter(Boolean).length === 1, 'bots never carry an account')
 console.log('2. Practice: nothing is reported');
 got.length = 0; await play('', true);
 await p.evaluate(() => window.__sq.startPractice()); await p.waitForTimeout(2500); await p.evaluate(() => document.querySelector('#start')?.click());
-await p.waitForFunction(() => window.__sq.view?.phase === 'play', null, { timeout: 60000 }); await endMatch();
+await p.waitForFunction(() => { const s = window.__sq; if (/^(intro|count)$/.test(s.sim?.S.phase)) s.sim.S.time = 0; return s.view?.phase === 'play'; }, null, { timeout: 60000 }); await endMatch();
 await p.waitForFunction(() => window.__sq.view?.phase === 'end', null, { timeout: 60000 }); await p.waitForTimeout(3000);
 check(got.filter((b) => b.action === 'finish').length === 0, 'practice sends no report');
 check(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
