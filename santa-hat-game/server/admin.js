@@ -5,7 +5,9 @@
 // Actions: pause (emergency stop: no plays, no top-offs), resume, set-rules (thresholds, jackpot %),
 //   record-deposit (Cody sent SANTA to a pool wallet himself, e.g. a top-off: the server checks the transaction on the chain),
 //   release-payout (a run payout frozen by the safety cap: Cody looked at it and lets it go out; Cody, 2026-10-01),
-//   bot-signals (READ only: players whose timing looks scripted, server/bots.js; private, not logged, changes nothing).
+//   bot-signals (READ only: players whose timing looks scripted, server/bots.js; private, not logged, changes nothing),
+//   lottery-mode (game 'lottery': winners paid by the worker 'auto', or by Cody 'manual'),
+//   lottery-paid (game 'lottery': Cody paid a winner by hand; checked on the chain: left the lottery wallet, arrived at the winner).
 // Changes take the pool's row lock, so they wait for any play being settled: never mid-pull. Every change is logged publicly.
 // NOT here (needs the pool key; FOR_MAIN_CLAUDE.md): the emergency withdrawal transfer itself.
 import { POOL_RULES } from '../mockups/slots.js';
@@ -14,7 +16,7 @@ import { check as checkSettings } from '../mockups/settings.js';
 import { MINT } from '../mockups/market.js';
 import { botSignals, BOT_RULES } from './bots.js';
 
-export const ACTIONS = ['pause', 'resume', 'set-rules', 'set-settings', 'record-deposit', 'release-payout', 'bot-signals']; // set-settings: prices, odds, prizes, store (game 'all')
+export const ACTIONS = ['pause', 'resume', 'set-rules', 'set-settings', 'record-deposit', 'release-payout', 'bot-signals', 'lottery-mode', 'lottery-paid']; // set-settings: prices, odds, prizes, store (game 'all')
 export const FRESH_SECONDS = 300;
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 export function b58decode(s) {
@@ -75,13 +77,16 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
     if (!adminWallets.includes(wallet)) return { error: 'not an admin wallet' };
     if (!(await signatureOk(wallet, message, signature || ''))) return { error: 'signature doesn\'t match the wallet' };
     if (!(Math.abs(now() - Date.parse(m.at)) <= FRESH_SECONDS * 1000)) return { error: 'message too old (sign a fresh one)' };
-    if (!ACTIONS.includes(m.action) || !(['set-settings', 'bot-signals'].includes(m.action) ? m.game === 'all' : ['spin', 'slots'].includes(m.game))) return { error: 'unknown action or game' };
+    const gameOk = ['set-settings', 'bot-signals'].includes(m.action) ? m.game === 'all' : m.action.startsWith('lottery-') ? m.game === 'lottery' : ['spin', 'slots'].includes(m.game);
+    if (!ACTIONS.includes(m.action) || !gameOk) return { error: 'unknown action or game' };
     if (!/^[0-9a-f]{16,64}$/.test(m.nonce)) return { error: 'bad one-time number' };
     if (m.action === 'set-rules') { const bad = checkRules(m.game, m.settings); if (bad.length) return { error: bad.join('; ') }; }
     if (m.action === 'set-settings') return saveSettings(m, wallet, message, signature);
     if (m.action === 'record-deposit') return recordDeposit(m, wallet, message, signature);
     if (m.action === 'release-payout') return releasePayout(m, wallet, message, signature);
     if (m.action === 'bot-signals') return signals();
+    if (m.action === 'lottery-mode') return lotteryMode(m, wallet, message, signature);
+    if (m.action === 'lottery-paid') return lotteryPaid(m, wallet, message, signature);
     return db.tx(async (t) => {
       if ((await t.query('select 1 from public.pool_log where nonce = $1', [m.nonce])).length) return { error: 'this signed message was already used' };
       const [p] = await t.query('select * from public.pools where game = $1 for update', [m.game]); // waits for any play being settled
@@ -160,6 +165,44 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
       await t.query(`insert into public.pool_log (game, what, by_wallet, nonce, details) values ($1, 'release payout', $2, $3, $4)`,
         [game, wallet, m.nonce, JSON.stringify({ payout: +po.id, usd: +po.amount_usd, raw: +po.amount_raw, to: po.to_wallet, message, signature })]);
       return { ok: true, game, payout: +po.id, usd: +po.amount_usd };
+    });
+  }
+  // The lottery's payout mode (Cody hasn't decided: escrow or by hand). 'auto': the payout worker pays winners from the lottery
+  // wallet; 'manual': winners wait for Cody (lottery-paid). Applies to payouts made from now on; logged publicly.
+  async function lotteryMode(m, wallet, message, signature) {
+    const mode = m.settings?.mode;
+    if (!['auto', 'manual'].includes(mode)) return { error: 'mode is auto or manual' };
+    return db.tx(async (t) => {
+      if ((await t.query('select 1 from public.pool_log where nonce = $1', [m.nonce])).length) return { error: 'this signed message was already used' };
+      await t.query('update public.lottery_settings set payout_mode = $1, updated_at = now() where id = 1', [mode]);
+      await t.query(`insert into public.pool_log (game, what, by_wallet, nonce, details) values ('lottery', $1, $2, $3, $4)`, ['payout mode ' + mode, wallet, m.nonce, JSON.stringify({ message, signature })]);
+      return { ok: true, mode };
+    });
+  }
+  // Cody paid a lottery winner (or a refund) by hand. The server checks the transaction on the chain: the full amount LEFT the
+  // lottery wallet (so the books keep matching it) and SANTA ARRIVED in that winner's wallet (3% less: the token's tax, which
+  // winners absorb). Then it's marked sent, with that transaction (a transaction can be recorded for one payout only).
+  async function lotteryPaid(m, wallet, message, signature) {
+    const sig = String(m.settings?.tx || '').trim(), id = String(m.settings?.payout ?? ''), lw = poolWallets?.lottery;
+    if (!/^[0-9]{1,18}$/.test(id)) return { error: 'which payout? (its number)' };
+    if (!/^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(sig)) return { error: 'paste the transaction signature (the long code from your wallet or Solscan)' };
+    if (!lw || !chain) return { error: 'the server doesn\x27t know the lottery wallet yet' };
+    const [po] = await db.query('select * from public.lottery_payouts where id = $1', [id]);
+    if (!po) return { error: 'no such lottery payout' };
+    if (po.status !== 'manual') return { error: 'that payout isn\x27t waiting to be sent by hand (it\x27s ' + po.status + ')' };
+    const usedBy = (sg) => db.query('select 1 from public.lottery_payouts where tx = $1 union all select 1 from public.payouts where tx = $1 union all select 1 from public.pool_transfers where tx = $1', [sg]);
+    if ((await usedBy(sig)).length) return { error: 'that transaction was already recorded for a payout' }; // (checked again below, inside the save)
+    const tx = await chain.getTransaction(sig), left = -depositOf(tx, mint, lw), arrived = depositOf(tx, mint, po.to_wallet);
+    if (!(left >= +po.amount_raw)) return { error: `the lottery wallet sent ${Math.max(0, left)}; this winner is owed ${po.amount_raw} (or the transaction isn't finalized yet: wait a minute)` };
+    if (!(arrived > 0)) return { error: 'no SANTA arrived in the winner\x27s wallet in that transaction' };
+    return db.tx(async (t) => {
+      if ((await t.query('select 1 from public.pool_log where nonce = $1', [m.nonce])).length) return { error: 'this signed message was already used' };
+      const used = await t.query('select 1 from public.lottery_payouts where tx = $1 union all select 1 from public.payouts where tx = $1 union all select 1 from public.pool_transfers where tx = $1', [sig]);
+      if (used.length) return { error: 'that transaction was already recorded for a payout' };
+      const r = await t.query(`update public.lottery_payouts set status = 'sent', tx = $2 where id = $1 and status = 'manual' returning id`, [id, sig]);
+      if (!r.length) return { error: 'that payout was just recorded' };
+      await t.query(`insert into public.pool_log (game, what, by_wallet, nonce, details) values ('lottery', 'paid by hand', $1, $2, $3)`, [wallet, m.nonce, JSON.stringify({ payout: +id, to: po.to_wallet, raw: +po.amount_raw, arrived, tx: sig, message, signature })]);
+      return { ok: true, payout: +id, sent: left, arrived };
     });
   }
   // Bot signals: private to the admin (a guess must never be shown publicly), read only, so nothing is logged or changed.
