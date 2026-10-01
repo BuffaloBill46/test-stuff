@@ -167,7 +167,10 @@ branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from
   (rules), `supabase/011_lottery.sql` (APPLIED live, views read-only), `server/lottery.js` (draws with sealed secrets, checked ticket payments, fair
   re-checkable draws, exact splits, late payments moved/refunded), admin `lottery-mode` / `lottery-paid`, web door + Edge Function
   (`LOTTERY_WALLET`). **Payout mode is one setting** (Cody hasn't decided escrow vs by hand; starts 'manual'). Tests:
-  `tests/lottery.test.mjs`, `tests/db/lottery-db.test.mjs`. **NOT built yet: the lottery page (Store block) and its admin-screen panel.**
+  `tests/lottery.test.mjs`, `tests/db/lottery-db.test.mjs`. **Page BUILT and live** (`mockups/lotteryui.js`: five cards, countdowns, buy via the wallet step, recent draws with Check this draw,
+  re-run from public data; `tests/browser/lottery-test.mjs`) and the **admin Lottery panel** (private list of winners to pay by
+  hand with full wallets, paste the transaction to record, mode switch). Draws run on exactly the public ticket list so anyone can
+  re-check them. Until the server is deployed, buying says sales open soon.
 - **Levels BUILT end to end** (`mockups/levels.js`, `supabase/010_levels.sql` APPLIED live, `server/levels.js`): Player Progress
   box above Unranked; each player's level travels with their look; starting snowballs 5…12 by level (bots 4), kept through
   handovers; the host reports each finished Auto match once (`finish`), top 3 with accounts counted (level 9 → 10 = 10 firsts).
@@ -194,8 +197,7 @@ branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from
 - **Waiting on Cody:** `npx supabase login` typed in a real terminal (the CLI refuses non-interactive logins; Claude won't handle
   account tokens). Decided: devnet wallets are Claude's to make and fund (labelled in `devnet.json`; the funder was topped up from
   Cody's general devnet key); lottery payouts manual; real wallets at launch.
-- **Next, in order:** deploy the Edge Function + settings once logged in, then a full devnet test through it → lottery page + admin
-  panel → special snowballs → special gear → themes.
+- **Next, in order:** deploy the Edge Function + settings once logged in, then a full devnet test through it → special snowballs → special gear → themes.
 
 **Built and live (all demo, no real money):**
 - **Play tab:** Snowball Square multiplayer (rooms, bots that now sometimes emote, idle kicks), unranked lobby, FFA RANKED layout
