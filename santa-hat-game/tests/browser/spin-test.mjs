@@ -45,10 +45,10 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
 
   // 5× on a $1 spin
   let { slice, before } = await forced(5, 1);
-  // no $1 spins yet: the buy counter opens. Buy 10 in one go.
+  // no Spin balance yet: the buy counter opens. Add $10 in one go (Cody: one balance, either size).
   await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
   await p.evaluate(() => document.querySelector('#buyQuick [data-n="10"]').click());
-  check(await p.textContent('#buyGo') === 'Buy 10 · $10.00' && await p.textContent('#buyTitle') === 'Buy spins', `${label}: buy counter for $1 spins`);
+  check(await p.textContent('#buyGo') === 'Add $10.00 to your balance' && await p.textContent('#buyTitle') === 'Add to your balance', `${label}: buy counter for the Spin balance: ${await p.textContent('#buyGo')}`);
   await p.evaluate(() => document.querySelector('#buyGo').click());
   await p.waitForTimeout(1500); await p.screenshot({ path: `${OUT}/${label}-2-spinning.png` });
   await p.waitForFunction(() => window.__spin.view.mode === 'bonus', null, { timeout: 90000 });
@@ -57,9 +57,9 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   await waitDone(); await p.waitForTimeout(300); let after = await money(); r = await read();
   check(await p.evaluate(() => window.__spin.view.mode) === 'bonus' && await p.evaluate(() => window.__spin.view.shownSlice()) === slice, `${label}: the bonus wheel must stop on the picked segment`);
   check(await p.evaluate(() => window.__spin.view.shownMult()) === 5, `${label}: the bonus wheel shows 5×`);
-  check(Math.abs(after.bal - (before.bal - 10 + 5 * 0.97)) < 1e-9, `${label}: 10 spins bought ($10), then a 5× win`);
+  check(Math.abs(after.bal - (before.bal - 10 + 5 * 0.97)) < 1e-9, `${label}: $10 of balance bought, then a 5× win`);
   check(Math.abs(after.pool - (before.pool + 10 * IN - 5)) < 1e-9, `${label}: 5× pool (all 10 entries arrived at purchase)`);
-  check(await p.textContent('#crSpin') === '9', `${label}: 9 $1 spins left`);
+  check(await p.textContent('#crSpin') === '$9.00', `${label}: $9.00 of Spin balance left (${await p.textContent('#crSpin')})`);
   check(/5×/.test(r.stamp), `${label}: 5× stamp, got "${r.stamp}"`);
   check(r.winners.length === 1 && /\+400%/.test(r.winners[0]) && /Spin \$1/.test(r.winners[0]), `${label}: winners list entry: ${JSON.stringify(r.winners)}`);
   await p.screenshot({ path: `${OUT}/${label}-3-five.png` });
@@ -79,15 +79,13 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
 
   // 10¢ spin, 2× win
   ({ slice, before } = await forced(2, 0.1));
-  // 10¢ spins are their own credits: none yet, so the counter opens again
-  await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
-  await p.evaluate(() => document.querySelector('#buyQuick [data-n="1"]').click());
-  check(await p.textContent('#buyGo') === 'Buy 1 · $0.10', `${label}: 10¢ buy button says "${await p.textContent('#buyGo')}"`);
-  await p.evaluate(() => document.querySelector('#buyGo').click()); await waitDone(); await p.waitForTimeout(200); after = await money(); r = await read();
+  // the SAME balance pays for a 10¢ spin: no buy counter this time
+  await waitDone();
+  check(!(await p.evaluate(() => document.querySelector('#buyDlg').open)), `${label}: a 10¢ spin needs no new purchase`); await p.waitForTimeout(200); after = await money(); r = await read();
   check(Math.abs(after.bal - (before.bal - 0.1 + 0.2 * 0.97)) < 1e-9, `${label}: 10¢ 2× balance`);
-  check(await p.textContent('#crSpin') === '0', `${label}: 10¢ spins left 0`);
+  check(await p.textContent('#crSpin') === '$6.90', `${label}: $10 − three $1 spins − one 10¢ spin = $6.90 (${await p.textContent('#crSpin')})`);
   await p.evaluate(() => document.querySelector('#spin .bets button[data-bet="1"]').click());
-  check(await p.textContent('#crSpin') === '7' && /\$1 spins/.test(await p.textContent('#crSpinWhat')), `${label}: switching to $1 shows its own 7 spins`);
+  check(await p.textContent('#crSpin') === '$6.90' && /Spin balance/.test(await p.textContent('#crSpinWhat')), `${label}: switching size shows the same balance`);
   check(r.winners.length === 2 && /Spin 10¢/.test(r.winners[0]) && /\+100%/.test(r.winners[0]), `${label}: 10¢ win in winners list: ${JSON.stringify(r.winners[0])}`);
   check(JSON.stringify(r.hist.slice(0, 4)) === JSON.stringify(['2×', '0×', '1×', '5×']), `${label}: last spins strip ${JSON.stringify(r.hist)}`);
 

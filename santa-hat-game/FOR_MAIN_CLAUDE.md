@@ -23,8 +23,8 @@ Tick items off here as they're done. Order is roughly the order to do them in fo
       any extra to the pool (tested on real Postgres with books = wallet at every step, `tests/db/admin.test.mjs`). No key needed.
       Left for you: check it once with a real devnet deposit (the Edge Function already passes its `chain` to the admin).
 
-- [x] **Snowball Drop is in the arcade** (2026-10-01): credit kind `drop` is a dollar BALANCE in 10¢ units (Cody: buy $10,
-      play 10¢ or $1 drops from it). Built end to end: `005` SQL (`credits.kind 'drop'`, `plays.units/credit_bet`,
+- [x] **Snowball Drop is in the arcade** (2026-10-01): credit kinds `spin` and `drop` are dollar BALANCES in 10¢ units
+      (Cody: buy $10, play 10¢ or $1 from it; per game). `big` still counts pulls. Built end to end: `005` SQL (`credits.kind 'drop'`, `plays.units/credit_bet`,
       `spend_credit(..., p_units, p_bet)`, exact refunds), server `quote`/`open(kind, bet)`/`settle`, the page card. Nothing
       extra for you beyond the normal deploy: the payment for a drop balance goes to the **Spin** pool wallet.
 

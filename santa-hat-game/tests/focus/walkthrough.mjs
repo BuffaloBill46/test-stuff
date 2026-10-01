@@ -88,7 +88,7 @@ await session('Keyboard-only player', desk, false, async ({ p, t, log }) => {
 });
 await session('Returning daily player', phone, true, async ({ p, t, click, log }) => {
   await click('#t-games'); await p.waitForFunction(() => window.__slots); await p.waitForTimeout(2000);
-  await p.evaluate(() => window.__credits.give('spin10', 3)); await p.reload(); await p.waitForFunction(() => window.__sq); await click('#t-games'); await p.waitForFunction(() => window.__slots); await p.waitForTimeout(2000);
+  await p.evaluate(() => window.__credits.give('spin', 1)); await p.reload(); await p.waitForFunction(() => window.__sq); await click('#t-games'); await p.waitForFunction(() => window.__slots); await p.waitForTimeout(2000);
   log.push('after coming back: spin credits line: ' + (await t('#spin .credrow')) + ' | demo balance ' + (await t('#demoBal')) + ' | winners: ' + (await t('#winList')).slice(0, 120));
 });
 await session('Small-phone player', { width: 320, height: 640 }, true, async ({ p, t, click, shot, log }) => {

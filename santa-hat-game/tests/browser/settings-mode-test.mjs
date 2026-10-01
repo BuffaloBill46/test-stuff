@@ -71,7 +71,7 @@ const p = await ctx.newPage(); p.on('pageerror', (e) => errors.push(e.message));
 // Someone else's big win, already settled on the server: it must show in this player's Recent winners list.
 const other = (await db.query('insert into auth.users default values returning id'))[0].id;
 await db.query(`insert into public.profiles (id, wallet, name, avatar) values ($1, 'THEMwa11et11111111111111111111111111111111', 'Rudolph', '{}')`, [other]);
-await db.query(`insert into public.plays (profile_id, kind, play_no, state, commit, secret, player_seed, result, pay, bet, settled_at) values ($1, 'spin100', 1, 'settled', $2, 's', 'p', '{"mult":5}', 5, 1, now())`, [other, 'f'.repeat(64)]);
+await db.query(`insert into public.plays (profile_id, kind, play_no, state, commit, secret, player_seed, result, pay, bet, settled_at) values ($1, 'spin', 1, 'settled', $2, 's', 'p', '{"mult":5}', 5, 1, now())`, [other, 'f'.repeat(64)]);
 await p.goto('http://localhost:8787/online.html?net=local&server=' + encodeURIComponent('http://localhost:8787/api') + '&token=test-token', { timeout: 90000 });
 await p.waitForFunction(() => window.__sq, null, { timeout: 60000 });
 await p.evaluate(() => document.querySelector('#t-games').click()); await p.waitForFunction(() => window.__slots, null, { timeout: 90000 });

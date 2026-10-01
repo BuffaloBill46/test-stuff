@@ -18,7 +18,7 @@ await p.tap('#t-games'); await p.waitForFunction(() => window.__slots, null, { t
 const s1 = await p.evaluate(() => window.__sfx.state); check(s1 === 'running', `audio should run after a tap, was ${s1}`);
 await p.evaluate(() => window.__credits.give('big', 3));
 for (let i = 0; i < 3; i++) { await p.evaluate(() => document.querySelector('.machine .pull').click()); await p.waitForTimeout(300); await p.waitForFunction(() => !window.__slots.busy, null, { timeout: 90000 }); }
-await p.evaluate(() => { window.__credits.give('spin100', 1); document.querySelector('#spin .bets button[data-bet="1"]').click(); document.querySelector('#spin .spinbtn').click(); });
+await p.evaluate(() => { window.__credits.give('spin', 1); document.querySelector('#spin .bets button[data-bet="1"]').click(); document.querySelector('#spin .spinbtn').click(); });
 await p.waitForTimeout(300); await p.waitForFunction(() => !window.__spin.busy, null, { timeout: 90000 });
 const played = await p.evaluate(() => window.__sfx.stats.byName);
 check(played.reelStop === 15, `5 reel stops per pull × 3 pulls, got ${played.reelStop}`);

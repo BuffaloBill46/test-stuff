@@ -160,6 +160,13 @@ emergency stop); a drop only starts if the pool covers its top prize (10×). Sim
 about $10, treasury about $650–700 per 20,000 plays. Guard rail: Spin's top-off must cover Drop's top prize ($10).
 Logic `mockups/plinko.js` (`play`, `canPlay`), test `tests/plinko.test.mjs`.
 
+**Credits are per game; Spin and Snowball Drop are dollar balances (Cody, 2026-10-01).** "Let's just do credits per game:
+they buy 10 on spin, the spin credit counter shows 10 and other games show 0." Spin now works like Snowball Drop below
+(buy $1–$10 of Spin balance; 10¢ or $1 spins in any mix); Big Hat (one size) still counts pulls. Each game's money still
+goes to its own pool at purchase (Spin and Snowball Drop: the Spin pool; Big Hat: the Slots pool). Cody first asked about
+ONE balance for all games; that would have needed one shared game wallet (or a second 3% tax on every play), so he chose
+per-game credits. Guard rail: Spin's sizes in the admin settings must be whole 10¢ (the balance is kept in 10¢ units).
+
 **Snowball Drop is in the arcade (Cody, 2026-10-01), paid from ONE dollar balance.** "When someone buys $10.00 in tokens
 they can play either the 0.10 or 1.00 game." So unlike Spin and Big Hat (credits per game and size), Snowball Drop credits
 are a balance: buy $1–$10 in one payment; a 10¢ drop takes 10¢ of it, a $1 drop $1, in any mix. Kept in whole 10¢ units
