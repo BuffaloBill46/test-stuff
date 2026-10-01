@@ -62,8 +62,8 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
   - `kit.js` / `plaza.js`: the low-poly art kit and the plaza scene.
   - `snowball.js`, `bethehat.js`, `sleigh.js`, `hatchase.js`, `village.js`, `index.html`: the four
     original single-player mockups (published under `/mockups/`). **Not dead code; keep them.**
-- **Database:** `santa-hat-game/supabase/001..004_*.sql` are applied to the live project, in order.
-  **`008_hats_backpacks.sql` is NOT applied** (avatar Hats/Backpacks + Ice Ball; apply BEFORE publishing the page).
+- **Database:** `santa-hat-game/supabase/001..004_*.sql` and `008` are applied to the live project.
+  **`008_hats_backpacks.sql` IS applied** (2026-10-01: avatar Hats/Backpacks + Ice Ball items, 7-slot save_profile).
   **`007_rate_limits.sql` is NOT applied either** (the speed limit's counts; apply with 005).
   **`005_credits_plays.sql` is NOT applied** (runs, plays, payouts for the server; despite the name, no credits; apply when the server goes live, with Cody's OK).
   New changes go in a new numbered file, checked with `tests/db/`, applied with the Supabase tools, then committed.
@@ -151,8 +151,10 @@ between two devices has never been tested from here. Cody and friends testing on
 
 *(Update this section at the end of every session.)*
 
-**Last updated:** 2026-10-01 (fourth session). Work continued on branch `ccr-55527f21-p10a6h` (started from `claude/test-stuff-section-egujzy`
-plus `main`); everything committed and pushed. No page changes this session, so nothing new to publish.
+**Last updated:** 2026-10-01 (end of the cloud session on branch `ccr-55527f21-p10a6h`, which contains all of
+`claude/test-stuff-section-egujzy` plus `main`). Everything committed and pushed; **`008` applied to the live database; the
+site was PUBLISHED from this branch** (so publish only from this branch or one that contains it). Cody is moving to his main
+Claude next: FOR_MAIN_CLAUDE.md starts with a summary of this session.
 
 **Built and live (all demo, no real money):**
 - **Play tab:** Snowball Square multiplayer (rooms, bots that now sometimes emote, idle kicks), unranked lobby, FFA RANKED layout
@@ -223,7 +225,8 @@ session could only push its work branch): run `deploy-pages.sh` next time.
 
 **Same day, avatar Hats + Backpacks and the Ice Ball** (Cody): new slots with starter items; a worn hat hides under the Santa
 hat; snowball items can carry rules and the referee applies them; Ice Ball stuns 50% longer. Cody is writing up the full
-snowball types (faster, bigger, longer stun, splits): build those next from his notes. Needs `008` applied before publishing.
+snowball types (faster, bigger, longer stun, splits): build those next from his notes. Hats, backpacks and the Ice Ball are Store
+purchases for now (Cody; he'll set levels next). `008` applied and the site published 2026-10-01.
 
 **For the other Claude:** `FOR_MAIN_CLAUDE.md` → "Read first" lists every change since the first hand-over that touches the
 server, the database or payments.

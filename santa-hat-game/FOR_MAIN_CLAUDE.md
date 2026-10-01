@@ -4,6 +4,34 @@ Kept by the Claude that built the game (cloud workspace, no wallets, no live con
 **left undone on purpose** because it needs something this workspace doesn't have. Read `HANDOFF.md` first, then this list.
 Tick items off here as they're done. Order is roughly the order to do them in for a devnet test.
 
+> ## ⚠ START HERE: branch `ccr-55527f21-p10a6h` is the newest (cloud session, 2026-10-01)
+> - **Work from `ccr-55527f21-p10a6h`.** It contains ALL of `claude/test-stuff-section-egujzy` plus this session. Merge it into
+>   whatever branch you use before changing anything.
+> - **The live site (gh-pages) was published from this branch.** Publishing from an older branch would silently REMOVE the
+>   avatar Hats/Backpacks, the Ice Ball and the admin screen's "Check for bots" from the live site.
+> - **The live database now has `008_hats_backpacks.sql` applied** (migration `008_hats_backpacks`; checked after: 5 hats,
+>   4 backpacks, 7 snowballs, save_profile 7 slots, anon still can't call it). 005, 006 and 007 are still NOT applied.
+> - What this session built, in order (each committed with tests; details in HANDOFF → "Where we are right now"):
+>   1. **Payout worker double-send FIXED** (High): overlapping worker runs could pay a winner twice. Compare-and-set before
+>      sending (`server/payouts.js`). Keep it if you rewrite the worker. Proven on a REAL Postgres (`tests/db/lock.test.mjs`).
+>   2. **Pool row lock proven on real Postgres** (the old open item): plays take turns; with the lock removed the test fails.
+>      "One run at a time" is checked at the QUOTE only (two quotes before paying = two runs, both paid correctly; kept on purpose).
+>   3. **Speed limit** (`server/ratelimit.js`): 60 requests per connection / 40 per player per 10 s, then 429. Needs
+>      `007_rate_limits.sql`. Plan: move the counts into the always-on server's memory (`memoryStore()`, one line). Check which
+>      `x-forwarded-for` entry is the real visitor on the live function.
+>   4. **Bot signals** (`server/bots.js`, admin action `bot-signals`, read only, private): "Check for bots" on the admin screen.
+>   5. **Avatar Hats + Backpacks** and **special snowballs** (`catalog.js` `rules`; the referee `sim.js` applies them). First
+>      one: **Ice Ball, stuns 50% longer**. All new items are **Store purchases for now** (Cody; he'll set levels later;
+>      prices are placeholders). Cody is writing up more snowball types (faster, bigger, longer stun, splits).
+>   6. Edge Function type check fixed (it had been failing since record-deposit); `tests/db/edge-limit.mjs` runs the REAL
+>      function under Deno against real Postgres.
+> - **Cody's decisions this session:** DigitalOcean for the always-on server (a NEW separate Droplet: it will hold pool keys);
+>   Helius $49 plan (he thinks he has it: confirm); Cloudflare Turnstile at sign-in and at ranked start; alerts via his existing
+>   Telegram bot (not Sentry); no multisig; hats/backpacks/Ice Ball bought, not levelled, for now. See "Cody's calls on servers" below.
+> - **Open questions for Cody:** whether special snowballs count in RANKED (a bought edge there is pay-to-win); a lawyer's
+>   check of the paid games before real money (RESEARCH.md → "Other things that would help").
+> - **Testing on a machine with Postgres:** `tests/db/realpg.mjs` starts a throwaway real Postgres 16 (skips if none installed).
+
 ## Read first: everything that changed since the first hand-over (2026-09-30 evening → 2026-10-01)
 All of it is committed, tested and live in the DEMO (no real money). Server/SQL parts are built and tested but NOT deployed.
 Details of each decision: DESIGN_NOTES.md. Audit of the money changes: AUDIT.md → "Second pass"; saved reports: `audits/`.
@@ -126,7 +154,7 @@ through the real server code and checks ONE payout equal to the plays' winnings,
 - [ ] **Apply `supabase/005_credits_plays.sql`** to the project (checked on real Postgres in `tests/db/`), then insert the two
       `pools` rows with the pools' real starting SANTA balances (smallest units, 6 decimals).
 - [ ] **Apply `supabase/006_ranked_tickets.sql`** when ranked opens (checked on real Postgres, `tests/db/tickets.test.mjs`).
-- [ ] **Apply `supabase/008_hats_backpacks.sql` BEFORE the next publish** (avatar Hats/Backpacks + Ice Ball item rows, 7-slot
+- [x] **Applied to the live database 2026-10-01: `supabase/008_hats_backpacks.sql`** (checked after; the site was then published) (avatar Hats/Backpacks + Ice Ball item rows, 7-slot
       `save_profile`). The page now shows those slots; without 008 a player saving a hat or backpack is refused. Safe for the live
       page too: a page that doesn't send the new slots saves them as "none". Tested: `tests/db/avatar-slots.test.mjs`.
 - [ ] **Apply `supabase/007_rate_limits.sql` with `005`** (the speed limit's counts; the Edge Function needs the table:

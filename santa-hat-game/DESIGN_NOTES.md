@@ -343,13 +343,15 @@ jackpot amount**, plus its jackpot odds and biggest fixed win (worked out from t
 
 ## Avatar Hats and Backpacks, and special snowballs (2026-10-01, Cody)
 - **Hats** and **Backpacks** are avatar slots (catalog.js), each starting at "None" so old saved avatars still work. Starter
-  items (Claude's picks, change freely): Knit Beanie (L1), Earmuffs (L2), Reindeer Antlers (L4), Snowman Top Hat ($0.25); Elf
-  Satchel (L2), Toy Sack (L3), Gift Box ($0.25). **A worn hat hides while that player wears the Santa hat** (the prize must
+  items (Claude's picks, change freely), all Store purchases for now: Knit Beanie, Earmuffs, Snowman Top Hat, Elf Satchel, Gift Box
+  ($0.25); Reindeer Antlers, Toy Sack ($0.50).
   always be seen; Claude's call). New colours of these shapes can be added from the admin store editor; new shapes need code.
 - **Special snowballs** (Cody: faster, bigger, longer stun, splits; full details coming). A snowball item can carry `rules`;
   the match referee applies them. Built so far: **Ice Ball**, `rules: { stun: 1.5 }` (stuns 50% longer: 0.9 s → 1.35 s).
   Any rule is capped at 3× so a bad setting can't freeze a player for long.
-- **Open for Cody:** the Ice Ball's unlock (level 4 is a placeholder) or price; whether special snowballs count in RANKED
+- **Decided (Cody, 2026-10-01): the new hats, backpacks and the Ice Ball are bought in the Store for now** ($0.25–$0.50,
+  Claude's placeholder prices); Cody will set levels next.
+- **Open for Cody:** whether special snowballs count in RANKED
   (a paid gameplay edge in ranked would be pay-to-win; RESEARCH.md's rule so far: cosmetics only, never pay-to-win).
 
 ## Speed limit (built 2026-10-01; Cody: "build it but plan to move it to an always-on game server")
