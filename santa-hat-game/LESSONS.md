@@ -193,17 +193,3 @@ real pull could pass it, and a genuine winner would have been frozen (Cody: neve
 from the structure (every line at the top prize + every square's bonus), not from a sample. Then prove it as an assertion,
 including against bigger prize settings Cody might publish (`tests/payoutcap.test.mjs`). The same check found that a frozen
 payout had no way out (no Release) and the player would have been told "sent": a safety net needs its exit built with it.
-
-## `tests/solana` needs WSL on Windows — LiteSVM has no Windows build (2026-10-01)
-Found moving the project to Cody's own Windows machine for the devnet work: `npm install` under plain Windows installs
-fine, but `node split.test.mjs` fails with `Cannot find module './litesvm.win32-x64-msvc.node'`. Checked
-`litesvm`'s own `optionalDependencies` — it ships native binaries for `darwin-x64/arm64` and
-`linux-x64/arm64-gnu/musl`, nothing for `win32` at all. The cloud workspace that built and proved this suite ran on
-Linux, so this never showed up there. **Fix: run `tests/solana` (and anything else depending on `litesvm`) through
-WSL, not Git Bash/PowerShell** — same pattern already used for this machine's other Solana/Anchor work. From the
-repo root: `wsl -d Ubuntu -- bash -c "cd /mnt/c/test-stuff/santa-hat-game/tests/solana && npm install && node split.test.mjs"`.
-Re-running `npm install` from inside WSL (after it was already run from Windows) is safe — npm resolves
-`optionalDependencies` by the CURRENT platform/arch, so it just adds the Linux variant alongside, nothing needs
-cleaning first. One related, non-blocking warning: `@solana/kit` (or something in its chain) wants Node ≥22.12.0;
-WSL Ubuntu here has v20.20.2, which prints an `EBADENGINE` warning but the test still runs and passes correctly —
-worth upgrading WSL's Node before relying on anything that might actually need the newer runtime, but not urgent.
