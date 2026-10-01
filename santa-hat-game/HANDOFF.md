@@ -35,8 +35,8 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
 
 ## Where things live
 
-- **Branch:** `ccr-55527f21-p10a6h` is the newest (it contains all of `claude/test-stuff-section-egujzy`, plus the 2026-10-01
-  fourth session). The repo is public: `buffalobill46/test-stuff`.
+- **Branch:** `claude/test-stuff-section-egujzy` (Cody's main Claude, on his Windows machine). The cloud session's
+  `ccr-55527f21-p10a6h` was merged into it on 2026-10-01, so it contains everything; publish only from it. The repo is public: `buffalobill46/test-stuff`.
 - **Live site:** https://buffalobill46.github.io/test-stuff/ served from the `gh-pages` branch.
   Publish with `santa-hat-game/deploy-pages.sh` (run from anywhere in the repo). It copies `online.html` as
   `index.html` plus the game's JS files. **If you add a new JS file the page imports, add it to that script too.**
