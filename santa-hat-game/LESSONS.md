@@ -193,3 +193,27 @@ real pull could pass it, and a genuine winner would have been frozen (Cody: neve
 from the structure (every line at the top prize + every square's bonus), not from a sample. Then prove it as an assertion,
 including against bigger prize settings Cody might publish (`tests/payoutcap.test.mjs`). The same check found that a frozen
 payout had no way out (no Release) and the player would have been told "sent": a safety net needs its exit built with it.
+
+## `tests/solana` needs WSL on Windows — and `--no-save`, or it corrupts the shared lockfile (2026-10-01)
+Found moving the project to Cody's actual Windows machine: `npm install` under plain Windows installs fine, but
+`node split.test.mjs` fails with `Cannot find module './litesvm.win32-x64-msvc.node'`. Checked `litesvm`'s own
+`optionalDependencies` — it ships native binaries for `darwin-x64/arm64` and `linux-x64/arm64-gnu/musl`, nothing
+for `win32` at all. The cloud workspace that built and proved this suite ran on Linux, so this never showed up
+there. **Fix: run `tests/solana` (and anything else depending on `litesvm`) through WSL** — same pattern already
+used for this machine's other Solana/Anchor work.
+
+**⚠️ The first attempt at this fix broke something else.** Running a bare `npm install` from inside WSL
+recalculated `package-lock.json` for Linux and silently DROPPED two Windows-relevant optional/peer entries
+(`bufferutil`, `fastestsmallesttextencoderdecoder` — part of the `ws`/websocket chain) that a later plain-Windows
+`npm install` would then no longer know to install. A lockfile is shared across whoever runs `npm install` next,
+on whatever OS they're on — recalculating it from a different platform than the one that last touched it can
+narrow what EVERYONE ELSE gets, not just add what the current platform needs. **Correct command: `npm install
+--no-save`** — installs the Linux-native `litesvm` binary into WSL's own `node_modules` (gitignored, never
+shared) without touching the committed lockfile at all. Re-verified clean: `git status` shows no lockfile change,
+and the test still passes. From the repo root:
+`wsl -d Ubuntu -- bash -c "cd /mnt/c/test-stuff/santa-hat-game/tests/solana && npm install --no-save && node split.test.mjs"`.
+One related, non-blocking warning: `@solana/kit` (or something in its chain) wants Node ≥22.12.0; WSL Ubuntu here
+has v20.20.2, which prints an `EBADENGINE` warning but every test still runs and passes correctly — worth
+upgrading WSL's Node before relying on anything that might actually need the newer runtime, but not urgent.
+**The general rule this generalizes to: never run a bare `npm install` from a DIFFERENT platform than the one
+that owns the lockfile — use `--no-save` (or a separate lockfile) whenever testing cross-platform.**
