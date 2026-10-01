@@ -5,6 +5,8 @@
 //   SOLANA_RPC_URL                       e.g. a Helius URL (defaults to a free public endpoint)
 //   ADMIN_WALLETS                        Cody's admin wallet address(es), comma-separated (escrow admin controls)
 //   SANTA_MINT                           the token to accept (leave unset for real SANTA; the test token's address on devnet)
+//   LOTTERY_WALLET                       public address of the lottery wallet (until set, no lottery tickets are sold)
+//   SOLANA_CLUSTER                       'devnet' or 'mainnet' (optional: read from SOLANA_RPC_URL otherwise)
 // Pool wallet KEYS are not used here (payouts are sent by a separate worker) and never go in the website.
 import postgres from 'npm:postgres@3.4.5';
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -14,6 +16,7 @@ import { createAdmin } from '../../../server/admin.js';
 import { makePrice } from '../../../server/price.js';
 import { makeLimiter, dbStore } from '../../../server/ratelimit.js';
 import { createLevels } from '../../../server/levels.js';
+import { createLottery } from '../../../server/lottery.js';
 import { livePrice, liveFee } from '../../../mockups/market.js';
 
 const env = (k: string) => Deno.env.get(k) ?? '';
@@ -31,6 +34,12 @@ const chain = {
     return (await r.json()).result ?? null; // null until finalized
   },
 };
+// The newest FINALIZED block (the lottery mixes its hash into each draw, taken after sales closed).
+async function latestBlock() {
+  const r = await fetch(rpcUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getLatestBlockhash', params: [{ commitment: 'finalized' }] }) });
+  const j = await r.json(); if (!j.result) throw new Error('no blockhash from the network');
+  return { blockhash: j.result.value.blockhash, slot: j.result.context.slot };
+}
 const auth = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), { auth: { persistSession: false } });
 // The game prices plays with the 10-minute median, not one live reading (audit: price manipulation).
 const poolWallets = { spin: env('SPIN_POOL_WALLET') || null, slots: env('SLOTS_POOL_WALLET') || null }, mintOpt = env('SANTA_MINT') ? { mint: env('SANTA_MINT') } : {};
@@ -50,7 +59,9 @@ Deno.serve(makeHandler({
   server,
   limiter,
   levels: createLevels({ db }), // progress + Auto match finishes (needs supabase/010_levels.sql)
-  admin: createAdmin({ db, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), chain, poolWallets, ...mintOpt }), // chain: to check Cody's deposits
+  // The Santa Lottery (needs supabase/011_lottery.sql and the LOTTERY_WALLET setting; until set, no tickets are sold).
+  lottery: createLottery({ db, chain: { ...chain, latestBlock }, livePrice: makePrice({ db, livePrice }), liveFee: feeOfMint, wallet: env('LOTTERY_WALLET') || null, ...mintOpt, cluster }),
+  admin: createAdmin({ db, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), chain, poolWallets: { ...poolWallets, lottery: env('LOTTERY_WALLET') || null }, ...mintOpt }), // chain: to check Cody's deposits
   async profileFor(token: string) {
     const { data, error } = await auth.auth.getUser(token);
     if (error || !data.user) return null;

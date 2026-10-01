@@ -161,5 +161,15 @@ assert.equal((await admin.run(replay)).mode, 'manual'); assert.match((await admi
 assert.equal((await db.query('select payout_mode from public.lottery_settings'))[0].payout_mode, 'manual');
 assert.match((await admin.run(await signed({ action: 'lottery-mode', game: 'lottery', settings: { mode: 'sometimes' } }))).error, /auto or manual/);
 assert.match((await admin.run(await signed({ action: 'lottery-mode', game: 'spin', settings: { mode: 'auto' } }))).error, /unknown action or game/, 'lottery actions only on the lottery');
+console.log('9. Through the real web door: results are public; buying needs sign-in');
+const { makeHandler } = await import('../../server/http.js');
+const door = makeHandler({ server: {}, lottery: lot, limiter: null, profileFor: async (t) => (t === 'ann' ? A.id : null) });
+const ask = async (token, body) => { const r = await door(new Request('http://localhost/', { method: 'POST', headers: { origin: 'http://localhost', ...(token ? { authorization: 'Bearer ' + token } : {}) }, body: JSON.stringify(body) })); return { status: r.status, ...(await r.json()) }; };
+const pub = await ask(null, { action: 'lottery' });
+assert.equal(pub.status, 200); assert.deepEqual(pub.open.map((o) => o.lottery).sort(), ['daily-10', 'daily-100', 'weekly-10', 'weekly-100'], 'every lottery with a draw ahead is listed (the one-off Christmas-style test draw has run, so it is not)'); assert.ok(pub.recent.length >= 1 && pub.recent[0].secret, 'recent draws show their revealed secret');
+assert.ok(pub.open.every((o) => !('secret' in o)), 'open draws never show the secret');
+assert.equal((await ask(null, { action: 'lottery-quote', lottery: 'daily-10', n: 1 })).status, 401, 'buying needs sign-in');
+await waitOpenWindow(); const wq = await ask('ann', { action: 'lottery-quote', lottery: 'daily-10', n: 2 });
+assert.ok(wq.id && wq.pool === LOTTERY && wq.burnBps === 1000 && wq.payer === A.w, 'a signed-in quote: pay the lottery wallet, 10% burned, from your own wallet');
 console.log(`OK: lottery end to end: checked payments → numbered tickets → fair draws (re-checked from public data) → exact splits (60/25/15, 1 winner, empty draws), late payments moved or refunded, cheats refused, manual (Cody records each send, checked on the chain) and escrow payouts, books balanced`);
 process.exit(0);

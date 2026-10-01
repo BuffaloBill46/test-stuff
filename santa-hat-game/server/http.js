@@ -8,6 +8,8 @@
 //   pools                      → public pool status: balances, settings, pending transfers, change log (admin screen)
 //   progress                   → my level and progress toward the next (server/levels.js)
 //   finish { match }           → the host reports a finished Auto match's places; top-3 players' finishes count toward levels
+//   lottery                    → public: every lottery's open draw and recent results (server/lottery.js; runs due draws)
+//   lottery-quote { lottery, n } → a 60-second price for n tickets      lottery-buy { quote, signature } → checks the payment, numbers the tickets
 // Only signed-in players (a Supabase login token); only our own website may call it from a browser.
 // Speed limit (server/ratelimit.js): every request counts against its internet connection, every signed-in request against its
 // player too; over the limit → 429 "slow down, try again in N seconds".
@@ -48,6 +50,9 @@ export function makeHandler(deps) {
     if (body?.action === 'settings') { // public: the game settings (prices, odds, prizes) by version
       try { return reply(origin, 200, await deps.server.settings(Number.isInteger(body.version) ? body.version : undefined)); } catch (e) { return reply(origin, 400, { error: 'unknown settings version' }); }
     }
+    if (body?.action === 'lottery' && deps.lottery) { // public: open draws and recent results (anyone can re-check a draw)
+      try { return reply(origin, 200, await deps.lottery.draws()); } catch (e) { console.error('lottery error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
+    }
     if (body?.action === 'winners') { // public: the shared Recent winners list (names and amounts only)
       try { return reply(origin, 200, { winners: await deps.server.winners() }); } catch (e) { console.error('winners error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
     }
@@ -64,6 +69,8 @@ export function makeHandler(deps) {
         case 'settle': out = await s.settle(profile, String(body.ticket), String(body.seed)); break;
         // levels (server/levels.js): a player's own progress; the host reporting a finished Auto match
         case 'progress': if (!deps.levels) return reply(origin, 400, { error: 'unknown action' }); out = await deps.levels.progress(profile); break;
+        case 'lottery-quote': if (!deps.lottery) return reply(origin, 400, { error: 'unknown action' }); out = await deps.lottery.quote(profile, String(body.lottery), Number(body.n)); break;
+        case 'lottery-buy': if (!deps.lottery) return reply(origin, 400, { error: 'unknown action' }); out = await deps.lottery.buy(profile, String(body.quote), String(body.signature)); break;
         case 'finish': if (!deps.levels) return reply(origin, 400, { error: 'unknown action' }); out = await deps.levels.finish(profile, body.match); break;
         default: return reply(origin, 400, { error: 'unknown action' });
       }
