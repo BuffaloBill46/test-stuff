@@ -33,7 +33,9 @@ const chain = {
 const auth = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), { auth: { persistSession: false } });
 // The game prices plays with the 10-minute median, not one live reading (audit: price manipulation).
 const poolWallets = { spin: env('SPIN_POOL_WALLET') || null, slots: env('SLOTS_POOL_WALLET') || null }, mintOpt = env('SANTA_MINT') ? { mint: env('SANTA_MINT') } : {};
-const server = createGameServer({ db, chain, livePrice: makePrice({ db, livePrice }), liveFee, poolWallets, ...mintOpt });
+// The tax is read from the token this server accepts, on its own network (the test token on devnet), not always real SANTA.
+const feeOfMint = () => liveFee(env('SANTA_MINT') || undefined, [rpcUrl]);
+const server = createGameServer({ db, chain, livePrice: makePrice({ db, livePrice }), liveFee: feeOfMint, poolWallets, ...mintOpt });
 
 // Speed limit: counts in the database (table rate_hits, supabase/007_rate_limits.sql: apply it with 005), because each call
 // here may run in a fresh copy that remembers nothing. On the planned always-on game server: memoryStore() instead (one line).

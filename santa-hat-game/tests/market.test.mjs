@@ -1,5 +1,6 @@
 // Live price and tax: the pure rules, then (if the network answers) the real token.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { MINT, pickPrice, pickFee, feeOn, santaFor, livePrice, liveFee } from '../mockups/market.js';
 
 // Deepest pool wins, other tokens ignored.
@@ -28,5 +29,10 @@ try {
   assert.ok(p.usd > 0); assert.equal(f.decimals, 6);
   console.log(`live: 1 SANTA = $${p.usd} (${p.pool}, $${Math.round(p.liquidity).toLocaleString()} liquidity) · $1 ≈ ${Math.round(1 / p.usd).toLocaleString()} SANTA · token tax ${f.bps / 100}% at epoch ${f.epoch}`);
   if (f.bps !== 300) console.log('NOTE: the token tax is no longer 3%; the game math (FEE in slots.js) must be updated.');
-} catch (e) { console.log('live lookup skipped (network):', e.message); }
+  // The server reads the tax of the token IT accepts, on its own network: here the devnet test token, from devnet.
+  const { mint: testMint, rpc: devnetRpc } = JSON.parse(readFileSync(new URL('../devnet.json', import.meta.url), 'utf8'));
+  const d = await liveFee(testMint, [devnetRpc]);
+  assert.equal(d.bps, 300, 'the devnet test token has a 3% tax'); assert.notEqual(d.epoch, f.epoch, 'read from devnet (its own epoch), not mainnet');
+  console.log(`live devnet: test token tax ${d.bps / 100}% at devnet epoch ${d.epoch}`);
+} catch (e) { if (e.code === 'ERR_ASSERTION') throw e; console.log('live lookup skipped (network):', e.message); }
 console.log('OK: price pick, fee by epoch, fee rounding and cap');
