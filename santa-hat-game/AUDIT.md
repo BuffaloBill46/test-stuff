@@ -17,10 +17,11 @@ has a test that fails if the fix is undone. Re-run: see HANDOFF → How to test 
 | 6 | Unlimited price quotes per player (database spam). | Low | **Fixed:** 30 an hour. |
 | 7 | The public winners list hit the database on every request. | Low | **Fixed:** cached 10 seconds. |
 | 9 | **Equal payouts could be silently lost.** Two same-size wins to one wallet, signed moments apart, were byte-identical transactions; the chain drops the second as a duplicate, and the worker marked both paid. Found by the dress rehearsal (a third of the winnings went missing while the books said paid). | High | **Fixed:** every payout carries a unique memo ("Santa Hat payout #id", also readable on the chain), and the database refuses one signature for two payouts, so a worker that forgets fails loudly. Rehearsal now reconciles to zero drift. |
-| 8 | Two plays settling on one pool at once could overwrite each other's balance change. | Medium | **Fixed earlier today:** balances only add/subtract. The row lock itself still needs proving on real Postgres (FOR_MAIN_CLAUDE). |
+| 8 | Two plays settling on one pool at once could overwrite each other's balance change. | Medium | **Fixed:** balances only add/subtract. **Row lock proven on real Postgres (2026-10-01, `tests/db/lock.test.mjs`):** 80 plays at once all take turns; with the lock removed the test fails. |
+| 10 | **Overlapping payout workers could pay a winner twice** (found 2026-10-01 by `tests/db/lock.test.mjs`). A worker starting up "recovers" payouts left mid-send, assuming the last run crashed; if another worker was still sending one, it signed and sent it again. Planned schedule: every minute, and one pass of Solana sends can take longer. | High | **Fixed:** a worker saves its transaction only if the payout still holds the one it saw (compare-and-set), otherwise it doesn't send. Four workers at once: every payout sent exactly once; the old code fails every time. |
 
 Checked and fine: the fairness order (payment → credit (since 2026-10-01: the run's plays are made) → secret → player's number → reveal) can't be skipped or reordered
-(mutation-tested); a player can't see or influence a result before it's final, or settle twice; one play at a time per player;
+(mutation-tested); a player can't see or influence a result before it's final, or settle twice; one run at a time per player (at the quote only; two quotes before paying can give two runs, both paid correctly; see TODO);
 payments used once; other websites refused; admin actions need a fresh wallet signature and can't be replayed; the website
 can only read (row security); server errors never reach players; payouts never go out twice, even through crashes.
 

@@ -41,6 +41,9 @@ Details of each decision: DESIGN_NOTES.md. Audit of the money changes: AUDIT.md 
   must cover Drop's $10 top prize. Simulated 6 million mixed plays: never refused. Rules `mockups/plinko.js`.
 
 **Server and admin**
+- **Payout worker: overlapping runs were a double-payment bug, fixed 2026-10-01** (`server/payouts.js`: a worker sends only if
+  its compare-and-set signature save wins). Found by the new real-Postgres test `tests/db/lock.test.mjs`, which also proves the
+  pool lock. Note: a player CAN have two runs open if they get two quotes before paying either; allowed and proven safe.
 - **Game settings are versioned and wallet-signed** (admin action `set-settings`, table `game_settings`): prices, both Spin
   wheels, Big Hat odds/prizes/symbols, jackpot % and odds, store items. Guard rails refuse unsafe changes; every run and play
   records the version it was bought/played on, so a change never lands mid-run and old plays re-check on their own odds.
@@ -91,8 +94,9 @@ through the real server code and checks ONE payout equal to the plays' winnings,
       `buy_run`, `lock_play`, `settle_play` (no payout insert), `refund_play`, `finish_run(p_run, p_to_wallet, p_cap)`, with
       cap = the most the run could possibly win (see "Payout safety cap" above). The server refuses a quote up front when the player has an unfinished run, has no linked
       wallet, or the pool can't take the play; `tidy` finishes runs left behind (closed tab). The web door's actions are now
-      `quote {kind, n, bet}`, `buy`, `settle` (`credits` and `open` are gone). The payout worker is unchanged: it sends whatever
-      is queued, so a run's payout goes out on its next pass. Proven: `tests/db/server.test.mjs`, `tests/solana/rehearsal.mjs`
+      `quote {kind, n, bet}`, `buy`, `settle` (`credits` and `open` are gone). The payout worker sends whatever is queued, so a
+      run's payout goes out on its next pass (one change, 2026-10-01: overlapping worker runs can no longer send a payout
+      twice; see "Run the payout worker live"). Proven: `tests/db/server.test.mjs`, `tests/solana/rehearsal.mjs`
       (one payout per run, books = wallets).
 
 ## Needs live systems (this workspace can't reach them)
@@ -101,8 +105,9 @@ through the real server code and checks ONE payout equal to the plays' winnings,
 - [ ] **Apply `supabase/006_ranked_tickets.sql`** when ranked opens (checked on real Postgres, `tests/db/tickets.test.mjs`).
 - [ ] **Deploy the Edge Function** `supabase/functions/games/index.ts`. It imports `../../../server/*.js` and `../../../mockups/*.js`
       (include those files in the upload). Set `SOLANA_RPC_URL` (Helius; devnet URL for the test).
-- [ ] **Prove the pool row lock on real Postgres:** two connections settling plays on the same pool at the same moment. (Balances
-      add/subtract so no SANTA can be lost either way; the lock keeps each play's "can the pool pay?" check on the latest balance.)
+- [x] **Prove the pool row lock on real Postgres (done 2026-10-01):** `tests/db/lock.test.mjs` starts a throwaway real Postgres 16 server (needs
+      Postgres installed; skips otherwise) and proves the pool lock, one quote = one run, two runs per player paid right, and
+      overlapping payout workers.
 - [ ] **Real wallet signing in the browser: write `window.santaPay(quote)`.** The page already calls it (server mode,
       `mockups/playcredits.js` → `payOnServer`) with the server's quote (it includes `mint`, `pool`, `fee`, `burnBps`).
       The transaction is ALREADY BUILT for you: `purchaseInstructions(lib, quote, walletSigner)` in `mockups/pay.js` (pass the
@@ -120,6 +125,8 @@ through the real server code and checks ONE payout equal to the plays' winnings,
       when it crashes before or after sending; `tests/solana/payouts.test.mjs`). Still needed: the live chain adapter (a Solana
       RPC: getLatestBlockhash, sendTransaction, getSignatureStatuses + isBlockhashValid; same shape as the test's), the pool
       wallets' keys in the worker's secrets only (never the site or repo), and a schedule (e.g. a Supabase cron every minute).
+      **Runs may overlap safely** (fixed 2026-10-01: an overlapping run used to re-send a payout still being sent; now a worker
+      only sends if its signature save wins, `tests/db/lock.test.mjs`). Keep that compare-and-set if you rewrite the worker.
 - [ ] **Send skims on the chain:** `pool_transfers` rows (queued by every settle) must be sent like
       payouts: the worker in `server/payouts.js` has the exact shape (claim → sign → save signature → send → recover by chain status);
       skims go pool → treasury with the pool key. Until then the books run ahead of the wallets by design and reconcile says so.

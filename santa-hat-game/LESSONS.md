@@ -193,3 +193,20 @@ real pull could pass it, and a genuine winner would have been frozen (Cody: neve
 from the structure (every line at the top prize + every square's bonus), not from a sample. Then prove it as an assertion,
 including against bigger prize settings Cody might publish (`tests/payoutcap.test.mjs`). The same check found that a frozen
 payout had no way out (no Release) and the player would have been told "sent": a safety net needs its exit built with it.
+
+## "Recover after a crash" looks exactly like "another worker is busy" (2026-10-01)
+The payout worker starts by re-sending anything left mid-send, assuming the last run crashed. Two runs overlapping (a cron
+every minute, a slow chain) made it re-send a payout the other run was still sending: a double payment. Proven only on a real
+multi-connection Postgres (`tests/db/lock.test.mjs`); every single-worker test passed. Any recovery step must be safe when
+the "crashed" party is actually still alive: claim with a compare-and-set (save only if the row still holds what you saw),
+and send only if your claim won. Never trust "nobody else is running" unless something enforces it.
+
+## A timing check must stamp the moment that matters, not the reply (2026-10-01)
+The lock test first failed now and then WITH the lock: it stamped "committed" when the commit's reply reached Node, but the
+database frees the lock at the commit itself, so the next play's read could arrive first. Stamp just before COMMIT is sent.
+Found by looping the test 25 times instead of calling it a flake; then 30 runs clean.
+
+## A docs claim like "checked in the database" must be found in the database (2026-10-01)
+TODO and AUDIT said "one play at a time per player (checked at the quote and in the database)". Only the quote checked it:
+two quotes before paying gave two open runs. Here that turned out safe (and refusing a PAID run would be worse), so the docs
+were corrected, not the code. Grep for the check before repeating the claim.
