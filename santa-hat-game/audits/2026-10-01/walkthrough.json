@@ -1,0 +1,83 @@
+{
+ "Phone newcomer": {
+  "log": [
+   "lands on: Snowball Square · up to 8 players Play for Free Grab the Santa hat, keep it on your head, and knock it off everyone else's. 3% SANTA tax SANTA takes 3% on every",
+   "Games intro: Santa Hat Games · single playerSanta Hat Games Quick games you play on your own. Every entry: 10% burned, 90% into that game's prize pool. 3% SANTA tax Winnings are paid in SANTA and arrive 3% lighter; the token does that, not this game. 1 SANTA = $0.000618 · ",
+   "taps Spin 5 → dialog open: true | says: Santa Hat Spin · 10¢ a spinPlay 5 spins 5 × 10¢ = $0.50 One payment in SANTA. 10% is burned and the rest goes into the Spin prize pool right away. Your plays start straight away, and when the last one is done everything you won is sent to your wallet automatically. Nothing is kept on an account. ≈ 8",
+   "after 5 spins: 5 spins: $0.30 back · added to your demo balance (you get $0.29 after SANTA's 3% tax)"
+  ],
+  "errors": []
+ },
+ "Careful budgeter": {
+  "log": [
+   "odds legend: 5× win · 1 of 12 on the bonus wheel0.6% · 1 in 1604× win · 2 of 12 on the bonus wheel1.3% · 1 in 803× win · 9 of 12 on the bonus wheel5.6% · 1 in 17.82× win · 5 of 40 on the wheel12.5% · 1 in 81× money back · 12 of 40 on the wheel30.0% · 1 in 3.30× no win · 20 of 40 on the wheel50.0% · 1 in 2★ gold star · 3 of 40: spin the bonus wheel7.5% · 1 in 13.3",
+   "spin sizes: 10¢win up to 50¢ $1win up to $5",
+   "run buttons: Spin 110¢Spin 550¢Spin 10$1",
+   "buy dialog: 1 × 10¢ = $0.10 / Pay $0.10 & play | SANTA line: ≈ 162 SANTA at today's price. The real checkout locks the price for 60 seconds.",
+   "result: 1 spin: no win this time. Nothing to send.",
+   "demo balance now: $19.90"
+  ],
+  "errors": []
+ },
+ "Skeptic": {
+  "log": [
+   "facts shown: Pays back78.1% on average, plus the pool jackpotTop line prize (5 Santa Hats)about 1 in 11,054Pool jackpot1 in 25,000Every Santa Hat on the grid+6¢",
+   "how-to-win rules: Your payment went through for the run this play is part of (1, 5 or 10 plays). Only then the house made a secret for this play and locked it in by showing you its fingerprint: Your browser added its own number (after seeing the fingerprint, so the house couldn't pick a secret to beat it): Play number #1. The result comes from the secret, your number and the play number together. After the play the",
+   "check button visible: true",
+   "check says: Matches. The revealed secret gives the fingerprint you were shown before the play, and with your number it gives reel stops 7, 55, 39, 74, 41 (one per reel, each 0–75). That's what you got.",
+   "how a skeptic would check it themselves (text): Check it yourself, with any SHA-256 tool: the SHA-256 of the secret must equal the fingerprint. The play's numbers are HMAC-SHA256 with the secret's bytes as the key over \"your number:play number:0\" (then :1, :2… for more numbers; Spin's bonus wheel uses the second), read 4 bytes at a time as fractions of 232."
+  ],
+  "errors": []
+ },
+ "High roller": {
+  "log": [
+   "biggest buy: 10 × $1 = $10.00 / Pay $10.00 & play",
+   "Pull 10 with Skip took 55 s in this slow test browser",
+   "pool/jackpot readouts: Pool jackpot25% of the pool · 25 Santa Hats$125.86",
+   "after 10: 10 pulls: $5.28 back · added to your demo balance (you get $5.12 after SANTA's 3% tax)"
+  ],
+  "errors": []
+ },
+ "Competitive gamer": {
+  "log": [
+   "ranked lobby: × Ranked · 1 ticket · sign-in needed FFA RANKED FFA TEAM Your name Auto match · opening soon Tournament · Coming soon Join room Create private roomPractice vs bots Games being played No ranked games right now. Ranked opens soon.",
+   "ranks tab: RanksLeaderboard YouNot signed inSign in with a wallet or email to get a rank, keep your look, and appear on the leaderboard.Sign in All timeTodayThis weekEvents No players yet. Sign in to be first on the board."
+  ],
+  "errors": []
+ },
+ "Collector": {
+  "log": [
+   "store: StoreSnowball Supply Prices are in dollars, paid in SANTA at the live price. Payments open soon; you can try everything on now.",
+   "first enabled store button: Try on",
+   "avatar tab: Guest · sign in to keep your look Name ShirtsPantsFacesSkinSnowballs Hat RedUnlockedFrost BlueUnlockedPineUnlockedLantern GoldLevel 2Aurora VioletLevel 3Ice TealLevel 4Candy PinkLevel 5SnowdriftLevel 6Coal$0.25 in StoreEmber$0.25 in Store Level 1Matc"
+  ],
+  "errors": []
+ },
+ "Crypto regular": {
+  "log": [
+   "sign-in sheet: × Sign in · your avatar is bound to it Sign in Solana wallet Save your look, get ranked, and buy items. Connect wallet Email Save your look and get ranked. Buying items needs a wallet. Email me a link",
+   "live price line: 1 SANTA = $0.000625 · $1 ≈ 1,600 SANTA · token tax 3% (read live from the token)",
+   "demo notice: DemoPlay money only; payments open later.Demo balance $20.00 Reset"
+  ],
+  "errors": []
+ },
+ "Keyboard-only player": {
+  "log": [
+   "reached the Pull button after 11 Tab presses",
+   "Enter on Pull 1 opens the buy confirm: true | focus is on: Pay $1.00 & play"
+  ],
+  "errors": []
+ },
+ "Returning daily player": {
+  "log": [
+   "after coming back: demo balance $20.09 | winners: Player 553Spin 10¢ · 3:30 AM · 2×$0.20+100%"
+  ],
+  "errors": []
+ },
+ "Small-phone player": {
+  "log": [
+   "screenshots taken on a 320-px phone: play, games, store"
+  ],
+  "errors": []
+ }
+}

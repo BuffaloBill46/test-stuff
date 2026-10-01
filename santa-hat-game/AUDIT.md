@@ -1,4 +1,4 @@
-# Audit: Santa Hat Arcade (2026-09-30)
+# Audit: Santa Hat Arcade (2026-09-30; second pass 2026-10-01)
 
 Done by the building Claude before the hand-over to the blockchain Claude. Scope: the server code (security and money), the
 page (phones, accessibility, errors), the money math, and whether the docs still match the code. Everything marked **Fixed**
@@ -41,6 +41,28 @@ errors. The page downloads about 2.5 MB (mostly the 3D engine and fonts).
 
 - `PAYTABLE.md` regenerated from the code: unchanged, so the published odds match the game (Big Hat 75.5%, Spin 74.5%). Spin later became two wheels, and every game was set to about 80% (both 2026-09-30, Cody).
 - All 20+ test suites pass (the list is in HANDOFF).
+
+## Second pass: runs with automatic payouts (2026-10-01)
+
+Cody replaced play credits with RUNS: buy 1, 5 or 10 plays, they play at once, and the run's winnings are sent automatically
+when its last play lands (no claim, no player signature). That changes how money leaves the pools, so it was audited again.
+Saved reports and screenshots: `audits/2026-10-01/` (index in `audits/README.md`).
+
+| Finding / check | Status |
+|---|---|
+| **Run sums rounded to cents** while adding up a run's prizes: a pool jackpot is a share of the pool, not whole cents, so the books disagreed with the pool by a fraction of a cent. | **Fixed:** sums stay exact; rounding only on screen. The ledger audit in `tests/credits.test.mjs` fails if it comes back. |
+| A run must be paid **exactly once, exactly what it won + refunded, never before its last play**. | **Checked as assertions** in the demo ledger (`tests/credits.test.mjs`), on real Postgres (`tests/db/server.test.mjs`, `credits-db.test.mjs`) and on the real token program (`tests/solana/rehearsal.mjs`: one payout per run, books = wallets). |
+| A single payout can't exceed what a run could possibly win. | **Checked:** the database refuses a run payout above 205 × plays + jackpots (`finish_run`). |
+| One payment buys one run, once; plays (and their secrets) are made only after the payment is confirmed. | **Checked** (same tests; the fairness order is unchanged). |
+| A play the pool refuses after payment (emergency stop, pool refilling). | **Checked:** its price is added to the run's payout and taken from the pool its entry went into. |
+| A player closes the tab mid-run. | **Checked:** the server finishes the run itself (`tidy`), so the payout still goes out and the player isn't blocked. |
+| Refused BEFORE payment: an unfinished run, no linked wallet, or a pool that can't take the play. | **Checked** (`tests/db/server.test.mjs`, `security.test.mjs`). |
+| Phone: "Pull/Spin/Drop 10" wrapped onto two lines; the end-of-run summary split into squashed columns. | **Fixed;** checked by screenshot at 320 and 390 px (`audits/2026-10-01/screens/`). No automatic test for the look. |
+| The "Check this result" panel still said a play "was taken off your credits". | **Fixed** (now: the payment went through for the run). Found by the walkthrough; no automatic test for wording. |
+| Page audit at 320–1366 px (`tests/browser/audit-ux.mjs`). | **Clean:** the only flags are the Store's "Try on" buttons in rows that scroll sideways on purpose. |
+| 10-player walkthrough on the real page (`tests/focus/walkthrough.mjs`). | **All 10 finished;** log in `audits/2026-10-01/walkthrough.txt`. |
+
+Still not checked (needs live systems): the payout worker sending run payouts on devnet, and `005` on the live database.
 
 ## Not checked here (can't be, from this workspace)
 
