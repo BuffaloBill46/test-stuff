@@ -1,0 +1,14 @@
+{
+  "network": "devnet",
+  "rpc": "https://api.devnet.solana.com",
+  "mint": "Jx95so9XYhtSJJoqup7Xb3T9Ptr9ZuUTXSgPcu6uttg",
+  "priceUsdAtSetup": 0.000439,
+  "wallets": {
+    "spinPool": "2jXwJrxysw1wxZd8cUJnqBiP8h67M9kP4VuMKvjkhKbY",
+    "slotsPool": "8J3FiJh7inqRWnMsBEzy26vzBcmBxNyQy3AwCAMTVahn",
+    "lotteryPool": "2C2Tnac8hDbAfKn2Wp1fgiYsT5gA4K5nCGkaGCkBjVkm",
+    "treasury": "5prvqU48sERNpUq7YQLxSHsvUr24gJRGA4L4ge4YZy4E",
+    "player": "8d9PLEZCD7KVThwsaPRNgDBv6amkvKUwFVLmQFCG6Gkx",
+    "admin": "6sy1FKsJUJU5XZ4HoRuaG4e9Rv3GRyPWb3fr6wsAGdJo"
+  }
+}
