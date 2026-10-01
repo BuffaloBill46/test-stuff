@@ -82,7 +82,7 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   // the SAME balance pays for a 10¢ spin: no buy counter this time
   await waitDone();
   check(!(await p.evaluate(() => document.querySelector('#buyDlg').open)), `${label}: a 10¢ spin needs no new purchase`); await p.waitForTimeout(200); after = await money(); r = await read();
-  check(Math.abs(after.bal - (before.bal - 0.1 + 0.2 * 0.97)) < 1e-9, `${label}: 10¢ 2× balance`);
+  check(Math.abs(after.bal - (before.bal + 0.2 * 0.97)) < 1e-9, `${label}: 10¢ 2× win (already paid from the balance)`);
   check(await p.textContent('#crSpin') === '$6.90', `${label}: $10 − three $1 spins − one 10¢ spin = $6.90 (${await p.textContent('#crSpin')})`);
   await p.evaluate(() => document.querySelector('#spin .bets button[data-bet="1"]').click());
   check(await p.textContent('#crSpin') === '$6.90' && /Spin balance/.test(await p.textContent('#crSpinWhat')), `${label}: switching size shows the same balance`);
