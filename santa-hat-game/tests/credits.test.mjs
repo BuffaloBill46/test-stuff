@@ -109,6 +109,39 @@ for (let run = 0; run < 60; run++) {
   assert.ok(Math.min(...bonusHits) > 150 && Math.max(...bonusHits) < 350, 'every bonus segment turns up about equally: ' + bonusHits);
   console.log(`fair numbers: ${N.toLocaleString()} spins pay back ${(pb * 100).toFixed(2)}% (exact ${(payback() * 100).toFixed(2)}%)`);
 }
+// 9. Snowball Drop: ONE dollar balance for both sizes (Cody, 2026-10-01: "when someone buys $10.00 in tokens they can play
+//    either the 0.10 or 1.00 game"). Invariant: balance = paid − spent, to the cent; a size is refused only when the balance
+//    can't cover it; a refused or failed drop gives back exactly what it took; every drop re-checks from its proof.
+{
+  const { unitsFor, balanceOf } = await import('../mockups/credits.js');
+  const ledger = newLedger(), pools = { spin: { pool: 500, prepaid: true }, slots: { pool: 500, prepaid: true } }, house = createHouse(ledger, pools);
+  const r = buy(ledger, pools, 'drop', 10, 'pay-drop'); // $10
+  assert.ok(r.ok && r.cost === 10 && ledger.credits.drop === 100 && balanceOf(ledger, 'drop') === 10, '$10 buys a $10.00 balance');
+  assert.equal(unitsFor('drop', 0.10), 1); assert.equal(unitsFor('drop', 1), 10);
+  let spent = 0;
+  const go = async (bet) => { const o = await house.open('drop', bet); if (!o.ticket) return o; const st = await house.settle(o.ticket, newSeed(8));
+    const c = await check(st.proof); assert.ok(c.matches); assert.deepEqual([c.outcome.path, c.outcome.mult], [st.r.path, st.r.mult], 'the drop re-checks from its proof');
+    spent += bet; return st; };
+  for (const bet of [1, 0.1, 0.1, 1, 0.1, 1, 1, 1, 1, 0.1]) { const st = await go(bet); assert.ok(st.r, 'drop ' + bet); assert.equal(st.r.bet, bet); }
+  assert.equal(balanceOf(ledger, 'drop'), Math.round((10 - spent) * 100) / 100, 'balance = $10 − what was played'); // 10 − 6.4 = 3.60
+  assert.deepEqual(audit(ledger), []);
+  for (let i = 0; i < 3; i++) await go(1); // $0.60 left
+  assert.equal(balanceOf(ledger, 'drop'), 0.6);
+  assert.deepEqual(await house.open('drop', 1), { noCredit: true }, 'a $1 drop is refused with only 60¢ left');
+  assert.equal(balanceOf(ledger, 'drop'), 0.6, '...and nothing was taken');
+  for (let i = 0; i < 6; i++) await go(0.1);
+  assert.equal(ledger.credits.drop, 0, 'the last 60¢ plays six 10¢ drops');
+  assert.deepEqual(await house.open('drop', 0.1), { noCredit: true });
+  assert.equal((await house.open('drop', 0.37)).why, 'unknown size', 'only 10¢ and $1 drops');
+  // a stopped pool refuses BEFORE taking anything; a stopped pool at settle gives back exactly the $1
+  buy(ledger, pools, 'drop', 2, 'pay-drop-2');
+  pools.spin.rules = { paused: true }; assert.deepEqual(await house.open('drop', 1), { refused: true, stopped: true }); assert.equal(balanceOf(ledger, 'drop'), 2);
+  pools.spin.rules = {}; const o = await house.open('drop', 1); assert.equal(balanceOf(ledger, 'drop'), 1);
+  pools.spin.rules = { paused: true }; assert.equal((await house.settle(o.ticket, 'abcd')).refused, true); assert.equal(balanceOf(ledger, 'drop'), 2, 'refund gives back exactly $1');
+  pools.spin.rules = {};
+  assert.deepEqual(audit(ledger), []);
+  console.log('Snowball Drop balance: $10 played as a mix of 10¢ and $1 drops, to the cent; $1 refused at 60¢; refunds exact; every drop re-checked');
+}
 console.log(`OK: ${plays} plays in Cody's order, ${checked} results re-checked, ${prepaidOk} prepaid pool moves, books balanced after every step`);
 
 // 9. Something breaks mid-play (e.g. hashing unavailable): the credit comes back, the books still balance.

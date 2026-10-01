@@ -8,33 +8,38 @@
 //             5. the result is paid, THEN the secret is revealed so anyone can check it
 // DEMO: this runs in the browser. For real money the same steps run on the server and the secret never reaches the page
 // before step 5. `steps` records the order for the tests.
-import { KINDS, spend, refund } from './credits.js';
+import { KINDS, DROP_SIZES, spend, refund, unitsFor } from './credits.js';
 import { spin, canSpin, STAR, DEFAULT_WHEEL } from './spin.js';
 import { pull, canPull, MACHINES } from './slots.js';
+import { play as dropPlay, canPlay as canDrop, PAYS as DROP_PAYS, ROWS as DROP_ROWS } from './plinko.js';
 import * as fair from './fair.js';
 import { randFrom } from './fair.js';
 
-export const NUMS = 8; // numbers drawn per play (Slots uses 6: the jackpot draw + 5 reel stops; Spin 1, or 2 on a bonus star)
+export const NUMS = 8; // numbers drawn per play (Slots uses 6: the jackpot draw + 5 reel stops; Spin 1, or 2 on a bonus star;
+                        // Snowball Drop 8: one bounce per row of pegs)
 
 // If anything fails after the credit is spent and before a result exists, the credit goes back (never a lost play).
 // `f` swaps the fair functions (tests only, to make them fail).
 export function createHouse(ledger, pools, f = fair) {
   const open_ = new Map(), steps = [];
-  const can = (K, kind) => (K.game === 'spin' ? canSpin(pools.spin, K.bet) : canPull(pools.slots, kind));
+  const can = (K, kind, bet) => (kind === 'drop' ? canDrop(pools.spin, bet) : K.game === 'spin' ? canSpin(pools.spin, K.bet) : canPull(pools.slots, kind));
 
-  async function open(kind) {
+  // bet: the play's size, for a balance kind (Snowball Drop: 10¢ or $1 from the same balance).
+  async function open(kind, bet) {
     const K = KINDS[kind];
-    const c = can(K, kind);
+    if (K.balance) { if (!DROP_SIZES.includes(bet)) return { failed: true, why: 'unknown size' }; } else bet = K.bet;
+    const units = unitsFor(kind, bet);
+    const c = can(K, kind, bet);
     if (!c.ok) return { refused: true, stopped: !!c.stopped };
-    if (!spend(ledger, kind)) return { noCredit: true };
+    if (!spend(ledger, kind, units)) return { noCredit: true };
     steps.push('spent');
     let secret, commit;
     try { secret = f.newSeed(); commit = await f.fingerprint(secret); }
-    catch (e) { refund(ledger, kind); steps.push('refunded'); return { failed: true, why: e.message }; }
+    catch (e) { refund(ledger, kind, units); steps.push('refunded'); return { failed: true, why: e.message }; }
     const playNo = ++ledger.plays;
     steps.push('locked');
     const ticket = `${playNo}-${fair.newSeed(4)}`;
-    open_.set(ticket, { kind, secret, commit, playNo });
+    open_.set(ticket, { kind, bet, units, secret, commit, playNo });
     return { ticket, commit, playNo };
   }
 
@@ -49,11 +54,11 @@ export function createHouse(ledger, pools, f = fair) {
       const nums = await f.numbers(t.secret, playerSeed, t.playNo, NUMS);
       steps.push('drawn');
       const rand = randFrom(nums);
-      r = K.game === 'spin' ? spin(pools.spin, K.bet, rand, forced) : pull(pools.slots, t.kind, rand, forced);
-    } catch (e) { refund(ledger, t.kind); steps.push('refunded'); return { failed: true, why: e.message }; }
-    if (r.paused) { refund(ledger, t.kind); steps.push('refunded'); return { refused: true, stopped: !!r.stopped }; }
+      r = t.kind === 'drop' ? dropPlay(pools.spin, t.bet, rand, forced) : K.game === 'spin' ? spin(pools.spin, K.bet, rand, forced) : pull(pools.slots, t.kind, rand, forced);
+    } catch (e) { refund(ledger, t.kind, t.units); steps.push('refunded'); return { failed: true, why: e.message }; }
+    if (r.paused) { refund(ledger, t.kind, t.units); steps.push('refunded'); return { refused: true, stopped: !!r.stopped }; }
     steps.push('revealed');
-    return { r, proof: { kind: t.kind, commit: t.commit, secret: t.secret, playerSeed, playNo: t.playNo, forced: forced !== undefined } };
+    return { r, proof: { kind: t.kind, bet: t.bet, commit: t.commit, secret: t.secret, playerSeed, playNo: t.playNo, forced: forced !== undefined } };
   }
   return { open, settle, steps, pending: () => open_.size };
 }
@@ -62,6 +67,10 @@ export function createHouse(ledger, pools, f = fair) {
 // cfg (optional): the settings the play ran on (settings.js build()); without it, the built-in game.
 export function outcomeFrom(kind, nums, cfg = null) {
   const K = KINDS[kind];
+  if (kind === 'drop') { // one number per row of pegs: under ½ bounces left, otherwise right; the bin is how many rights
+    const path = nums.slice(0, DROP_ROWS).map((x) => (x < 0.5 ? 0 : 1)), bin = path.reduce((a, b) => a + b, 0);
+    return { path, bin, mult: DROP_PAYS[bin] };
+  }
   if (K.game === 'spin') { // the first number picks the main segment; on a star, the second picks the bonus segment
     const W = cfg?.wheel || DEFAULT_WHEEL, slice = Math.floor(nums[0] * W.main.length);
     if (W.main[slice] !== STAR) return { slice, mult: W.main[slice] };
