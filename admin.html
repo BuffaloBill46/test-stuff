@@ -23,6 +23,7 @@ button.stop { background: var(--hat); color: var(--brim); } button:disabled { op
 .pool b.big { display: block; font: 700 30px/1.1 var(--digits); color: var(--lamp); }
 .state { font: 700 13px/1 var(--digits); text-transform: uppercase; padding: 6px 8px; border: 2px solid; display: inline-block; }
 .state.on { color: var(--pine); } .state.off { color: var(--warn); }
+#frozenBox.alert { border-color: var(--warn); box-shadow: inset 0 0 0 2px var(--warn), 3px 3px 0 var(--ink); } #frozen b { font-family: var(--digits); color: var(--lamp); } #frozen code { white-space: nowrap; }
 label { display: grid; gap: 4px; font-size: 14px; color: var(--dim); }
 input, select { width: 100%; min-width: 0; font: 500 17px/1.2 var(--body); color: var(--text); background: #0e1328; border: 2px solid var(--ink); border-radius: 3px; padding: 9px 10px; min-height: 44px; }
 .form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 10px 0; }
@@ -39,6 +40,10 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
     <p class="dim">Every action is signed by your wallet (a free signature, not a payment) and written to the public log. Stop a pool before any withdrawal, so a top-off can't refill it.</p></div>
   <section class="plaque"><div class="row"><button id="connect" type="button">Connect admin wallet</button><span id="who" class="dim">Not connected.</span></div></section>
   <section class="pools" id="pools"><p class="dim">Loading the pools…</p></section>
+  <section class="plaque" id="frozenBox"><h2>Frozen payouts</h2>
+    <p class="dim">A winner is never frozen. A run's payout is frozen only if it's more than that run could possibly win from the prize
+      table (a bug or a break-in, not luck). Check it, then Release sends it to the player's wallet on the next payout pass.</p>
+    <div id="frozen" class="dim">None frozen.</div></section>
   <section class="plaque"><h2>Change settings</h2>
     <div class="row"><label>Pool <select id="game"><option value="slots">Slots</option><option value="spin">Spin</option></select></label></div>
     <div class="form" id="fields"></div>
