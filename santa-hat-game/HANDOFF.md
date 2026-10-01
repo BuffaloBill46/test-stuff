@@ -184,6 +184,9 @@ FOR_MAIN_CLAUDE.md.
   server, SQL (`runs` table, `buy_run`, `finish_run`: one payout per run) and the payout worker; every test passes, including
   the on-chain rehearsal. Decision and rules: DESIGN_NOTES → "No credits".
 
+**For the other Claude:** `FOR_MAIN_CLAUDE.md` → "Read first" lists every change since the first hand-over that touches the
+server, the database or payments. Known gap: payouts held by the safety cap can't be released yet (listed there).
+
 **Server side, built and proven here but not deployed** (everything else for devnet is in `FOR_MAIN_CLAUDE.md`):
 - Edge Function `games` (Cody's choice): quote → buy a run → settle each play → one payout per run, stuck-run tidying, one play at a time per player,
   pools in SANTA floating with the price (Cody), escrow admin controls (wallet-signed stop/resume/settings, logged).

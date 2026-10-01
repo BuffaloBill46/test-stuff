@@ -73,7 +73,8 @@ stop cheating and spam:
 - [ ] **Rate limit per wallet and per IP** (e.g. a few pulls a second at most) to stop scripted floods; slow down, don't ban, on the first hits.
 - [ ] **Bot signals:** flag wallets pulling at perfectly regular intervals for hours; review before acting (a real grinder is fine).
 - [ ] **Results only from the server.** The page just animates what the server decided; the browser never picks outcomes or amounts.
-- [ ] **Payout queue with a sanity cap:** a single payout far above the biggest possible pull (about $205, or the pool jackpot) is held for Cody to review instead of sent automatically.
+- [x] **Payout queue with a sanity cap (built, 2026-10-01):** a run payout above $205 × plays (+ any pool jackpot) is saved as `held` instead of sent.
+- [ ] **Release held payouts:** admin action + admin screen list, and the run summary saying "waiting for a check" instead of "sent" (FOR_MAIN_CLAUDE).
 - [ ] **Keys never leave the server;** pool wallets hold only what the rules need (pool + skim/top-off movements).
 
 ### Slots: tips for building it right (from the research, see RESEARCH.md)

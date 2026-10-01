@@ -4,6 +4,54 @@ Kept by the Claude that built the game (cloud workspace, no wallets, no live con
 **left undone on purpose** because it needs something this workspace doesn't have. Read `HANDOFF.md` first, then this list.
 Tick items off here as they're done. Order is roughly the order to do them in for a devnet test.
 
+## Read first: everything that changed since the first hand-over (2026-09-30 evening → 2026-10-01)
+All of it is committed, tested and live in the DEMO (no real money). Server/SQL parts are built and tested but NOT deployed.
+Details of each decision: DESIGN_NOTES.md. Audit of the money changes: AUDIT.md → "Second pass"; saved reports: `audits/`.
+
+**How players pay and get paid (the big one)**
+- **No credits, no balances: RUNS** (Cody, 2026-10-01). Each game has Play 1 / 5 / 10 at the size picked on the card.
+  One confirm → `window.santaPay(quote)` ONCE for the whole run → the plays run → the run's last play queues ONE payout to
+  the player's linked wallet automatically. No claim button, the player never signs to be paid. Full SQL/server detail in
+  the ticked item below. Sizes: Spin 10¢ or $1, Snowball Drop 10¢ or $1, Big Hat $1. Quote body: `{kind, n, bet}`,
+  `kind` = `spin` | `drop` | `big`.
+- **Removed server actions:** `credits`, `open` (runs replaced them) and the player `history` action ("My plays" was removed
+  by Cody: players don't need it; every play stays in the `plays` table). Web door actions now: `quote`, `buy`, `settle`
+  (signed in) and `pools`, `settings`, `winners` (public).
+- **Payout cap → `held`:** a run payout above $205 × plays (+ jackpots) is saved with status `held` and the worker skips it.
+  **Not built: a way to release it** (an admin action + a row on the admin screen), and the page's summary says "sent to
+  your wallet" even then. Needed before real money; see the open item below.
+
+**The games (numbers are Cody's calls; about 80% payback on every game because "we lose 16% to fees")**
+- **Spin is two wheels:** main wheel 40 equal segments (0× 20, 1× 12, 2× 5, gold star 3) → a star spins the bonus wheel of 12
+  (3× 9, 4× 2, 5× 1). Pays back 80.0%. Fair numbers: the 1st picks the main segment, the 2nd the bonus segment; the re-check
+  replays both. Rules `mockups/spin.js`.
+- **Big Hat:** hat bonus 6¢ per Santa Hat on the grid → 78.1% + the pool jackpot ≈ 79.5%. `PAYTABLE.md` regenerated.
+- **Snowball Drop (Plinko) is a third game** on the Games tab (preview also at `/plinko.html`): 8 rows of fair 50/50 bounces
+  (one fair number per row, < 0.5 = left), 9 equal presents paying 10× · 5× · 1× · 0.4× · 0× from the edges in; 78.4%.
+  **It shares the Spin pool** (its payments go to the Spin pool wallet; game `spin` in `pools`). Guard rail: Spin's top-off
+  must cover Drop's $10 top prize. Simulated 6 million mixed plays: never refused. Rules `mockups/plinko.js`.
+
+**Server and admin**
+- **Game settings are versioned and wallet-signed** (admin action `set-settings`, table `game_settings`): prices, both Spin
+  wheels, Big Hat odds/prizes/symbols, jackpot % and odds, store items. Guard rails refuse unsafe changes; every run and play
+  records the version it was bought/played on, so a change never lands mid-run and old plays re-check on their own odds.
+  The admin screen has the editor. Logic `mockups/settings.js`.
+- **Top-offs: Cody sends SANTA himself;** admin action `record-deposit` books what ARRIVED on the chain (ticked item below).
+- **Price-pump guard:** plays are priced at the median of the last 10 minutes of once-a-minute samples
+  (`server/price.js`, table `price_samples`). It samples itself when a quote comes in; no schedule needed.
+- **Admin actions (all wallet-signed, replay-proof, logged):** `pause`, `resume`, `set-rules`, `set-settings`, `record-deposit`.
+- **Edge Function settings it reads:** `SOLANA_RPC_URL`, `SPIN_POOL_WALLET`, `SLOTS_POOL_WALLET`, `SANTA_MINT` (test token;
+  unset = real SANTA), `ADMIN_WALLETS`, plus Supabase's own `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_DB_URL`
+  (provided by Supabase; never in the site or repo).
+
+**The page**
+- Phone layout fixed from Cody's Galaxy S22+ screenshots (matches sideways, top bar, Avatar camera; checked at 6 sizes by
+  `tests/browser/phone-shots.mjs`). Snowball Drop's board only draws while on screen.
+- "What's SANTA?" draft copy in `WHATS_SANTA.md`, waiting on Cody.
+
+**Tests:** every suite passes (list in HANDOFF → How to test), including the server-mode browser test that buys a run of 5
+through the real server code and checks ONE payout equal to the plays' winnings, and the on-chain rehearsal.
+
 ## Needs Cody (decisions, accounts, real money)
 - [ ] **Supabase settings:** turn on Solana (Web3) sign-in; URL Configuration (Site URL `https://buffalobill46.github.io/test-stuff/`,
       Redirect `https://buffalobill46.github.io/test-stuff/**`); connect Resend for sign-in emails. (HANDOFF → Waiting on Cody.)
@@ -58,6 +106,10 @@ Tick items off here as they're done. Order is roughly the order to do them in fo
       signed purchases, plays, payouts + skims, admin stop/resume, books = wallets). Repeat its steps on devnet; the only stand-in
       is the "finalized transaction" record, which the RPC provides for real. Payout transactions MUST carry a unique memo
       (`Santa Hat payout #<id>`), as in the rehearsal's adapter; the worker refuses to reuse a signature.
+- [ ] **Release held payouts (NOT BUILT; needed before real money):** a run payout above the cap is saved as `held` and
+      nothing sends it. Add a wallet-signed admin action (e.g. `release-payout` / `refuse-payout`, logged in `pool_log`) and a
+      "held payouts" list on the admin screen; and in server mode, have the page's run summary say "waiting for a check" instead
+      of "sent to your wallet" when the payout is held (`settle`'s last result would need to return the payout status).
 - [ ] **Run the payout worker live:** `server/payouts.js` is built and proven on the real token program (never pays twice, even
       when it crashes before or after sending; `tests/solana/payouts.test.mjs`). Still needed: the live chain adapter (a Solana
       RPC: getLatestBlockhash, sendTransaction, getSignatureStatuses + isBlockhashValid; same shape as the test's), the pool
