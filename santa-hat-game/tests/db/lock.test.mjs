@@ -89,6 +89,31 @@ console.log(`✓ the check has teeth: with the lock removed, ${n} of 80 plays re
   console.log('✓ six payments racing for one quote at once: exactly one run of 5 plays');
 }
 
+// ---- 2b. One player, two runs at once, every play settled at the same moment (out of order) ------------------------------
+// "One run at a time" is checked at the QUOTE: a player who asks for two quotes before paying either can buy both. A paid run
+// is never refused (that would keep the money and give no plays), so instead prove both runs are paid exactly right.
+{
+  const p = await db.player(W(9), 'Two');
+  const q1 = await games.quote(p, 'spin', 10, 1), q2 = await games.quote(p, 'spin', 10, 1);
+  assert.ok(q1.id && q2.id, 'two quotes before paying either: both are given (the gap this section covers)');
+  const [r1, r2] = await Promise.all([directRun(db, p, 'spin', 10, 1), directRun(db, p, 'spin', 10, 1)]); // bought at the same moment
+  const nos = (await db.query('select play_no from public.plays where profile_id = $1 order by play_no', [p])).map((x) => +x.play_no);
+  assert.deepEqual(nos, Array.from({ length: 20 }, (_, i) => i + 1), 'play numbers 1–20, no clash (the per-player lock in buy_run)');
+  const tickets = [...r1.tickets, ...r2.tickets].sort(() => Math.random() - 0.5);
+  const out = await Promise.all(tickets.map((t) => games.settle(p, t, newSeed(16))));
+  assert.ok(out.every((x) => x.r), 'all 20 plays settled');
+  for (const { run } of [r1, r2]) {
+    const [rn] = await db.query('select paid_at from public.runs where id = $1', [run]);
+    const [won] = await db.query('select coalesce(sum(pay_raw), 0) as raw from public.plays where run_id = $1', [run]);
+    const pays = await db.query('select amount_raw from public.payouts where run_id = $1', [run]);
+    assert.ok(rn.paid_at, `run ${run} finished`);
+    assert.equal(pays.length, +won.raw > 0 ? 1 : 0, `run ${run}: one payout (none if it won nothing)`);
+    if (pays.length) assert.equal(+pays[0].amount_raw, +won.raw, `run ${run}: paid exactly its own winnings`);
+  }
+  assert.equal(out.filter((x) => x.runDone).length, 2, 'exactly one play per run reported the run finished');
+  console.log('✓ one player, two runs bought and all 20 plays settled at the same moment: each run paid once, exactly its winnings');
+}
+
 // ---- 3. Four payout workers at the same moment ------------------------------------------------------------------------
 {
   // 12 queued payouts (one per run, as finish_run leaves them).
