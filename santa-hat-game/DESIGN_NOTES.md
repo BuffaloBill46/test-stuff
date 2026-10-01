@@ -101,6 +101,15 @@ it can't hold SANTA as written: it books each ticket at the amount SENT, but SAN
 its vault would always hold 3% less than its books promise (the winner's claim or the last refunds would fail). It's also
 5% treasury / no burn, one winner. Cody chose a server-run lottery instead.
 
+### Plaza themes (decided, Cody 2026-10-01; NOT BUILT YET)
+- The plaza gets **themes** ("skins"): same ring, hat, snowballs, scoring and bots; only the look changes. First new one: **Halloween,
+  with less snow, like a real Halloween** (frosty grass with thin snow patches, so snowballs still make sense; jack-o'-lanterns,
+  bare trees, harvest stalls, dusk sky). Christmas stays the default.
+- **Players pick their theme on the Avatar screen.** It's their own view only: in a shared match each player sees the theme they
+  picked (positions, snowballs and scores are identical for everyone), so no network or fairness change. Remembered per player.
+- Build: a theme layer so `plaza.js` reads colours/props from a theme file instead of hard-coding Christmas; then each theme is
+  mostly art. Check glow with the scene fully populated (LESSONS).
+
 ### Levels, special snowballs and special gear (decided, Cody 2026-10-01, from his handwritten pages; NOT BUILT YET)
 **Controls and match rules**
 - After you get the Santa hat you're **immune for 2 seconds**.

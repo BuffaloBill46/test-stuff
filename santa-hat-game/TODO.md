@@ -33,6 +33,8 @@ existing bot (frozen/failed payouts, books ≠ wallet, top-off waiting, server d
 - [x] **Slots payouts decided** (Big Hat, 11 straight/diagonal lines, 100× top line, 6¢ hat bonus, 78.1% payback + the pool jackpot ≈ 80%: Cody's target, 2026-09-30). The live numbers are always in `PAYTABLE.md`; regenerate it with `node tests/paytable.mjs` after any change.
 
 ## Next to build
+- [ ] **Plaza themes, picked on the Avatar screen (Cody 2026-10-01):** a theme layer for `plaza.js`, then Halloween (less snow). Each player sees their own pick. DESIGN_NOTES → "Plaza themes".
+- [ ] **Levels, special snowballs, special gear, hat immunity, −1 per hit (Cody 2026-10-01):** DESIGN_NOTES → "Levels, special snowballs and special gear".
 - [ ] **Levels for the new hats, backpacks and Ice Ball** (Cody is setting them; they're Store purchases until then).
 - [ ] **Special snowball types from Cody's notes** (faster, bigger, longer stun, splits). The rules system and the first one (Ice Ball) are built: `catalog.js` `rules`, `sim.js`, `tests/iceball.test.mjs`. Ice Ball is a $0.50 Store item for now (Cody); open: whether special snowballs count in ranked.
 - [ ] **Turn on ranked Auto match:** the FFA RANKED lobby is built, but its Auto match button stays off ("opening soon") until tickets and the server below exist.
