@@ -12,6 +12,7 @@ import { createGameServer } from '../../../server/games.js';
 import { makeHandler } from '../../../server/http.js';
 import { createAdmin } from '../../../server/admin.js';
 import { makePrice } from '../../../server/price.js';
+import { makeLimiter, dbStore } from '../../../server/ratelimit.js';
 import { livePrice, liveFee } from '../../../mockups/market.js';
 
 const env = (k: string) => Deno.env.get(k) ?? '';
@@ -34,8 +35,15 @@ const auth = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'),
 const poolWallets = { spin: env('SPIN_POOL_WALLET') || null, slots: env('SLOTS_POOL_WALLET') || null }, mintOpt = env('SANTA_MINT') ? { mint: env('SANTA_MINT') } : {};
 const server = createGameServer({ db, chain, livePrice: makePrice({ db, livePrice }), liveFee, poolWallets, ...mintOpt });
 
+// Speed limit: counts in the database (table rate_hits, supabase/007_rate_limits.sql: apply it with 005), because each call
+// here may run in a fresh copy that remembers nothing. On the planned always-on game server: memoryStore() instead (one line).
+// The caller's address: the first x-forwarded-for entry (the http.js default). CHECK ON THE LIVE FUNCTION that this entry is
+// the real visitor and can't be set by them (FOR_MAIN_CLAUDE); if not, pass addressOf here.
+const limiter = makeLimiter({ store: dbStore(db) });
+
 Deno.serve(makeHandler({
   server,
+  limiter,
   admin: createAdmin({ db, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), chain, poolWallets, ...mintOpt }), // chain: to check Cody's deposits
   async profileFor(token: string) {
     const { data, error } = await auth.auth.getUser(token);

@@ -6,6 +6,7 @@ const { chromium } = require(path.join(execSync('npm root -g').toString().trim()
 const { makeDb } = await import('../db/setup.mjs');
 const { createGameServer } = await import('../../server/games.js');
 const { makeHandler } = await import('../../server/http.js');
+const { makeLimiter, memoryStore } = await import('../../server/ratelimit.js');
 const { createAdmin, b58encode } = await import('../../server/admin.js');
 const ROOT = new URL('../../mockups', import.meta.url).pathname, fails = [], check = (ok, m) => { if (!ok) fails.push(m); };
 
@@ -24,7 +25,7 @@ const key = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign', 
 const addr = b58encode(new Uint8Array(await crypto.subtle.exportKey('raw', key.publicKey)));
 const pkcs8 = [...new Uint8Array(await crypto.subtle.exportKey('pkcs8', key.privateKey))];
 const server = createGameServer({ db, chain: {}, livePrice: async () => ({ usd: 0.00085 }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: {} });
-const handle = makeHandler({ server, admin: createAdmin({ db, adminWallets: [addr], onSettings: () => server.settingsChanged() }), profileFor: async () => null });
+const handle = makeHandler({ limiter: makeLimiter({ store: memoryStore() }), server, admin: createAdmin({ db, adminWallets: [addr], onSettings: () => server.settingsChanged() }), profileFor: async () => null }); // the real speed limit and numbers: a player clicking through must never be slowed
 const web = http.createServer(async (req, res) => {
   if (req.method === 'GET') { const f = path.join(ROOT, req.url.split('?')[0]); if (!f.startsWith(ROOT) || !existsSync(f)) { res.writeHead(404); return res.end(); }
     res.writeHead(200, { 'content-type': f.endsWith('.js') ? 'text/javascript' : f.endsWith('.png') ? 'image/png' : 'text/html' }); return res.end(readFileSync(f)); }

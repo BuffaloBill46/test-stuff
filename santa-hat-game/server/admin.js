@@ -64,6 +64,8 @@ export function depositOf(tx, mint, wallet) {
 }
 
 // chain.getTransaction / poolWallets / mint: only needed for record-deposit (the same ones the game server uses).
+// (The type note stops Deno's checker reading `chain = null` as "chain may only ever be null" when the Edge Function passes one.)
+/** @param {{ db: any, adminWallets: string[], now?: () => number, onSettings?: () => void, chain?: { getTransaction: (s: string) => Promise<any> } | null, poolWallets?: Record<string, string | null>, mint?: string }} opts */
 export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettings = () => {}, chain = null, poolWallets = {}, mint = MINT }) {
   async function run({ wallet, message, signature }) {
     const m = parse(message || '');

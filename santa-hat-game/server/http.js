@@ -7,23 +7,32 @@
 //   settings { version? }      → public game settings (prices, odds, prizes); any version, for re-checking old plays
 //   pools                      → public pool status: balances, settings, pending transfers, change log (admin screen)
 // Only signed-in players (a Supabase login token); only our own website may call it from a browser.
+// Speed limit (server/ratelimit.js): every request counts against its internet connection, every signed-in request against its
+// player too; over the limit → 429 "slow down, try again in N seconds".
 export const ALLOWED_ORIGINS = ['https://buffalobill46.github.io', 'http://localhost'];
 const allowed = (o) => ALLOWED_ORIGINS.includes(o) || /^http:\/\/localhost:\d+$/.test(o); // localhost = a player's own computer (tests)
 
-// deps: { server (games.js), profileFor(token) → profile id or null }
+// deps: { server (games.js), profileFor(token) → profile id or null, limiter (ratelimit.js; null = none, tests only),
+//         addressOf(req) → the caller's internet address (default: the first x-forwarded-for entry) }
 export function makeHandler(deps) {
+  // No limiter by accident would look protected while it isn't: it must be passed, or switched off on purpose with null.
+  if (deps.limiter === undefined) throw new Error('makeHandler needs a limiter (server/ratelimit.js), or limiter: null on purpose');
+  const addressOf = deps.addressOf || ((req) => (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown');
   const cors = (origin) => ({
     'access-control-allow-origin': allowed(origin) ? origin : ALLOWED_ORIGINS[0],
     'access-control-allow-headers': 'authorization, content-type, apikey, x-client-info, x-santa-admin',
     'access-control-allow-methods': 'POST, OPTIONS', vary: 'origin',
   });
   const reply = (origin, status, body) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...cors(origin) } });
+  const slowDown = (origin, l) => new Response(JSON.stringify({ error: `slow down: too many requests. Try again in ${l.retryAfter} seconds.`, slowDown: true, retryAfter: l.retryAfter }),
+    { status: 429, headers: { 'content-type': 'application/json', 'retry-after': String(l.retryAfter), ...cors(origin) } });
 
   return async function handle(req) {
     const origin = req.headers.get('origin') || '';
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(origin) });
     if (req.method !== 'POST') return reply(origin, 405, { error: 'POST only' });
     if (origin && !allowed(origin)) return reply(origin, 403, { error: 'not from the game\'s website' });
+    if (deps.limiter) { const l = await deps.limiter.connection(addressOf(req)); if (!l.ok) return slowDown(origin, l); } // before any database work
     // Admin actions carry their own proof (a wallet-signed message, server/admin.js), so they skip the player sign-in.
     if (deps.admin && (req.headers.get('x-santa-admin') === '1')) {
       let body; try { body = await req.json(); } catch { return reply(origin, 400, { error: 'send JSON' }); }
@@ -43,6 +52,7 @@ export function makeHandler(deps) {
     const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
     const profile = token ? await deps.profileFor(token).catch(() => null) : null;
     if (!profile) return reply(origin, 401, { error: 'sign in first' });
+    if (deps.limiter) { const l = await deps.limiter.player(profile); if (!l.ok) return slowDown(origin, l); }
     const s = deps.server;
     try {
       let out;
