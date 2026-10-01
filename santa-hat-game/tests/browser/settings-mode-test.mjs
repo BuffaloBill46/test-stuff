@@ -10,6 +10,7 @@ const { chromium } = require(path.join(execSync('npm root -g').toString().trim()
 const { PGlite } = await import('../db/node_modules/@electric-sql/pglite/dist/index.js');
 const { createGameServer } = await import('../../server/games.js');
 const { makeHandler } = await import('../../server/http.js');
+const { makeLimiter, memoryStore } = await import('../../server/ratelimit.js');
 const { splitPayment, MINT } = await import('../../mockups/market.js');
 const ROOT = new URL('../../mockups', import.meta.url).pathname, fails = [], check = (ok, msg) => { if (!ok) fails.push(msg); };
 
@@ -50,7 +51,7 @@ V1.big.counts = { ...V1.big.counts, hat: 9, coal: 24 }; V1.store.items = [{ id: 
   const sig = [...new Uint8Array(await crypto.subtle.sign('Ed25519', akey.privateKey, new TextEncoder().encode(message)))].map((x) => x.toString(16).padStart(2, '0')).join('');
   const r = await adminSrv.run({ wallet: aaddr, message, signature: sig }); check(r.ok, 'publish v1: ' + r.error); }
 const M1 = build(V1).machine;
-const handle = makeHandler({ server, profileFor: async (t) => (t === 'test-token' ? me : null) });
+const handle = makeHandler({ limiter: makeLimiter({ store: memoryStore() }), server, profileFor: async (t) => (t === 'test-token' ? me : null) }); // the real speed limit and numbers: a player clicking through must never be slowed
 // One local address serves the page AND the game server (like the real site + Edge Function, both https in real life).
 const web = http.createServer(async (req, res) => {
   if (req.method === 'GET') { const pth = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]).replace(/^\//, '') || 'online.html');

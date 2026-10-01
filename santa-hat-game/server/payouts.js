@@ -41,7 +41,11 @@ export async function runPayouts({ db, chain, limit = 20, table = 'payouts' }) {
     const s = await chain.sign(p);
     const clash = await db.query(`select 1 from public.payouts where tx = $1 union all select 1 from public.pool_transfers where tx = $1`, [s.signature]);
     if (clash.length) throw new Error(`payout ${table} #${p.id} built the same transaction as another one: the chain adapter must add a unique memo`);
-    await db.query(`update ${T} set tx = $2, blockhash = $3, attempts = attempts + 1 where id = $1 and status = 'sending'`, [p.id, s.signature, s.blockhash]);
+    // Save it ONLY if the row still holds the transaction we saw when we decided to sign (none, or the expired one). If
+    // another worker got there first (two scheduled runs overlapping), it owns this payout now: we must not send ours.
+    const mine = await db.query(`update ${T} set tx = $2, blockhash = $3, attempts = attempts + 1
+      where id = $1 and status = 'sending' and tx is not distinct from $4 returning id`, [p.id, s.signature, s.blockhash, p.tx ?? null]);
+    if (!mine.length) return;
     try { await chain.send(s.tx); } catch { /* not sent or unknown: the next run checks the saved signature */ }
     const st = await chain.status(s.signature, s.blockhash);
     if (st === 'landed') { await db.query(`update ${T} set status = 'sent' where id = $1`, [p.id]); report.sent++; }

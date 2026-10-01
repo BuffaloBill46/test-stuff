@@ -226,3 +226,34 @@ passes), and the failure would only show up at the end: a winner's claim or the 
 top-off deposits above: for any token with a transfer fee, book the vault's balance change (or the fee-adjusted amount),
 and check books against the WALLET, not against themselves. Also: this Windows machine has no Python; script edits with
 Node or the Edit tool.
+
+## "Recover after a crash" looks exactly like "another worker is busy" (2026-10-01)
+The payout worker starts by re-sending anything left mid-send, assuming the last run crashed. Two runs overlapping (a cron
+every minute, a slow chain) made it re-send a payout the other run was still sending: a double payment. Proven only on a real
+multi-connection Postgres (`tests/db/lock.test.mjs`); every single-worker test passed. Any recovery step must be safe when
+the "crashed" party is actually still alive: claim with a compare-and-set (save only if the row still holds what you saw),
+and send only if your claim won. Never trust "nobody else is running" unless something enforces it.
+
+## A timing check must stamp the moment that matters, not the reply (2026-10-01)
+The lock test first failed now and then WITH the lock: it stamped "committed" when the commit's reply reached Node, but the
+database frees the lock at the commit itself, so the next play's read could arrive first. Stamp just before COMMIT is sent.
+Found by looping the test 25 times instead of calling it a flake; then 30 runs clean.
+
+## A docs claim like "checked in the database" must be found in the database (2026-10-01)
+TODO and AUDIT said "one play at a time per player (checked at the quote and in the database)". Only the quote checked it:
+two quotes before paying gave two open runs. Here that turned out safe (and refusing a PAID run would be worse), so the docs
+were corrected, not the code. Grep for the check before repeating the claim.
+
+## "Type-checked" is a claim with a date on it (2026-10-01)
+HANDOFF said the Edge Function was "type-checked and smoke-run with Deno". It hadn't passed since record-deposit handed the
+admin a chain: Deno read `chain = null` as "chain may only ever be null". No test runs `deno check`, so nothing went red. Re-run
+`deno check supabase/functions/games/index.ts` after any server change, and run the real function (`tests/db/edge-limit.mjs`).
+
+## A guard that's optional gets forgotten; make "off" explicit (2026-10-01)
+The web door refuses to start without a speed limiter unless given `limiter: null` on purpose. On the first run it caught the
+security test building a door with no limit. A protection that silently switches off when someone forgets to pass it looks
+done while it isn't.
+
+## `pkill -f <name>` can match its own shell (2026-10-01)
+Killing a background test server with `pkill -f _pgserve.mjs` also matched the shell running the command (its command line
+contains the name) and stopped it. Use a pattern that can't match itself: `pgrep -f "node [_]pgserve"`.

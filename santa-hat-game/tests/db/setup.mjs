@@ -1,7 +1,7 @@
 // Shared test setup: real Postgres (PGlite) with Supabase's auth stand-ins and the project's SQL files applied in order.
 import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
-export const FILES = ['001_profiles.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '006_ranked_tickets.sql'];
+export const FILES = ['001_profiles.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '006_ranked_tickets.sql', '007_rate_limits.sql'];
 export async function makeDb(files = FILES) {
   const pg = new PGlite();
   await pg.exec(`create role anon; create role authenticated; create role service_role; create schema auth;

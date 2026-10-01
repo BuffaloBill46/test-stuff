@@ -2,7 +2,22 @@
 
 Kept up to date as things get done. Details for lobbies, economy and open questions live in `DESIGN_NOTES.md`.
 
-## Waiting on Cody (settings only Cody can change)
+## Launch checklist (2026-10-01): what stands between today and real SANTA on the Games tab
+Details are in the sections below and in FOR_MAIN_CLAUDE.md. "Main Claude" = the session with wallets and live access.
+1. **Cody:** legal check of the paid games (see RESEARCH.md → "Other things that would help"), pool + treasury wallets, Supabase settings.
+2. **Main Claude:** devnet test token + pool wallets; apply `005` + `007`; deploy the Edge Function and set its secrets; check the visitor-address header.
+3. **Main Claude:** real wallet payment in the page (`window.santaPay`); then make server mode the default on the Games tab.
+4. **Main Claude:** payout worker, skim sending and the reconciliation check on a schedule; the emergency-withdrawal transfer.
+5. **Everyone:** the dress rehearsal on devnet, end to end; then real phones (Phantom sign-in, feel).
+6. **Publish** the site (`deploy-pages.sh`; the admin screen's bot box isn't live yet).
+Not needed for that launch: ranked (tickets, referee server, matchmaking), levels, lottery, store purchases, wager, tournaments.
+Cody's calls (2026-10-01): **DigitalOcean** for the always-on server (a new, separate Droplet); **Telegram alerts** via his
+existing bot (frozen/failed payouts, books ≠ wallet, top-off waiting, server down, emergency stop, strong bot signals);
+**Cloudflare Turnstile** at sign-in and when starting a ranked match; Helius $49 plan (confirm); no multisig. Details: FOR_MAIN_CLAUDE.
+- [ ] **Telegram alerts** (Cody's bot; token + chat id as server secrets, asked for in the main Claude's session).
+- [ ] **Turnstile at sign-in** (Supabase Auth's CAPTCHA setting) and **at ranked match start** (checked on the server before a ticket is held).
+
+
 - [ ] **Turn on Solana sign-in:** Supabase → Authentication → Sign In / Providers → Web3 Wallet → Solana.
 - [ ] **Set sign-in addresses:** Supabase → Authentication → URL Configuration. Site URL `https://buffalobill46.github.io/test-stuff/`, Redirect URL `https://buffalobill46.github.io/test-stuff/**`.
 - [ ] **Email service so friends get sign-in emails:** connect Resend (free tier) to one of Cody's GoDaddy domains, then paste its SMTP settings into Supabase. Until then, email sign-in only reaches Supabase team members.
@@ -18,6 +33,8 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [x] **Slots payouts decided** (Big Hat, 11 straight/diagonal lines, 100× top line, 6¢ hat bonus, 78.1% payback + the pool jackpot ≈ 80%: Cody's target, 2026-09-30). The live numbers are always in `PAYTABLE.md`; regenerate it with `node tests/paytable.mjs` after any change.
 
 ## Next to build
+- [ ] **Levels for the new hats, backpacks and Ice Ball** (Cody is setting them; they're Store purchases until then).
+- [ ] **Special snowball types from Cody's notes** (faster, bigger, longer stun, splits). The rules system and the first one (Ice Ball) are built: `catalog.js` `rules`, `sim.js`, `tests/iceball.test.mjs`. Ice Ball is a $0.50 Store item for now (Cody); open: whether special snowballs count in ranked.
 - [ ] **Turn on ranked Auto match:** the FFA RANKED lobby is built, but its Auto match button stays off ("opening soon") until tickets and the server below exist.
 - [x] **Auto match by rank points (logic built and tested, 2026-09-30):** `mockups/matchmaker.js`: ±50, then ±150, then any real players, bots at 30 s; 2–7 real, 1–3 bots (fills toward 6: Claude's pick), 3–8 total. `tests/matchmaker.test.mjs` (2 simulated hours of traffic). Runs on the server once it exists.
 - [ ] **Ranked tickets:** 10 free a day (reset every 24 hours), spent when the match starts, refunded if you leave before. *Built and tested (2026-09-30):* `supabase/006_ranked_tickets.sql` (NOT applied), `tests/db/tickets.test.mjs`: hold on joining, spend at the start, release if you leave before; extras used after the free ones and never expire; 10 bought per rolling 24 hours. Needs the ranked referee server to call it.
@@ -30,7 +47,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **SANTA payments:** USD prices paid in SANTA at the live price, with a quote locked for about a minute. *Built so far:* live price + live tax on the Games tab (`mockups/market.js`), server quotes (`server/games.js`).
 - [x] **Where the Spin/Slots server runs (decided, Cody 2026-09-30): Supabase Edge Functions** (free plan: 500,000 calls a month). The multiplayer referee still needs an always-on server later (~$5–10/month, ask first).
 - [x] **Stuck plays are tidied (built, 2026-09-30):** before each new play, that player's plays stuck for a minute are fixed: 'spent' (no secret yet) → refunded; 'open' (secret locked, the player's number never came) → finished with a server-made number and paid. `server/games.js` → `tidy`, tested in `tests/db/server.test.mjs`.
-- [ ] **Prove the pool lock on real Postgres** (two connections settling at once). Balances are now added/subtracted in the database, so no SANTA movement can be lost either way; the lock keeps each play's rule check (e.g. "can the pool cover the top prize?") seeing the latest balance. The in-process test database can't test locks (checked).
+- [x] **Pool lock proven on real Postgres (2026-10-01):** `tests/db/lock.test.mjs` runs a throwaway real Postgres 16 server: 80 plays from 8 players settling at once all take turns (each sees the balance the play before it left); with the lock removed on purpose the same check fails and plays try to pay out more than the pool holds. Also proven there: one quote buys one run even with six payments racing, a player's two runs settled together are each paid once, and overlapping payout workers never pay twice (that last one found a real double-payment bug, fixed).
 - [x] **SANTA price swings (decided, Cody 2026-09-30): the pools hold SANTA and float with the token price,** so the pool jackpot's dollar size floats too. Fixed prizes stay in dollars, paid in SANTA at the live price; pool rules (skim, top-off, cover the top prize) use the pool's live dollar value (Claude's reading).
 - [ ] **Set up the Spin pool and Slots pool wallets (two separate):** keys only on the server, a little SOL each for fees. Each keeps everything (no sweeping). Real money: Cody funds them ($50 each). See DESIGN_NOTES → Pool wallets.
 - [x] **SANTA's transfer tax in every payment (built and proven, 2026-09-30):** the live fee is read from the token by epoch (`market.js`, confirmed 3% on mainnet); the one-transaction burn + send split is proven on the real Token-2022 program (`tests/solana/split.test.mjs`): exact to the last unit, nothing lost, fee enforced, all-or-nothing.
@@ -47,7 +64,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Slots with real SANTA:** server-picked reel stops (provably fair), payments and payouts. The game rules already take the random numbers from outside (`pull(state, 'big', rand)`), so server seeds plug straight in.
 - [ ] **Slots pool jackpot %:** 25% (Cody) gives about $360–430 on a full pool; about 14% would give about $250. Cody to confirm.
 - [x] **Provably fair results, in Cody's order (built, 2026-09-30):** `fair.js` + `house.js` (demo) and `server/games.js` (server). "Check this result" on the page. The pool safety rule (a play only starts if the pool covers that game's biggest fixed win: Spin 5× the bet, Slots its top fixed prize).
-- [ ] **Entries split 90% to the pool, 10% burned** (after the 3% tax).
+- [x] **Entries split 90% to the pool, 10% burned** *(done, ticked 2026-10-01: one transaction from the player, built by `mockups/pay.js`, checked by `server/verify.js`; proven on the real token program, `tests/solana/pay.test.mjs`)* (after the 3% tax).
 - [x] **3% SANTA tax notice:** the Games tab intro covers Spin and Slots; each win message also says what arrives after the 3% tax.
 - [ ] **Simulate a million spins** to prove the payback % before launch. (Slots: exact payback from the reel math plus `tests/payout-ranges.mjs`, 5 million pulls. Re-run both after any change.)
 - [ ] More click games from the idea list (Hat Drop, Present Pick, Sleigh Climb, Advent Scratch, Naughty or Nice). Needs Cody's pick of game and its odds/payback first.
@@ -65,11 +82,13 @@ button and no player signature. **We never hold a player balance.** Rules and wh
 ### Slots server: protect it from bots and abuse (no daily play limit, so this matters more)
 The math can't be beaten by grinding (a simulated 100,000-pull grinder lost about 25% every time), but the server still has to
 stop cheating and spam:
-- [x] **One play at a time per player (built, 2026-09-30):** a player can't start a new run while one is unfinished (checked at the quote and in the database); stuck runs are finished by the server (`tidy`), so nobody is blocked forever.
-- [ ] **Every payment used once.** Each SANTA payment's transaction signature buys its run exactly once; record it and refuse repeats.
-- [ ] **Confirm the payment on-chain (Helius) before any plays are made.** No confirmed payment, no plays.
-- [ ] **Rate limit per wallet and per IP** (e.g. a few pulls a second at most) to stop scripted floods; slow down, don't ban, on the first hits.
-- [ ] **Bot signals:** flag wallets pulling at perfectly regular intervals for hours; review before acting (a real grinder is fine).
+- [x] **One run at a time per player (built, 2026-09-30; corrected 2026-10-01):** a player can't get a new quote while a run is unfinished; stuck runs are finished by the server (`tidy`), so nobody is blocked forever. *Correction:* this is checked at the QUOTE only, not in the database. A player who gets two quotes before paying either can have two runs open. That's allowed on purpose: refusing a run that's already paid would keep the money and give no plays. Proven money-safe (`tests/db/lock.test.mjs`: each run paid once, exactly its winnings). It's a flood guard, not a money rule; quotes are capped at 30 an hour.
+- [x] **Every payment used once.** *(Done, ticked 2026-10-01: the payment signature is unique in the database and buys one run; `tests/db/server.test.mjs`, `security.test.mjs`, `lock.test.mjs`.)* Each SANTA payment's transaction signature buys its run exactly once; record it and refuse repeats.
+- [x] **Confirm the payment on-chain (Helius) before any plays are made.** *(Done in the server, ticked 2026-10-01: `buy` checks the FINALIZED transaction with `server/verify.js` before `buy_run` makes any plays. Needs the live RPC URL.)* No confirmed payment, no plays.
+- [x] **Speed limit per player and per internet connection (built, 2026-10-01; NOT deployed):** `server/ratelimit.js`: 40 requests a player and 60 a connection per 10 seconds, then "slow down, try again in N seconds" (no ban). An honest run of 10 is about 12 requests; the real page peaked at 3 per player in 10 s. Counts in the database for now (`supabase/007_rate_limits.sql`, not applied). Tests: `tests/http.test.mjs`, `tests/db/ratelimit.test.mjs`, `tests/db/edge-limit.mjs` (the real Edge Function under Deno), the browser server-mode tests. Details: DESIGN_NOTES → "Speed limit".
+- [ ] **Check on the live Edge Function which `x-forwarded-for` entry is the real visitor** (if a visitor can set it, a script could dodge the per-connection limit by faking addresses; the per-player limit still holds). FOR_MAIN_CLAUDE.
+- [ ] **Move the speed limit to the always-on game server when it exists (Cody, 2026-10-01):** swap `dbStore(db)` for `memoryStore()` in the wiring (one line); 007's table is then unused. Only while one server program runs.
+- [x] **Bot signals (built, 2026-10-01; NOT deployed):** the admin screen's "Check for bots" (wallet-signed, private, read only) lists players whose REACTION time (a run ending → their next quote) is clockwork-even or under 1 s (strong), or who play 4+ h without a break / 20+ of 24 h (weak). Signals only: nothing happens automatically. 900 simulated people never trip a strong signal; timer scripts do; a script with random waits isn't caught (honest limit). `server/bots.js`, `tests/bots.test.mjs`, `tests/db/bots-db.test.mjs`, `tests/browser/admin-test.mjs`. Thresholds are a first guess: re-tune on real play.
 - [ ] **Results only from the server.** The page just animates what the server decided; the browser never picks outcomes or amounts.
 - [x] **Payout safety cap that never holds a real win (built, 2026-10-01; Cody):** a run payout is frozen only above the most the run could possibly win from its prize table (`maxPerPlay`, `tests/payoutcap.test.mjs`).
 - [x] **Frozen payouts + Release (built, 2026-10-01):** listed on the admin screen with the player and amount; a wallet-signed Release sends it on the next payout pass; logged.
@@ -77,7 +96,7 @@ stop cheating and spam:
 
 ### Slots: tips for building it right (from the research, see RESEARCH.md)
 - [ ] **Keep it a "PAR sheet" machine:** odds come only from symbol counts on the reel strips; change payback by changing counts or prizes in `mockups/slots.js`, then re-run `tests/slots.test.mjs`, `tests/paytable.mjs` and `tests/payout-ranges.mjs`.
-- [ ] **Provably fair, in Cody's order (see DESIGN_NOTES → "Fair results: the order"):** payment confirmed
+- [x] **Provably fair, in Cody's order (done, ticked 2026-10-01; see the item above under the Games tab) (see DESIGN_NOTES → "Fair results: the order"):** payment confirmed
       FIRST; only then does the server make and lock a fresh secret for that play. Anyone can re-check a play afterwards.
 - [x] **Show every win clearly:** draw the winning paylines, light the winning symbols, show the hat-bonus nickels, then the total.
 - [x] **Only celebrate real wins:** big effects only when the pull pays more than the $1 it cost (research: "losses disguised as wins"). Small returns show quietly.

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { makeDb } from './setup.mjs';
 import { createGameServer, QUOTES_PER_HOUR } from '../../server/games.js';
 import { makeHandler } from '../../server/http.js';
+import { makeLimiter, memoryStore } from '../../server/ratelimit.js';
 
 const db = await makeDb();
 await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', 58823529411, '{}'), ('slots', 588235294117, '{}')`);
@@ -34,7 +35,7 @@ const s2 = createGameServer({ db: counting, chain: {}, livePrice: async () => ({
 for (let i = 0; i < 50; i++) await s2.winners();
 assert.equal(calls, 1, '50 requests, 1 database query');
 // 6. Through the web door: crafted bodies get 4xx answers, never 500.
-const h = makeHandler({ server, profileFor: async () => me });
+const h = makeHandler({ server, profileFor: async () => me, limiter: makeLimiter({ store: memoryStore() }) }); // the real speed limit
 for (const body of [{ action: 'open', kind: '__proto__' }, { action: 'settle', ticket: 'x', seed: 'zz' }, { action: 'quote', kind: 'big', n: '1e3' }, { action: 'buy', quote: {}, signature: [] }, { action: 'constructor' }, 'null', '[]']) {
   const r = await h(new Request('https://x/f', { method: 'POST', headers: { origin: 'https://buffalobill46.github.io', authorization: 'Bearer t' }, body: typeof body === 'string' ? body : JSON.stringify(body) }));
   assert.ok(r.status >= 400 && r.status < 500, `${JSON.stringify(body)} → ${r.status}`);

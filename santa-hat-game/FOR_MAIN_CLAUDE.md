@@ -4,11 +4,58 @@ Kept by the Claude that built the game (cloud workspace, no wallets, no live con
 **left undone on purpose** because it needs something this workspace doesn't have. Read `HANDOFF.md` first, then this list.
 Tick items off here as they're done. Order is roughly the order to do them in for a devnet test.
 
+> ## ⚠ START HERE: branch `ccr-55527f21-p10a6h` is the newest (cloud session, 2026-10-01)
+> - **Work from `ccr-55527f21-p10a6h`.** It contains ALL of `claude/test-stuff-section-egujzy` plus this session. Merge it into
+>   whatever branch you use before changing anything.
+> - **The live site (gh-pages) was published from this branch.** Publishing from an older branch would silently REMOVE the
+>   avatar Hats/Backpacks, the Ice Ball and the admin screen's "Check for bots" from the live site.
+> - **The live database now has `008_hats_backpacks.sql` applied** (migration `008_hats_backpacks`; checked after: 5 hats,
+>   4 backpacks, 7 snowballs, save_profile 7 slots, anon still can't call it). 005, 006 and 007 are still NOT applied.
+> - What this session built, in order (each committed with tests; details in HANDOFF → "Where we are right now"):
+>   1. **Payout worker double-send FIXED** (High): overlapping worker runs could pay a winner twice. Compare-and-set before
+>      sending (`server/payouts.js`). Keep it if you rewrite the worker. Proven on a REAL Postgres (`tests/db/lock.test.mjs`).
+>   2. **Pool row lock proven on real Postgres** (the old open item): plays take turns; with the lock removed the test fails.
+>      "One run at a time" is checked at the QUOTE only (two quotes before paying = two runs, both paid correctly; kept on purpose).
+>   3. **Speed limit** (`server/ratelimit.js`): 60 requests per connection / 40 per player per 10 s, then 429. Needs
+>      `007_rate_limits.sql`. Plan: move the counts into the always-on server's memory (`memoryStore()`, one line). Check which
+>      `x-forwarded-for` entry is the real visitor on the live function.
+>   4. **Bot signals** (`server/bots.js`, admin action `bot-signals`, read only, private): "Check for bots" on the admin screen.
+>   5. **Avatar Hats + Backpacks** and **special snowballs** (`catalog.js` `rules`; the referee `sim.js` applies them). First
+>      one: **Ice Ball, stuns 50% longer**. All new items are **Store purchases for now** (Cody; he'll set levels later;
+>      prices are placeholders). Cody is writing up more snowball types (faster, bigger, longer stun, splits).
+>   6. Edge Function type check fixed (it had been failing since record-deposit); `tests/db/edge-limit.mjs` runs the REAL
+>      function under Deno against real Postgres.
+> - **Cody's decisions this session:** DigitalOcean for the always-on server (a NEW separate Droplet: it will hold pool keys);
+>   Helius $49 plan (he thinks he has it: confirm); Cloudflare Turnstile at sign-in and at ranked start; alerts via his existing
+>   Telegram bot (not Sentry); no multisig; hats/backpacks/Ice Ball bought, not levelled, for now. See "Cody's calls on servers" below.
+> - **Open questions for Cody:** whether special snowballs count in RANKED (a bought edge there is pay-to-win); a lawyer's
+>   check of the paid games before real money (RESEARCH.md → "Other things that would help").
+> - **Testing on a machine with Postgres:** `tests/db/realpg.mjs` starts a throwaway real Postgres 16 (skips if none installed).
+
 ## Read first: everything that changed since the first hand-over (2026-09-30 evening → 2026-10-01)
 All of it is committed, tested and live in the DEMO (no real money). Server/SQL parts are built and tested but NOT deployed.
 Details of each decision: DESIGN_NOTES.md. Audit of the money changes: AUDIT.md → "Second pass"; saved reports: `audits/`.
 
-**How players pay and get paid (the big one)**
+**Cody's calls on servers and services (2026-10-01, late). Act on these.**
+- **Always-on game server: DigitalOcean** (Cody already uses DO Droplets for his other game). Use a **separate Droplet** for
+  Santa Hat: it will hold the pool wallets' keys, so it shouldn't share a machine with the other game. Sizing below.
+- **Helius: Cody thinks he already has the $49 plan.** Confirm with him; use it for `SOLANA_RPC_URL` (Edge Function and worker).
+- **No multisig** (Cody: not wanted). Don't build around Squads.
+- **Cloudflare Turnstile ("are you human?" check): YES at sign-in and when a player starts a RANKED match** (not on every
+  unranked match). Sign-in: Supabase Auth has built-in CAPTCHA support (Auth settings: CAPTCHA protection, Turnstile); check it
+  also covers the Solana wallet sign-in when that's turned on. Ranked: check the Turnstile token on the server before a
+  ticket is held. Free plan, no request cap.
+- **Alerts go to Cody's existing Telegram bot** (he uses it for his other games), not Sentry. Ask Cody for the bot token and
+  chat id in YOUR session (server secrets only, never the repo). Alert on: a payout frozen by the safety cap, a payout failed
+  5 times, reconciliation drift (books ≠ wallet), a top-off waiting for his deposit, the server down, an emergency stop, and
+  any STRONG bot signal (`server/bots.js`; a scheduled run of the same check the admin screen does).
+- **Cost estimate Cody asked for: 1,000 players a day, 20–25 matches each** (measured from the real referee code; details in
+  RESEARCH.md → "What 1,000 players a day would cost"): ~500–1,100 GB a month of data to players, ~80–100 players online on
+  average, ~230–290 at a busy hour. Game logic is tiny (50 full rooms = under 1% of one core). On DigitalOcean a $6 Droplet
+  (1 GB, 1,000 GB data included) is about right; the next size up if data runs over. (On Fly.io it would be ~$15–30/mo, mostly data.)
+- **The multiplayer must move off Supabase Realtime before that load:** the free plan's 2 million messages a month would last
+  hours, not a month. That's the referee server's job (TODO → "Cheat-proof referee server").
+
 - **No credits, no balances: RUNS** (Cody, 2026-10-01). Each game has Play 1 / 5 / 10 at the size picked on the card.
   One confirm → `window.santaPay(quote)` ONCE for the whole run → the plays run → the run's last play queues ONE payout to
   the player's linked wallet automatically. No claim button, the player never signs to be paid. Full SQL/server detail in
@@ -41,6 +88,13 @@ Details of each decision: DESIGN_NOTES.md. Audit of the money changes: AUDIT.md 
   must cover Drop's $10 top prize. Simulated 6 million mixed plays: never refused. Rules `mockups/plinko.js`.
 
 **Server and admin**
+- **Bot signals (2026-10-01):** new admin action `bot-signals` (game `all`, wallet-signed, READ only: not logged, not public) →
+  players whose timing looks scripted (`server/bots.js`); "Check for bots" on the admin screen. Signals only.
+- **Speed limit (2026-10-01):** 60 requests a connection and 40 a player per 10 s, then 429 "slow down" (`server/ratelimit.js`,
+  wired in `index.ts`). Needs `007_rate_limits.sql`. Plan (Cody): move it to the always-on game server later (`memoryStore()`).
+- **Payout worker: overlapping runs were a double-payment bug, fixed 2026-10-01** (`server/payouts.js`: a worker sends only if
+  its compare-and-set signature save wins). Found by the new real-Postgres test `tests/db/lock.test.mjs`, which also proves the
+  pool lock. Note: a player CAN have two runs open if they get two quotes before paying either; allowed and proven safe.
 - **Game settings are versioned and wallet-signed** (admin action `set-settings`, table `game_settings`): prices, both Spin
   wheels, Big Hat odds/prizes/symbols, jackpot % and odds, store items. Guard rails refuse unsafe changes; every run and play
   records the version it was bought/played on, so a change never lands mid-run and old plays re-check on their own odds.
@@ -91,18 +145,28 @@ through the real server code and checks ONE payout equal to the plays' winnings,
       `buy_run`, `lock_play`, `settle_play` (no payout insert), `refund_play`, `finish_run(p_run, p_to_wallet, p_cap)`, with
       cap = the most the run could possibly win (see "Payout safety cap" above). The server refuses a quote up front when the player has an unfinished run, has no linked
       wallet, or the pool can't take the play; `tidy` finishes runs left behind (closed tab). The web door's actions are now
-      `quote {kind, n, bet}`, `buy`, `settle` (`credits` and `open` are gone). The payout worker is unchanged: it sends whatever
-      is queued, so a run's payout goes out on its next pass. Proven: `tests/db/server.test.mjs`, `tests/solana/rehearsal.mjs`
+      `quote {kind, n, bet}`, `buy`, `settle` (`credits` and `open` are gone). The payout worker sends whatever is queued, so a
+      run's payout goes out on its next pass (one change, 2026-10-01: overlapping worker runs can no longer send a payout
+      twice; see "Run the payout worker live"). Proven: `tests/db/server.test.mjs`, `tests/solana/rehearsal.mjs`
       (one payout per run, books = wallets).
 
 ## Needs live systems (this workspace can't reach them)
 - [ ] **Apply `supabase/005_credits_plays.sql`** to the project (checked on real Postgres in `tests/db/`), then insert the two
       `pools` rows with the pools' real starting SANTA balances (smallest units, 6 decimals).
 - [ ] **Apply `supabase/006_ranked_tickets.sql`** when ranked opens (checked on real Postgres, `tests/db/tickets.test.mjs`).
+- [x] **Applied to the live database 2026-10-01: `supabase/008_hats_backpacks.sql`** (checked after; the site was then published) (avatar Hats/Backpacks + Ice Ball item rows, 7-slot
+      `save_profile`). The page now shows those slots; without 008 a player saving a hat or backpack is refused. Safe for the live
+      page too: a page that doesn't send the new slots saves them as "none". Tested: `tests/db/avatar-slots.test.mjs`.
+- [ ] **Apply `supabase/007_rate_limits.sql` with `005`** (the speed limit's counts; the Edge Function needs the table:
+      without it, counting fails, which lets every request through and logs "speed limit: counting failed").
+- [ ] **Check the visitor's address on the live Edge Function:** the speed limit reads the FIRST `x-forwarded-for` entry
+      (`server/http.js`). Send a request with a made-up `x-forwarded-for` and see what the function receives; if the made-up
+      value comes first, pass `addressOf` in `index.ts` to read the entry Supabase adds. (Per-player limit is unaffected.)
 - [ ] **Deploy the Edge Function** `supabase/functions/games/index.ts`. It imports `../../../server/*.js` and `../../../mockups/*.js`
       (include those files in the upload). Set `SOLANA_RPC_URL` (Helius; devnet URL for the test).
-- [ ] **Prove the pool row lock on real Postgres:** two connections settling plays on the same pool at the same moment. (Balances
-      add/subtract so no SANTA can be lost either way; the lock keeps each play's "can the pool pay?" check on the latest balance.)
+- [x] **Prove the pool row lock on real Postgres (done 2026-10-01):** `tests/db/lock.test.mjs` starts a throwaway real Postgres 16 server (needs
+      Postgres installed; skips otherwise) and proves the pool lock, one quote = one run, two runs per player paid right, and
+      overlapping payout workers.
 - [ ] **Real wallet signing in the browser: write `window.santaPay(quote)`.** The page already calls it (server mode,
       `mockups/playcredits.js` → `payOnServer`) with the server's quote (it includes `mint`, `pool`, `fee`, `burnBps`).
       The transaction is ALREADY BUILT for you: `purchaseInstructions(lib, quote, walletSigner)` in `mockups/pay.js` (pass the
@@ -120,6 +184,8 @@ through the real server code and checks ONE payout equal to the plays' winnings,
       when it crashes before or after sending; `tests/solana/payouts.test.mjs`). Still needed: the live chain adapter (a Solana
       RPC: getLatestBlockhash, sendTransaction, getSignatureStatuses + isBlockhashValid; same shape as the test's), the pool
       wallets' keys in the worker's secrets only (never the site or repo), and a schedule (e.g. a Supabase cron every minute).
+      **Runs may overlap safely** (fixed 2026-10-01: an overlapping run used to re-send a payout still being sent; now a worker
+      only sends if its signature save wins, `tests/db/lock.test.mjs`). Keep that compare-and-set if you rewrite the worker.
 - [ ] **Send skims on the chain:** `pool_transfers` rows (queued by every settle) must be sent like
       payouts: the worker in `server/payouts.js` has the exact shape (claim → sign → save signature → send → recover by chain status);
       skims go pool → treasury with the pool key. Until then the books run ahead of the wallets by design and reconcile says so.

@@ -4,15 +4,17 @@
 //   was never used (a copied signature can't be replayed) · the new settings are sane.
 // Actions: pause (emergency stop: no plays, no top-offs), resume, set-rules (thresholds, jackpot %),
 //   record-deposit (Cody sent SANTA to a pool wallet himself, e.g. a top-off: the server checks the transaction on the chain),
-//   release-payout (a run payout frozen by the safety cap: Cody looked at it and lets it go out; Cody, 2026-10-01).
+//   release-payout (a run payout frozen by the safety cap: Cody looked at it and lets it go out; Cody, 2026-10-01),
+//   bot-signals (READ only: players whose timing looks scripted, server/bots.js; private, not logged, changes nothing).
 // Changes take the pool's row lock, so they wait for any play being settled: never mid-pull. Every change is logged publicly.
 // NOT here (needs the pool key; FOR_MAIN_CLAUDE.md): the emergency withdrawal transfer itself.
 import { POOL_RULES } from '../mockups/slots.js';
 import { SPIN_RULES } from '../mockups/spin.js';
 import { check as checkSettings } from '../mockups/settings.js';
 import { MINT } from '../mockups/market.js';
+import { botSignals, BOT_RULES } from './bots.js';
 
-export const ACTIONS = ['pause', 'resume', 'set-rules', 'set-settings', 'record-deposit', 'release-payout']; // set-settings: prices, odds, prizes, store (game 'all')
+export const ACTIONS = ['pause', 'resume', 'set-rules', 'set-settings', 'record-deposit', 'release-payout', 'bot-signals']; // set-settings: prices, odds, prizes, store (game 'all')
 export const FRESH_SECONDS = 300;
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 export function b58decode(s) {
@@ -64,6 +66,8 @@ export function depositOf(tx, mint, wallet) {
 }
 
 // chain.getTransaction / poolWallets / mint: only needed for record-deposit (the same ones the game server uses).
+// (The type note stops Deno's checker reading `chain = null` as "chain may only ever be null" when the Edge Function passes one.)
+/** @param {{ db: any, adminWallets: string[], now?: () => number, onSettings?: () => void, chain?: { getTransaction: (s: string) => Promise<any> } | null, poolWallets?: Record<string, string | null>, mint?: string }} opts */
 export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettings = () => {}, chain = null, poolWallets = {}, mint = MINT }) {
   async function run({ wallet, message, signature }) {
     const m = parse(message || '');
@@ -71,12 +75,13 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
     if (!adminWallets.includes(wallet)) return { error: 'not an admin wallet' };
     if (!(await signatureOk(wallet, message, signature || ''))) return { error: 'signature doesn\'t match the wallet' };
     if (!(Math.abs(now() - Date.parse(m.at)) <= FRESH_SECONDS * 1000)) return { error: 'message too old (sign a fresh one)' };
-    if (!ACTIONS.includes(m.action) || !(m.action === 'set-settings' ? m.game === 'all' : ['spin', 'slots'].includes(m.game))) return { error: 'unknown action or game' };
+    if (!ACTIONS.includes(m.action) || !(['set-settings', 'bot-signals'].includes(m.action) ? m.game === 'all' : ['spin', 'slots'].includes(m.game))) return { error: 'unknown action or game' };
     if (!/^[0-9a-f]{16,64}$/.test(m.nonce)) return { error: 'bad one-time number' };
     if (m.action === 'set-rules') { const bad = checkRules(m.game, m.settings); if (bad.length) return { error: bad.join('; ') }; }
     if (m.action === 'set-settings') return saveSettings(m, wallet, message, signature);
     if (m.action === 'record-deposit') return recordDeposit(m, wallet, message, signature);
     if (m.action === 'release-payout') return releasePayout(m, wallet, message, signature);
+    if (m.action === 'bot-signals') return signals();
     return db.tx(async (t) => {
       if ((await t.query('select 1 from public.pool_log where nonce = $1', [m.nonce])).length) return { error: 'this signed message was already used' };
       const [p] = await t.query('select * from public.pools where game = $1 for update', [m.game]); // waits for any play being settled
@@ -156,6 +161,15 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
         [game, wallet, m.nonce, JSON.stringify({ payout: +po.id, usd: +po.amount_usd, raw: +po.amount_raw, to: po.to_wallet, message, signature })]);
       return { ok: true, game, payout: +po.id, usd: +po.amount_usd };
     });
+  }
+  // Bot signals: private to the admin (a guess must never be shown publicly), read only, so nothing is logged or changed.
+  // Each run with when its quote was asked for and when its last play settled (paid_at), over the last 24 hours.
+  async function signals() {
+    const rows = await db.query(`select r.profile_id, pr.name, pr.wallet, q.created_at as quote_at, r.paid_at from public.runs r
+      join public.payments pa on pa.signature = r.signature join public.quotes q on q.id = pa.quote_id join public.profiles pr on pr.id = r.profile_id
+      where q.created_at > now() - make_interval(hours => $1) order by q.created_at`, [BOT_RULES.hours]);
+    const runs = rows.map((r) => ({ profile: r.profile_id, name: r.name, wallet: r.wallet, quoteAt: new Date(r.quote_at).getTime(), paidAt: r.paid_at ? new Date(r.paid_at).getTime() : null }));
+    return { ok: true, flagged: botSignals(runs, now()), rules: BOT_RULES, checkedRuns: runs.length };
   }
   return { run };
 }

@@ -8,6 +8,7 @@ const { chromium } = require(path.join(execSync('npm root -g').toString().trim()
 const { PGlite } = await import('../db/node_modules/@electric-sql/pglite/dist/index.js');
 const { createGameServer } = await import('../../server/games.js');
 const { makeHandler } = await import('../../server/http.js');
+const { makeLimiter, memoryStore } = await import('../../server/ratelimit.js');
 const { splitPayment, MINT } = await import('../../mockups/market.js');
 const ROOT = new URL('../../mockups', import.meta.url).pathname, fails = [], check = (ok, msg) => { if (!ok) fails.push(msg); };
 
@@ -37,7 +38,10 @@ function payFor(q) {
     transaction: { message: { accountKeys: [{ pubkey: PLAYER, signer: true }], instructions: [{ program: 'spl-token', parsed: { type: 'burnChecked', info: { mint: MINT, authority: PLAYER, tokenAmount: { amount: String(sp.burn) } } } }] } } });
   return sig;
 }
-const handle = makeHandler({ server, profileFor: async (t) => (t === 'test-token' ? me : null) });
+// The busiest 10-second window the real page produced (per player and per connection), to prove the limit is really counting.
+const busiest = { player: 0, ip: 0 }, mem = memoryStore();
+const watched = { hit: async (key, w, t) => { const n = await mem.hit(key, w, t), k = key.split(':')[0]; busiest[k] = Math.max(busiest[k], n); return n; } };
+const handle = makeHandler({ limiter: makeLimiter({ store: watched }), server, profileFor: async (t) => (t === 'test-token' ? me : null) }); // the real speed limit and numbers: a player clicking through must never be slowed
 // One local address serves the page AND the game server (like the real site + Edge Function, both https in real life).
 const web = http.createServer(async (req, res) => {
   if (req.method === 'GET') { const pth = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]).replace(/^\//, '') || 'online.html');
@@ -112,6 +116,9 @@ check(quotes[0].n === 1, 'the server made a quote, and nothing was bought');
 await p.evaluate(() => document.querySelector('#buyCancel').click());
 await p.screenshot({ path: 'out/server-mode.png' });
 console.log('results shown:', shown.map((s) => s.slice(0, 50)).join(' | '));
+check(busiest.player > 0 && busiest.ip > 0, 'the speed limit counted the page\'s requests (it was really in the path)');
+check(busiest.player <= 40 / 2 && busiest.ip <= 60 / 2, `a real player stays under half the speed limit (busiest 10 s: ${busiest.player} per player, ${busiest.ip} per connection)`);
+console.log(`speed limit: busiest 10 s from the real page: ${busiest.player} requests per player (limit 40), ${busiest.ip} per connection (limit 60)`);
 console.log('errors:', errors.length ? errors : 'none');
 console.log(fails.length || errors.length ? 'FAILED:\n - ' + fails.join('\n - ') : 'ALL CHECKS PASSED');
 await browser.close(); web.close(); process.exit(0);

@@ -4,6 +4,7 @@
   "description": "Runs the database files on real Postgres (PGlite, in-process). Run: npm install, then node credits-db.test.mjs",
   "type": "module",
   "dependencies": {
-    "@electric-sql/pglite": "^0.5.8"
+    "@electric-sql/pglite": "^0.5.8",
+    "pg": "^8.23.1"
   }
 }

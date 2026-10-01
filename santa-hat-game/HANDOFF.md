@@ -35,7 +35,8 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
 
 ## Where things live
 
-- **Branch:** `claude/test-stuff-section-egujzy` (all work so far). The repo is public: `buffalobill46/test-stuff`.
+- **Branch:** `ccr-55527f21-p10a6h` is the newest (it contains all of `claude/test-stuff-section-egujzy`, plus the 2026-10-01
+  fourth session). The repo is public: `buffalobill46/test-stuff`.
 - **Live site:** https://buffalobill46.github.io/test-stuff/ served from the `gh-pages` branch.
   Publish with `santa-hat-game/deploy-pages.sh` (run from anywhere in the repo). It copies `online.html` as
   `index.html` plus the game's JS files. **If you add a new JS file the page imports, add it to that script too.**
@@ -55,12 +56,15 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
   - `matchmaker.js`: ranked Auto match logic (not switched on yet).
 - **Server code (NOT deployed):** `santa-hat-game/server/`: `verify.js` (is this transaction a valid payment?), `games.js`
   (quote → buy a run → settle each play → one payout per run, plus tidying stuck runs) and `http.js` (the web door: sign-in, our website only).
-  It runs as the Supabase **Edge Function** `supabase/functions/games/index.ts` (Cody's choice; thin wiring, type-checked and
-  smoke-run with Deno: `npm install deno` gives a runnable Deno). Pools hold SANTA and float with the price (Cody).
+  It runs as the Supabase **Edge Function** `supabase/functions/games/index.ts` (Cody's choice; thin wiring, type-checked with Deno
+  `deno check` (it had been failing unnoticed until 2026-10-01; re-run it after any server change) and run for real against a
+  real Postgres by `tests/db/edge-limit.mjs`: `npm install deno` gives a runnable Deno). `ratelimit.js`: the speed limit. Pools hold SANTA and float with the price (Cody).
   - `kit.js` / `plaza.js`: the low-poly art kit and the plaza scene.
   - `snowball.js`, `bethehat.js`, `sleigh.js`, `hatchase.js`, `village.js`, `index.html`: the four
     original single-player mockups (published under `/mockups/`). **Not dead code; keep them.**
-- **Database:** `santa-hat-game/supabase/001..004_*.sql` are applied to the live project, in order.
+- **Database:** `santa-hat-game/supabase/001..004_*.sql` and `008` are applied to the live project.
+  **`008_hats_backpacks.sql` IS applied** (2026-10-01: avatar Hats/Backpacks + Ice Ball items, 7-slot save_profile).
+  **`007_rate_limits.sql` is NOT applied either** (the speed limit's counts; apply with 005).
   **`005_credits_plays.sql` is NOT applied** (runs, plays, payouts for the server; despite the name, no credits; apply when the server goes live, with Cody's OK).
   New changes go in a new numbered file, checked with `tests/db/`, applied with the Supabase tools, then committed.
 
@@ -104,6 +108,13 @@ node tests/http.test.mjs         # the server's web door: sign-in, other website
 (cd tests/db && node admin.test.mjs)            # escrow admin controls: wallet-signed only, no replays, stop really stops
 (cd tests/db && node tickets.test.mjs)          # ranked tickets: 10 free a day, held/spent/released, 10 bought per 24 h
 (cd tests/db && node security.test.mjs && node price.test.mjs)  # audit: attacks refused cleanly; price manipulation guard
+(cd tests/db && node lock.test.mjs)             # locks on a REAL Postgres server: plays take turns, payouts never sent twice
+node tests/iceball.test.mjs     # special snowballs: Ice Ball stuns 50% longer, kept through a host handover
+(cd tests/db && node avatar-slots.test.mjs)     # hats and backpacks save rules (008)
+node tests/bots.test.mjs        # bot signals: 900 simulated people never strong; timer scripts caught
+(cd tests/db && node bots-db.test.mjs)          # bot signals through the admin door: private, read only
+(cd tests/db && node ratelimit.test.mjs)        # speed limit counts: same rules in memory, PGlite and real Postgres (200 at once)
+(cd tests/db && DENO=<path>/deno node edge-limit.mjs)  # the REAL Edge Function under Deno: flood → 60 answered, then 429
 node tests/reconcile.test.mjs    # audit: books + everything owed = wallet
 (cd tests/browser && node audit-ux.mjs)          # audit: every tab at 5 screen sizes (tap size, contrast, overflow, dialogs)
 (cd tests/solana && node pay.test.mjs)          # the page's purchase transaction, on the real token program
@@ -140,7 +151,10 @@ between two devices has never been tested from here. Cody and friends testing on
 
 *(Update this section at the end of every session.)*
 
-**Last updated:** 2026-10-01. Branch `claude/test-stuff-section-egujzy`; everything committed, pushed and published.
+**Last updated:** 2026-10-01 (end of the cloud session on branch `ccr-55527f21-p10a6h`, which contains all of
+`claude/test-stuff-section-egujzy` plus `main`). Everything committed and pushed; **`008` applied to the live database; the
+site was PUBLISHED from this branch** (so publish only from this branch or one that contains it). Cody is moving to his main
+Claude next: FOR_MAIN_CLAUDE.md starts with a summary of this session.
 
 **Built and live (all demo, no real money):**
 - **Play tab:** Snowball Square multiplayer (rooms, bots that now sometimes emote, idle kicks), unranked lobby, FFA RANKED layout
@@ -188,11 +202,37 @@ FOR_MAIN_CLAUDE.md.
   shows on the admin screen under **Frozen payouts** (player, short wallet, amount) with a **Release** button you sign with
   your wallet. Proven over 600,036 results (`tests/payoutcap.test.mjs`).
 
+**Fourth session (2026-10-01): locks proven on a real Postgres server, one real-money bug fixed.**
+- New `tests/db/lock.test.mjs` starts a throwaway **real Postgres 16** (installed in the cloud workspace; the test skips if it
+  isn't) so several connections really run at once, which PGlite can't do. Proven: 80 plays at once on one pool take turns
+  (with the lock removed on purpose the check fails); one quote buys one run even with six payments racing; a player's two
+  runs settled together are each paid once, exactly; payout workers running at the same moment send each payout exactly once.
+- **Bug fixed (High, never live):** two overlapping payout-worker runs could send the same payout twice. Now a worker sends
+  only if its compare-and-set save wins (`server/payouts.js`). AUDIT #10.
+- **Docs corrected:** "one run at a time" is checked at the quote only (two quotes before paying → two runs). Kept that way
+  on purpose (never refuse a paid run) and proven money-safe.
+
+**Fifth session (2026-10-01): speed limit** (Cody: "build it but plan to move it to an always-on game server").
+- 60 requests per connection and 40 per player per 10 s, then "slow down, try again in N seconds" (no ban). An honest run of 10
+  is ~12 requests; the real page peaked at 3. Built in `server/ratelimit.js`, wired into the web door and the Edge Function,
+  counts in the database for now (`007_rate_limits.sql`, NOT applied), one-line move to the always-on server later.
+- Proven on the real Edge Function code under Deno against real Postgres. Open: check the live visitor-address header (TODO).
+- Found: the Edge Function's type check had been failing since record-deposit (a type note fixed it); HANDOFF had said it passed.
+
+**Same day, bot signals:** "Check for bots" on the admin screen (private, wallet-signed, read only): clockwork or instant
+reactions (strong), no breaks / round the clock (weak). Signals only. The admin screen change is NOT published yet (this
+session could only push its work branch): run `deploy-pages.sh` next time.
+
+**Same day, avatar Hats + Backpacks and the Ice Ball** (Cody): new slots with starter items; a worn hat hides under the Santa
+hat; snowball items can carry rules and the referee applies them; Ice Ball stuns 50% longer. Cody is writing up the full
+snowball types (faster, bigger, longer stun, splits): build those next from his notes. Hats, backpacks and the Ice Ball are Store
+purchases for now (Cody; he'll set levels next). `008` applied and the site published 2026-10-01.
+
 **For the other Claude:** `FOR_MAIN_CLAUDE.md` → "Read first" lists every change since the first hand-over that touches the
 server, the database or payments.
 
 **Server side, built and proven here but not deployed** (everything else for devnet is in `FOR_MAIN_CLAUDE.md`):
-- Edge Function `games` (Cody's choice): quote → buy a run → settle each play → one payout per run, stuck-run tidying, one play at a time per player,
+- Edge Function `games` (Cody's choice): quote → buy a run → settle each play → one payout per run, stuck-run tidying, one run at a time per player (at the quote),
   pools in SANTA floating with the price (Cody), escrow admin controls (wallet-signed stop/resume/settings, logged).
 - Payout worker: never pays twice, even through crashes (proven on the real token program).
 - The Games page's server mode (`?server=<address>`), proven end to end against the real server code and SQL.
@@ -216,16 +256,20 @@ Logic: `mockups/settings.js`. New item SHAPES (not colours) still need code.
 7. Whether to build a free daily spin (it costs real money from the Spin pool; with runs it would be a free run of 1 a day).
 8. Which new click game to build next (Present Pick, Hat Drop, …) and its odds.
 9. The "What's SANTA?" wording (`WHATS_SANTA.md`), and where it goes on the site.
+10. ~~Which always-on server~~ **Decided: DigitalOcean** (a new, separate Droplet; ~$6/mo for 1,000 players a day). Cody's other calls (Helius, Turnstile, Telegram alerts, no multisig): FOR_MAIN_CLAUDE → "Cody's calls on servers".
+11. A lawyer's check of the paid games before real money (RESEARCH.md → "Other things that would help").
 
 **Next big step:** connect the Games page to the Edge Function instead of the in-browser stand-in (`house.js`), apply `005`,
 deploy the function. Before real money: Cody's pool wallets (real money), Solana sign-in turned on, a payout worker (sends
-queued prizes; needs the pool keys, server-only), and the pool lock proven on real Postgres.
+queued prizes; needs the pool keys, server-only). The pool lock is proven on real Postgres (2026-10-01).
 
 ## Handing over (for Cody)
 
 To move to a fresh Claude Code session: open a new session on the `buffalobill46/test-stuff` repo, and say:
 
-> Check out branch `claude/test-stuff-section-egujzy`, read `santa-hat-game/HANDOFF.md`, and carry on.
+> Check out branch `ccr-55527f21-p10a6h`, read `santa-hat-game/HANDOFF.md`, and carry on.
+
+(Use whichever branch the last session's "Where we are right now" names as newest; each cloud session may work on its own branch.)
 
 Everything is committed and pushed after each change, so nothing is lost if a session ends suddenly.
 Only the chat conversation itself doesn't carry over, which is why decisions go into these files, not just into chat.

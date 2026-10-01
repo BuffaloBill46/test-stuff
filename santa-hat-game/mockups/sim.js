@@ -4,6 +4,7 @@ export const K = {
   ARENA: 13.2, HEAD_Y: 2.05, BALL_G: 7, BALL_SPEED: 18, HAT_G: 16, PED_TOP: 1.71,
   ROUND_TIME: 90, ROUNDS: 3, BREAK_TIME: 6, END_TIME: 12, MAX_HUMANS: 8, MIN_BODIES: 4,
   HUMAN_SPEED: 6.4, BOT_SPEED: 5.2, HOLD_SLOW: 0.86, MAX_BALLS: 18, HUMAN_COOL: 0.26,
+  STUN: 0.9, // seconds a normal snowball hit knocks you down (special snowballs multiply it: catalog.js → rules.stun)
 };
 export const PTS = { hatSec: 10, header: 50, knock: 25, hit: 5 };
 export const PILES = [[-8, -5], [8, -6], [-7, 8], [8, 7]];
@@ -22,7 +23,8 @@ export function constrain(p) {
   else if (r > K.ARENA) { p.x *= K.ARENA / r; p.z *= K.ARENA / r; }
 }
 
-export function createSim(rand = Math.random) {
+// rulesOf(ent) → that player's snowball rules (catalog.js ballRules); none = normal snowballs.
+export function createSim(rand = Math.random, { rulesOf = () => ({}) } = {}) {
   const S = {
     phase: 'lobby', mode: 'ffa', round: 0, time: 0, seq: 0, ents: [], balls: [], ev: [], evId: 0,
     nextId: 1, nextBall: 1, team: [0, 0], result: null,
@@ -152,13 +154,13 @@ export function createSim(rand = Math.random) {
     if (e.ammo <= 0 || e.cool > 0 || e.stun > 0) return false;
     let dx = tx - e.x, dz = tz - e.z; const dist = Math.max(1.5, hyp(dx, dz)); const l = hyp(dx, dz) || 1; dx /= l; dz /= l;
     e.ammo--; e.cool = e.bot ? 1.1 + rand() * 1.1 : K.HUMAN_COOL; e.throwT = 1; e.face = Math.atan2(dx, dz);
-    const tt = dist / K.BALL_SPEED;
-    S.balls.push({ id: S.nextBall++, owner: e.id, x: e.x + dx * 0.45, y: 1.6, z: e.z + dz * 0.45, vx: dx * K.BALL_SPEED, vy: (1.15 - 1.6) / tt + 0.5 * K.BALL_G * tt, vz: dz * K.BALL_SPEED, life: 2 });
+    const tt = dist / K.BALL_SPEED, R = rulesOf(e) || {}, sm = Number.isFinite(R.stun) && R.stun > 0 && R.stun <= 3 ? R.stun : 1; // stun ×, capped at 3
+    S.balls.push({ id: S.nextBall++, owner: e.id, sm, x: e.x + dx * 0.45, y: 1.6, z: e.z + dz * 0.45, vx: dx * K.BALL_SPEED, vy: (1.15 - 1.6) / tt + 0.5 * K.BALL_G * tt, vz: dz * K.BALL_SPEED, life: 2 });
     if (S.balls.length > K.MAX_BALLS) S.balls.shift();
     return true;
   }
   function hit(e, b) {
-    e.stun = 0.9; const l = hyp(b.vx, b.vz) || 1; e.vx = (b.vx / l) * 5; e.vz = (b.vz / l) * 5;
+    e.stun = K.STUN * (b.sm || 1); const l = hyp(b.vx, b.vz) || 1; e.vx = (b.vx / l) * 5; e.vz = (b.vz / l) * 5;
     const thrower = byId(b.owner);
     if (thrower) addScore(thrower, PTS.hit);
     ev('hit', e.id, r2(b.x), r2(b.y), r2(b.z));
@@ -281,7 +283,7 @@ export function createSim(rand = Math.random) {
       s: ++S.seq, ph: PHASES.indexOf(S.phase), md: S.mode === 'team' ? 1 : 0, rd: S.round, tm: Math.round(S.time * 10) / 10, ts: S.team.slice(),
       E: S.ents.map((e) => [e.id, e.peer || 0, e.bot ? 1 : 0, e.team, r2(e.x), r2(e.z), r2(e.vx), r2(e.vz), r2(e.face), e.stun > 0 ? 1 : 0, e.ammo, e.score, e.throwT > 0.5 ? 1 : 0, e.ep]),
       H: [HAT.indexOf(h.st), r2(h.x), r2(h.y), r2(h.z), r2(h.vx), r2(h.vy), r2(h.vz), h.holder, r2(S.landing.x), r2(S.landing.z)],
-      B: S.balls.map((b) => [b.id, r2(b.x), r2(b.y), r2(b.z), r2(b.vx), r2(b.vy), r2(b.vz), b.owner]),
+      B: S.balls.map((b) => [b.id, r2(b.x), r2(b.y), r2(b.z), r2(b.vx), r2(b.vy), r2(b.vz), b.owner, ...(b.sm && b.sm !== 1 ? [b.sm] : [])]), // special balls keep their rule through a host handover
       V: S.ev.slice(-10),
       R: S.result ? [S.result.team ?? -2, S.result.top ?? -2, S.result.mvp] : 0,
       c: [S.nextId, S.nextBall, S.evId],
@@ -298,7 +300,7 @@ export function createSim(rand = Math.random) {
     Object.assign(h, { st: HAT[H[0]] || 'ped', x: num(H[1]), y: num(H[2], K.PED_TOP), z: num(H[3]), vx: num(H[4]), vy: num(H[5]), vz: num(H[6]), holder: num(H[7], -1), acc: 0, cool: 0, bounces: 0, rest: 0 });
     if (h.st === 'head' && !byId(h.holder)) { h.st = 'ped'; h.holder = -1; }
     S.landing.x = num(H[8]); S.landing.z = num(H[9]);
-    S.balls = (snap.B || []).map((b) => ({ id: b[0], x: b[1], y: b[2], z: b[3], vx: b[4], vy: b[5], vz: b[6], owner: b[7], life: 1 }));
+    S.balls = (snap.B || []).map((b) => ({ id: b[0], x: b[1], y: b[2], z: b[3], vx: b[4], vy: b[5], vz: b[6], owner: b[7], sm: Number.isFinite(b[8]) ? b[8] : 1, life: 1 }));
     const c = snap.c || [];
     S.nextId = Math.max(num(c[0], 1), ...S.ents.map((e) => e.id + 1)); S.nextBall = num(c[1], 1); S.evId = num(c[2]);
     S.ev = Array.isArray(snap.V) ? snap.V.slice() : [];
