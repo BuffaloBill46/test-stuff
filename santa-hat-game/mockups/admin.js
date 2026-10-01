@@ -27,7 +27,7 @@ async function load() {
       <p class="dim">Skim $${R.skim} at $${R.skimAt} · top off below $${R.topOffBelow} to $${R.topOffTo}${p.game === 'slots' ? ` · jackpot ${Math.round(R.jackpotPct * 100)}%` : ''}</p>
       <div class="row"><button type="button" class="${R.paused ? '' : 'stop'}" data-act="${R.paused ? 'resume' : 'pause'}" data-game="${esc(p.game)}">${R.paused ? 'Resume' : 'Stop (emergency)'}</button></div></article>`; }).join('');
   // Frozen run payouts: who, how much, which game, and a Release button (wallet-signed, like every action here).
-  const held = state.held || [], NAMES = { spin: 'Spin', drop: 'Snowball Drop', big: 'Big Hat' }, $usd = (v) => '$' + v.toFixed(2);
+  const held = state.held || [], NAMES = { spin: 'Spin', drop: 'Snowball Drop', big: 'Big Hat' }, $usd = (v) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
   $('#frozenBox').classList.toggle('alert', held.length > 0);
   $('#frozen').innerHTML = held.length ? `<table><tr><th>Player</th><th>Wallet</th><th>Run</th><th>Amount</th><th>Frozen</th><th></th></tr>${held.map((h) => `<tr><td>${esc(h.name || 'player')}</td><td><code>${esc(h.wallet)}</code></td><td>${esc(NAMES[h.kind] || h.kind)} · ${h.n} × ${$usd(h.bet)}</td><td><b>${$usd(h.usd)}</b><br><span class="dim">${(h.santaRaw / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })} SANTA</span></td><td>${esc(new Date(h.at).toLocaleString())}</td><td><button type="button" data-release="${h.id}" data-game="${esc(h.game)}">Release</button></td></tr>`).join('')}</table>` : 'None frozen.';
   const STATUS = { needs_approval: 'waiting for your deposit', queued: 'queued', sending: 'sending', failed: 'failed (will retry)' };

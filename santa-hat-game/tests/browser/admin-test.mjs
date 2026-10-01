@@ -12,6 +12,14 @@ const ROOT = new URL('../../mockups', import.meta.url).pathname, fails = [], che
 const db = await makeDb();
 await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', 58823529411, '{}'), ('slots', 588235294117, '{}')`);
 await db.query(`insert into public.pool_transfers (game, kind, amount_raw, status) values ('slots', 'top-off', 411764705882, 'needs_approval')`);
+// A frozen payout (an impossible $5,000 from one $1 pull: a fault, never a real win), so the screen must show it with Release.
+const holly = await db.player('HoLLYwa11et11111111111111111111111111111111', 'Holly');
+{ const q = (await db.query(`insert into public.quotes (profile_id, kind, n, bet, usd, santa_raw, price_usd) values ($1, 'big', 1, 1, 1, 1, 0.00085) returning id`, [holly]))[0].id;
+  const run = +(await db.query(`select public.buy_run($1, $2, 1, 0, 0, 0) as id`, [q, 'FROZEN' + '5'.repeat(80)]))[0].id;
+  const pl = (await db.query('select id from public.plays where run_id = $1', [run]))[0].id;
+  await db.query(`select public.lock_play($1, $2, 's')`, [pl, 'c'.repeat(64)]);
+  await db.query(`select public.settle_play($1, 'x', '{"stops":[1,2,3,4,5]}', 5000, 5882352941176, 0.00085, 0, 0, 'w', 0)`, [pl]);
+  await db.query(`select public.finish_run($1, 'HoLLYwa11et11111111111111111111111111111111', 1101.51)`, [run]); }
 const key = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign', 'verify']);
 const addr = b58encode(new Uint8Array(await crypto.subtle.exportKey('raw', key.publicKey)));
 const pkcs8 = [...new Uint8Array(await crypto.subtle.exportKey('pkcs8', key.privateKey))];
@@ -68,6 +76,14 @@ check(gsRow?.version === 1 && gsRow.settings.big.jackpotOdds === 10000 && gsRow.
 check(gsRow?.settings.store.items.some((i) => i.id === 'shirt_mint' && i.price === 0.3), 'the new Mint shirt is in the store');
 await p.waitForFunction(() => /version 1/.test(document.querySelector('#gsVer').textContent), null, { timeout: 10000 }).catch(() => {});
 check(/version 1/.test(await p.textContent('#gsVer')), 'the editor shows version 1');
+// Frozen payouts: the player and amount are shown; Release (wallet-signed) puts it back in the payout queue.
+const frozenText = (await p.textContent('#frozen')).replace(/\s+/g, ' ');
+check(/Holly/.test(frozenText) && /HoLL…1111/.test(frozenText) && /\$5,000\.00/.test(frozenText) && /Big Hat · 1 × \$1\.00/.test(frozenText), 'the frozen payout shows player, wallet, run and amount: ' + frozenText);
+check(await p.evaluate(() => document.querySelector('#frozenBox').classList.contains('alert')), 'the Frozen payouts box stands out while something is frozen');
+await p.locator('#frozenBox').screenshot({ path: 'out/admin-frozen.png' });
+await p.tap('#frozen [data-release]'); await p.waitForFunction(() => /Released payout|Refused/.test(document.querySelector('#msg').textContent), null, { timeout: 15000 });
+check((await db.query(`select status from public.payouts where to_wallet like 'HoLLY%'`))[0].status === 'queued', 'Release queued the payout: ' + (await p.textContent('#msg')));
+check(/None frozen/.test(await p.textContent('#frozen')) && /release payout/.test(await p.textContent('#log')), 'the list empties and the release is in the log');
 await p.screenshot({ path: 'out/admin.png', fullPage: true });
 await browser.close(); web.close();
 console.log('errors:', errors.length ? errors : 'none'); console.log(fails.length || errors.length ? 'FAILED:\n - ' + fails.join('\n - ') : 'ALL CHECKS PASSED');
