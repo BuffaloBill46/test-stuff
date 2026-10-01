@@ -132,7 +132,8 @@ node link-test.mjs               # email + wallet account linking (local stand-i
 node mp.mjs                      # multiplayer room: join, host handover
 node idle.mjs                    # 3-minute idle and hidden-tab kicks
 node live.mjs                    # STALE (found 2026-10-01): written before the lobby redesign; it stops at "Waiting for the referee" (it blocks Supabase). Until it's updated, click through the live site in a real browser instead
-node spin-test.mjs               # Games tab: Spin wheel (forced results, tap-to-land, money math, winners list)
+node spin-test.mjs               # RETIRED with Spin (Cody, 2026-10-01): the Spin card is hidden, so this no longer runs; kept with Spin's code
+node devnet-pay-test.mjs         # REAL devnet: the page's wallet step buys a Snowball Drop run, server checks the real payment, payout sent (needs tests/solana/devnet-setup.mjs)
 node games-test.mjs              # Games tab: Slots readouts, pulls, forced win and jackpot, money math
 node sfx-test.mjs                # sound: waits for a tap, fires at the right moments, mute remembered
 node live-games.mjs              # buys + pulls + spins + re-checks a result on the PUBLISHED Games tab

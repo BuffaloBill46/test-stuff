@@ -20,7 +20,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PRICE = 0.00085, DEC = 1e6;
 const START = Math.round(50 / PRICE * DEC); // $50 Spin pool
 await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', $1, '{}'), ('slots', $2, '{}')`, [START, Math.round(500 / PRICE * DEC)]);
-const games = createGameServer({ db, chain: { getTransaction: async () => null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: {} });
+const games = createGameServer({ retired: [], db, chain: { getTransaction: async () => null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: {} });
 const pool = async () => +(await db.query(`select santa_raw from public.pools where game = 'spin'`))[0].santa_raw;
 const W = (i) => ('PLAYER' + 'abcdefghjk'[i] + 'wa11et').padEnd(44, '1');
 

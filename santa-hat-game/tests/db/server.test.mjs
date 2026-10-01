@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { createGameServer } from '../../server/games.js';
+import { directRun } from './setup.mjs';
 import { check } from '../../mockups/house.js';
 import { newSeed } from '../../mockups/fair.js';
 import { splitPayment, MINT } from '../../mockups/market.js';
@@ -38,7 +39,7 @@ function pay(sig, { from = PLAYER, to, total, at = Date.now() }) {
   txs.set(sig, { blockTime: Math.floor(at / 1000), meta: { err: null, innerInstructions: [], preTokenBalances: [b(1, from, 1e13), b(2, to, 1e12)], postTokenBalances: [b(1, from, 1e13 - total), b(2, to, 1e12 + s.arrives)] },
     transaction: { message: { accountKeys: [{ pubkey: from, signer: true }], instructions: [{ program: 'spl-token', parsed: { type: 'burnChecked', info: { mint: MINT, authority: from, tokenAmount: { amount: String(s.burn) } } } }] } } });
 }
-const server = createGameServer({ db, chain: { getTransaction: async (s) => txs.get(s) ?? null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: POOLS });
+const server = createGameServer({ retired: [], db, chain: { getTransaction: async (s) => txs.get(s) ?? null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: POOLS });
 const pool = async (g) => +(await one('select santa_raw from public.pools where game = $1', [g])).santa_raw; // SANTA, smallest unit
 const payoutOf = async (run) => one('select * from public.payouts where run_id = $1', [run]);
 // quote → pay → buy, in one go (the page does exactly this). Returns the buy result (the run's plays with their fingerprints).
@@ -182,4 +183,13 @@ assert.ok(wins.every((w, i) => i === 0 || wins[i - 1].at >= w.at), 'newest first
 const bad = await db.query(`select r.id from public.runs r left join public.payouts po on po.run_id = r.id
   where r.paid_at is not null and coalesce(po.amount_raw, 0) <> (select coalesce(sum(pay_raw), 0) from public.plays where run_id = r.id)`);
 assert.equal(bad.length, 0, 'every finished run paid exactly its plays\' total');
+// Spin is retired (Cody, 2026-10-01): a server with the default settings sells no Spin, still sells Snowball Drop (which plays
+// from the same pool), and a Spin run bought BEFORE the change still finishes and pays (nobody's paid plays are stranded).
+const live = createGameServer({ db, chain: { getTransaction: async (s) => txs.get(s) ?? null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: POOLS });
+assert.equal((await live.quote(me, 'spin', 1, 0.1)).error, 'that game has been retired', 'no new Spin runs');
+assert.ok((await live.quote(me, 'drop', 1, 0.1)).id, 'Snowball Drop still sells, from the same pool');
+const old = await directRun(db, me, 'spin', 5, 0.1);
+let lastSpin; for (const t of old.tickets) { lastSpin = await live.settle(me, t, 'aa'.repeat(16)); assert.ok(lastSpin.r, JSON.stringify(lastSpin)); }
+assert.equal(lastSpin.runDone, true, 'a Spin run bought before the change still finishes on the new server');
+assert.ok((await db.query('select paid_at from public.runs where id = $1', [old.run]))[0].paid_at, 'and is paid');
 console.log('OK: quote → pay → buy a run → settle on real Postgres; cheats refused; every play re-checked; ONE payout per run, only at its end; refunds ride along; stuck runs finished; 10 settles at once all counted; price halving checked');

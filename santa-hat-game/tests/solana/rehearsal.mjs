@@ -49,7 +49,7 @@ const me = await db.player(player.address, 'Cody');
 await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', $1, '{}'), ('slots', $2, '{}')`, [await bal(spinPool), await bal(slotsPool)]);
 const finalized = new Map(); // what an RPC's getTransaction(jsonParsed, finalized) would return, by signature
 const chain = { getTransaction: async (sig) => finalized.get(sig) ?? null };
-const server = createGameServer({ db, chain, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: { spin: spinPool.address, slots: slotsPool.address }, mint }); // the test token (SANTA_MINT on devnet)
+const server = createGameServer({ retired: [], db, chain, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: { spin: spinPool.address, slots: slotsPool.address }, mint }); // the test token (SANTA_MINT on devnet)
 async function buy(kind, n, bet) {
   const q = await server.quote(me, kind, n, bet); assert.ok(q.id, JSON.stringify(q));
   const pool = kind === 'big' ? slotsPool : spinPool, before = { p: await bal(player), pool: await bal(pool) };

@@ -8,7 +8,7 @@ import { makeLimiter, memoryStore } from '../../server/ratelimit.js';
 const db = await makeDb();
 await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', 58823529411, '{}'), ('slots', 588235294117, '{}')`);
 const me = await db.player('PLAYERwa11et111111111111111111111111111111');
-const server = createGameServer({ db, chain: { getTransaction: async () => null }, livePrice: async () => ({ usd: 0.00085 }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: { spin: 'SPINpoo1wa11et11111111111111111111111111111', slots: 'SLOTSpoo1wa11et1111111111111111111111111111' } });
+const server = createGameServer({ retired: [], db, chain: { getTransaction: async () => null }, livePrice: async () => ({ usd: 0.00085 }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: { spin: 'SPINpoo1wa11et11111111111111111111111111111', slots: 'SLOTSpoo1wa11et1111111111111111111111111111' } });
 const noThrow = async (label, fn) => { try { const r = await fn(); assert.ok(r && (r.error || r.refused || r.noCredit || r.failed), `${label}: expected a refusal, got ${JSON.stringify(r)}`); return r; } catch (e) { assert.fail(`${label} crashed: ${e.message}`); } };
 
 // 1. Names every JavaScript object carries are not games.
@@ -31,7 +31,7 @@ assert.match(last.error, /too many price quotes/);
 assert.equal((await db.query('select count(*)::int as n from public.quotes where profile_id = $1', [me]))[0].n, QUOTES_PER_HOUR);
 // 5. The public winners list is cached (10 s), so hammering it doesn't hammer the database.
 let calls = 0; const counting = { ...db, query: (q, p) => { if (/from public.plays pl join/.test(q)) calls++; return db.query(q, p); } };
-const s2 = createGameServer({ db: counting, chain: {}, livePrice: async () => ({ usd: 1 }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: {} });
+const s2 = createGameServer({ retired: [], db: counting, chain: {}, livePrice: async () => ({ usd: 1 }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: {} });
 for (let i = 0; i < 50; i++) await s2.winners();
 assert.equal(calls, 1, '50 requests, 1 database query');
 // 6. Through the web door: crafted bodies get 4xx answers, never 500.

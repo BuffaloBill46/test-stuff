@@ -32,7 +32,7 @@ const S = (name) => (name + '5'.repeat(88)).slice(0, 88).replace(/[0OIl]/g, '9')
 const txs = new Map();
 const { createAdmin, adminMessage, b58encode } = await import('../../server/admin.js');
 const { DEFAULT_SETTINGS, build } = await import('../../mockups/settings.js');
-const server = createGameServer({ db, chain: { getTransaction: async (s) => txs.get(s) ?? null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: POOLS });
+const server = createGameServer({ retired: [], db, chain: { getTransaction: async (s) => txs.get(s) ?? null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: POOLS });
 // The stand-in wallet (as in server-mode-test.mjs): it "sends" the payment the page asks for and returns its signature.
 let paid = 0;
 function payFor(q) {

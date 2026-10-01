@@ -69,15 +69,17 @@ const before = { player: await bal(player.address), pool: await bal(pool.address
 await p.goto('http://localhost:8788/online.html?net=local&server=' + encodeURIComponent('http://localhost:8788/api') + '&token=test-token', { timeout: 90000 });
 await p.waitForFunction(() => window.__sq, null, { timeout: 60000 });
 await p.evaluate(() => document.querySelector('#t-games').click()); await p.waitForFunction(() => window.__slots, null, { timeout: 90000 });
-console.log('Buying Spin 5 × 10¢ with a real devnet transaction (finalizing takes ~15–30 s)…');
-await p.evaluate(() => { document.querySelector('#spin .bets button[data-bet="0.1"]').click(); document.querySelector('#spin [data-run="5"]').click(); });
+console.log('Buying Snowball Drop 5 × 10¢ with a real devnet transaction (finalizing takes ~15–30 s)…');
+// The Drop board only animates while it is on screen (it rests otherwise, to save phones), so bring it into view first.
+await p.evaluate(() => document.querySelector('#drop').scrollIntoView({ block: 'start' })); await p.waitForTimeout(600);
+await p.evaluate(() => { document.querySelector('#drop [data-dbet="0.1"]').click(); document.querySelector('#drop [data-run="5"]').click(); });
 await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
 await p.evaluate(() => document.querySelector('#buyGo').click());
 const t0 = Date.now();
-await p.waitForFunction(() => window.__spin?.busy || /Not paid|cancelled|isn't confirmed|error/i.test(document.querySelector('#buyNote').textContent), null, { timeout: 180000 }).catch(() => {});
+await p.waitForFunction(() => window.__drop?.opening || /Not paid|cancelled|isn't confirmed|error/i.test(document.querySelector('#buyNote').textContent), null, { timeout: 180000 }).catch(() => {});
 console.log(`  buy note: "${await p.textContent('#buyNote')}" after ${Math.round((Date.now() - t0) / 1000)} s`);
-await p.waitForTimeout(800); await p.evaluate(() => document.querySelector('#spin .skip:not([hidden])')?.click());
-await p.waitForFunction(() => !window.__spin?.busy, null, { timeout: 400000 });
+await p.waitForTimeout(800); await p.evaluate(() => document.querySelector('#drop .skip:not([hidden])')?.click());
+await p.waitForFunction(() => !window.__drop?.opening && window.__drop?.flying === 0, null, { timeout: 400000 });
 
 const run = (await db.query('select * from public.runs where profile_id = $1', [me]))[0];
 check(signed === 1, 'the wallet was asked to sign exactly once');
@@ -91,7 +93,8 @@ check(pay && +pay.paid_raw === +q.santa_raw, 'paid exactly the quoted SANTA');
 const plays = await db.query('select state, pay_raw from public.plays where run_id = $1', [run?.id ?? 0]);
 check(plays.length === 5 && plays.every((x) => x.state === 'settled'), 'all 5 plays settled');
 const wonRaw = plays.reduce((a, x) => a + +x.pay_raw, 0);
-console.log(`  run won ${wonRaw / 1e6} test SANTA; result line: "${(await p.textContent('#spin .res')).slice(0, 80)}"`);
+console.log(`  run won ${wonRaw / 1e6} test SANTA; result line: "${(await p.textContent('#drop .res')).slice(0, 80)}"`);
+check(!(await p.isVisible('#spin')), 'Spin is not on the page (retired)');
 if (wonRaw > 0) {
   const adapter = makeSolanaChain({ kit, T22, rpcUrl: cfg.rpc, mint, keyFor: async () => pool, to: async (row) => row.to_wallet, feeOf, label: (row) => `Santa Hat payout #${row.id}` });
   const pBefore = await bal(player.address);

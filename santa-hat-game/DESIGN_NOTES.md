@@ -101,6 +101,16 @@ it can't hold SANTA as written: it books each ticket at the amount SENT, but SAN
 its vault would always hold 3% less than its books promise (the winner's claim or the last refunds would fail). It's also
 5% treasury / no burn, one winner. Cody chose a server-run lottery instead.
 
+### Santa Hat Spin removed; the name is Santa Hat Legends (decided, Cody 2026-10-01)
+- **Spin is removed** ("Its not very fun"). Cody's pick: **its pool stays as the Drop pool** (same wallet, same money; shown
+  as "Drop pool"; inside the database and server it's still called `spin`, to avoid a migration). Spin's card is hidden on the
+  page and its wheel is never drawn; the server refuses new Spin purchases (`RETIRED` in `server/games.js`); a Spin run bought
+  before the change still finishes and pays. **Spin's code stays in the repo** (Cody's pick), unused by players, so old Spin
+  plays still re-check and Spin could come back. The pool's rules (start, $25 skim at $175, top-off covering Drop's $10 top
+  prize) are unchanged.
+- **The site/brand is now "Santa Hat Legends"** (Cody's pick: the brand only). The multiplayer mode keeps its name, Snowball
+  Square, and the Games tab stays "Santa Hat Games".
+
 ### Santa Lottery (decided, Cody 2026-10-01)
 **Cody's calls:**
 - **Server-run, like Spin:** one lottery pool wallet whose key lives only on the server; provably fair draws; winners paid

@@ -37,7 +37,10 @@ const DEC = 1e6;
 
 // mint: which token is SANTA here (defaults to real SANTA; set to the test token on devnet, e.g. the SANTA_MINT secret).
 // cluster: the network the page must sign on ('mainnet' | 'devnet'); it goes in every quote with the wallet that must pay.
-export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f = fair, mint = MINT, cluster = 'mainnet' }) {
+// Games that can no longer be bought (Cody, 2026-10-01: Santa Hat Spin removed, "not very fun"). Its code stays; runs already
+// bought still finish and pay. Tests that exercise the Spin code pass retired: [] on purpose.
+export const RETIRED = ['spin'];
+export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f = fair, mint = MINT, cluster = 'mainnet', retired = RETIRED }) {
   const row = async (q, p) => (await db.query(q, p))[0];
   // Game settings (Cody's admin screen): the newest version for new plays; each play settles on the version it started with.
   const built = new Map(); let latest = { at: 0, version: 0 };
@@ -65,6 +68,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   // or if this player's last run isn't finished, so a payment is never taken for plays that would be refused.
   async function quote(profile, kind, n, bet) {
     if (!isKind(kind)) return { error: 'unknown game' };
+    if (retired.includes(kind)) return { error: 'that game has been retired' };
     if (!RUN_SIZES.includes(n)) return { error: 'buy 1, 5 or 10' };
     const payer = await walletOf(profile);
     if (!payer) return { error: 'playing for SANTA needs a linked wallet (winnings are sent to it)' };

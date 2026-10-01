@@ -11,7 +11,7 @@ import { newSeed } from '../../mockups/fair.js';
 const db = await makeDb(), PRICE = 0.00085;
 await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', $1, '{}'), ('slots', $2, '{}')`, [Math.round(50 / PRICE * 1e6), Math.round(500 / PRICE * 1e6)]);
 const me = await db.player('PLAYERwa11et111111111111111111111111111111');
-const server = createGameServer({ db, chain: {}, livePrice: async () => ({ usd: PRICE }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: {} });
+const server = createGameServer({ retired: [], db, chain: {}, livePrice: async () => ({ usd: PRICE }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: {} });
 const key = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign', 'verify']), cody = b58encode(new Uint8Array(await crypto.subtle.exportKey('raw', key.publicKey)));
 const admin = createAdmin({ db, adminWallets: [cody] });
 const sign = async (settings) => { const message = adminMessage({ action: 'set-settings', game: 'all', settings, at: new Date().toISOString(), nonce: newSeed(16) });
@@ -36,7 +36,7 @@ assert.equal(e.proof.settingsVersion, 0);
 const v0 = build(DEFAULT_SETTINGS), v1 = build({ ...s1, version: 1 });
 assert.equal((await check(e.proof, v0)).outcome.mult, e.r.mult, 'the early play re-checks on version 0');
 // New plays run on version 1 (the cache refreshes within 15 s; a fresh server sees it at once).
-const fresh = createGameServer({ db, chain: {}, livePrice: async () => ({ usd: PRICE }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: {} });
+const fresh = createGameServer({ retired: [], db, chain: {}, livePrice: async () => ({ usd: PRICE }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: {} });
 assert.equal((await fresh.settings()).version, 1);
 assert.match((await fresh.quote(me, 'spin', 1, 1)).error, /size/, 'after the change, $1 is no longer a Spin size');
 const o = { ticket: (await directRun(db, me, 'spin', 1, 2, 1)).tickets[0] }, later = await fresh.settle(me, o.ticket, newSeed(16));

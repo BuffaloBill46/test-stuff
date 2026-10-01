@@ -16,14 +16,11 @@ await p.goto('http://localhost/online.html?net=local', { timeout: 90000 }); awai
 const s0 = await p.evaluate(() => window.__sfx.state); check(s0 === 'not started', `audio must wait for a tap, was ${s0}`);
 await p.tap('#t-games'); await p.waitForFunction(() => window.__slots, null, { timeout: 90000 }); await p.waitForTimeout(1500);
 const s1 = await p.evaluate(() => window.__sfx.state); check(s1 === 'running', `audio should run after a tap, was ${s1}`);
-// Three single pulls (each: Pull 1 → confirm the demo payment), then one $1 spin.
+// Three single pulls (each: Pull 1 → confirm the demo payment). (The $1 spin and its wheel ticks went with Spin, Cody 2026-10-01.)
 const buy1 = async (sel) => { await p.evaluate((s) => document.querySelector(s).click(), sel); await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 15000 }); await p.evaluate(() => document.querySelector('#buyGo').click()); };
 for (let i = 0; i < 3; i++) { await buy1('#slots [data-run="1"]'); await p.waitForTimeout(300); await p.waitForFunction(() => !window.__slots.busy, null, { timeout: 90000 }); }
-await p.evaluate(() => document.querySelector('#spin .bets button[data-bet="1"]').click()); await buy1('#spin [data-run="1"]');
-await p.waitForTimeout(300); await p.waitForFunction(() => !window.__spin.busy, null, { timeout: 90000 });
 const played = await p.evaluate(() => window.__sfx.stats.byName);
 check(played.reelStop === 15, `5 reel stops per pull × 3 pulls, got ${played.reelStop}`);
-check(played.spinTick > 5, `the wheel should tick as pegs pass, got ${played.spinTick}`);
 await p.tap('#nav .sndbtn');
 check(await p.evaluate(() => window.__sfx.muted) && await p.evaluate(() => localStorage.getItem('sh_sound')) === 'off', 'mute should turn on and be saved');
 await p.reload(); await p.waitForFunction(() => window.__sfx, null, { timeout: 60000 });

@@ -28,7 +28,7 @@ await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin'
 // fake but realistically shaped Solana transaction signatures (base58, 88 characters)
 const S = (name) => (name + '5'.repeat(88)).slice(0, 88).replace(/[0OIl]/g, '9');
 const txs = new Map();
-const server = createGameServer({ db, chain: { getTransaction: async (s) => txs.get(s) ?? null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: POOLS });
+const server = createGameServer({ retired: [], db, chain: { getTransaction: async (s) => txs.get(s) ?? null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: POOLS });
 // The stand-in wallet: when the page asks it to pay a quote, it "sends" the payment and returns its signature (the chain
 // stand-in then reports a finalized transaction: the player's SANTA down, 10% burned, the rest arriving in the pool).
 let paid = 0;
