@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Snowball Square Online</title>
+<title>Santa Hat Legends</title>
 <link rel="icon" href="hat-logo.png">
 <meta name="description" content="Grab the Santa hat, keep it on your head, knock it off theirs. Up to 8 players.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -375,6 +375,9 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
 
 /* ---------- Santa Hat identity: the hat is the mark; brim fur trims the key surfaces */
 .brand { display: flex; align-items: center; gap: 8px; }
+.brand .wordmark { display: flex; flex-direction: column; align-items: flex-end; }
+/* The name is Santa Hat Legends (Cody, 2026-10-01): LEGENDS sits under "Santa Hat" in the label face, so the logo keeps its width. */
+.brand small { font: 700 10px/1 var(--digits); letter-spacing: 3px; color: var(--lamp); text-transform: uppercase; margin: 2px -3px 0 0; text-shadow: 1px 1px 0 var(--ink); }
 .brand img { width: 40px; height: 40px; margin: -6px 0 -6px -4px; filter: drop-shadow(2px 2px 0 var(--ink)); }
 #nav { border-bottom: 3px solid var(--hat); box-shadow: none; }
 #nav::after, .fur::before { content: ''; position: absolute; left: 0; right: 0; height: 12px; pointer-events: none;
@@ -499,7 +502,7 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
 <div id="pops"></div>
 <div id="banner" hidden></div>
 <header class="bar" id="gamebar" hidden>
-  <div class="brand"><img src="hat-logo.png" alt=""><span><b>Santa</b> Hat</span></div>
+  <div class="brand"><img src="hat-logo.png" alt=""><span class="wordmark"><span><b>Santa</b> Hat</span><small>Legends</small></span></div>
   <div id="roomchip" class="plaque" hidden></div>
   <button class="sndbtn" type="button" aria-pressed="true" title="Sound on" aria-label="Sound"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M3 8h3l4-4v12l-4-4H3z" fill="currentColor"/><path class="w" d="M13 7c1.2 1.6 1.2 4.4 0 6M15.5 5c2.4 2.8 2.4 7.2 0 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path class="x" d="M13 7.5l5 5M18 7.5l-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
   <button id="leave" hidden>Leave</button>
@@ -508,7 +511,7 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
 <aside id="board" class="plaque" hidden></aside>
 
 <nav id="nav">
-  <div class="brand"><img src="hat-logo.png" alt=""><span><b>Santa</b> Hat</span></div>
+  <div class="brand"><img src="hat-logo.png" alt=""><span class="wordmark"><span><b>Santa</b> Hat</span><small>Legends</small></span></div>
   <div class="tabs" role="tablist" aria-label="Sections">
     <button role="tab" id="t-play" data-tab="play" aria-selected="true">Play</button>
     <button role="tab" id="t-games" data-tab="games" aria-selected="false">Games</button>
