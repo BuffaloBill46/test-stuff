@@ -63,6 +63,7 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
   - `snowball.js`, `bethehat.js`, `sleigh.js`, `hatchase.js`, `village.js`, `index.html`: the four
     original single-player mockups (published under `/mockups/`). **Not dead code; keep them.**
 - **Database:** `santa-hat-game/supabase/001..004_*.sql` are applied to the live project, in order.
+  **`008_hats_backpacks.sql` is NOT applied** (avatar Hats/Backpacks + Ice Ball; apply BEFORE publishing the page).
   **`007_rate_limits.sql` is NOT applied either** (the speed limit's counts; apply with 005).
   **`005_credits_plays.sql` is NOT applied** (runs, plays, payouts for the server; despite the name, no credits; apply when the server goes live, with Cody's OK).
   New changes go in a new numbered file, checked with `tests/db/`, applied with the Supabase tools, then committed.
@@ -108,6 +109,8 @@ node tests/http.test.mjs         # the server's web door: sign-in, other website
 (cd tests/db && node tickets.test.mjs)          # ranked tickets: 10 free a day, held/spent/released, 10 bought per 24 h
 (cd tests/db && node security.test.mjs && node price.test.mjs)  # audit: attacks refused cleanly; price manipulation guard
 (cd tests/db && node lock.test.mjs)             # locks on a REAL Postgres server: plays take turns, payouts never sent twice
+node tests/iceball.test.mjs     # special snowballs: Ice Ball stuns 50% longer, kept through a host handover
+(cd tests/db && node avatar-slots.test.mjs)     # hats and backpacks save rules (008)
 node tests/bots.test.mjs        # bot signals: 900 simulated people never strong; timer scripts caught
 (cd tests/db && node bots-db.test.mjs)          # bot signals through the admin door: private, read only
 (cd tests/db && node ratelimit.test.mjs)        # speed limit counts: same rules in memory, PGlite and real Postgres (200 at once)
@@ -217,6 +220,10 @@ FOR_MAIN_CLAUDE.md.
 **Same day, bot signals:** "Check for bots" on the admin screen (private, wallet-signed, read only): clockwork or instant
 reactions (strong), no breaks / round the clock (weak). Signals only. The admin screen change is NOT published yet (this
 session could only push its work branch): run `deploy-pages.sh` next time.
+
+**Same day, avatar Hats + Backpacks and the Ice Ball** (Cody): new slots with starter items; a worn hat hides under the Santa
+hat; snowball items can carry rules and the referee applies them; Ice Ball stuns 50% longer. Cody is writing up the full
+snowball types (faster, bigger, longer stun, splits): build those next from his notes. Needs `008` applied before publishing.
 
 **For the other Claude:** `FOR_MAIN_CLAUDE.md` → "Read first" lists every change since the first hand-over that touches the
 server, the database or payments.

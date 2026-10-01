@@ -341,6 +341,17 @@ jackpot amount**, plus its jackpot odds and biggest fixed win (worked out from t
   about $9,700 of SANTA, and the pool never needed a top-off.
 - **More click games** from the idea list above are saved for later.
 
+## Avatar Hats and Backpacks, and special snowballs (2026-10-01, Cody)
+- **Hats** and **Backpacks** are avatar slots (catalog.js), each starting at "None" so old saved avatars still work. Starter
+  items (Claude's picks, change freely): Knit Beanie (L1), Earmuffs (L2), Reindeer Antlers (L4), Snowman Top Hat ($0.25); Elf
+  Satchel (L2), Toy Sack (L3), Gift Box ($0.25). **A worn hat hides while that player wears the Santa hat** (the prize must
+  always be seen; Claude's call). New colours of these shapes can be added from the admin store editor; new shapes need code.
+- **Special snowballs** (Cody: faster, bigger, longer stun, splits; full details coming). A snowball item can carry `rules`;
+  the match referee applies them. Built so far: **Ice Ball**, `rules: { stun: 1.5 }` (stuns 50% longer: 0.9 s → 1.35 s).
+  Any rule is capped at 3× so a bad setting can't freeze a player for long.
+- **Open for Cody:** the Ice Ball's unlock (level 4 is a placeholder) or price; whether special snowballs count in RANKED
+  (a paid gameplay edge in ranked would be pay-to-win; RESEARCH.md's rule so far: cosmetics only, never pay-to-win).
+
 ## Speed limit (built 2026-10-01; Cody: "build it but plan to move it to an always-on game server")
 **Why:** not about winning (the games can't be beaten by playing fast). A script flooding the server could use up the Edge
 Functions' free 500,000 calls a month in about a day (5 requests a second ≈ 430,000 a day) and slow the game for everyone.

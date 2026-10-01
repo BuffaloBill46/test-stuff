@@ -126,6 +126,9 @@ through the real server code and checks ONE payout equal to the plays' winnings,
 - [ ] **Apply `supabase/005_credits_plays.sql`** to the project (checked on real Postgres in `tests/db/`), then insert the two
       `pools` rows with the pools' real starting SANTA balances (smallest units, 6 decimals).
 - [ ] **Apply `supabase/006_ranked_tickets.sql`** when ranked opens (checked on real Postgres, `tests/db/tickets.test.mjs`).
+- [ ] **Apply `supabase/008_hats_backpacks.sql` BEFORE the next publish** (avatar Hats/Backpacks + Ice Ball item rows, 7-slot
+      `save_profile`). The page now shows those slots; without 008 a player saving a hat or backpack is refused. Safe for the live
+      page too: a page that doesn't send the new slots saves them as "none". Tested: `tests/db/avatar-slots.test.mjs`.
 - [ ] **Apply `supabase/007_rate_limits.sql` with `005`** (the speed limit's counts; the Edge Function needs the table:
       without it, counting fails, which lets every request through and logs "speed limit: counting failed").
 - [ ] **Check the visitor's address on the live Edge Function:** the speed limit reads the FIRST `x-forwarded-for` entry

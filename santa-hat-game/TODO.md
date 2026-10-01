@@ -34,6 +34,7 @@ existing bot (frozen/failed payouts, books ≠ wallet, top-off waiting, server d
 - [x] **Slots payouts decided** (Big Hat, 11 straight/diagonal lines, 100× top line, 6¢ hat bonus, 78.1% payback + the pool jackpot ≈ 80%: Cody's target, 2026-09-30). The live numbers are always in `PAYTABLE.md`; regenerate it with `node tests/paytable.mjs` after any change.
 
 ## Next to build
+- [ ] **Special snowball types from Cody's notes** (faster, bigger, longer stun, splits). The rules system and the first one (Ice Ball) are built: `catalog.js` `rules`, `sim.js`, `tests/iceball.test.mjs`. Cody: Ice Ball unlock/price, and whether special snowballs count in ranked.
 - [ ] **Turn on ranked Auto match:** the FFA RANKED lobby is built, but its Auto match button stays off ("opening soon") until tickets and the server below exist.
 - [x] **Auto match by rank points (logic built and tested, 2026-09-30):** `mockups/matchmaker.js`: ±50, then ±150, then any real players, bots at 30 s; 2–7 real, 1–3 bots (fills toward 6: Claude's pick), 3–8 total. `tests/matchmaker.test.mjs` (2 simulated hours of traffic). Runs on the server once it exists.
 - [ ] **Ranked tickets:** 10 free a day (reset every 24 hours), spent when the match starts, refunded if you leave before. *Built and tested (2026-09-30):* `supabase/006_ranked_tickets.sql` (NOT applied), `tests/db/tickets.test.mjs`: hold on joining, spend at the start, release if you leave before; extras used after the free ones and never expire; 10 bought per rolling 24 hours. Needs the ranked referee server to call it.
