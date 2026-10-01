@@ -49,7 +49,7 @@ Kept up to date as things get done. Details for lobbies, economy and open questi
 - [ ] **Slots with real SANTA:** server-picked reel stops (provably fair), payments and payouts. The game rules already take the random numbers from outside (`pull(state, 'big', rand)`), so server seeds plug straight in.
 - [ ] **Slots pool jackpot %:** 25% (Cody) gives about $360–430 on a full pool; about 14% would give about $250. Cody to confirm.
 - [x] **Provably fair results, in Cody's order (built, 2026-09-30):** `fair.js` + `house.js` (demo) and `server/games.js` (server). "Check this result" on the page. The pool safety rule (a play only starts if the pool covers that game's biggest fixed win: Spin 5× the bet, Slots its top fixed prize).
-- [ ] **Entries split 90% to the pool, 10% burned** (after the 3% tax).
+- [x] **Entries split 90% to the pool, 10% burned** *(done, ticked 2026-10-01: one transaction from the player, built by `mockups/pay.js`, checked by `server/verify.js`; proven on the real token program, `tests/solana/pay.test.mjs`)* (after the 3% tax).
 - [x] **3% SANTA tax notice:** the Games tab intro covers Spin and Slots; each win message also says what arrives after the 3% tax.
 - [ ] **Simulate a million spins** to prove the payback % before launch. (Slots: exact payback from the reel math plus `tests/payout-ranges.mjs`, 5 million pulls. Re-run both after any change.)
 - [ ] More click games from the idea list (Hat Drop, Present Pick, Sleigh Climb, Advent Scratch, Naughty or Nice). Needs Cody's pick of game and its odds/payback first.
@@ -68,8 +68,8 @@ button and no player signature. **We never hold a player balance.** Rules and wh
 The math can't be beaten by grinding (a simulated 100,000-pull grinder lost about 25% every time), but the server still has to
 stop cheating and spam:
 - [x] **One run at a time per player (built, 2026-09-30; corrected 2026-10-01):** a player can't get a new quote while a run is unfinished; stuck runs are finished by the server (`tidy`), so nobody is blocked forever. *Correction:* this is checked at the QUOTE only, not in the database. A player who gets two quotes before paying either can have two runs open. That's allowed on purpose: refusing a run that's already paid would keep the money and give no plays. Proven money-safe (`tests/db/lock.test.mjs`: each run paid once, exactly its winnings). It's a flood guard, not a money rule; quotes are capped at 30 an hour.
-- [ ] **Every payment used once.** Each SANTA payment's transaction signature buys its run exactly once; record it and refuse repeats.
-- [ ] **Confirm the payment on-chain (Helius) before any plays are made.** No confirmed payment, no plays.
+- [x] **Every payment used once.** *(Done, ticked 2026-10-01: the payment signature is unique in the database and buys one run; `tests/db/server.test.mjs`, `security.test.mjs`, `lock.test.mjs`.)* Each SANTA payment's transaction signature buys its run exactly once; record it and refuse repeats.
+- [x] **Confirm the payment on-chain (Helius) before any plays are made.** *(Done in the server, ticked 2026-10-01: `buy` checks the FINALIZED transaction with `server/verify.js` before `buy_run` makes any plays. Needs the live RPC URL.)* No confirmed payment, no plays.
 - [x] **Speed limit per player and per internet connection (built, 2026-10-01; NOT deployed):** `server/ratelimit.js`: 40 requests a player and 60 a connection per 10 seconds, then "slow down, try again in N seconds" (no ban). An honest run of 10 is about 12 requests; the real page peaked at 3 per player in 10 s. Counts in the database for now (`supabase/007_rate_limits.sql`, not applied). Tests: `tests/http.test.mjs`, `tests/db/ratelimit.test.mjs`, `tests/db/edge-limit.mjs` (the real Edge Function under Deno), the browser server-mode tests. Details: DESIGN_NOTES → "Speed limit".
 - [ ] **Check on the live Edge Function which `x-forwarded-for` entry is the real visitor** (if a visitor can set it, a script could dodge the per-connection limit by faking addresses; the per-player limit still holds). FOR_MAIN_CLAUDE.
 - [ ] **Move the speed limit to the always-on game server when it exists (Cody, 2026-10-01):** swap `dbStore(db)` for `memoryStore()` in the wiring (one line); 007's table is then unused. Only while one server program runs.
@@ -81,7 +81,7 @@ stop cheating and spam:
 
 ### Slots: tips for building it right (from the research, see RESEARCH.md)
 - [ ] **Keep it a "PAR sheet" machine:** odds come only from symbol counts on the reel strips; change payback by changing counts or prizes in `mockups/slots.js`, then re-run `tests/slots.test.mjs`, `tests/paytable.mjs` and `tests/payout-ranges.mjs`.
-- [ ] **Provably fair, in Cody's order (see DESIGN_NOTES → "Fair results: the order"):** payment confirmed
+- [x] **Provably fair, in Cody's order (done, ticked 2026-10-01; see the item above under the Games tab) (see DESIGN_NOTES → "Fair results: the order"):** payment confirmed
       FIRST; only then does the server make and lock a fresh secret for that play. Anyone can re-check a play afterwards.
 - [x] **Show every win clearly:** draw the winning paylines, light the winning symbols, show the hat-bonus nickels, then the total.
 - [x] **Only celebrate real wins:** big effects only when the pull pays more than the $1 it cost (research: "losses disguised as wins"). Small returns show quietly.
