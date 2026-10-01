@@ -265,3 +265,12 @@ Linux Deno lives in `/tmp/denolx` (re-install with `npm install deno` there if /
 `MSYS_NO_PATHCONV=1 wsl -d Ubuntu -- bash -c "cd /mnt/c/test-stuff/santa-hat-game/tests/db && node lock.test.mjs && DENO=/tmp/denolx/node_modules/.bin/deno node edge-limit.mjs"`
 (without `MSYS_NO_PATHCONV=1`, Git Bash rewrites `/mnt/c/...` into a Windows path and WSL can't find it). Never `npm install`
 inside WSL here without `--no-save` (see the lockfile lesson above).
+
+## The test database must have the live database's grants, or it's stricter than the real thing (2026-10-01)
+Supabase grants anon and signed-in users ALL rights on every new table, view, function and sequence in `public`; files must
+revoke what they don't want. The PGlite tests created bare roles with no rights, so "the website can't do X" checks passed
+for the wrong reason. A view with owner rights (`my_plays`) turned out writable by players on the live project. Found only
+because Supabase's security advisor was run right after applying the file. Rules: (1) the test setup copies Supabase's
+grants (`SUPABASE_GRANTS` in `tests/db/setup.mjs`); (2) run `get_advisors` (security) after every live database change;
+(3) prove a "refused" claim on the live database as the real role (`set local role authenticated` inside a block that
+rolls back), not by reading the SQL file.

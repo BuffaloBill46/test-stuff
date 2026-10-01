@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
+import { SUPABASE_GRANTS } from './setup.mjs';
 
 const db = new PGlite();
 const SQL = (f) => readFileSync(new URL(`../../supabase/${f}`, import.meta.url), 'utf8');
@@ -15,8 +16,9 @@ await db.exec(`
   create table auth.identities (id uuid primary key default gen_random_uuid(), provider_id text, user_id uuid references auth.users, identity_data jsonb,
     provider text, last_sign_in_at timestamptz, created_at timestamptz default now(), updated_at timestamptz default now(), email text);
   create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
+  ${SUPABASE_GRANTS}
 `);
-for (const f of ['001_profiles.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql']) {
+for (const f of ['001_profiles.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '009_lock_my_plays.sql']) {
   try { await db.exec(SQL(f)); } catch (e) { throw new Error(`${f}: ${e.message}`); }
 }
 const one = async (q, p) => (await db.query(q, p)).rows[0];
@@ -88,6 +90,10 @@ assert.equal((await db.query(`select * from public.runs`)).rows.length, 3, 'sees
 const mine = (await db.query(`select id, state, secret from public.my_plays order by id`)).rows;
 assert.ok(mine.every((r) => (r.state === 'settled') === (r.secret !== null)), 'secrets show only for settled plays');
 await fails(`update public.runs set n = 10`, [], 'the website can\'t change runs');
+// my_plays reads plays with the owner's rights (to hide unsettled secrets), so writing THROUGH it would skip row security.
+await fails(`update public.my_plays set pay = 999`, [], 'the website can\'t change its plays through my_plays');
+await fails(`delete from public.my_plays`, [], 'the website can\'t delete its plays through my_plays');
+await fails(`insert into public.price_samples (usd) values (1)`, [], 'the website can\'t plant a SANTA price sample');
 await fails(`select public.finish_run($1, 'W', 1)`, [r2], 'the website can\'t call server functions');
 assert.equal((await db.query(`select secret from public.plays`)).rows.length, 0, 'the website sees no rows of the plays table (secrets only via my_plays, once settled)');
 assert.equal((await db.query(`select * from public.payments`)).rows.length, 0, 'nor payments');
