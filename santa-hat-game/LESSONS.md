@@ -66,7 +66,7 @@ Read this before starting new work on the game. Add to it whenever something rea
 
 - **A stray comment silently switched off a money setting.** Inserting a `//` note mid-line in `slots.js` commented out
   `hatBonus: 0.05`; payback dropped 9% with no error. Caught only because the number looked wrong. The Slots test now
-  fails if the hat bonus or pool jackpot settings are missing, or payback leaves 70–80%. Put notes on their own line.
+  fails if the hat bonus or pool jackpot settings are missing, or payback leaves 76–83%. Put notes on their own line.
 
 - **A failure after a credit is spent must give the credit back.** The first play-credits version spent the credit, then hit an
   error making the secret, and the machine stayed locked with the play lost. Found only by clicking through in a real browser.
@@ -76,6 +76,9 @@ Read this before starting new work on the game. Add to it whenever something rea
 - **Full-screen label raced the browser.** The button read the state 60 ms after asking; under load the browser took longer, so it
   said "Full screen" while full screen was on. The label now follows the browser's own fullscreenchange report.
 - **The stray-comment bug struck again (three times now), in tests:** a `//` note typed mid-line swallowed the rest of the line. Notes go on their own line.
+  **Fourth time (2026-10-01), in the page:** a scripted edit put `// the Spin balance's two sizes` before the rest of a line,
+  so the Spin chips stopped following the admin price. No error anywhere; only the settings browser test caught it. When a
+  script inserts a comment into existing code, it goes on a NEW line above, never before code on the same line.
 - **Rounded constants multiply their error.** A test's pool-income figure rounded to 7 digits was fine for 1 pull and failed for 5.
   Use the exact formula, `(1 - 0.10 * 0.97) * 0.97`.
 - **When a new test fails, check the test's bookkeeping before the game.** The bot-emote check failed three times; every time it

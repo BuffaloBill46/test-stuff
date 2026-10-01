@@ -234,7 +234,8 @@ async function showMarket() {
 function labelsFromSettings() {
   const c = (v) => (v < 1 ? Math.round(v * 100) + '¢' : '$' + (Number.isInteger(v) ? v : v.toFixed(2))), top = topMult(); // the wheels as published (applyToGame updates them in place)
   for (const [cls, i] of [['chip10', 0], ['chip100', 1]]) {
-    const b = $('#spin .' + cls), bet = SIZES.spin[i]; // the Spin balance's two sizes, as published b.dataset.bet = bet; $('b', b).textContent = c(bet); $('small', b).textContent = `win up to ${c(bet * top)}`;
+    // the Spin balance's two sizes, as published
+    const b = $('#spin .' + cls), bet = SIZES.spin[i]; b.dataset.bet = bet; $('b', b).textContent = c(bet); $('small', b).textContent = `win up to ${c(bet * top)}`;
   }
   $('#slots .machine header em').textContent = `${money(M.bet)} a pull · 5×5 · 11 lines`;
   document.querySelectorAll('.hatc').forEach((e) => { e.textContent = c(M.hatBonus * M.bet); }); // the per-hat bonus as published
