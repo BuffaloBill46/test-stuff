@@ -34,7 +34,7 @@ const s2 = createGameServer({ db: counting, chain: {}, livePrice: async () => ({
 for (let i = 0; i < 50; i++) await s2.winners();
 assert.equal(calls, 1, '50 requests, 1 database query');
 // 6. Through the web door: crafted bodies get 4xx answers, never 500.
-const h = makeHandler({ server, profileFor: async () => me, credits: async () => [] });
+const h = makeHandler({ server, profileFor: async () => me });
 for (const body of [{ action: 'open', kind: '__proto__' }, { action: 'settle', ticket: 'x', seed: 'zz' }, { action: 'quote', kind: 'big', n: '1e3' }, { action: 'buy', quote: {}, signature: [] }, { action: 'constructor' }, 'null', '[]']) {
   const r = await h(new Request('https://x/f', { method: 'POST', headers: { origin: 'https://buffalobill46.github.io', authorization: 'Bearer t' }, body: typeof body === 'string' ? body : JSON.stringify(body) }));
   assert.ok(r.status >= 400 && r.status < 500, `${JSON.stringify(body)} → ${r.status}`);

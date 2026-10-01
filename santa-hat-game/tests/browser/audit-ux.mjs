@@ -43,9 +43,9 @@ for (const [label, w, h] of SIZES) {
     });
     for (const f of found) report.issues.push({ size: label, tab, ...f });
   }
-  // Dialogs: buy counter and how-to-win must fit the screen.
+  // Dialogs: the buy confirm and how-to-win must fit the screen.
   await page.evaluate(() => document.querySelector('#t-games').click()); await page.waitForTimeout(1500);
-  for (const [open, sel] of [[() => document.querySelector('[data-buy="big"]').click(), '#buyDlg'], [() => document.querySelector('#howBtn').click(), '#howDlg']]) {
+  for (const [open, sel] of [[() => document.querySelector('#slots [data-run="5"]').click(), '#buyDlg'], [() => document.querySelector('#howBtn').click(), '#howDlg']]) {
     await page.evaluate(open); await page.waitForTimeout(500);
     const fit = await page.evaluate((s) => { const r = document.querySelector(s).getBoundingClientRect(); return r.bottom <= innerHeight + 1 && r.right <= innerWidth + 1 && r.top >= -1; }, sel);
     if (!fit) report.issues.push({ size: label, tab: 'games', kind: 'dialog', what: sel + ' does not fit the screen' });

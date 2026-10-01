@@ -1,6 +1,6 @@
 // The Games page in SERVER MODE, end to end: the real game server steps (server/games.js) behind the real web door
 // (server/http.js, the same code the Edge Function runs) on real Postgres (PGlite) with the real 001–005 SQL.
-// The page gets its credits from the server, plays through it, lands the reels on the server's result, and re-checks it.
+// The page buys a run through the server, plays it, lands the reels on the server's result, and re-checks it.
 // Needs: npm install in tests/db (PGlite) and here. Wallet payments are NOT part of this (no wallet here; FOR_MAIN_CLAUDE.md).
 import { createRequire } from 'module'; import { readFileSync, existsSync } from 'fs'; import { execSync } from 'child_process'; import path from 'path'; import http from 'http';
 const require = createRequire(import.meta.url);

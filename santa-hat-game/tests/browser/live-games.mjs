@@ -16,15 +16,15 @@ page.on('pageerror', (e) => errs.push(e.message)); page.on('console', (m) => { i
 await page.goto('https://buffalobill46.github.io/test-stuff/#games', { timeout: 60000 });
 await page.waitForFunction(() => window.__slots, null, { timeout: 90000 });
 await page.waitForTimeout(2000);
-await page.evaluate(() => document.querySelector('.machine .pull').click());
-await page.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 15000 }); // no credits yet: the buy counter
-await page.evaluate(() => { document.querySelector('#buyQuick [data-n="1"]').click(); document.querySelector('#buyGo').click(); });
+await page.evaluate(() => document.querySelector('#slots [data-run="1"]').click()); // Pull 1: confirm, then it plays
+await page.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 15000 });
+await page.evaluate(() => document.querySelector('#buyGo').click());
 await page.waitForTimeout(500);
 await page.waitForFunction(() => window.__slots && !window.__slots.busy, null, { timeout: 90000 });
 console.log('live pool:', await page.textContent('#slotPool'), '| balance:', await page.textContent('#demoBal'), '| result:', await page.textContent('.machine .res'));
-await page.evaluate(() => { document.querySelector('#spin').scrollIntoView(); document.querySelector('#spin .spinbtn').click(); });
-await page.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 15000 }); // no credits yet: the buy counter
-await page.evaluate(() => { document.querySelector('#buyQuick [data-n="1"]').click(); document.querySelector('#buyGo').click(); });
+await page.evaluate(() => { document.querySelector('#spin').scrollIntoView(); document.querySelector('#spin [data-run="1"]').click(); });
+await page.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 15000 });
+await page.evaluate(() => document.querySelector('#buyGo').click());
 await page.waitForTimeout(500);
 await page.waitForFunction(() => window.__spin && !window.__spin.busy, null, { timeout: 90000 });
 console.log('live spin: pool', await page.textContent('#spinPool'), '| wheel shows', await page.evaluate(() => window.__spin.view.shownMult() + '×'), '| result:', await page.textContent('#spin .res'));
