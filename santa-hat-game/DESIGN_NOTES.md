@@ -344,7 +344,7 @@ jackpot amount**, plus its jackpot odds and biggest fixed win (worked out from t
 ## Avatar Hats and Backpacks, and special snowballs (2026-10-01, Cody)
 - **Hats** and **Backpacks** are avatar slots (catalog.js), each starting at "None" so old saved avatars still work. Starter
   items (Claude's picks, change freely), all Store purchases for now: Knit Beanie, Earmuffs, Snowman Top Hat, Elf Satchel, Gift Box
-  ($0.25); Reindeer Antlers, Toy Sack ($0.50).
+  ($0.25); Reindeer Antlers, Toy Sack ($0.50). **A worn hat hides while that player wears the Santa hat** (the prize must
   always be seen; Claude's call). New colours of these shapes can be added from the admin store editor; new shapes need code.
 - **Special snowballs** (Cody: faster, bigger, longer stun, splits; full details coming). A snowball item can carry `rules`;
   the match referee applies them. Built so far: **Ice Ball**, `rules: { stun: 1.5 }` (stuns 50% longer: 0.9 s → 1.35 s).
