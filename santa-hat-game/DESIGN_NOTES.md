@@ -156,8 +156,11 @@ names (Cody: "use the names from already made items").
 - Every item follows level rules (Present Box never picks the Santa Costume below level 3; no Snowball Rain before level 5).
 - Prices: Claude sets base prices for now; Cody will change them.
 
-**Still open (asked 2026-10-01):** −1 per hit on top of the thrower's +5?; bots and levels/gear; hat immunity untouchable vs only
-un-stunnable; which existing item is which gear (Toy Sack = Santa Bag? Gift Box = Present Box?); does gear show on the avatar.
+**Answered 2026-10-01:** getting hit costs the player hit 1 point, on top of the thrower's +5 (the existing scoring stays); score
+never below 0. **Bots stay normal** (no levels, special balls or gear) for now. A **level-up win** = placing top 3 in an Auto match
+game, ranked or unranked. **Hat immunity is fully untouchable** for the 2 s (snowballs pass through; Cody: otherwise it's hard to
+get out of a group).
+**Still open:** which existing item is which gear (Toy Sack = Santa Bag? Gift Box = Present Box?); does gear show on the avatar.
 
 ### Santa Hat Spin removed; the name is Santa Hat Legends (decided, Cody 2026-10-01)
 - **Spin is removed** ("Its not very fun"). Cody's pick: **its pool stays as the Drop pool** (same wallet, same money; shown
