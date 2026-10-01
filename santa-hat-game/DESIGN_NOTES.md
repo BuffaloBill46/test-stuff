@@ -160,7 +160,9 @@ names (Cody: "use the names from already made items").
 never below 0. **Bots stay normal** (no levels, special balls or gear) for now. A **level-up win** = placing top 3 in an Auto match
 game, ranked or unranked. **Hat immunity is fully untouchable** for the 2 s (snowballs pass through; Cody: otherwise it's hard to
 get out of a group).
-**Still open:** which existing item is which gear (Toy Sack = Santa Bag? Gift Box = Present Box?); does gear show on the avatar.
+**Existing items become gear (Cody):** Toy Sack = Santa Bag (+50% snowballs held), Gift Box = Present Box (random gear each match),
+Elf Satchel keeps its name with the gear effect; the rest are new items. **Gear shows on the character in matches** (a Pumpkin
+Costume looks like one), not just an icon.
 
 ### Santa Hat Spin removed; the name is Santa Hat Legends (decided, Cody 2026-10-01)
 - **Spin is removed** ("Its not very fun"). Cody's pick: **its pool stays as the Drop pool** (same wallet, same money; shown
