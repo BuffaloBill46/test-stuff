@@ -141,7 +141,7 @@ snowball counter, one per slot; players fill the slots on the Avatar screen in a
 | Ball | Uses | Effect | Look |
 |---|---|---|---|
 | Ice Ball | 2 | 2-second stun (normal hit stays 0.9 s) | icy ball |
-| Split Ball | 3 | splits into 3 after 1 s, fanning out; one player can be hit by only one piece | 3-colour ball |
+| Split Ball | 3 | splits into 3 **0.3 s** after the throw (Cody, 2026-10-01; first noted as 1 s), fanning out; one player can be hit by only one piece | 3-colour ball |
 | Giant Ball | 3 | 3× a normal ball's size | the player's chosen snowball colour |
 | Fire Ball | 2 | 2× speed | fire tail |
 | Sky Ball | 5 | goes up and rains down on a small area where you aim, in 2 waves | |

@@ -39,9 +39,10 @@ for (const [kind, want] of [['', false], ['giant', true]]) {
   const m = match(); m.put('a', 0, 0); m.put('b', 1.2, 6); m.thr('a', 0, 6, kind); m.run(0.6);
   assert.equal(m.P('b').stun > 0, want, `${kind || 'normal'} ball 1.2 off the line: ${want ? 'hits' : 'misses'}`);
 }
-// 5. Split Ball: 3 pieces after 1 second, fanning out; one player is hit by one piece at most.
-{ const m = match(); m.put('a', 0, 0); m.thr('a', 0, 12, 'split'); m.run(1.02);
-  const pieces = m.sim.S.balls.filter((b) => b.kind === 'piece'); assert.equal(pieces.length, 3, 'three pieces after 1 s');
+// 5. Split Ball: 3 pieces 0.3 s after the throw (Cody), fanning out; one player is hit by one piece at most.
+{ const m = match(); m.put('a', 0, 0); m.thr('a', 0, 12, 'split'); m.run(0.25);
+  assert.equal(m.sim.S.balls.filter((b) => b.kind === 'piece').length, 0, 'still one ball at 0.25 s'); m.run(0.1);
+  const pieces = m.sim.S.balls.filter((b) => b.kind === 'piece'); assert.equal(pieces.length, 3, 'three pieces at 0.3 s');
   const dirs = pieces.map((b) => Math.atan2(b.vx, b.vz)).sort(); assert.ok(dirs[2] - dirs[0] > 0.5, 'fanned out');
   m.put('b', pieces[1].x, pieces[1].z + 0.3); const g = pieces[0].g; for (const p of pieces) { p.x = m.P('b').x; p.z = m.P('b').z; p.y = 1.2; } // all three on b at once
   const sBefore = m.P('a').score; m.sim.step(0.01);
@@ -81,4 +82,4 @@ for (const [kind, want] of [['', false], ['giant', true]]) {
   const heir = createSim(rand, { startOf: () => 12 }); heir.load(m.sim.snapshot());
   assert.equal(heir.S.balls[0].kind, 'giant'); assert.equal(heir.S.balls[0].r, 3); assert.equal(heir.S.drops.length, m.sim.S.drops.length);
   assert.ok(heir.S.ents.find((e) => e.peer === 'b').immune > 0, 'immunity survives'); }
-console.log('OK: special snowballs (costs, slots only, Ice 2 s, Fire 2×, Giant 3×, Split 3 pieces one hit each, Sky 2 waves, Rain level 5 + full counter), hat immunity 2 s, −1 per hit (floor 0), refill restarts on a throw, all through a host handover');
+console.log('OK: special snowballs (costs, slots only, Ice 2 s, Fire 2×, Giant 3×, Split 3 pieces at 0.3 s one hit each, Sky 2 waves, Rain level 5 + full counter), hat immunity 2 s, −1 per hit (floor 0), refill restarts on a throw, all through a host handover');

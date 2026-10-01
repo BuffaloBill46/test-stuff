@@ -4,7 +4,7 @@
 // The match referee (sim.js) applies the effects; the page (online.js) draws them. One table, so nothing can drift.
 export const SPECIALS = {
   ice: { name: 'Ice Ball', cost: 2, stunSec: 2, look: 'icy ball', note: '2-second stun' },
-  split: { name: 'Split Ball', cost: 3, splitAfter: 1, pieces: 3, fanDeg: 18, look: '3-colour ball', note: 'Splits into 3 after 1 second, fanning out' },
+  split: { name: 'Split Ball', cost: 3, splitAfter: 0.3, pieces: 3, fanDeg: 18, look: '3-colour ball', note: 'Splits into 3 after 0.3 seconds, fanning out' }, // Cody: 0.3 s (was 1 s)
   giant: { name: 'Giant Ball', cost: 3, size: 3, look: 'your snowball colour, 3× the size', note: '3× the size of a normal ball' },
   fire: { name: 'Fire Ball', cost: 2, speed: 2, look: 'fire tail', note: '2× speed' },
   sky: { name: 'Sky Ball', cost: 5, waves: 2, perWave: 5, radius: 2.2, firstAt: 1.0, gap: 0.6, look: 'goes up, rains down', note: 'Rains down on a small area where you aim, in 2 waves' },

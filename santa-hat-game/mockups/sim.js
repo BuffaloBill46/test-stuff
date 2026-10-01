@@ -174,9 +174,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     e.ammo -= kind ? costOf(kind, e.max) : 1; e.regen = 0; e.cool = e.bot ? 1.1 + rand() * 1.1 : K.HUMAN_COOL; e.throwT = 1; e.face = Math.atan2(dx, dz);
     if (kind === 'sky' || kind === 'rain') return dropsFrom(e, kind, tx, tz);
     const SP = SPECIALS[kind] || {};
-    let speed = K.BALL_SPEED * (SP.speed || 1), tt = dist / speed;
-    // A normal throw lands in about half a second, so a Split Ball lobs to the aim point in exactly 1 s and bursts there (Cody: splits after 1 s).
-    if (kind === 'split') { tt = Math.max(SP.splitAfter, tt); speed = dist / tt; }
+    const speed = K.BALL_SPEED * (SP.speed || 1), tt = dist / speed;
     const R = rulesOf(e) || {}, sm = Number.isFinite(R.stun) && R.stun > 0 && R.stun <= 3 ? R.stun : 1; // a colour's stun ×, capped at 3
     const id = S.nextBall++;
     S.balls.push({ id, owner: e.id, sm, kind, r: SP.size || 1, stunSec: SP.stunSec || 0, g: kind === 'split' ? id : 0, age: 0,
@@ -266,12 +264,11 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
 
     for (let i = S.balls.length - 1; i >= 0; i--) {
       const b = S.balls[i]; b.vy -= K.BALL_G * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt; b.life -= dt; b.age = (b.age || 0) + dt;
-      // Split Ball: after 1 s it becomes 3 pieces fanning out; a player can be hit by only one piece of it (Cody).
+      // Split Ball: 0.3 s after the throw it becomes 3 pieces fanning out along its path; a player can be hit by only one piece (Cody).
       if (b.kind === 'split' && b.age >= SPECIALS.split.splitAfter) {
         S.balls.splice(i, 1); const fan = (SPECIALS.split.fanDeg * Math.PI) / 180;
         for (const a of [-fan, 0, fan]) { const c = Math.cos(a), s = Math.sin(a);
-          const k = Math.max(1, 8 / (Math.hypot(b.vx, b.vz) || 1)); // the pieces fly on at least 8 m/s, with a small hop, from the burst
-          S.balls.push({ ...b, id: S.nextBall++, kind: 'piece', y: Math.max(b.y, 1.2), vy: 3, life: 1, vx: (b.vx * c - b.vz * s) * k, vz: (b.vx * s + b.vz * c) * k }); }
+          S.balls.push({ ...b, id: S.nextBall++, kind: 'piece', vx: b.vx * c - b.vz * s, vz: b.vx * s + b.vz * c }); }
         continue;
       }
       let done = b.life <= 0 || b.y < 0.08;
