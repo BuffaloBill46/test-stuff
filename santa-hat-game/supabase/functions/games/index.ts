@@ -13,6 +13,7 @@ import { makeHandler } from '../../../server/http.js';
 import { createAdmin } from '../../../server/admin.js';
 import { makePrice } from '../../../server/price.js';
 import { makeLimiter, dbStore } from '../../../server/ratelimit.js';
+import { createLevels } from '../../../server/levels.js';
 import { livePrice, liveFee } from '../../../mockups/market.js';
 
 const env = (k: string) => Deno.env.get(k) ?? '';
@@ -48,6 +49,7 @@ const limiter = makeLimiter({ store: dbStore(db) });
 Deno.serve(makeHandler({
   server,
   limiter,
+  levels: createLevels({ db }), // progress + Auto match finishes (needs supabase/010_levels.sql)
   admin: createAdmin({ db, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), chain, poolWallets, ...mintOpt }), // chain: to check Cody's deposits
   async profileFor(token: string) {
     const { data, error } = await auth.auth.getUser(token);

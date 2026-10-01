@@ -6,6 +6,8 @@
 //   winners                    → the shared Recent winners list (public, no sign-in)
 //   settings { version? }      → public game settings (prices, odds, prizes); any version, for re-checking old plays
 //   pools                      → public pool status: balances, settings, pending transfers, change log (admin screen)
+//   progress                   → my level and progress toward the next (server/levels.js)
+//   finish { match }           → the host reports a finished Auto match's places; top-3 players' finishes count toward levels
 // Only signed-in players (a Supabase login token); only our own website may call it from a browser.
 // Speed limit (server/ratelimit.js): every request counts against its internet connection, every signed-in request against its
 // player too; over the limit → 429 "slow down, try again in N seconds".
@@ -60,6 +62,9 @@ export function makeHandler(deps) {
         case 'quote': out = await s.quote(profile, String(body.kind), Number(body.n), Number(body.bet)); break;
         case 'buy': out = await s.buy(profile, String(body.quote), String(body.signature)); break;
         case 'settle': out = await s.settle(profile, String(body.ticket), String(body.seed)); break;
+        // levels (server/levels.js): a player's own progress; the host reporting a finished Auto match
+        case 'progress': if (!deps.levels) return reply(origin, 400, { error: 'unknown action' }); out = await deps.levels.progress(profile); break;
+        case 'finish': if (!deps.levels) return reply(origin, 400, { error: 'unknown action' }); out = await deps.levels.finish(profile, body.match); break;
         default: return reply(origin, 400, { error: 'unknown action' });
       }
       return reply(origin, out?.error ? 400 : 200, out);

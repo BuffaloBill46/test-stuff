@@ -84,4 +84,27 @@ for (let i = 0; i < 400; i++) {
   assert.deepEqual({ level: row.level, xp: row.xp }, { level: js.level, xp: js.xp }, `step ${i}: database = levels.js`);
 }
 console.log(`OK: levels in the database: Gilded gone (its user moved to white); 5 top-3 finishes a level, once per match; buy to 5 ($1,$1,$1,$5), one per payment; the website can't touch it; database = levels.js over 400 random steps (ended at level ${js.level})`);
+
+
+// The server's level actions (server/levels.js) through the real web door (server/http.js), on this database.
+const { createLevels } = await import('../../server/levels.js');
+const { makeHandler } = await import('../../server/http.js');
+const lv = createLevels({ db });
+const host = await mk('Hal'), guest2 = await mk('Gus'), other = await mk('Oto');
+const door = makeHandler({ server: {}, levels: lv, limiter: null, profileFor: async (t) => ({ th: host, tg: guest2, to: other })[t] ?? null });
+const ask = async (token, body) => { const r = await door(new Request('http://localhost/', { method: 'POST', headers: { origin: 'http://localhost', authorization: 'Bearer ' + token }, body: JSON.stringify(body) })); return { status: r.status, ...(await r.json()) }; };
+let pr = await ask('th', { action: 'progress' });
+assert.equal(pr.text, '0 of 5 top-3 finishes to level 2'); assert.deepEqual(pr.gives, { start: 5, sb: 1, gear: 1 });
+// The host reports: host 1st, a bot 2nd, Gus 3rd, Oto 4th → host and Gus counted, the bot skipped, Oto not counted.
+let fr = await ask('th', { action: 'finish', match: { id: 'auto-match-0001', auto: true, places: [host, null, guest2, other] } });
+assert.deepEqual(fr.counted.map((c) => [c.place, c.xp, !!c.you]), [[1, 1, true], [3, 1, false]], 'top 3 with accounts counted, the bot skipped');
+assert.equal((await ask('to', { action: 'progress' })).xp, 0, '4th place counts nothing');
+fr = await ask('th', { action: 'finish', match: { id: 'auto-match-0001', auto: true, places: [host, null, guest2] } });
+assert.deepEqual(fr.counted.map((c) => c.xp), [1, 1], 'reporting the same match again counts nothing');
+assert.match((await ask('to', { action: 'finish', match: { id: 'auto-match-0002', auto: true, places: [host, guest2] } })).error, /only a player in the match/, 'only a player in the match can report it');
+assert.deepEqual((await ask('th', { action: 'finish', match: { id: 'practice-0003', auto: true, practice: true, places: [host] } })).counted, [], 'practice counts nothing');
+assert.deepEqual((await ask('th', { action: 'finish', match: { id: 'private-0004', auto: false, places: [host] } })).counted, [], 'private rooms count nothing');
+assert.match((await ask('th', { action: 'finish', match: { id: 'x', auto: true, places: [host] } })).error, /bad match id/);
+assert.equal((await ask('', { action: 'progress' })).status, 401, 'progress needs sign-in');
+console.log('OK: level actions through the web door: progress; the host\'s Auto match report counts top-3 accounts once (bots, 4th, practice, private, replays: nothing); only a player in the match can report');
 process.exit(0);
