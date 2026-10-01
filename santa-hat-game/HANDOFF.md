@@ -164,14 +164,16 @@ branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from
 **Main Claude session 1 (2026-10-01), devnet move. Done and verified:**
 - All suites pass on this machine (Node, PGlite, real Postgres 14 + Deno in WSL, LiteSVM in WSL, browser tests in WSL Playwright).
 - **Santa Lottery: backend BUILT** (Cody: server-run, five lotteries, no VRF; DESIGN_NOTES → "Santa Lottery"): `mockups/lottery.js`
-  (rules), `supabase/011_lottery.sql` (NOT applied), `server/lottery.js` (draws with sealed secrets, checked ticket payments, fair
+  (rules), `supabase/011_lottery.sql` (APPLIED live, views read-only), `server/lottery.js` (draws with sealed secrets, checked ticket payments, fair
   re-checkable draws, exact splits, late payments moved/refunded), admin `lottery-mode` / `lottery-paid`, web door + Edge Function
   (`LOTTERY_WALLET`). **Payout mode is one setting** (Cody hasn't decided escrow vs by hand; starts 'manual'). Tests:
   `tests/lottery.test.mjs`, `tests/db/lottery-db.test.mjs`. **NOT built yet: the lottery page (Store block) and its admin-screen panel.**
-- **Levels: rules, database and server BUILT** (`mockups/levels.js`, `supabase/010_levels.sql` NOT applied, `server/levels.js`:
-  progress + finish; level 9 → 10 = 10 first-place wins). **NOT built yet: the Player Progress box, starting snowballs by level in
-  matches, the host reporting Auto match finishes, buying levels (needs the treasury wallet).** Trust limit: until the referee
-  server exists, finishes come from the host's browser (stated in server/levels.js).
+- **Levels BUILT end to end** (`mockups/levels.js`, `supabase/010_levels.sql` APPLIED live, `server/levels.js`): Player Progress
+  box above Unranked; each player's level travels with their look; starting snowballs 5…12 by level (bots 4), kept through
+  handovers; the host reports each finished Auto match once (`finish`), top 3 with accounts counted (level 9 → 10 = 10 firsts).
+  **NOT built: buying levels** (needs payments open + the treasury). Trust limit until the referee server exists: finishes come
+  from the host's browser (stated in server/levels.js). Tests: `tests/levels.test.mjs`, `tests/db/levels-db.test.mjs`,
+  `tests/browser/finish-test.mjs`.
 - **Phone controls BUILT and published-ready:** floating joystick (only way to move), tap anywhere else throws, zoom +/− (up to 4×).
 - **Removed:** Santa Hat Spin (pool lives on as the Drop pool; server refuses new Spin runs), the gold snowball (Gilded).
 - **Renamed:** Santa Hat Legends (brand). Test-version notes on Play/Games/Store. All published.
