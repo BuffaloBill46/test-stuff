@@ -37,10 +37,15 @@ header.bar { position: fixed; left: 0; right: 0; top: 0; z-index: 5; display: fl
 #roomchip .idle { font-style: normal; font-weight: 700; color: var(--lamp); }
 #leave { margin-left: auto; pointer-events: auto; font: 700 14px/1 var(--body); color: var(--text); background: var(--plaque); border: 2px solid var(--ink); border-radius: 3px; padding: 8px 12px; box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
 
+/* The Avatar screen's special snowball slots (SB1–SB3): pick a slot, then a special for it. Locked slots say which level opens them. */
+.sbslots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 4px 0 8px; }
+.sbslots button { font: 600 13px/1.2 var(--body); color: var(--text); background: var(--plaque-hi); border: 2px solid var(--ink); border-radius: 3px; padding: 6px; min-height: 44px; text-align: left; cursor: pointer; }
+.sbslots button b { display: block; font: 700 10px/1 var(--digits); color: var(--lamp); margin-bottom: 3px; }
+.sbslots button[aria-pressed="true"] { outline: 3px solid var(--lamp); } .sbslots button:disabled { opacity: .5; cursor: default; }
 /* SB1–SB3 under the snowball counter (Cody): the HUD lets taps through to the game, so these buttons take them back. */
 .sbrow { display: flex; gap: 4px; margin-top: 6px; pointer-events: auto; flex-wrap: wrap; }
 .sbrow button { font: 700 12px/1 var(--body); color: var(--ink); background: var(--brim); border: 2px solid var(--ink); border-radius: 3px; padding: 6px 7px; min-height: 36px; cursor: pointer; box-shadow: 2px 2px 0 var(--ink); }
-.sbrow button b { font-family: var(--digits); font-size: 10px; margin-right: 3px; } .sbrow button small { opacity: .7; margin-left: 2px; }
+#hud .sbrow button b { font: 700 10px/1 var(--digits); color: var(--hat); margin-right: 3px; text-shadow: none; } /* (beats the counter's own big white .stat b) */ .sbrow button small { opacity: .7; margin-left: 2px; }
 .sbrow button[aria-pressed="true"] { background: var(--lamp); outline: 2px solid var(--hat); }
 .sbrow button:disabled { opacity: .45; cursor: default; }
 #hud { position: fixed; z-index: 4; left: 16px; top: calc(env(safe-area-inset-top, 0px) + 64px); display: flex; gap: 8px; flex-wrap: wrap; pointer-events: none; max-width: calc(100% - 32px); }
@@ -787,6 +792,7 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
       <label for="avname">Name</label>
       <input id="avname" type="text" maxlength="14" autocomplete="off" spellcheck="false">
       <div class="slots" role="tablist" aria-label="Item type" id="avslots"></div>
+      <div class="sbslots" id="avsb" hidden></div>
       <div class="grid" id="avgrid"></div>
       <div class="level" id="avlevel"></div>
       <div class="saverow"><button class="go" id="avsave">Save look</button><span id="avmsg" role="status"></span></div>

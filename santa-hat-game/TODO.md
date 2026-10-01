@@ -34,7 +34,7 @@ existing bot (frozen/failed payouts, books ≠ wallet, top-off waiting, server d
 
 ## Next to build
 - [ ] **Match load screen (5 s) + 5-second countdown (Cody 2026-10-01):** every player's games played, top-3 %, level, rank points, specials and gear. Needs every finish counted (DESIGN_NOTES → "Match load screen").
-- [ ] **Watch: `tests/browser/specials-play.mjs` failed once (2026-10-01) with BOTH special throws ignored, then passed 5 runs in a row.** Not reproduced. It now prints the full throw state (armed, counters, stun, cooldowns, phase) whenever it fails; read that before changing anything.
+- [x] **`specials-play.mjs` intermittent (2026-10-01): found.** The test checked 250 ms after a throw, but the referee reads throws once per frame and test browsers draw ~3 a second; the throw always happened, sometimes after the check. The test now waits until the referee has processed each throw (3 clean runs). Not a game bug: the referee had refused nothing.
 - [ ] **Plaza themes, picked on the Avatar screen (Cody 2026-10-01):** a theme layer for `plaza.js`, then Halloween (less snow). Each player sees their own pick. DESIGN_NOTES → "Plaza themes".
 - [ ] **Levels, special snowballs, special gear, hat immunity, −1 per hit (Cody 2026-10-01):** DESIGN_NOTES → "Levels, special snowballs and special gear".
 - [ ] **Levels for the new hats, backpacks and Ice Ball** (Cody is setting them; they're Store purchases until then).

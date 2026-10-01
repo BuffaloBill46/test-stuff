@@ -237,7 +237,7 @@ function report() { return { q: ++ctl.q, ep: ctl.ep, x: +ctl.x.toFixed(2), z: +c
 // SB1–SB3 (Cody: buttons under the snowball counter; keys Q, E, R on a computer): arms a special for the next throw.
 let armed = '';
 function arm(i) {
-  const kind = mySpecials()[i]; if (!kind) return;
+  const kind = mySlots().find((x) => x.n === i + 1)?.kind; if (!kind) return; // i: 0 = SB1 (key Q), 1 = SB2 (E), 2 = SB3 (R)
   armed = armed === kind ? '' : kind; ui.lastHud = '';
 }
 
@@ -313,6 +313,8 @@ const startOf = (e) => levelInfo(levelOf(e)).start;
 // The special snowballs a player brings: what's in their slots that their level opens (catalog.js specialsIn). Bots: none.
 const specialsOf = (e) => (e.bot ? [] : specialsIn(avatarOf(e), levelOf(e), levelInfo(levelOf(e)).sb));
 const mySpecials = () => specialsIn(me.a, me.l || 1, levelInfo(me.l || 1).sb);
+// My slots as the Avatar screen numbers them: [{ n: 1..3, kind }] for each open slot holding a special I can use (SB2 stays SB2).
+const mySlots = () => { const lvl = me.l || 1, ok = new Set(mySpecials()); return SB_SLOTS.slice(0, levelInfo(lvl).sb).map((s, i) => ({ n: i + 1, kind: BY_ID.get(cleanAvatar(me.a)[s])?.special })).filter((x) => x.kind && ok.has(x.kind)); };
 // Levels: when an Auto match ends, the host reports every finishing place (bots and guests as empty places) to the game
 // server, which counts top-3 finishes for players with accounts, once per match (the match id travels with handovers).
 // Only in server mode, and only from a signed-in host (the server checks the host played in it). Practice/private: nothing.
@@ -331,10 +333,10 @@ async function reportFinish(v) {
 // The SB buttons under the counter: one per open slot with a special in it (name and how many snowballs it uses). A button is
 // off when it can't be thrown now (not enough snowballs; Rain: a full counter and level 5). Pressed = armed for the next throw.
 function sbRow(m) {
-  const list = mySpecials(); if (!list.length) return '';
+  const list = mySlots(); if (!list.length) return '';
   const level = me.l || 1, max = startOf(m);
-  return `<div class="sbrow">${list.map((k, i) => { const S = SPECIALS[k], why = cantThrow(k, { ammo: m.ammo, max, level });
-    return `<button type="button" data-sb="${i}" aria-pressed="${armed === k}" ${why ? 'disabled' : ''} title="${S.note}${why ? ' (' + why + ')' : ''}"><b>SB${i + 1}</b> ${S.name} <small>${S.cost === 'all' ? 'all' : S.cost}</small></button>`; }).join('')}</div>`;
+  return `<div class="sbrow">${list.map(({ n, kind: k }) => { const S = SPECIALS[k], why = cantThrow(k, { ammo: m.ammo, max, level });
+    return `<button type="button" data-sb="${n - 1}" aria-pressed="${armed === k}" ${why ? 'disabled' : ''} title="${S.note}${why ? ' (' + why + ')' : ''}"><b>SB${n}</b> ${S.name} <small>${S.cost === 'all' ? 'all' : S.cost}</small></button>`; }).join('')}</div>`;
 }
 function avatarOf(e) {
   if (e.bot) return botAvatar(e.id);

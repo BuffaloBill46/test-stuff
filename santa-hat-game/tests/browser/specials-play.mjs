@@ -28,7 +28,9 @@ async function practice(viewport, touch) {
 const myEnt = (p) => p.evaluate(() => { const s = window.__sq, e = s.sim.S.ents.find((x) => x.peer === s.me.id); return { ammo: e.ammo, max: e.max, x: e.x, z: e.z }; });
 const target = (p) => p.evaluate(() => { const s = window.__sq, me = s.sim.S.ents.find((x) => x.peer === s.me.id), b = s.sim.S.ents.find((x) => x.bot) || me; return [b.x, b.z, me.x, me.z]; });
 // (waits for the short throw cooldown first: in a slow test browser 0.26 s of game time takes much longer in real time)
-const throwAt = async (p) => { await p.waitForFunction(() => window.__sq.ctl.cool <= 0, null, { timeout: 10000 }); const [x, z] = await target(p); await p.evaluate(([x, z]) => window.__sq.throwAt(x, z), [x, z]); };
+// (then waits until the REFEREE has processed the throw: it reads throws once per frame, and test browsers draw ~3 a second)
+const throwAt = async (p) => { await p.waitForFunction(() => window.__sq.ctl.cool <= 0, null, { timeout: 10000 }); const [x, z] = await target(p); await p.evaluate(([x, z]) => window.__sq.throwAt(x, z), [x, z]);
+  await p.waitForFunction(() => { const s = window.__sq, e = s.sim.S.ents.find((q) => q.peer === s.me.id); return e.lastTh >= s.ctl.t; }, null, { timeout: 15000 }); };
 
 console.log('1. A computer: three SB buttons; arming Ice Ball (button) throws one; Sky Ball (key E) rains 2 waves; Rain needs a full counter');
 { const { p, errors, ctx } = await practice({ width: 1200, height: 800 }, false);
@@ -38,12 +40,13 @@ console.log('1. A computer: three SB buttons; arming Ice Ball (button) throws on
   // wait for the redraw (the next frame), not a fixed time: test browsers draw ~3 frames a second
   check(await p.waitForFunction(() => document.querySelector('#hud [data-sb="0"]')?.getAttribute('aria-pressed') === 'true', null, { timeout: 10000 }).then(() => true, () => false), 'SB1 shows armed');
   const a0 = (await myEnt(p)).ammo; await throwAt(p); await p.waitForTimeout(250);
-  const dbg = () => p.evaluate(() => { const s = window.__sq, e = s.sim.S.ents.find((x) => x.peer === s.me.id), v = s.view.ents.find((x) => x.peer === s.me.id); return JSON.stringify({ armed: s.armed, sp: s.ctl.sp, t: s.ctl.t, lastTh: e.lastTh, simStun: +e.stun.toFixed(2), viewStun: v?.stun, simCool: +e.cool.toFixed(2), ctlCool: +s.ctl.cool.toFixed(2), ammo: e.ammo, phase: s.sim.S.phase, balls: s.sim.S.balls.map((b) => b.kind) }); });
+  const dbg = () => p.evaluate(() => { const s = window.__sq, e = s.sim.S.ents.find((x) => x.peer === s.me.id), v = s.view.ents.find((x) => x.peer === s.me.id); return JSON.stringify({ armed: s.armed, sp: s.ctl.sp, t: s.ctl.t, lastTh: e.lastTh, simStun: +e.stun.toFixed(2), viewStun: v?.stun, simCool: +e.cool.toFixed(2), refused: e.refused, ctlCool: +s.ctl.cool.toFixed(2), ammo: e.ammo, phase: s.sim.S.phase, balls: s.sim.S.balls.map((b) => b.kind) }); });
   if (!(await p.evaluate(() => window.__sq.sim.S.balls.some((b) => b.kind === 'ice')))) console.log('  (state:', await dbg(), ')');
   check(await p.evaluate(() => window.__sq.sim.S.balls.some((b) => b.kind === 'ice')), 'the next throw is an Ice Ball'); check(a0 - (await myEnt(p)).ammo === 2, 'it used 2 snowballs');
   check(await p.waitForFunction(() => document.querySelector('#hud [data-sb="0"]')?.getAttribute('aria-pressed') !== 'true', null, { timeout: 10000 }).then(() => true, () => false), 'and the button is no longer armed');
   await p.waitForTimeout(500); await p.keyboard.press('KeyE');
   await throwAt(p); await p.waitForTimeout(250);
+  if (!(await p.evaluate(() => window.__sq.sim.S.drops.length))) console.log('  (state:', await dbg(), ')');
   const sky = await p.evaluate(() => ({ n: window.__sq.sim.S.drops.length, kinds: [...new Set(window.__sq.sim.S.drops.map((d) => d.kind))], ts: window.__sq.sim.S.drops.map((d) => +d.t.toFixed(2)) }));
   check(sky.n === 10 && sky.kinds.join() === 'sky', `key E armed Sky Ball: 10 snowballs falling in 2 waves (${JSON.stringify(sky)})`);
   await p.waitForTimeout(1200); check(await p.evaluate(() => window.__sq.drawn().drops) > 0, 'falling snowballs are drawn with their landing marks');

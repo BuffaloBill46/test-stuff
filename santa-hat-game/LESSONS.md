@@ -291,3 +291,10 @@ replacement contains `$` (SQL, templates, money), use `s.replace(find, () => rep
 ~16% more test SANTA into both pools, and the live database's pool books silently stopped matching the wallets. Caught only
 because the printed balances looked different. Rule: once a pool's wallet is booked, only booked actions move its money
 (plays, payouts, skims, Cody's recorded deposits). The setup now funds a pool once, when empty, and never again.
+
+## Measure what the referee did, not what the page sent (2026-10-01)
+A special-snowball browser test failed now and then: "no Ice Ball thrown". I suspected a real silent-swallow bug (two cooldowns out of
+step) and added a refusal reason to the referee to prove it; the data said otherwise: nothing was refused, the page had sent the
+throw and the referee had not READ it yet (it reads once per frame; test browsers draw ~3 a second). A wrong theory with a
+plausible story is the expensive kind: record the actual state on failure first, then explain it. Tests wait for the referee's
+throw counter (lastTh) to catch up, never for a fixed time.

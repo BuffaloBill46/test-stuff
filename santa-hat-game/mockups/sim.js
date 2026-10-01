@@ -165,10 +165,11 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
   }
   // kind: '' a normal snowball, or a special (specials.js) the player has in a slot. A special uses its cost from the counter.
   function throwBall(e, tx, tz, kind = '') {
-    if (e.ammo <= 0 || e.cool > 0 || e.stun > 0) return false;
+    const no = (why) => { e.refused = why; return false; }; // why the last throw was refused (diagnostics; not sent anywhere)
+    if (e.ammo <= 0) return no('no snowballs'); if (e.cool > 0) return no('cooldown ' + e.cool.toFixed(2)); if (e.stun > 0) return no('knocked down');
     if (kind) {
-      if (e.bot || !SPECIAL_KINDS.includes(kind) || !(specialsOf(e) || []).includes(kind)) return false; // only what's in their slots
-      if (cantThrow(kind, { ammo: e.ammo, max: e.max, level: levelOf(e) })) return false;
+      if (e.bot || !SPECIAL_KINDS.includes(kind) || !(specialsOf(e) || []).includes(kind)) return no('not in slots: ' + kind); // only what's in their slots
+      const why = cantThrow(kind, { ammo: e.ammo, max: e.max, level: levelOf(e) }); if (why) return no(why);
     }
     let dx = tx - e.x, dz = tz - e.z; const dist = Math.max(1.5, hyp(dx, dz)); const l = hyp(dx, dz) || 1; dx /= l; dz /= l;
     e.ammo -= kind ? costOf(kind, e.max) : 1; e.regen = 0; e.cool = e.bot ? 1.1 + rand() * 1.1 : K.HUMAN_COOL; e.throwT = 1; e.face = Math.atan2(dx, dz);
