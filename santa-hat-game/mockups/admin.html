@@ -45,6 +45,15 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
     <p class="dim">A winner is never frozen. A run's payout is frozen only if it's more than that run could possibly win from the prize
       table (a bug or a break-in, not luck). Check it, then Release sends it to the player's wallet on the next payout pass.</p>
     <div id="frozen" class="dim">None frozen.</div></section>
+  <section class="plaque" id="lotteryBox"><h2>Lottery: winners to pay</h2>
+    <p class="dim">While lottery payouts are <b>manual</b> (your call, 2026-10-01), you send each winner their SANTA <b>from the lottery wallet</b>,
+      then paste the transaction here. The server checks it on the chain (the full amount left the lottery wallet and arrived at the
+      winner) before marking it paid. Winners receive 3% less: the token's tax, which winners absorb. This list is private to this
+      screen (your wallet signs the check).</p>
+    <div class="row"><button type="button" id="lotLoad">Show winners to pay</button>
+      <span class="dim" id="lotMode"></span>
+      <button type="button" class="sec" id="lotAuto">Switch to automatic</button><button type="button" class="sec" id="lotManual">Switch to manual</button></div>
+    <div id="lotOwed" class="dim">Not loaded yet.</div></section>
   <section class="plaque" id="botsBox"><h2>Possible bots</h2>
     <p class="dim">Players whose timing over the last 24 hours looks scripted: how fast and how evenly they start the next run after one
       ends. <b>Signals only:</b> nothing happens to anyone automatically, and a dedicated player can trip the weaker ones. Private to

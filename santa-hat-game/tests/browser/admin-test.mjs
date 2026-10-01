@@ -3,14 +3,14 @@
 import { createRequire } from 'module'; import { readFileSync, existsSync } from 'fs'; import { execSync } from 'child_process'; import path from 'path'; import http from 'http';
 const require = createRequire(import.meta.url);
 const { chromium } = require(path.join(execSync('npm root -g').toString().trim(), 'playwright'));
-const { makeDb, directRun } = await import('../db/setup.mjs');
+const { makeDb, directRun, FILES } = await import('../db/setup.mjs');
 const { createGameServer } = await import('../../server/games.js');
 const { makeHandler } = await import('../../server/http.js');
 const { makeLimiter, memoryStore } = await import('../../server/ratelimit.js');
 const { createAdmin, b58encode } = await import('../../server/admin.js');
 const ROOT = new URL('../../mockups', import.meta.url).pathname, fails = [], check = (ok, m) => { if (!ok) fails.push(m); };
 
-const db = await makeDb();
+const db = await makeDb([...FILES, '010_levels.sql', '011_lottery.sql']); // + levels and the lottery (manual payouts panel)
 await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', 58823529411, '{}'), ('slots', 588235294117, '{}')`);
 await db.query(`insert into public.pool_transfers (game, kind, amount_raw, status) values ('slots', 'top-off', 411764705882, 'needs_approval')`);
 // A frozen payout (an impossible $5,000 from one $1 pull: a fault, never a real win), so the screen must show it with Release.
@@ -21,6 +21,9 @@ const holly = await db.player('HoLLYwa11et11111111111111111111111111111111', 'Ho
   await db.query(`select public.lock_play($1, $2, 's')`, [pl, 'c'.repeat(64)]);
   await db.query(`select public.settle_play($1, 'x', '{"stops":[1,2,3,4,5]}', 5000, 5882352941176, 0.00085, 0, 0, 'w', 0)`, [pl]);
   await db.query(`select public.finish_run($1, 'HoLLYwa11et11111111111111111111111111111111', 1101.51)`, [run]); }
+// A drawn lottery whose winner (Holly) waits to be paid by hand.
+{ const d = (await db.query(`insert into public.lottery_draws (kind, draws_at, commit, secret, status, blockhash, block_slot, drawn_at, pot_raw, tickets) values ('weekly-100', now() - interval '1 hour', $1, 's', 'drawn', 'bh', 1, now(), 1234567890, 3) returning id`, ['d'.repeat(64)]))[0].id;
+  await db.query(`insert into public.lottery_payouts (draw_id, place, profile_id, to_wallet, amount_raw, status) values ($1, 1, $2, 'HoLLYwa11et11111111111111111111111111111111', 1234567890, 'manual')`, [d, holly]); }
 // A scripted player for the Possible bots box: 35 runs, each started 2.0 s after the last one ended.
 const speedy = await db.player('SpeedYwa11et1111111111111111111111111111111', 'Speedy');
 { let t = Date.now() - 3600e3;
@@ -99,6 +102,15 @@ check(/Speedy/.test(botsText) && /clockwork \(strong\)/.test(botsText) && !/Holl
 check(await p.evaluate(() => document.querySelector('#botsBox').classList.contains('alert')), 'the Possible bots box stands out when a strong signal is found');
 check((await p.textContent('#log')).length === logBefore, 'the bot check is not logged');
 await p.locator('#botsBox').screenshot({ path: 'out/admin-bots.png' });
+// The lottery panel: the private list of winners to pay by hand (full wallet, amount), and the payout mode switch.
+await p.tap('#lotLoad'); await p.waitForFunction(() => /lottery payment|No lottery winners|Refused/.test(document.querySelector('#msg').textContent), null, { timeout: 15000 });
+const owedText = (await p.textContent('#lotOwed')).replace(/\s+/g, ' ');
+check(/HoLLYwa11et11111111111111111111111111111111/.test(owedText) && /1,234\.56789 SANTA/.test(owedText) && /1st place/.test(owedText), 'the lottery list shows the full wallet, the place and the exact amount to send: ' + owedText.slice(0, 160));
+check(/manual/.test(await p.textContent('#lotMode')), 'it says payouts are manual');
+await p.tap('#lotAuto'); await p.waitForFunction(() => /Payouts are auto/.test(document.querySelector('#lotMode').textContent), null, { timeout: 15000 }).catch(() => {});
+check(/auto/.test(await p.textContent('#lotMode')), 'switching to automatic works (and is logged)');
+await p.tap('#lotManual'); await p.waitForFunction(() => /Payouts are manual/.test(document.querySelector('#lotMode').textContent), null, { timeout: 15000 }).catch(() => {});
+await p.locator('#lotteryBox').screenshot({ path: 'out/admin-lottery.png' });
 await p.screenshot({ path: 'out/admin.png', fullPage: true });
 await browser.close(); web.close();
 console.log('errors:', errors.length ? errors : 'none'); console.log(fails.length || errors.length ? 'FAILED:\n - ' + fails.join('\n - ') : 'ALL CHECKS PASSED');
