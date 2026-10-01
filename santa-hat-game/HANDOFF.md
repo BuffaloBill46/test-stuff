@@ -131,7 +131,7 @@ node tabs-test.mjs               # tabs, store, avatar editor, sign-in sheet
 node link-test.mjs               # email + wallet account linking (local stand-in)
 node mp.mjs                      # multiplayer room: join, host handover
 node idle.mjs                    # 3-minute idle and hidden-tab kicks
-node live.mjs                    # loads the PUBLISHED site on a phone-sized screen
+node live.mjs                    # STALE (found 2026-10-01): written before the lobby redesign; it stops at "Waiting for the referee" (it blocks Supabase). Until it's updated, click through the live site in a real browser instead
 node spin-test.mjs               # Games tab: Spin wheel (forced results, tap-to-land, money math, winners list)
 node games-test.mjs              # Games tab: Slots readouts, pulls, forced win and jackpot, money math
 node sfx-test.mjs                # sound: waits for a tap, fires at the right moments, mute remembered
