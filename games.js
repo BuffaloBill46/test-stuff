@@ -257,5 +257,6 @@ function labelsFromSettings() {
 
 export async function showGames(on, opts) {
   if (on) await initGames(opts);
-  view?.setActive(on); showSpin(on); showDrop(on);
+  // Spin is removed from the page (Cody, 2026-10-01): its wheel is never drawn; its pool lives on as the Drop pool.
+  view?.setActive(on); showSpin(false); showDrop(on);
 }

@@ -52,7 +52,7 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
     <button type="button" id="botCheck">Check for bots</button>
     <div id="bots" class="dim">Not checked yet.</div></section>
   <section class="plaque"><h2>Change settings</h2>
-    <div class="row"><label>Pool <select id="game"><option value="slots">Slots</option><option value="spin">Spin</option></select></label></div>
+    <div class="row"><label>Pool <select id="game"><option value="slots">Slots</option><option value="spin">Drop (was Spin)</option></select></label></div>
     <div class="form" id="fields"></div>
     <div class="row"><button id="save" type="button">Sign and save settings</button></div>
     <p class="dim">Money amounts are dollars (pools are valued at the live SANTA price). The server refuses unsafe settings.</p>
@@ -61,7 +61,7 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
     <p class="dim">Prices, odds, prizes and the store. Changes apply to new plays only; plays already started finish on the old
       settings, and every play can still be re-checked on the odds it ran on. Credits keep the price they were bought at.</p>
     <h3>Prices ($)</h3><div class="form" id="gsPrices"></div>
-    <h3>Spin main wheel: segments per result <span class="dim" id="gsSliceTotal"></span></h3><div class="form" id="gsSlices"></div>
+    <h3>Spin main wheel (Spin is retired; kept so old Spin plays still re-check): segments per result <span class="dim" id="gsSliceTotal"></span></h3><div class="form" id="gsSlices"></div>
     <h3>Spin bonus wheel (after a gold star) <span class="dim" id="gsBonusTotal"></span></h3><div class="form" id="gsBonus"></div>
     <h3>Big Hat</h3><div class="form" id="gsBig"></div>
     <details><summary>Symbols on each reel, and line prizes (× the pull price)</summary><div class="form" id="gsCounts"></div><div id="gsPays"></div></details>
@@ -77,7 +77,7 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
       from your own wallet to the pool's address, then paste the transaction's signature here. The server checks it on the chain
       and books exactly what arrived (after SANTA's 3% tax). Extra SANTA is simply added to the pool.</p>
     <div id="toSend"></div>
-    <div class="row"><label>Pool<select id="depGame"><option>spin</option><option>slots</option></select></label>
+    <div class="row"><label>Pool<select id="depGame"><option value="spin">Drop (was Spin)</option><option value="slots">slots</option></select></label>
       <label style="flex:1">Transaction signature<input id="depTx" placeholder="e.g. 5h3k…"></label>
       <button type="button" id="depSave">Record deposit</button></div></section>
   <section class="plaque"><h2>Change log</h2><div id="log" class="dim">No changes yet.</div></section>
