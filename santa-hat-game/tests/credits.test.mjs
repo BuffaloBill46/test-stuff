@@ -1,59 +1,94 @@
-// Play credits + fair results: every rule as an assertion (TODO → "Play credits", DESIGN_NOTES → "Fair results: the order").
+// Runs (buy 1, 5 or 10 plays that play straight away) + fair results + claiming: every rule as an assertion.
+// Cody, 2026-10-01: no stored credits; winnings wait unclaimed until the player claims them.
 import assert from 'node:assert/strict';
-import { KINDS, SIZES, MAX_BUY, newLedger, buy, spend, audit, costOf, unitsFor } from '../mockups/credits.js';
+import { KINDS, SIZES, RUN_SIZES, newLedger, buyRun, audit, costOf, claim, unclaimedTotal } from '../mockups/credits.js';
 import { createHouse, check, outcomeFrom, NUMS } from '../mockups/house.js';
-import { numbers, newSeed } from '../mockups/fair.js';
+import { numbers, newSeed, fingerprint } from '../mockups/fair.js';
 import { IN_PER_DOLLAR, POOL_RULES, canPull, pull } from '../mockups/slots.js';
 import { SPIN_RULES, canSpin, spin, payback } from '../mockups/spin.js';
 
 const fresh = () => ({ ledger: newLedger(), pools: { spin: { pool: SPIN_RULES.start, prepaid: true }, slots: { pool: POOL_RULES.start, prepaid: true } } });
 const close = (a, b) => Math.abs(a - b) < 1e-6;
 
-// 1. Buying: 1–10 only, each payment once, the money lands in that game's pool and nowhere else.
+// 1. Buying: only 1, 5 or 10 plays, only real games and sizes, each payment once; the money lands in that game's pool only.
 {
   const { ledger, pools } = fresh();
-  for (const n of [0, 11, 2.5, -1, NaN]) assert.equal(buy(ledger, pools, 'spin', n, 'p' + n).ok, false, `bought ${n}`);
-  assert.equal(buy(ledger, pools, 'nope', 1, 'px').ok, false);
+  for (const n of [0, 2, 3, 11, 2.5, -1, NaN]) assert.equal(buyRun(ledger, pools, 'spin', 0.1, n, 'p' + n).ok, false, `bought ${n}`);
+  assert.equal(buyRun(ledger, pools, 'nope', 1, 1, 'px').ok, false);
+  assert.equal(buyRun(ledger, pools, 'spin', 0.37, 5, 'py').why, 'unknown size');
+  assert.equal(buyRun(ledger, pools, 'big', 0.1, 5, 'pz').why, 'unknown size', 'Big Hat is $1 a pull only');
   const s0 = pools.spin.pool, l0 = pools.slots.pool;
-  assert.ok(buy(ledger, pools, 'spin', 3, 'pay1').ok); // $3 of Spin balance
-  assert.equal(ledger.credits.spin, 30, '$3 = 30 units of 10¢');
-  assert.ok(close(pools.spin.pool - s0, 3 * IN_PER_DOLLAR) && pools.slots.pool === l0, 'Spin credits pay only the Spin pool');
-  assert.equal(buy(ledger, pools, 'big', 2, 'pay1').ok, false, 'a payment can buy credits only once');
-  assert.ok(buy(ledger, pools, 'big', MAX_BUY, 'pay2').ok);
-  assert.ok(close(pools.slots.pool - l0, 10 * IN_PER_DOLLAR) && close(pools.spin.pool - s0, 3 * IN_PER_DOLLAR), 'Slots credits pay only the Slots pool');
-  assert.equal(costOf('spin', 3), 3); assert.equal(costOf('big', 10), 10); assert.equal(costOf('drop', 10), 10);
+  assert.ok(buyRun(ledger, pools, 'spin', 1, 5, 'pay1').ok); // five $1 spins
+  assert.ok(close(pools.spin.pool - s0, 5 * IN_PER_DOLLAR) && pools.slots.pool === l0, 'Spin money pays only the Spin pool');
+  assert.equal(buyRun(ledger, pools, 'big', 1, 5, 'pay1').ok, false, 'a payment buys one run, once');
+  assert.ok(buyRun(ledger, pools, 'drop', 0.1, 10, 'pay2').ok);
+  assert.ok(close(pools.spin.pool - s0, 6 * IN_PER_DOLLAR), 'Snowball Drop pays the Spin pool too');
+  assert.ok(buyRun(ledger, pools, 'big', 1, 10, 'pay3').ok);
+  assert.ok(close(pools.slots.pool - l0, 10 * IN_PER_DOLLAR), 'Big Hat pays the Slots pool');
+  assert.deepEqual(RUN_SIZES, [1, 5, 10]); assert.equal(costOf(10, 0.1), 1); assert.equal(costOf(5, 1), 5);
   assert.deepEqual(audit(ledger), []);
 }
 
-// 2. Spending: never below zero, never twice.
-{
-  const { ledger, pools } = fresh();
-  assert.equal(spend(ledger, 'big'), false);
-  buy(ledger, pools, 'big', 1, 'a');
-  assert.equal(spend(ledger, 'big'), true); assert.equal(spend(ledger, 'big'), false, 'one credit, one play');
-  assert.deepEqual(audit(ledger), []);
+// 2. The ORDER, for a whole run: payment first, then a secret locked for each play, then each play drawn and revealed.
+//    Nothing is left over afterwards (no stored credit), and every result re-checks.
+let plays = 0, checked = 0;
+for (let session = 0; session < 40; session++) {
+  const { ledger, pools } = fresh(); const house = createHouse(ledger, pools);
+  for (let k = 0; k < 6; k++) {
+    const kind = Object.keys(KINDS)[Math.floor(Math.random() * 3)], bet = SIZES[kind][Math.floor(Math.random() * SIZES[kind].length)];
+    const n = RUN_SIZES[Math.floor(Math.random() * 3)], g = KINDS[kind].game;
+    const before = house.steps.length, owed0 = ledger.unclaimed[g];
+    const b = await house.buy(kind, bet, n, newSeed(8));
+    assert.equal(b.plays.length, n, 'one locked play per play bought');
+    assert.deepEqual(house.steps.slice(before), ['paid', 'locked'], 'payment confirmed BEFORE any secret is made');
+    for (const p of b.plays) assert.match(p.commit, /^[0-9a-f]{64}$/);
+    let won = 0;
+    for (const p of b.plays) {
+      const pool0 = pools[g].pool, s = await house.settle(p.ticket, newSeed(16));
+      assert.ok(s.r, JSON.stringify(s)); won += s.r.pay;
+      // prepaid: the play itself adds nothing; the pool only pays out (plus any skim / top-off)
+      assert.ok(close(pools[g].pool, pool0 - s.r.pay - (s.r.skim || 0) + (s.r.topOff || 0)), 'the pool moves by exactly the prize');
+      const c = await check(s.proof); assert.ok(c.matches, 'secret matches the fingerprint shown before the play');
+      if (kind === 'drop') assert.deepEqual([c.outcome.path, c.outcome.mult], [s.r.path, s.r.mult]);
+      else if (g === 'spin') assert.deepEqual([c.outcome.slice, c.outcome.bonusSlice, c.outcome.mult], [s.r.slice, s.r.bonusSlice, s.r.mult]);
+      else if (s.r.jackpot) assert.ok(c.outcome.jackpot); else assert.deepEqual(c.outcome.stops, s.r.stops);
+      checked++; plays++;
+    }
+    assert.deepEqual(house.steps.slice(before + 2).filter((x, i) => i % 2 === 0), Array(n).fill('drawn'));
+    assert.ok(close(ledger.unclaimed[g], owed0 + won), 'every prize of the run waits as unclaimed money');
+    assert.equal(house.pending(), 0, 'nothing left over: the run is fully played');
+    assert.deepEqual(audit(ledger), []);
+  }
 }
 
-// 3. Two taps at once: two plays opened together with one credit. Exactly one gets through.
+// 3. Claiming: everything unclaimed is paid out (one amount per pool), then nothing is left; claiming twice pays nothing.
 {
   const { ledger, pools } = fresh(); const house = createHouse(ledger, pools);
-  buy(ledger, pools, 'spin', 1, 'a'); // $1: enough for one $1 spin
-  const [a, b] = await Promise.all([house.open('spin', 1), house.open('spin', 1)]);
-  assert.equal([a, b].filter((x) => x.ticket).length, 1); assert.equal([a, b].filter((x) => x.noCredit).length, 1);
+  const b = await house.buy('spin', 1, 1, 'c1'); await house.settle(b.plays[0].ticket, 'x', [0]); // main segment 0
+  const d = await house.buy('drop', 1, 1, 'c2'); await house.settle(d.plays[0].ticket, 'x', [0, 0, 0, 0, 0, 0, 0, 0]); // 10×
+  const h = await house.buy('big', 1, 1, 'c3'); await house.settle(h.plays[0].ticket, 'x', 'JACKPOT');
+  const before = unclaimedTotal(ledger); assert.ok(ledger.unclaimed.spin >= 10 && ledger.unclaimed.slots > 0);
+  const out = claim(ledger);
+  assert.ok(close(out.spin + out.slots, before) && unclaimedTotal(ledger) === 0, 'claim pays all of it, per pool');
+  assert.deepEqual(claim(ledger), { spin: 0, slots: 0 }, 'claiming twice pays nothing more');
   assert.deepEqual(audit(ledger), []);
 }
 
-// 4. A refused play keeps its credit, and no secret is ever made for it.
+// 4. A play the pool refuses after payment (emergency stop, or the pool refilling) gives its price back as unclaimed money.
 {
   const { ledger, pools } = fresh(); const house = createHouse(ledger, pools);
-  buy(ledger, pools, 'big', 2, 'a'); buy(ledger, pools, 'spin', 2, 'b');
-  pools.slots.rules = { paused: true }; pools.spin.rules = { paused: true };
-  assert.deepEqual(await house.open('big'), { refused: true, stopped: true });
-  assert.deepEqual(await house.open('spin', 0.1), { refused: true, stopped: true });
-  assert.equal(ledger.credits.big, 2); assert.equal(ledger.credits.spin, 20); assert.deepEqual(house.steps, [], 'nothing spent, no secret made');
+  const b = await house.buy('spin', 1, 5, 'r1');
+  await house.settle(b.plays[0].ticket, 'x');
+  pools.spin.rules = { paused: true };
+  const owed = ledger.unclaimed.spin, pool0 = pools.spin.pool;
+  for (const p of b.plays.slice(1)) { const s = await house.settle(p.ticket, 'x'); assert.deepEqual([s.refused, s.stopped, s.refunded], [true, true, 1]); }
+  assert.ok(close(ledger.unclaimed.spin, owed + 4), 'the 4 refused $1 spins come back as $4 unclaimed');
+  assert.ok(close(pools.spin.pool, pool0 - 4), '...paid from the pool their entries went into');
+  assert.equal(ledger.runs[b.run].played, 1); assert.equal(ledger.runs[b.run].refused, 4);
+  assert.deepEqual(audit(ledger), []);
 }
 
-// 5. canSpin / canPull say exactly what spin / pull would do (so the check before spending a credit can't disagree).
+// 5. canSpin / canPull say exactly what spin / pull would do (the server checks before taking a payment).
 {
   let seed = 7; const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   for (let i = 0; i < 20000; i++) {
@@ -65,44 +100,17 @@ const close = (a, b) => Math.abs(a - b) < 1e-6;
   }
 }
 
-// 6. Many random sessions: the ORDER holds on every play, the books balance after every step, every result checks out.
-let plays = 0, checked = 0, prepaidOk = 0;
-for (let run = 0; run < 60; run++) {
-  const { ledger, pools } = fresh(); const house = createHouse(ledger, pools);
-  for (let step = 0; step < 60; step++) {
-    const kind = Object.keys(KINDS)[Math.floor(Math.random() * 3)], bet = KINDS[kind].balance ? SIZES[kind][Math.floor(Math.random() * 2)] : undefined;
-    if (ledger.credits[kind] < unitsFor(kind, bet ?? KINDS[kind].bet) || Math.random() < 0.15) { buy(ledger, pools, kind, 1 + Math.floor(Math.random() * MAX_BUY), newSeed(8)); assert.deepEqual(audit(ledger), []); continue; }
-    const before = house.steps.length, poolKey = KINDS[kind].game, poolBefore = pools[poolKey].pool;
-    const o = await house.open(kind, bet);
-    assert.ok(o.ticket, 'open'); assert.match(o.commit, /^[0-9a-f]{64}$/);
-    const s = await house.settle(o.ticket, newSeed(16));
-    assert.deepEqual(house.steps.slice(before), ['spent', 'locked', 'drawn', 'revealed'], 'Cody\'s order: credit spent, secret locked, numbers drawn, secret revealed');
-    assert.deepEqual(audit(ledger), []);
-    // prepaid: the play itself adds nothing; the pool only pays out (plus any skim / top-off)
-    const expect = poolBefore - s.r.pay - (s.r.skim || 0) + (s.r.topOff || 0);
-    assert.ok(close(pools[poolKey].pool, expect), `prepaid play moved the pool by the entry: ${pools[poolKey].pool} vs ${expect}`); prepaidOk++;
-    const c = await check(s.proof);
-    assert.ok(c.matches, 'secret matches the fingerprint shown before the play');
-    if (kind === 'drop') assert.deepEqual([c.outcome.path, c.outcome.mult], [s.r.path, s.r.mult], 'the re-check gives the same bounces');
-    else if (KINDS[kind].game === 'spin') assert.deepEqual([c.outcome.slice, c.outcome.bonusSlice, c.outcome.mult], [s.r.slice, s.r.bonusSlice, s.r.mult], 'the re-check gives the same segment(s) and result, bonus wheel included');
-    else if (s.r.jackpot) assert.ok(c.outcome.jackpot); else assert.deepEqual(c.outcome.stops, s.r.stops);
-    checked++; plays++;
-  }
-  assert.equal(house.pending(), 0);
-}
-
-// 7. Tampering is caught; the player's number changes the result.
+// 6. Tampering is caught; the player's number changes the result; a play settles once.
 {
   const { ledger, pools } = fresh(); const house = createHouse(ledger, pools);
-  buy(ledger, pools, 'spin', 1, 'a');
-  const o = await house.open('spin', 1); const { proof } = await house.settle(o.ticket, 'abcd');
+  const b = await house.buy('spin', 1, 1, 'a'); const { proof } = await house.settle(b.plays[0].ticket, 'abcd');
   assert.equal((await check({ ...proof, secret: newSeed() })).matches, false, 'a swapped secret fails the check');
-  const a = await numbers(proof.secret, 'abcd', 1, NUMS), b = await numbers(proof.secret, 'abce', 1, NUMS);
-  assert.notDeepEqual(a, b);
-  await assert.rejects(() => house.settle(o.ticket, 'abcd'), /already settled/, 'a play settles once');
+  const x = await numbers(proof.secret, 'abcd', 1, NUMS), y = await numbers(proof.secret, 'abce', 1, NUMS);
+  assert.notDeepEqual(x, y);
+  await assert.rejects(() => house.settle(b.plays[0].ticket, 'abcd'), /already settled/, 'a play settles once');
 }
 
-// 8. The fair numbers are really uniform: the wheels pay back their exact 75% when driven by them.
+// 7. The fair numbers are really uniform: the wheels pay back their exact 80% when driven by them.
 {
   const secret = newSeed(); let paid = 0, N = 40000; const hits = new Array(40).fill(0), bonusHits = new Array(12).fill(0);
   for (let i = 0; i < N; i++) { const xs = await numbers(secret, 'seed', i, 2); const o = outcomeFrom('spin', xs); paid += o.mult; hits[o.slice]++; if (o.bonusSlice !== undefined) bonusHits[o.bonusSlice]++; }
@@ -111,67 +119,18 @@ for (let run = 0; run < 60; run++) {
   assert.ok(Math.min(...bonusHits) > 150 && Math.max(...bonusHits) < 350, 'every bonus segment turns up about equally: ' + bonusHits);
   console.log(`fair numbers: ${N.toLocaleString()} spins pay back ${(pb * 100).toFixed(2)}% (exact ${(payback() * 100).toFixed(2)}%)`);
 }
-// 9. Snowball Drop: ONE dollar balance for both sizes (Cody, 2026-10-01: "when someone buys $10.00 in tokens they can play
-//    either the 0.10 or 1.00 game"). Invariant: balance = paid − spent, to the cent; a size is refused only when the balance
-//    can't cover it; a refused or failed drop gives back exactly what it took; every drop re-checks from its proof.
-{
-  const { unitsFor, balanceOf } = await import('../mockups/credits.js');
-  const ledger = newLedger(), pools = { spin: { pool: 500, prepaid: true }, slots: { pool: 500, prepaid: true } }, house = createHouse(ledger, pools);
-  const r = buy(ledger, pools, 'drop', 10, 'pay-drop'); // $10
-  assert.ok(r.ok && r.cost === 10 && ledger.credits.drop === 100 && balanceOf(ledger, 'drop') === 10, '$10 buys a $10.00 balance');
-  assert.equal(unitsFor('drop', 0.10), 1); assert.equal(unitsFor('drop', 1), 10);
-  let spent = 0;
-  const go = async (bet) => { const o = await house.open('drop', bet); if (!o.ticket) return o; const st = await house.settle(o.ticket, newSeed(8));
-    const c = await check(st.proof); assert.ok(c.matches); assert.deepEqual([c.outcome.path, c.outcome.mult], [st.r.path, st.r.mult], 'the drop re-checks from its proof');
-    spent += bet; return st; };
-  for (const bet of [1, 0.1, 0.1, 1, 0.1, 1, 1, 1, 1, 0.1]) { const st = await go(bet); assert.ok(st.r, 'drop ' + bet); assert.equal(st.r.bet, bet); }
-  assert.equal(balanceOf(ledger, 'drop'), Math.round((10 - spent) * 100) / 100, 'balance = $10 − what was played'); // 10 − 6.4 = 3.60
-  assert.deepEqual(audit(ledger), []);
-  for (let i = 0; i < 3; i++) await go(1); // $0.60 left
-  assert.equal(balanceOf(ledger, 'drop'), 0.6);
-  assert.deepEqual(await house.open('drop', 1), { noCredit: true }, 'a $1 drop is refused with only 60¢ left');
-  assert.equal(balanceOf(ledger, 'drop'), 0.6, '...and nothing was taken');
-  for (let i = 0; i < 6; i++) await go(0.1);
-  assert.equal(ledger.credits.drop, 0, 'the last 60¢ plays six 10¢ drops');
-  assert.deepEqual(await house.open('drop', 0.1), { noCredit: true });
-  assert.equal((await house.open('drop', 0.37)).why, 'unknown size', 'only 10¢ and $1 drops');
-  // a stopped pool refuses BEFORE taking anything; a stopped pool at settle gives back exactly the $1
-  buy(ledger, pools, 'drop', 2, 'pay-drop-2');
-  pools.spin.rules = { paused: true }; assert.deepEqual(await house.open('drop', 1), { refused: true, stopped: true }); assert.equal(balanceOf(ledger, 'drop'), 2);
-  pools.spin.rules = {}; const o = await house.open('drop', 1); assert.equal(balanceOf(ledger, 'drop'), 1);
-  pools.spin.rules = { paused: true }; assert.equal((await house.settle(o.ticket, 'abcd')).refused, true); assert.equal(balanceOf(ledger, 'drop'), 2, 'refund gives back exactly $1');
-  pools.spin.rules = {};
-  assert.deepEqual(audit(ledger), []);
-  console.log('Snowball Drop balance: $10 played as a mix of 10¢ and $1 drops, to the cent; $1 refused at 60¢; refunds exact; every drop re-checked');
-}
-// 10. Spin is a balance too (Cody, 2026-10-01): $10 of Spin balance plays 10¢ and $1 spins in any mix; other games show 0.
-{
-  const { balanceOf } = await import('../mockups/credits.js');
-  const ledger = newLedger(), pools = { spin: { pool: 500, prepaid: true }, slots: { pool: 500, prepaid: true } }, house = createHouse(ledger, pools);
-  buy(ledger, pools, 'spin', 10, 'pay-spin');
-  assert.deepEqual([balanceOf(ledger, 'spin'), balanceOf(ledger, 'drop'), ledger.credits.big], [10, 0, 0], 'bought on Spin: Spin shows $10, the other games 0');
-  let spent = 0;
-  for (const bet of [1, 0.1, 1, 0.1, 0.1, 1, 1, 1, 1, 1, 0.1, 1, 1]) { const o = await house.open('spin', bet); assert.ok(o.ticket); const st = await house.settle(o.ticket, newSeed(8)); assert.equal(st.r.bet, bet); spent += bet; }
-  assert.equal(balanceOf(ledger, 'spin'), Math.round((10 - spent) * 100) / 100); // $0.60 left
-  assert.deepEqual(await house.open('spin', 1), { noCredit: true }, 'a $1 spin needs $1 of balance');
-  assert.deepEqual(await house.open('drop', 0.1), { noCredit: true }, 'Spin balance never pays for another game');
-  assert.equal(balanceOf(ledger, 'spin'), 0.6); assert.deepEqual(audit(ledger), []);
-  console.log('Spin balance: $10 played as 10¢ and $1 spins to the cent; other games untouched');
-}
-console.log(`OK: ${plays} plays in Cody's order, ${checked} results re-checked, ${prepaidOk} prepaid pool moves, books balanced after every step`);
 
-// 9. Something breaks mid-play (e.g. hashing unavailable): the credit comes back, the books still balance.
+// 8. Something breaks (e.g. hashing unavailable): that play's price comes back as unclaimed money; the books still balance.
 {
   const { ledger, pools } = fresh();
   const boom = () => { throw new Error('no hashing'); };
   const h1 = createHouse(ledger, pools, { newSeed, fingerprint: boom, numbers });
-  buy(ledger, pools, 'big', 2, 'a');
-  const o = await h1.open('big');
-  assert.equal(o.failed, true); assert.equal(ledger.credits.big, 2, 'credit returned when the secret could not be made');
-  const h2 = createHouse(ledger, pools, { newSeed, fingerprint: (await import('../mockups/fair.js')).fingerprint, numbers: boom });
-  const o2 = await h2.open('big'); assert.ok(o2.ticket); assert.equal(ledger.credits.big, 1);
-  const s2 = await h2.settle(o2.ticket, 'x');
-  assert.equal(s2.failed, true); assert.equal(ledger.credits.big, 2, 'credit returned when the numbers could not be drawn');
+  const b1 = await h1.buy('big', 1, 5, 'a');
+  assert.equal(b1.plays.length, 0); assert.equal(ledger.unclaimed.slots, 5, 'all 5 prices back when no secret could be made');
+  const h2 = createHouse(ledger, pools, { newSeed, fingerprint, numbers: boom });
+  const b2 = await h2.buy('big', 1, 1, 'b'); const s2 = await h2.settle(b2.plays[0].ticket, 'x');
+  assert.equal(s2.failed, true); assert.equal(ledger.unclaimed.slots, 6, 'price back when the numbers could not be drawn');
   assert.deepEqual(audit(ledger), []);
-  console.log('failures mid-play return the credit: OK');
+  console.log('failures mid-run give the price back: OK');
 }
+console.log(`OK: ${plays} plays in runs of 1/5/10, in Cody's order (paid → secrets locked → drawn → revealed), ${checked} re-checked; claim, refunds and books balanced`);
