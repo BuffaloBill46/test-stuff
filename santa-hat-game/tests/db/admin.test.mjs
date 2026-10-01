@@ -106,5 +106,39 @@ assert.equal(await logs(), 3, 'every applied change is in the public log: pause,
   const logged = await db.query(`select details from public.pool_log where what = 'deposit' order by id`);
   assert.deepEqual(logged.map((l) => l.details.arrived), [400, 1000], 'both deposits in the public log');
 }
+// Frozen payouts (Cody, 2026-10-01: never hold a real winner; a Release button just in case). A payout is frozen only above
+// the most its run could possibly win; it shows on the admin screen (player, short wallet, amount) and Cody can release it.
+{
+  const Q = async (kind, n, bet) => (await db.query(`insert into public.quotes (profile_id, kind, n, bet, usd, santa_raw, price_usd) values ($1, $2, $3, $4, $5, 1, 0.00085) returning id`, [me, kind, n, bet, n * bet]))[0].id;
+  const runWith = async (sig, pay) => {
+    const run = +(await db.query(`select public.buy_run($1, $2, 1, 0, 0, 0) as id`, [await Q('big', 1, 1), sig]))[0].id;
+    const pl = (await db.query('select id from public.plays where run_id = $1', [run]))[0].id;
+    await db.query(`select public.lock_play($1, $2, 's')`, [pl, 'c'.repeat(64)]);
+    await db.query(`select public.settle_play($1, 'x', '{"stops":[1,2,3,4,5]}', $2, $3, 0.00085, 0, 0, 'w', 0)`, [pl, pay, Math.round(pay / 0.00085 * 1e6)]);
+    return run;
+  };
+  const { maxPerPlay } = await import('../../server/games.js'), { build, DEFAULT_SETTINGS } = await import('../../mockups/settings.js');
+  const cap = maxPerPlay(build(DEFAULT_SETTINGS), 'big', 1) + 0.01; // one $1 pull, no jackpot (as finishRun works it out)
+  const big = await runWith('RUNbig' + '5'.repeat(80), 430), bad = await runWith('RUNbad' + '5'.repeat(80), 5000);
+  await db.query('select public.finish_run($1, $2, $3)', [big, 'PLAYERwa11et111111111111111111111111111111', cap]);
+  await db.query('select public.finish_run($1, $2, $3)', [bad, 'PLAYERwa11et111111111111111111111111111111', cap]);
+  const st = async (run) => (await db.query('select id, status from public.payouts where run_id = $1', [run]))[0];
+  assert.equal((await st(big)).status, 'queued', 'a real $430 win (above the old $205 guess) is NOT frozen');
+  const frozen = await st(bad); assert.equal(frozen.status, 'held', 'a $5,000 single pull (impossible from the prize table) is frozen');
+  const shown = (await server.pools()).held;
+  assert.deepEqual(shown.map((h) => [h.id, h.usd, h.name, h.wallet, h.kind, h.game]), [[+frozen.id, 5000, 'P', 'PLAY…1111', 'big', 'slots']], 'the admin screen sees who and how much (wallet shortened)');
+  const rel = async (w, game, payout) => admin.run(await signed(w, { action: 'release-payout', game, settings: { payout } }));
+  assert.equal((await rel(stranger, 'slots', frozen.id)).error, 'not an admin wallet');
+  assert.match((await rel(cody, 'spin', frozen.id)).error, /paid from the slots pool/);
+  assert.match((await rel(cody, 'slots', (await st(big)).id)).error, /isn't frozen/, 'only a frozen payout can be released');
+  assert.match((await rel(cody, 'slots', 'abc')).error, /which payout/);
+  const once = await signed(cody, { action: 'release-payout', game: 'slots', settings: { payout: frozen.id } });
+  assert.deepEqual(await admin.run(once), { ok: true, game: 'slots', payout: +frozen.id, usd: 5000 });
+  assert.equal((await st(bad)).status, 'queued', 'released: the payout worker sends it on its next pass');
+  assert.equal((await admin.run(once)).error, 'this signed message was already used');
+  assert.deepEqual((await server.pools()).held, [], 'nothing frozen any more');
+  assert.equal((await db.query(`select count(*)::int as n from public.pool_log where what = 'release payout'`))[0].n, 1, 'the release is in the public log');
+}
+console.log('OK: frozen payouts: a real big win is never frozen; an impossible amount is, shows player + amount, and only Cody can release it (once, logged)');
 console.log('OK: deposits (Cody pays top-offs himself): booked exactly as arrived on the chain, short and extra deposits, books = wallet at every step, no double recording');
 console.log('OK: admin controls: wallet-signed only; replay, stranger, tampering, stale and bad settings refused; stop really stops plays; jackpot % adjustable; all logged');

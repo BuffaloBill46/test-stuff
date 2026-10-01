@@ -9,22 +9,30 @@
 import { KINDS, RUN_SIZES } from '../mockups/credits.js';
 import { BETS as DROP_SIZES } from '../mockups/plinko.js';
 const near = (a, b) => Math.abs(a - b) < 1e-9;
-import { play as dropPlay, canPlay as canDrop } from '../mockups/plinko.js';
+import { play as dropPlay, canPlay as canDrop, MAX_MULT as DROP_TOP } from '../mockups/plinko.js';
 import { DEFAULT_SETTINGS, build } from '../mockups/settings.js';
-import { spin, canSpin } from '../mockups/spin.js';
-import { pull, canPull, FEE } from '../mockups/slots.js';
+import { spin, canSpin, topMult } from '../mockups/spin.js';
+import { pull, canPull, FEE, MAX_FIXED } from '../mockups/slots.js';
 import * as fair from '../mockups/fair.js';
 import { NUMS } from '../mockups/house.js';
 import { MINT, QUOTE_SECONDS, CUSHION } from '../mockups/market.js';
 import { verifyPayment } from './verify.js';
 
-export const PAYOUT_CAP = 205;
+// The most ONE play can ever pay (jackpot aside), worked out from the prize table the play ran on, never from what a
+// simulation happened to see (Cody, 2026-10-01: "I don't want a hold on a player that wins"). Big Hat: every line at the top
+// line prize + a hat on every square; Spin: the wheel's top result; Snowball Drop: the edge present. A real win can't pass it.
+export function maxPerPlay(cfg, kind, bet) {
+  if (kind === 'drop') return DROP_TOP * bet;
+  if (KINDS[kind]?.game === 'spin') return topMult(cfg.wheel) * bet;
+  const m = cfg.machine; return (m.lines.length * MAX_FIXED(m) / m.bet + m.reels * m.rows * (m.hatBonus || 0)) * bet;
+}
 export const QUOTES_PER_HOUR = 30; // per player (a quote is free to ask for; this stops database spam)
 // Audit fixes (2026-09-30): only real game names (not "toString" etc. that every JS object has), well-formed ids only.
 const isKind = (k) => typeof k === 'string' && Object.hasOwn(KINDS, k);
 const isTicket = (t) => /^[0-9]{1,18}$/.test(String(t));
 const isSignature = (s) => /^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(String(s));
-// PAYOUT_CAP: per play in a run (the biggest normal Big Hat pull). A run's payout above n × this, jackpots aside, is held for Cody.
+// The safety cap on a run's payout: n × the most one play can pay (or its refunded price), + any pool jackpot it won. Only
+// an amount the game could NOT have produced (a bug or a break-in) is frozen for Cody; he can release it on the admin screen.
 const DEC = 1e6;
 
 // mint: which token is SANTA here (defaults to real SANTA; set to the test token on devnet, e.g. the SANTA_MINT secret).
@@ -101,7 +109,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
       } catch (e) { await refundPlay(db, pl.id, +q.bet, +q.price_usd); }
     }
     const done = plays.length < +q.n ? await finishRun(db, runId, wallet) : null; // a play couldn't start: maybe the run is already done
-    return { ok: true, kind: q.kind, run: String(runId), n: +q.n, bet: +q.bet, plays, ...(done ? { sent: done } : {}) };
+    return { ok: true, kind: q.kind, run: String(runId), n: +q.n, bet: +q.bet, plays, ...(done ? sentOf(done) : {}) };
   }
   // A refused or failed play: its price goes back with the run, in SANTA at the given price, from the pool it was paid into.
   async function refundPlay(t, playId, bet, price) {
@@ -111,14 +119,16 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   }
   // The run's last play is done → ONE payout of everything it won + refunded (finish_run is safe to call any time: it pays a
   // run once, and only when no play is left). Returns the dollars sent (0 if nothing), or null while plays are unfinished.
+  const sentOf = (x) => (x?.held ? { sent: x.usd, held: true } : { sent: x }); // what the page is told about the run's payout
   async function finishRun(t, runId, wallet) {
-    const r = (await t.query(`select r.n, coalesce(sum(case when (pl.result->>'jackpot')::boolean then pl.pay else 0 end), 0) as jp
-      from public.runs r join public.plays pl on pl.run_id = r.id where r.id = $1 group by r.n`, [runId]))[0];
-    const cap = PAYOUT_CAP * +r.n + +r.jp; // jackpots are expected to be big; still logged and paid through the queue
+    const r = (await t.query(`select r.n, r.kind, r.bet, r.settings_version, coalesce(sum(case when (pl.result->>'jackpot')::boolean then pl.pay else 0 end), 0) as jp
+      from public.runs r join public.plays pl on pl.run_id = r.id where r.id = $1 group by r.id`, [runId]))[0];
+    const cap = +r.n * Math.max(maxPerPlay(await cfgFor(+r.settings_version), r.kind, +r.bet), +r.bet) + +r.jp + 0.01; // + a cent: amounts are stored to the cent
     const id = (await t.query('select public.finish_run($1, $2, $3) as id', [runId, wallet, cap]))[0].id;
     if (id === null) return null;
     if (+id === 0) return 0;
-    return +(await t.query('select amount_usd from public.payouts where id = $1', [id]))[0].amount_usd;
+    const po = (await t.query('select amount_usd, status from public.payouts where id = $1', [id]))[0];
+    return po.status === 'held' ? { usd: +po.amount_usd, held: true } : +po.amount_usd;
   }
 
   // Stuck plays (the page closed mid-play, or the server hiccupped): run before each new play, for that player only.
@@ -151,7 +161,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
       const pl = await one(`select * from public.plays where id = $1 and profile_id = $2 and state = 'open' for update`, [ticket, profile]);
       if (!pl) return { error: 'no open play with that ticket' };
       // after the result: if this was the run's last play, its ONE payout is queued (sent automatically, Cody)
-      const withRun = async (o) => { const sent = await finishRun(t, pl.run_id, wallet); return sent === null ? o : { ...o, runDone: true, sent }; };
+      const withRun = async (o) => { const sent = await finishRun(t, pl.run_id, wallet); return sent === null ? o : { ...o, runDone: true, ...sentOf(sent) }; };
       const K = KINDS[pl.kind];
       const p = await one('select * from public.pools where game = $1 for update', [K.game]);    // lock the pool: plays settle one at a time
       let r, state;
@@ -191,8 +201,13 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     const ps = await db.query('select game, santa_raw, rules, updated_at from public.pools order by game');
     const pending = await db.query(`select game, kind, status, amount_raw from public.pool_transfers where status <> 'sent' order by id desc limit 50`);
     const log = await db.query('select game, what, by_wallet, at, details from public.pool_log order by id desc limit 30');
+    // Frozen run payouts (above what the run could possibly win), for Cody's admin screen: who, how much, Release.
+    // This answer is public, so the wallet is shortened (first 4 … last 4).
+    const held = await db.query(`select po.id, po.amount_usd, po.amount_raw, po.to_wallet, po.created_at, r.kind, r.n, r.bet, pr.name
+      from public.payouts po join public.runs r on r.id = po.run_id join public.profiles pr on pr.id = r.profile_id where po.status = 'held' order by po.id`);
     return { pools: ps.map((p) => ({ game: p.game, santaRaw: +p.santa_raw, rules: p.rules || {}, updatedAt: p.updated_at, wallet: poolWallets?.[p.game] || null })),
-      pending, log: log.map((l) => ({ game: l.game, what: l.what, by: l.by_wallet, at: l.at, after: l.details?.after })) };
+      pending, log: log.map((l) => ({ game: l.game, what: l.what, by: l.by_wallet, at: l.at, after: l.details?.after })),
+      held: held.map((h) => ({ id: +h.id, usd: +h.amount_usd, santaRaw: +h.amount_raw, name: h.name, wallet: h.to_wallet.slice(0, 4) + '…' + h.to_wallet.slice(-4), at: h.created_at, kind: h.kind, n: +h.n, bet: +h.bet, game: h.kind === 'big' ? 'slots' : 'spin' })) };
   }
   // Public: the settings new plays use (and any older version, so a play can be re-checked on the odds it ran on).
   async function settings(version) {

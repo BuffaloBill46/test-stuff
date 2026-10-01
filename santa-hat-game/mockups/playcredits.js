@@ -95,7 +95,7 @@ export async function playRun(kind, bet, n, onPlay, forced = []) {
     }
     if (!b) return null;
     closeBuy(true); onChange();
-    const results = []; let won = 0, sent = b.sent ?? null;
+    const results = []; let won = 0, sent = b.sent ?? null, held = !!b.held;
     for (const [i, p] of b.plays.entries()) {
       let s;
       try { s = serverMode ? await call('settle', { ticket: p.ticket, seed: newSeed(16) }) : await house.settle(p.ticket, newSeed(16), forced[i]); }
@@ -103,14 +103,14 @@ export async function playRun(kind, bet, n, onPlay, forced = []) {
       if (s.r && s.proof && s.proof.commit !== p.commit) s = { failed: true, why: 'the server changed its locked fingerprint' }; // never trust, check
       if (s.proof) last[kind] = s.proof;
       if (s.r) won += s.r.pay;
-      if (s.sent !== undefined) sent = s.sent;
+      if (s.sent !== undefined) { sent = s.sent; held = !!s.held; }
       results.push(s); refresh(); onChange();
       await onPlay(s, i, n);
     }
     // demo: the house "sends" the run's winnings to the demo balance, 3% lighter (SANTA's tax), all at once
     if (!serverMode && sent) wallet.add(sent * (1 - FEE));
     onChange();
-    return { n, results, won: Math.round(won * 100) / 100, sent: sent ?? 0, received: (sent ?? 0) * (1 - FEE) };
+    return { n, results, won: Math.round(won * 100) / 100, sent: sent ?? 0, received: (sent ?? 0) * (1 - FEE), held };
   } finally { busy[kind] = false; }
 }
 export const short = (h) => h.slice(0, 8);

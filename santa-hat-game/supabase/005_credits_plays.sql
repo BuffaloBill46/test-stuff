@@ -93,13 +93,14 @@ create table public.pool_log (
   nonce text unique, details jsonb,                    -- admin changes: the signed message's one-time number (no replays)
   at timestamptz not null default now()
 );
--- Winner payouts: ONE per finished run that won something, queued by the server, sent by a worker. Anything above the sanity
--- cap is held for Cody.
+-- Winner payouts: ONE per finished run that won something, queued by the server, sent by a worker. A payout above the safety
+-- cap (the most the run could POSSIBLY win, worked out from its prize table: server/games.js maxPerPlay) is 'held' (frozen):
+-- a real win never is. Cody releases a frozen one on the admin screen ('release-payout', server/admin.js).
 create table public.payouts (
   id bigserial primary key, run_id bigint not null unique references public.runs (id),   -- a run is paid once
   to_wallet text not null, amount_usd numeric(12, 2) not null check (amount_usd > 0),
   amount_raw bigint not null check (amount_raw > 0), price_usd numeric not null check (price_usd > 0),  -- SANTA fixed at the settle price
-  -- queued → sending (signed; its signature saved BEFORE it's sent) → sent. 'held' waits for Cody. Never paid twice:
+  -- queued → sending (signed; its signature saved BEFORE it's sent) → sent. 'held' (frozen) waits for Cody's Release. Never paid twice:
   -- a 'sending' payout is re-signed only after its old transaction's blockhash has expired (it can then never land).
   status text not null default 'queued' check (status in ('queued', 'held', 'sending', 'sent', 'failed')),
   tx text unique, blockhash text, attempts int not null default 0, created_at timestamptz not null default now()  -- one transaction per row, never shared (payouts.js)

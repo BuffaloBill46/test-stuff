@@ -3,7 +3,8 @@
 //   the signature matches the wallet · the wallet is an admin · the message is fresh (5 minutes) · its one-time number
 //   was never used (a copied signature can't be replayed) · the new settings are sane.
 // Actions: pause (emergency stop: no plays, no top-offs), resume, set-rules (thresholds, jackpot %),
-//   record-deposit (Cody sent SANTA to a pool wallet himself, e.g. a top-off: the server checks the transaction on the chain).
+//   record-deposit (Cody sent SANTA to a pool wallet himself, e.g. a top-off: the server checks the transaction on the chain),
+//   release-payout (a run payout frozen by the safety cap: Cody looked at it and lets it go out; Cody, 2026-10-01).
 // Changes take the pool's row lock, so they wait for any play being settled: never mid-pull. Every change is logged publicly.
 // NOT here (needs the pool key; FOR_MAIN_CLAUDE.md): the emergency withdrawal transfer itself.
 import { POOL_RULES } from '../mockups/slots.js';
@@ -11,7 +12,7 @@ import { SPIN_RULES } from '../mockups/spin.js';
 import { check as checkSettings } from '../mockups/settings.js';
 import { MINT } from '../mockups/market.js';
 
-export const ACTIONS = ['pause', 'resume', 'set-rules', 'set-settings', 'record-deposit']; // set-settings: prices, odds, prizes, store (game 'all')
+export const ACTIONS = ['pause', 'resume', 'set-rules', 'set-settings', 'record-deposit', 'release-payout']; // set-settings: prices, odds, prizes, store (game 'all')
 export const FRESH_SECONDS = 300;
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 export function b58decode(s) {
@@ -75,6 +76,7 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
     if (m.action === 'set-rules') { const bad = checkRules(m.game, m.settings); if (bad.length) return { error: bad.join('; ') }; }
     if (m.action === 'set-settings') return saveSettings(m, wallet, message, signature);
     if (m.action === 'record-deposit') return recordDeposit(m, wallet, message, signature);
+    if (m.action === 'release-payout') return releasePayout(m, wallet, message, signature);
     return db.tx(async (t) => {
       if ((await t.query('select 1 from public.pool_log where nonce = $1', [m.nonce])).length) return { error: 'this signed message was already used' };
       const [p] = await t.query('select * from public.pools where game = $1 for update', [m.game]); // waits for any play being settled
@@ -135,6 +137,24 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
       await t.query(`insert into public.pool_log (game, what, by_wallet, nonce, details) values ($1, 'deposit', $2, $3, $4)`,
         [m.game, wallet, m.nonce, JSON.stringify({ tx: sig, arrived, coveredTopOffs: covered, addedToPool: left, message, signature })]);
       return { ok: true, game: m.game, arrived, coveredTopOffs: covered, addedToPool: left };
+    });
+  }
+  // A frozen ('held') run payout goes back in the queue, so the payout worker sends it on its next pass. Only a held payout
+  // of that pool's game; logged publicly with who released it. (Held = above the most the run could possibly win.)
+  async function releasePayout(m, wallet, message, signature) {
+    const id = String(m.settings?.payout ?? '');
+    if (!/^[0-9]{1,18}$/.test(id)) return { error: 'which payout? (its number)' };
+    return db.tx(async (t) => {
+      if ((await t.query('select 1 from public.pool_log where nonce = $1', [m.nonce])).length) return { error: 'this signed message was already used' };
+      const [po] = await t.query(`select po.id, po.status, po.amount_usd, po.amount_raw, po.to_wallet, r.kind from public.payouts po join public.runs r on r.id = po.run_id where po.id = $1 for update of po`, [id]);
+      if (!po) return { error: 'no such payout' };
+      if (po.status !== 'held') return { error: 'that payout isn\'t frozen (it\'s ' + po.status + ')' };
+      const game = po.kind === 'big' ? 'slots' : 'spin';
+      if (game !== m.game) return { error: 'that payout is paid from the ' + game + ' pool' };
+      await t.query(`update public.payouts set status = 'queued' where id = $1`, [po.id]);
+      await t.query(`insert into public.pool_log (game, what, by_wallet, nonce, details) values ($1, 'release payout', $2, $3, $4)`,
+        [game, wallet, m.nonce, JSON.stringify({ payout: +po.id, usd: +po.amount_usd, raw: +po.amount_raw, to: po.to_wallet, message, signature })]);
+      return { ok: true, game, payout: +po.id, usd: +po.amount_usd };
     });
   }
   return { run };

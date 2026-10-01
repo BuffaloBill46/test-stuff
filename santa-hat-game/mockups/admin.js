@@ -26,6 +26,10 @@ async function load() {
       <p><span class="state ${R.paused ? 'off' : 'on'}">${R.paused ? 'Stopped' : 'Running'}</span></p>
       <p class="dim">Skim $${R.skim} at $${R.skimAt} · top off below $${R.topOffBelow} to $${R.topOffTo}${p.game === 'slots' ? ` · jackpot ${Math.round(R.jackpotPct * 100)}%` : ''}</p>
       <div class="row"><button type="button" class="${R.paused ? '' : 'stop'}" data-act="${R.paused ? 'resume' : 'pause'}" data-game="${esc(p.game)}">${R.paused ? 'Resume' : 'Stop (emergency)'}</button></div></article>`; }).join('');
+  // Frozen run payouts: who, how much, which game, and a Release button (wallet-signed, like every action here).
+  const held = state.held || [], NAMES = { spin: 'Spin', drop: 'Snowball Drop', big: 'Big Hat' }, $usd = (v) => '$' + v.toFixed(2);
+  $('#frozenBox').classList.toggle('alert', held.length > 0);
+  $('#frozen').innerHTML = held.length ? `<table><tr><th>Player</th><th>Wallet</th><th>Run</th><th>Amount</th><th>Frozen</th><th></th></tr>${held.map((h) => `<tr><td>${esc(h.name || 'player')}</td><td><code>${esc(h.wallet)}</code></td><td>${esc(NAMES[h.kind] || h.kind)} · ${h.n} × ${$usd(h.bet)}</td><td><b>${$usd(h.usd)}</b><br><span class="dim">${(h.santaRaw / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })} SANTA</span></td><td>${esc(new Date(h.at).toLocaleString())}</td><td><button type="button" data-release="${h.id}" data-game="${esc(h.game)}">Release</button></td></tr>`).join('')}</table>` : 'None frozen.';
   const STATUS = { needs_approval: 'waiting for your deposit', queued: 'queued', sending: 'sending', failed: 'failed (will retry)' };
   $('#pending').innerHTML = state.pending.length ? `<table><tr><th>Pool</th><th>What</th><th>SANTA</th><th>Status</th></tr>${state.pending.map((t) => `<tr><td>${esc(t.game)}</td><td>${esc(t.kind)}</td><td>${(t.amount_raw / 1e6).toFixed(2)}</td><td>${esc(STATUS[t.status] || t.status)}</td></tr>`).join('')}</table>` : 'None.';
   // What to send for waiting top-offs: the pool must RECEIVE the amount, and SANTA's 3% tax comes off on the way.
@@ -45,7 +49,7 @@ async function act(action, game, settings = {}) {
   const r = await post({ wallet: address, message, signature: hex(new Uint8Array(signature)) }, true);
   if (r.error) return msg('Refused: ' + r.error, 'bad');
   await load(); // refresh the pools and log FIRST, so "Done" never shows next to the old state (e.g. still "Running")
-  msg(action === 'set-settings' ? `Published settings version ${r.version}. New plays use it now; it's in the public log.` : action === 'record-deposit' ? `Recorded: ${(r.arrived / 1e6).toLocaleString()} SANTA arrived in the ${game} pool (${(r.coveredTopOffs / 1e6).toLocaleString()} paid waiting top-offs, ${(r.addedToPool / 1e6).toLocaleString()} added to the pool).` : `Done: ${action} on the ${game} pool. It's in the public log.`, 'ok');
+  msg(action === 'set-settings' ? `Published settings version ${r.version}. New plays use it now; it's in the public log.` : action === 'record-deposit' ? `Recorded: ${(r.arrived / 1e6).toLocaleString()} SANTA arrived in the ${game} pool (${(r.coveredTopOffs / 1e6).toLocaleString()} paid waiting top-offs, ${(r.addedToPool / 1e6).toLocaleString()} added to the pool).` : action === 'release-payout' ? `Released payout #${r.payout} ($${r.usd.toFixed(2)}): it goes to the player's wallet on the next payout pass. It's in the public log.` : `Done: ${action} on the ${game} pool. It's in the public log.`, 'ok');
 }
 $('#connect').addEventListener('click', async () => {
   wallet = window.phantom?.solana || window.solflare || window.backpack?.solana || window.solana || null;
@@ -53,6 +57,7 @@ $('#connect').addEventListener('click', async () => {
   try { await wallet.connect?.(); address = wallet.publicKey.toString(); $('#who').textContent = 'Connected: ' + address; } catch { msg('Connecting was cancelled.', 'bad'); }
 });
 $('#pools').addEventListener('click', (e) => { const b = e.target.closest('[data-act]'); if (b) act(b.dataset.act, b.dataset.game); });
+$('#frozen').addEventListener('click', (e) => { const b = e.target.closest('[data-release]'); if (b) act('release-payout', b.dataset.game, { payout: +b.dataset.release }); });
 $('#game').addEventListener('change', fields);
 $('#depSave').addEventListener('click', () => { const tx = $('#depTx').value.trim(); if (!tx) return msg('Paste the transaction signature first.', 'bad'); act('record-deposit', $('#depGame').value, { tx }); });
 $('#save').addEventListener('click', () => {
