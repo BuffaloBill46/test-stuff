@@ -8,7 +8,26 @@ Tick items off here as they're done. Order is roughly the order to do them in fo
 All of it is committed, tested and live in the DEMO (no real money). Server/SQL parts are built and tested but NOT deployed.
 Details of each decision: DESIGN_NOTES.md. Audit of the money changes: AUDIT.md → "Second pass"; saved reports: `audits/`.
 
-**How players pay and get paid (the big one)**
+**Cody's calls on servers and services (2026-10-01, late). Act on these.**
+- **Always-on game server: DigitalOcean** (Cody already uses DO Droplets for his other game). Use a **separate Droplet** for
+  Santa Hat: it will hold the pool wallets' keys, so it shouldn't share a machine with the other game. Sizing below.
+- **Helius: Cody thinks he already has the $49 plan.** Confirm with him; use it for `SOLANA_RPC_URL` (Edge Function and worker).
+- **No multisig** (Cody: not wanted). Don't build around Squads.
+- **Cloudflare Turnstile ("are you human?" check): YES at sign-in and when a player starts a RANKED match** (not on every
+  unranked match). Sign-in: Supabase Auth has built-in CAPTCHA support (Auth settings: CAPTCHA protection, Turnstile); check it
+  also covers the Solana wallet sign-in when that's turned on. Ranked: check the Turnstile token on the server before a
+  ticket is held. Free plan, no request cap.
+- **Alerts go to Cody's existing Telegram bot** (he uses it for his other games), not Sentry. Ask Cody for the bot token and
+  chat id in YOUR session (server secrets only, never the repo). Alert on: a payout frozen by the safety cap, a payout failed
+  5 times, reconciliation drift (books ≠ wallet), a top-off waiting for his deposit, the server down, an emergency stop, and
+  any STRONG bot signal (`server/bots.js`; a scheduled run of the same check the admin screen does).
+- **Cost estimate Cody asked for: 1,000 players a day, 20–25 matches each** (measured from the real referee code; details in
+  RESEARCH.md → "What 1,000 players a day would cost"): ~500–1,100 GB a month of data to players, ~80–100 players online on
+  average, ~230–290 at a busy hour. Game logic is tiny (50 full rooms = under 1% of one core). On DigitalOcean a $6 Droplet
+  (1 GB, 1,000 GB data included) is about right; the next size up if data runs over. (On Fly.io it would be ~$15–30/mo, mostly data.)
+- **The multiplayer must move off Supabase Realtime before that load:** the free plan's 2 million messages a month would last
+  hours, not a month. That's the referee server's job (TODO → "Cheat-proof referee server").
+
 - **No credits, no balances: RUNS** (Cody, 2026-10-01). Each game has Play 1 / 5 / 10 at the size picked on the card.
   One confirm → `window.santaPay(quote)` ONCE for the whole run → the plays run → the run's last play queues ONE payout to
   the player's linked wallet automatically. No claim button, the player never signs to be paid. Full SQL/server detail in

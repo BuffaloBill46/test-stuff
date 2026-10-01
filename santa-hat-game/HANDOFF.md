@@ -246,7 +246,7 @@ Logic: `mockups/settings.js`. New item SHAPES (not colours) still need code.
 7. Whether to build a free daily spin (it costs real money from the Spin pool; with runs it would be a free run of 1 a day).
 8. Which new click game to build next (Present Pick, Hat Drop, …) and its odds.
 9. The "What's SANTA?" wording (`WHATS_SANTA.md`), and where it goes on the site.
-10. Which always-on server to sign up for (real money; options and prices in RESEARCH.md, Claude's pick: Fly.io).
+10. ~~Which always-on server~~ **Decided: DigitalOcean** (a new, separate Droplet; ~$6/mo for 1,000 players a day). Cody's other calls (Helius, Turnstile, Telegram alerts, no multisig): FOR_MAIN_CLAUDE → "Cody's calls on servers".
 11. A lawyer's check of the paid games before real money (RESEARCH.md → "Other things that would help").
 
 **Next big step:** connect the Games page to the Edge Function instead of the in-browser stand-in (`house.js`), apply `005`,

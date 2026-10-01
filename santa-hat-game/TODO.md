@@ -11,6 +11,12 @@ Details are in the sections below and in FOR_MAIN_CLAUDE.md. "Main Claude" = the
 5. **Everyone:** the dress rehearsal on devnet, end to end; then real phones (Phantom sign-in, feel).
 6. **Publish** the site (`deploy-pages.sh`; the admin screen's bot box isn't live yet).
 Not needed for that launch: ranked (tickets, referee server, matchmaking), levels, lottery, store purchases, wager, tournaments.
+Cody's calls (2026-10-01): **DigitalOcean** for the always-on server (a new, separate Droplet); **Telegram alerts** via his
+existing bot (frozen/failed payouts, books ≠ wallet, top-off waiting, server down, emergency stop, strong bot signals);
+**Cloudflare Turnstile** at sign-in and when starting a ranked match; Helius $49 plan (confirm); no multisig. Details: FOR_MAIN_CLAUDE.
+- [ ] **Telegram alerts** (Cody's bot; token + chat id as server secrets, asked for in the main Claude's session).
+- [ ] **Turnstile at sign-in** (Supabase Auth's CAPTCHA setting) and **at ranked match start** (checked on the server before a ticket is held).
+
 
 - [ ] **Turn on Solana sign-in:** Supabase → Authentication → Sign In / Providers → Web3 Wallet → Solana.
 - [ ] **Set sign-in addresses:** Supabase → Authentication → URL Configuration. Site URL `https://buffalobill46.github.io/test-stuff/`, Redirect URL `https://buffalobill46.github.io/test-stuff/**`.

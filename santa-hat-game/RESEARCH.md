@@ -122,6 +122,20 @@ to 8) and, later, the paid games instead of the Edge Function (then the speed li
 Sources: fly.io/pricing, railway.com/pricing, render.com/docs/free, digitalocean.com/pricing/droplets, costgoat.com/pricing/hetzner,
 colyseus.io/pricing, developers.cloudflare.com/workers/platform/pricing (all read 2026-10-01).
 
+### What 1,000 players a day would cost (Cody's question, 2026-10-01)
+Assumptions: 1,000 players, 20–25 Snowball Square matches each a day, ~5.5 minutes per match including lobby and breaks.
+Measured from the real referee (`mockups/sim.js`): a full 8-player update is ~480 bytes (~550 with connection overhead); updates
+go 8 a second in rooms of up to 4 people, ~4.5 a second in rooms of 8 (`online.js` → `snapMs`). So each player receives
+~2.5–4.4 KB a second. 50 full rooms run for a minute in 0.36 s of processor time (under 1% of one core).
+| | 20 matches each | 25 matches each |
+|---|---|---|
+| Data to players a month | ~500–870 GB | ~620–1,090 GB |
+| Players online, average / busy hour (~3×) | ~76 / ~230 | ~95 / ~290 |
+| Fly.io (1 GB machine $7.78 + $0.02/GB) | ~$18–25/mo | ~$20–30/mo |
+| DigitalOcean $6 Droplet (1,000 GB included) | ~$6/mo | ~$6/mo, or the next size up if over 1,000 GB |
+**Cody's call: DigitalOcean** (he already uses it). Players' messages TO the server are free everywhere. Supabase Realtime's
+free 2 million messages a month could not carry this: the referee server replaces it for multiplayer.
+
 ### Other things that would help
 - **A gaming lawyer before real money (most important).** Spin, Big Hat and Snowball Drop take SANTA for a chance at a SANTA
   prize: prize + chance + payment is how most places define gambling. US states are actively banning sweepstakes-style casino
@@ -129,10 +143,10 @@ colyseus.io/pricing, developers.cloudflare.com/workers/platform/pricing (all rea
   terms, an age gate, blocking some locations. RESEARCH.md said this from the start; it's still open. (Not legal advice.)
 - **Helius** (Solana connection, Cody already has it): free plan 1M credits a month, 10 requests a second: enough for the devnet
   test; Developer $49/mo for launch traffic.
-- **Squads multisig** for the treasury and the emergency-withdrawal safe wallet: money moves only with more than one approval.
+- *(Cody, 2026-10-01: not wanted.)* **Squads multisig** for the treasury and the emergency-withdrawal safe wallet: money moves only with more than one approval.
   Basic is a one-time 0.05 SOL (not for the pool wallets: their payouts are automatic).
-- **Cloudflare Turnstile**: free, usually invisible "are you human" check; could guard Buy. Pairs with the speed limit and bot signals.
-- **Sentry**: error alerts; free plan 5,000 errors a month.
+- **Cloudflare Turnstile**: free, usually invisible "are you human" check. *(Cody: yes, at sign-in and when starting a ranked match.)* Pairs with the speed limit and bot signals.
+- **Sentry**: error alerts; free plan 5,000 errors a month. *(Cody: no; alerts go to his existing Telegram bot instead.)*
 - **Uptime monitor** (tells Cody when the server is down): UptimeRobot's free plan no longer allows commercial use; Solo is ~$7/mo.
 - **Turnkey** (pool keys in secure hardware instead of a server secret): 25 free signatures a month, then $0.10 each: too
   costly per payout for now. Keeping pool wallets small (the top-off design) is the cheaper protection.
