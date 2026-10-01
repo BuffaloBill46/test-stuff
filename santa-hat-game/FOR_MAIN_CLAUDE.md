@@ -41,6 +41,8 @@ Details of each decision: DESIGN_NOTES.md. Audit of the money changes: AUDIT.md 
   must cover Drop's $10 top prize. Simulated 6 million mixed plays: never refused. Rules `mockups/plinko.js`.
 
 **Server and admin**
+- **Speed limit (2026-10-01):** 60 requests a connection and 40 a player per 10 s, then 429 "slow down" (`server/ratelimit.js`,
+  wired in `index.ts`). Needs `007_rate_limits.sql`. Plan (Cody): move it to the always-on game server later (`memoryStore()`).
 - **Payout worker: overlapping runs were a double-payment bug, fixed 2026-10-01** (`server/payouts.js`: a worker sends only if
   its compare-and-set signature save wins). Found by the new real-Postgres test `tests/db/lock.test.mjs`, which also proves the
   pool lock. Note: a player CAN have two runs open if they get two quotes before paying either; allowed and proven safe.
@@ -103,6 +105,11 @@ through the real server code and checks ONE payout equal to the plays' winnings,
 - [ ] **Apply `supabase/005_credits_plays.sql`** to the project (checked on real Postgres in `tests/db/`), then insert the two
       `pools` rows with the pools' real starting SANTA balances (smallest units, 6 decimals).
 - [ ] **Apply `supabase/006_ranked_tickets.sql`** when ranked opens (checked on real Postgres, `tests/db/tickets.test.mjs`).
+- [ ] **Apply `supabase/007_rate_limits.sql` with `005`** (the speed limit's counts; the Edge Function needs the table:
+      without it, counting fails, which lets every request through and logs "speed limit: counting failed").
+- [ ] **Check the visitor's address on the live Edge Function:** the speed limit reads the FIRST `x-forwarded-for` entry
+      (`server/http.js`). Send a request with a made-up `x-forwarded-for` and see what the function receives; if the made-up
+      value comes first, pass `addressOf` in `index.ts` to read the entry Supabase adds. (Per-player limit is unaffected.)
 - [ ] **Deploy the Edge Function** `supabase/functions/games/index.ts`. It imports `../../../server/*.js` and `../../../mockups/*.js`
       (include those files in the upload). Set `SOLANA_RPC_URL` (Helius; devnet URL for the test).
 - [x] **Prove the pool row lock on real Postgres (done 2026-10-01):** `tests/db/lock.test.mjs` starts a throwaway real Postgres 16 server (needs

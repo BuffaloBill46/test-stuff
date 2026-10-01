@@ -56,12 +56,14 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
   - `matchmaker.js`: ranked Auto match logic (not switched on yet).
 - **Server code (NOT deployed):** `santa-hat-game/server/`: `verify.js` (is this transaction a valid payment?), `games.js`
   (quote → buy a run → settle each play → one payout per run, plus tidying stuck runs) and `http.js` (the web door: sign-in, our website only).
-  It runs as the Supabase **Edge Function** `supabase/functions/games/index.ts` (Cody's choice; thin wiring, type-checked and
-  smoke-run with Deno: `npm install deno` gives a runnable Deno). Pools hold SANTA and float with the price (Cody).
+  It runs as the Supabase **Edge Function** `supabase/functions/games/index.ts` (Cody's choice; thin wiring, type-checked with Deno
+  `deno check` (it had been failing unnoticed until 2026-10-01; re-run it after any server change) and run for real against a
+  real Postgres by `tests/db/edge-limit.mjs`: `npm install deno` gives a runnable Deno). `ratelimit.js`: the speed limit. Pools hold SANTA and float with the price (Cody).
   - `kit.js` / `plaza.js`: the low-poly art kit and the plaza scene.
   - `snowball.js`, `bethehat.js`, `sleigh.js`, `hatchase.js`, `village.js`, `index.html`: the four
     original single-player mockups (published under `/mockups/`). **Not dead code; keep them.**
 - **Database:** `santa-hat-game/supabase/001..004_*.sql` are applied to the live project, in order.
+  **`007_rate_limits.sql` is NOT applied either** (the speed limit's counts; apply with 005).
   **`005_credits_plays.sql` is NOT applied** (runs, plays, payouts for the server; despite the name, no credits; apply when the server goes live, with Cody's OK).
   New changes go in a new numbered file, checked with `tests/db/`, applied with the Supabase tools, then committed.
 
@@ -106,6 +108,8 @@ node tests/http.test.mjs         # the server's web door: sign-in, other website
 (cd tests/db && node tickets.test.mjs)          # ranked tickets: 10 free a day, held/spent/released, 10 bought per 24 h
 (cd tests/db && node security.test.mjs && node price.test.mjs)  # audit: attacks refused cleanly; price manipulation guard
 (cd tests/db && node lock.test.mjs)             # locks on a REAL Postgres server: plays take turns, payouts never sent twice
+(cd tests/db && node ratelimit.test.mjs)        # speed limit counts: same rules in memory, PGlite and real Postgres (200 at once)
+(cd tests/db && DENO=<path>/deno node edge-limit.mjs)  # the REAL Edge Function under Deno: flood → 60 answered, then 429
 node tests/reconcile.test.mjs    # audit: books + everything owed = wallet
 (cd tests/browser && node audit-ux.mjs)          # audit: every tab at 5 screen sizes (tap size, contrast, overflow, dialogs)
 (cd tests/solana && node pay.test.mjs)          # the page's purchase transaction, on the real token program
@@ -200,6 +204,13 @@ FOR_MAIN_CLAUDE.md.
   only if its compare-and-set save wins (`server/payouts.js`). AUDIT #10.
 - **Docs corrected:** "one run at a time" is checked at the quote only (two quotes before paying → two runs). Kept that way
   on purpose (never refuse a paid run) and proven money-safe.
+
+**Fifth session (2026-10-01): speed limit** (Cody: "build it but plan to move it to an always-on game server").
+- 60 requests per connection and 40 per player per 10 s, then "slow down, try again in N seconds" (no ban). An honest run of 10
+  is ~12 requests; the real page peaked at 3. Built in `server/ratelimit.js`, wired into the web door and the Edge Function,
+  counts in the database for now (`007_rate_limits.sql`, NOT applied), one-line move to the always-on server later.
+- Proven on the real Edge Function code under Deno against real Postgres. Open: check the live visitor-address header (TODO).
+- Found: the Edge Function's type check had been failing since record-deposit (a type note fixed it); HANDOFF had said it passed.
 
 **For the other Claude:** `FOR_MAIN_CLAUDE.md` → "Read first" lists every change since the first hand-over that touches the
 server, the database or payments.

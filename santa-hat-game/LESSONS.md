@@ -210,3 +210,17 @@ Found by looping the test 25 times instead of calling it a flake; then 30 runs c
 TODO and AUDIT said "one play at a time per player (checked at the quote and in the database)". Only the quote checked it:
 two quotes before paying gave two open runs. Here that turned out safe (and refusing a PAID run would be worse), so the docs
 were corrected, not the code. Grep for the check before repeating the claim.
+
+## "Type-checked" is a claim with a date on it (2026-10-01)
+HANDOFF said the Edge Function was "type-checked and smoke-run with Deno". It hadn't passed since record-deposit handed the
+admin a chain: Deno read `chain = null` as "chain may only ever be null". No test runs `deno check`, so nothing went red. Re-run
+`deno check supabase/functions/games/index.ts` after any server change, and run the real function (`tests/db/edge-limit.mjs`).
+
+## A guard that's optional gets forgotten; make "off" explicit (2026-10-01)
+The web door refuses to start without a speed limiter unless given `limiter: null` on purpose. On the first run it caught the
+security test building a door with no limit. A protection that silently switches off when someone forgets to pass it looks
+done while it isn't.
+
+## `pkill -f <name>` can match its own shell (2026-10-01)
+Killing a background test server with `pkill -f _pgserve.mjs` also matched the shell running the command (its command line
+contains the name) and stopped it. Use a pattern that can't match itself: `pgrep -f "node [_]pgserve"`.

@@ -341,6 +341,25 @@ jackpot amount**, plus its jackpot odds and biggest fixed win (worked out from t
   about $9,700 of SANTA, and the pool never needed a top-off.
 - **More click games** from the idea list above are saved for later.
 
+## Speed limit (built 2026-10-01; Cody: "build it but plan to move it to an always-on game server")
+**Why:** not about winning (the games can't be beaten by playing fast). A script flooding the server could use up the Edge
+Functions' free 500,000 calls a month in about a day (5 requests a second ≈ 430,000 a day) and slow the game for everyone.
+**Rules (Claude's starting numbers, generous on purpose; Cody can change them in `RATE_RULES`, `server/ratelimit.js`):**
+- **60 requests per internet connection** per 10 seconds (every request, incl. the public winners / pools / settings answers;
+  also catches many accounts on one computer; room for shared Wi-Fi).
+- **40 requests per signed-in player** per 10 seconds. An honest run of 10 is about 12 requests over several seconds.
+- Over the limit: **"slow down: try again in N seconds"** (HTTP 429). No ban; the next window starts fresh. Checked before any
+  database work. Counted in fixed 10-second windows, so a script timed exactly on a window edge can get up to about twice the
+  limit for a moment; still a hard cap.
+- If counting itself fails, requests are let through and logged (a counting fault must never lock everyone out).
+- Never cuts off a paid run in practice; if a settle were ever slowed, the server finishes that play itself (`tidy`).
+**Options weighed:** per player in the database (built), plus per connection (built), Supabase's own protections only
+(unverified, not relied on), nothing beyond the 30-quotes-an-hour cap (leaves the public answers open).
+**Where the counts live, and the move (Cody's plan):** today in the database (table `rate_hits`, `007_rate_limits.sql`),
+because an Edge Function call may run in a fresh copy that remembers nothing. On the always-on game server (~$5–10/month,
+ask Cody before spending) the counts move into the server's memory: one line in the wiring (`memoryStore()`), same rules,
+same tests (`tests/db/ratelimit.test.mjs` runs the rules on both). Internet addresses in the table are deleted after an hour.
+
 ## Technical notes for when this gets built
 
 - The live games list needs a server-side list of running rooms (a lobby channel or a database table
