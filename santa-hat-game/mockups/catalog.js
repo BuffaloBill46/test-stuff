@@ -2,7 +2,11 @@
 // so the game, the store and the server always agree on what exists and how it unlocks.
 // Each item unlocks at a level OR is sold in the store (price in USD, paid in SANTA) — never both.
 export const SLOTS = ['shirt', 'pants', 'face', 'skin', 'hat', 'pack', 'snow'];
-export const SLOT_NAMES = { shirt: 'Shirts', pants: 'Pants', face: 'Faces', skin: 'Skin', hat: 'Hats', pack: 'Backpacks', snow: 'Snowballs' };
+export const SLOT_NAMES = { shirt: 'Shirts', pants: 'Pants', face: 'Faces', skin: 'Skin', hat: 'Hats', pack: 'Backpacks', snow: 'Snowballs', sball: 'Special Snowballs' };
+// SPECIAL SNOWBALLS (Cody, 2026-10-01): items of slot 'sball' (specials.js says what each does), kept forever once owned, put in the
+// player's slots SB1–SB3 (avatar keys sb1, sb2, sb3; how many open by level: levels.js). 'sb_none' = an empty slot.
+// Prices are placeholders (Cody: "set a base price, we will change later"). Snowball Rain also needs level 5 to use (specials.js).
+export const SB_SLOTS = ['sb1', 'sb2', 'sb3'];
 // Snowball RULES (Cody, 2026-10-01: special snowball types are coming: faster, bigger, longer stun, splits). An item's
 // `rules` change how its snowballs play; the match referee reads them (sim.js). Today: stun (× the normal 0.9 s knock-down).
 
@@ -48,7 +52,7 @@ export const ITEMS = [
   { id: 'snow_green', slot: 'snow', name: 'Mint', color: 0x9dffb0, level: 4 },
   { id: 'snow_ember', slot: 'snow', name: 'Ember', color: 0xff7a3a, price: 0.25 },
   // The first special snowball (Cody's example): stuns 50% longer than normal. Bought in the Store for now (Cody); levels later.
-  { id: 'snow_iceball', slot: 'snow', name: 'Ice Ball', color: 0xbfeaff, price: 0.50, rules: { stun: 1.5 }, note: 'Stuns 50% longer' },
+  // (The colour-slot Ice Ball prototype became the Ice Ball special below, 2026-10-01. A colour can still carry `rules`.)
 
   // Hats and backpacks are bought in the Store for now (Cody, 2026-10-01; he'll set levels later); prices are Claude's placeholders.
   // Hats (2026-10-01): worn on the head, hidden while that player wears the Santa hat (the prize must always be seen).
@@ -57,6 +61,15 @@ export const ITEMS = [
   { id: 'hat_earmuffs', slot: 'hat', name: 'Earmuffs', hat: 'earmuffs', color: 0xd76aa0, price: 0.25 },
   { id: 'hat_antlers', slot: 'hat', name: 'Reindeer Antlers', hat: 'antlers', color: 0x8a5a33, price: 0.50 },
   { id: 'hat_tophat', slot: 'hat', name: 'Snowman Top Hat', hat: 'tophat', color: 0x2a2a35, price: 0.25 },
+  // Special snowballs (2026-10-01).
+  { id: 'sb_none', slot: 'sball', name: 'Empty slot', level: 1 },
+  { id: 'sb_ice', slot: 'sball', name: 'Ice Ball', special: 'ice', color: 0xbfeaff, price: 0.50 },
+  { id: 'sb_split', slot: 'sball', name: 'Split Ball', special: 'split', color: 0xcf3128, price: 0.75 },
+  { id: 'sb_giant', slot: 'sball', name: 'Giant Ball', special: 'giant', color: 0xf5f1e8, price: 0.75 },
+  { id: 'sb_fire', slot: 'sball', name: 'Fire Ball', special: 'fire', color: 0xff7a3a, price: 0.50 },
+  { id: 'sb_sky', slot: 'sball', name: 'Sky Ball', special: 'sky', color: 0x9fd8ff, price: 1.00 },
+  { id: 'sb_rain', slot: 'sball', name: 'Snowball Rain', special: 'rain', color: 0xdbe8ff, price: 2.00 },
+
   // Backpacks (2026-10-01).
   { id: 'pack_none', slot: 'pack', name: 'No backpack', pack: 'none', level: 1 },
   { id: 'pack_satchel', slot: 'pack', name: 'Elf Satchel', pack: 'satchel', color: 0x3f9a66, price: 0.25 },
@@ -65,16 +78,26 @@ export const ITEMS = [
 ];
 
 export const BY_ID = new Map(ITEMS.map((i) => [i.id, i]));
-export const DEFAULT_AVATAR = { shirt: 'shirt_red', pants: 'pants_navy', face: 'face_dots', skin: 'skin_2', hat: 'hat_none', pack: 'pack_none', snow: 'snow_white' };
+export const DEFAULT_AVATAR = { shirt: 'shirt_red', pants: 'pants_navy', face: 'face_dots', skin: 'skin_2', hat: 'hat_none', pack: 'pack_none', snow: 'snow_white', sb1: 'sb_none', sb2: 'sb_none', sb3: 'sb_none' };
 
 // Anything unknown or in the wrong slot falls back to the default, so a bad value can never break rendering.
 export function cleanAvatar(a) {
   const out = {};
   for (const s of SLOTS) { const it = BY_ID.get(a && a[s]); out[s] = it && it.slot === s ? it.id : DEFAULT_AVATAR[s]; }
+  // special snowball slots: a special item, each special at most once (a repeat empties the later slot)
+  const seen = new Set();
+  for (const s of SB_SLOTS) { const it = BY_ID.get(a && a[s]); const ok = it && it.slot === 'sball' && (it.id === 'sb_none' || !seen.has(it.id)); out[s] = ok ? it.id : 'sb_none'; seen.add(out[s]); }
   return out;
 }
 
 // The snowball rules a saved avatar plays with ({} = a normal snowball).
 export const ballRules = (a) => BY_ID.get(cleanAvatar(a).snow)?.rules || {};
 
+// The special snowballs a player brings into a match: what's in their slots, only the slots their level opens, and only
+// the ones their level allows (Snowball Rain: level 5). → specials.js kinds, e.g. ['ice', 'sky'].
+export function specialsIn(a, level, slotsOpen) {
+  const c = cleanAvatar(a), out = [];
+  for (const s of SB_SLOTS.slice(0, slotsOpen)) { const it = BY_ID.get(c[s]); if (it?.special && !(it.special === 'rain' && level < 5)) out.push(it.special); }
+  return out;
+}
 export function usable(item, level, owned) { return (item.level != null && item.level <= level) || (owned && owned.has(item.id)); }
