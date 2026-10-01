@@ -28,12 +28,16 @@ await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin'
 const S = (name) => (name + '5'.repeat(88)).slice(0, 88).replace(/[0OIl]/g, '9');
 const txs = new Map();
 const server = createGameServer({ db, chain: { getTransaction: async (s) => txs.get(s) ?? null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: POOLS });
-// Buy 3 Big Hat pulls the normal way (quote → a finalized payment → buy); the payment is a stand-in since there's no wallet here.
-const q = await server.quote(me, 'big', 3), sp = splitPayment(q.santaRaw, 1000, FEE), b = (i, o, a) => ({ accountIndex: i, mint: MINT, owner: o, uiTokenAmount: { amount: String(a) } });
-txs.set(S('1'), { blockTime: Math.floor(Date.now() / 1000), meta: { err: null, innerInstructions: [], preTokenBalances: [b(1, PLAYER, 1e13), b(2, POOLS.slots, 1e12)], postTokenBalances: [b(1, PLAYER, 1e13 - q.santaRaw), b(2, POOLS.slots, 1e12 + sp.arrives)] },
-  transaction: { message: { accountKeys: [{ pubkey: PLAYER, signer: true }], instructions: [{ program: 'spl-token', parsed: { type: 'burnChecked', info: { mint: MINT, authority: PLAYER, tokenAmount: { amount: String(sp.burn) } } } }] } } });
-check((await server.buy(me, q.id, S('1'))).ok, 'test purchase');
-const handle = makeHandler({ server, profileFor: async (t) => (t === 'test-token' ? me : null), credits: (p) => db.query('select kind, left_n from public.credits where profile_id = $1', [p]) });
+// The stand-in wallet: when the page asks it to pay a quote, it "sends" the payment and returns its signature (the chain
+// stand-in then reports a finalized transaction: the player's SANTA down, 10% burned, the rest arriving in the pool).
+let paid = 0;
+function payFor(q) {
+  const sig = S('Pay' + 'abcdefgh'[paid++]), sp = splitPayment(q.santaRaw, 1000, FEE), b = (i, o, a) => ({ accountIndex: i, mint: MINT, owner: o, uiTokenAmount: { amount: String(a) } });
+  txs.set(sig, { blockTime: Math.floor(Date.now() / 1000), meta: { err: null, innerInstructions: [], preTokenBalances: [b(1, PLAYER, 1e13), b(2, q.pool, 1e12)], postTokenBalances: [b(1, PLAYER, 1e13 - q.santaRaw), b(2, q.pool, 1e12 + sp.arrives)] },
+    transaction: { message: { accountKeys: [{ pubkey: PLAYER, signer: true }], instructions: [{ program: 'spl-token', parsed: { type: 'burnChecked', info: { mint: MINT, authority: PLAYER, tokenAmount: { amount: String(sp.burn) } } } }] } } });
+  return sig;
+}
+const handle = makeHandler({ server, profileFor: async (t) => (t === 'test-token' ? me : null) });
 // One local address serves the page AND the game server (like the real site + Edge Function, both https in real life).
 const web = http.createServer(async (req, res) => {
   if (req.method === 'GET') { const pth = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]).replace(/^\//, '') || 'online.html');
@@ -57,44 +61,55 @@ const p = await ctx.newPage(); p.on('pageerror', (e) => errors.push(e.message));
 // Someone else's big win, already settled on the server: it must show in this player's Recent winners list.
 const other = (await db.query('insert into auth.users default values returning id'))[0].id;
 await db.query(`insert into public.profiles (id, wallet, name, avatar) values ($1, 'THEMwa11et11111111111111111111111111111111', 'Rudolph', '{}')`, [other]);
-await db.query(`insert into public.plays (profile_id, kind, play_no, state, commit, secret, player_seed, result, pay, bet, settled_at) values ($1, 'spin', 1, 'settled', $2, 's', 'p', '{"mult":5}', 5, 1, now())`, [other, 'f'.repeat(64)]);
+const rq = (await db.query(`insert into public.quotes (profile_id, kind, n, bet, usd, santa_raw, price_usd) values ($1, 'spin', 1, 1, 1, 1, 0.00085) returning id`, [other]))[0].id;
+const rrun = (await db.query(`select public.buy_run($1, $2, 1, 0, 0, 0) as id`, [rq, 'RUDOLPH' + '5'.repeat(81)]))[0].id;
+await db.query(`update public.plays set state = 'settled', commit = $2, secret = 's', player_seed = 'p', result = '{"mult":5}', pay = 5, settled_at = now() where run_id = $1`, [rrun, 'f'.repeat(64)]);
 await p.goto('http://localhost:8787/online.html?net=local&server=' + encodeURIComponent('http://localhost:8787/api') + '&token=test-token', { timeout: 90000 });
 await p.waitForFunction(() => window.__sq, null, { timeout: 60000 });
 await p.evaluate(() => document.querySelector('#t-games').click()); await p.waitForFunction(() => window.__slots, null, { timeout: 90000 });
-await p.waitForFunction(() => document.querySelector('#crBig').textContent === '3', null, { timeout: 15000 }).catch(() => {});
-check(await p.textContent('#crBig') === '3', `the page shows the server's 3 pulls, got ${await p.textContent('#crBig')}`);
 await p.waitForFunction(() => /Rudolph/.test(document.querySelector('#winList')?.textContent || ''), null, { timeout: 15000 }).catch(() => {});
 const winText = (await p.textContent('#winList')).replace(/\s+/g, ' ');
 check(/Rudolph/.test(winText) && /\$5\.00/.test(winText) && /5×/.test(winText), `another player's win shows in the shared list: "${winText.slice(0, 120)}"`);
 check(!/wa11et/.test(winText), 'no wallet addresses on the page');
-const shown = [];
-for (let i = 0; i < 3; i++) {
-  await p.evaluate(() => document.querySelector('.machine .pull').click()); await p.waitForTimeout(400);
-  await p.waitForFunction(() => !window.__slots.busy, null, { timeout: 90000 });
-  const proof = await p.evaluate(() => window.__credits.last.big);
-  const row = (await db.query('select state, result, commit, secret from public.plays where profile_id = $1 order by id desc limit 1', [me]))[0];
-  check(row.state === 'settled' && row.commit === proof.commit && row.secret === proof.secret, `pull ${i + 1}: the page's proof is the server's play`);
-  if (!row.result.jackpot) {
-    const { gridFor, MACHINES } = await import('../../mockups/slots.js');
-    const grid = gridFor(MACHINES.big, row.result.stops), onScreen = await p.evaluate(() => window.__slots.view.shown());
-    check(JSON.stringify(grid) === JSON.stringify(onScreen), `pull ${i + 1}: the reels show exactly the server's stops`);
-  }
-  shown.push(await p.textContent('.machine .res'));
+// Pull 5 through the server: the page asks for a price, the wallet pays, the server checks the payment, makes the 5 plays
+// and their secrets, and the page plays them; the run's winnings become ONE payout to the player's wallet.
+await p.exposeFunction('testPay', (q) => payFor(q));
+await p.evaluate(() => { window.santaPay = (q) => window.testPay(q); });
+await p.evaluate(() => document.querySelector('#slots [data-run="5"]').click());
+await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
+await p.evaluate(() => document.querySelector('#buyGo').click());
+await p.waitForFunction(() => window.__slots.busy, null, { timeout: 15000 }).catch(() => {});
+await p.waitForTimeout(800); await p.evaluate(() => document.querySelector('#slots .skip:not([hidden])')?.click());
+await p.waitForFunction(() => !window.__slots.busy, null, { timeout: 400000 });
+const shown = [await p.textContent('.machine .res')];
+const run = (await db.query('select * from public.runs where profile_id = $1 order by id desc limit 1', [me]))[0];
+check(run && run.n === 5 && run.paid_at, 'the server recorded the run of 5 and finished it');
+const rows = await db.query('select id, state, result, commit, secret, pay_raw from public.plays where run_id = $1 order by play_no', [run.id]);
+check(rows.length === 5 && rows.every((x) => x.state === 'settled'), 'all 5 plays settled on the server');
+const proof = await p.evaluate(() => window.__credits.last.big);
+check(rows.at(-1).commit === proof.commit && rows.at(-1).secret === proof.secret, "the page's last proof is the server's last play");
+if (!rows.at(-1).result.jackpot) {
+  const { gridFor, MACHINES } = await import('../../mockups/slots.js');
+  check(JSON.stringify(gridFor(MACHINES.big, rows.at(-1).result.stops)) === JSON.stringify(await p.evaluate(() => window.__slots.view.shown())), "the reels show exactly the server's last stops");
 }
-check(await p.textContent('#crBig') === '0', 'all 3 pulls used, as the server counts them');
+const wonRaw = rows.reduce((a, x) => a + +x.pay_raw, 0), payouts = await db.query('select amount_raw, to_wallet, status from public.payouts where run_id = $1', [run.id]);
+check(wonRaw ? payouts.length === 1 && +payouts[0].amount_raw === wonRaw && payouts[0].to_wallet === PLAYER : payouts.length === 0, `ONE payout of the run's winnings to the player's wallet (${wonRaw} raw)`);
+check(/^5 pulls: (no win|\$[\d.]+ back · sent to your wallet)/.test(shown[0]), `the run summary: ${shown[0]}`);
 // ("My plays" was removed, Cody 2026-09-30: players don't need their history; every play stays in the backend log.)
 check(!(await p.$('#myPlays')), 'no My plays section');
 await p.evaluate(() => document.querySelector('[data-proof="big"]').click()); await p.evaluate(() => document.querySelector('#proofCheck').click());
 await p.waitForFunction(() => /atch/.test(document.querySelector('#proofOut').textContent), null, { timeout: 15000 });
 check(/^Matches\./.test(await p.textContent('#proofOut')), 'Check this result matches the server\'s revealed secret');
 await p.evaluate(() => document.querySelector('#proofClose').click());
-// No credits left: the counter opens; with no wallet connected, buying says so plainly (and nothing is charged).
-await p.evaluate(() => document.querySelector('.machine .pull').click()); await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
+// With no wallet connected, buying says so plainly, and nothing is charged or played.
+await p.evaluate(() => { delete window.santaPay; document.querySelector('#slots [data-run="1"]').click(); });
+await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
 await p.evaluate(() => document.querySelector('#buyGo').click());
 await p.waitForFunction(() => /connected yet/.test(document.querySelector('#buyNote').textContent), null, { timeout: 15000 }).catch(() => {});
 check(/Wallet payments aren't connected yet/.test(await p.textContent('#buyNote')), `buy without a wallet: "${await p.textContent('#buyNote')}"`);
 const quotes = await db.query('select count(*)::int as n from public.quotes where used_by is null');
 check(quotes[0].n === 1, 'the server made a quote, and nothing was bought');
+await p.evaluate(() => document.querySelector('#buyCancel').click());
 await p.screenshot({ path: 'out/server-mode.png' });
 console.log('results shown:', shown.map((s) => s.slice(0, 50)).join(' | '));
 console.log('errors:', errors.length ? errors : 'none');
