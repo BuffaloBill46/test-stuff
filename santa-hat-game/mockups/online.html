@@ -471,10 +471,12 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
   #tixchip { display: none; }
 }
 /* Runs (Cody, 2026-10-01): three buy-and-play buttons per game, the count big and the price under it. */
-.runbtns { display: flex; gap: 8px; flex-wrap: wrap; }
+.runbtns { display: flex; gap: 8px; flex-wrap: wrap; flex: 1 1 100%; }
 .runbtns .go { flex: 1 1 0; min-width: 84px; display: grid; justify-items: center; gap: 2px; padding: 8px 10px 14px; }
 .runbtns .go b { font: 800 22px/1 var(--display); } .runbtns .go small { font: 700 12px/1 var(--digits); color: var(--brim); opacity: .9; }
 .runbtns .go:disabled { opacity: .5; }
+.runbtns .go b, .runbtns .go small { white-space: nowrap; }
+@media (max-width: 420px) { .runbtns .go { min-width: 0; padding: 8px 4px 12px; } .runbtns .go b { font-size: 19px; } }
 .runstat { font-size: 14px; color: #d6ddf0; } .runstat b { font: 700 16px/1 var(--digits); color: var(--lamp); }
 /* Snowball Drop: the board is taller than wide (500 × 560), so it doesn't use the wheel's square canvas. */
 .dropcard canvas { aspect-ratio: 500 / 560; max-width: 520px; margin: 4px auto; }
