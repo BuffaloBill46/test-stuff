@@ -3,7 +3,7 @@
 import { createRequire } from 'module'; import { readFileSync, existsSync } from 'fs'; import { execSync } from 'child_process'; import path from 'path'; import http from 'http';
 const require = createRequire(import.meta.url);
 const { chromium } = require(path.join(execSync('npm root -g').toString().trim(), 'playwright'));
-const { makeDb } = await import('../db/setup.mjs');
+const { makeDb, directRun } = await import('../db/setup.mjs');
 const { createGameServer } = await import('../../server/games.js');
 const { makeHandler } = await import('../../server/http.js');
 const { makeLimiter, memoryStore } = await import('../../server/ratelimit.js');
@@ -21,6 +21,12 @@ const holly = await db.player('HoLLYwa11et11111111111111111111111111111111', 'Ho
   await db.query(`select public.lock_play($1, $2, 's')`, [pl, 'c'.repeat(64)]);
   await db.query(`select public.settle_play($1, 'x', '{"stops":[1,2,3,4,5]}', 5000, 5882352941176, 0.00085, 0, 0, 'w', 0)`, [pl]);
   await db.query(`select public.finish_run($1, 'HoLLYwa11et11111111111111111111111111111111', 1101.51)`, [run]); }
+// A scripted player for the Possible bots box: 35 runs, each started 2.0 s after the last one ended.
+const speedy = await db.player('SpeedYwa11et1111111111111111111111111111111', 'Speedy');
+{ let t = Date.now() - 3600e3;
+  for (let i = 0; i < 35; i++) { const { run } = await directRun(db, speedy, 'spin', 1, 1), paid = t + 18000 + (i % 3) * 1000;
+    await db.query(`update public.quotes set created_at = $2 where id = (select pa.quote_id from public.runs r join public.payments pa on pa.signature = r.signature where r.id = $1)`, [run, new Date(t)]);
+    await db.query('update public.runs set paid_at = $2 where id = $1', [run, new Date(paid)]); t = paid + 2000 + (i % 2) * 40; } }
 const key = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign', 'verify']);
 const addr = b58encode(new Uint8Array(await crypto.subtle.exportKey('raw', key.publicKey)));
 const pkcs8 = [...new Uint8Array(await crypto.subtle.exportKey('pkcs8', key.privateKey))];
@@ -85,6 +91,14 @@ await p.locator('#frozenBox').screenshot({ path: 'out/admin-frozen.png' });
 await p.tap('#frozen [data-release]'); await p.waitForFunction(() => /Released payout|Refused/.test(document.querySelector('#msg').textContent), null, { timeout: 15000 });
 check((await db.query(`select status from public.payouts where to_wallet like 'HoLLY%'`))[0].status === 'queued', 'Release queued the payout: ' + (await p.textContent('#msg')));
 check(/None frozen/.test(await p.textContent('#frozen')) && /release payout/.test(await p.textContent('#log')), 'the list empties and the release is in the log');
+// Possible bots: the signed check lists the scripted player with its signals; private and read only (nothing in the log).
+const logBefore = (await p.textContent('#log')).length;
+await p.tap('#botCheck'); await p.waitForFunction(() => /Checked \d+ runs|Refused/.test(document.querySelector('#msg').textContent), null, { timeout: 15000 });
+const botsText = (await p.textContent('#bots')).replace(/\s+/g, ' ');
+check(/Speedy/.test(botsText) && /clockwork \(strong\)/.test(botsText) && !/Holly/.test(botsText), 'the bot check lists Speedy (clockwork), not Holly: ' + botsText + ' | ' + (await p.textContent('#msg')));
+check(await p.evaluate(() => document.querySelector('#botsBox').classList.contains('alert')), 'the Possible bots box stands out when a strong signal is found');
+check((await p.textContent('#log')).length === logBefore, 'the bot check is not logged');
+await p.locator('#botsBox').screenshot({ path: 'out/admin-bots.png' });
 await p.screenshot({ path: 'out/admin.png', fullPage: true });
 await browser.close(); web.close();
 console.log('errors:', errors.length ? errors : 'none'); console.log(fails.length || errors.length ? 'FAILED:\n - ' + fails.join('\n - ') : 'ALL CHECKS PASSED');
