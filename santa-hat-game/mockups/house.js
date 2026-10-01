@@ -3,12 +3,12 @@
 //             2. ONLY NOW a fresh secret is made for each play of the run and its fingerprint locked and shown
 //   settle(): 3. the player's own random number arrives (sent after seeing the fingerprint, so the house can't pick a secret
 //                to beat it), the numbers are drawn and the play runs against the pool
-//             4. the result is recorded (winnings wait as UNCLAIMED money), THEN the secret is revealed so anyone can check it
-//   A play the pool refuses at step 3 (emergency stop, pool refilling) gives its price back, as unclaimed money.
+//             4. the result is recorded, THEN the secret is revealed so anyone can check it
+//   When the run's last play is done, its winnings (+ the price of any play the pool refused) are sent in one transfer.
 // Runs, not stored credits (Cody, 2026-10-01): a run of 1, 5 or 10 plays is played straight away; nothing is left over.
 // DEMO: this runs in the browser. For real money the same steps run on the server and the secret never reaches the page
 // before step 4. `steps` records the order for the tests.
-import { KINDS, buyRun, credit } from './credits.js';
+import { KINDS, buyRun, credit, payRun } from './credits.js';
 import { spin, STAR, DEFAULT_WHEEL } from './spin.js';
 import { pull, MACHINES } from './slots.js';
 import { play as dropPlay, PAYS as DROP_PAYS, ROWS as DROP_ROWS } from './plinko.js';
@@ -32,7 +32,7 @@ export function createHouse(ledger, pools, f = fair) {
       let secret, commit;
       try { secret = f.newSeed(); commit = await f.fingerprint(secret); }
       catch (e) { // couldn't make a secret: that play's price comes straight back as unclaimed money (never a lost play)
-        run.made++; run.refused++; credit(ledger, kind, bet, true); steps.push('refunded'); continue;
+        run.made++; run.refused++; credit(run, bet, true); steps.push('refunded'); continue;
       }
       const playNo = ++ledger.plays; run.made++;
       const ticket = `${playNo}-${fair.newSeed(4)}`;
@@ -40,7 +40,8 @@ export function createHouse(ledger, pools, f = fair) {
       plays.push({ ticket, commit, playNo });
     }
     steps.push('locked');
-    return { run: run.id, plays };
+    const sent = payRun(ledger, run); // only if no play could be made at all: all prices back at once
+    return { run: run.id, plays, ...(sent !== null ? { sent } : {}) };
   }
 
   // forced: tests only (a slice, a path, or reel stops); the proof then says so.
@@ -48,7 +49,8 @@ export function createHouse(ledger, pools, f = fair) {
     const t = open_.get(ticket);
     if (!t) throw new Error('unknown or already settled play');
     open_.delete(ticket);
-    const K = KINDS[t.kind], refuse = (why, stopped) => { t.run.refused++; credit(ledger, t.kind, t.bet, true); steps.push('refunded'); return why ? { failed: true, why, refunded: t.bet } : { refused: true, stopped: !!stopped, refunded: t.bet }; };
+    const K = KINDS[t.kind], done = (o) => { const sent = payRun(ledger, t.run); return sent !== null ? { ...o, sent } : o; }; // the run's last play: send it
+    const refuse = (why, stopped) => { t.run.refused++; credit(t.run, t.bet, true); steps.push('refunded'); return done(why ? { failed: true, why, refunded: t.bet } : { refused: true, stopped: !!stopped, refunded: t.bet }); };
     let r;
     try {
       const nums = await f.numbers(t.secret, playerSeed, t.playNo, NUMS);
@@ -60,9 +62,9 @@ export function createHouse(ledger, pools, f = fair) {
       pools[K.game].pool -= t.bet; return refuse(null, r.stopped);
     }
     t.run.played++;
-    if (r.pay > 0) credit(ledger, t.kind, r.pay);
+    if (r.pay > 0) credit(t.run, r.pay);
     steps.push('revealed');
-    return { r, proof: { kind: t.kind, bet: t.bet, commit: t.commit, secret: t.secret, playerSeed, playNo: t.playNo, forced: forced !== undefined } };
+    return done({ r, proof: { kind: t.kind, bet: t.bet, commit: t.commit, secret: t.secret, playerSeed, playNo: t.playNo, forced: forced !== undefined } });
   }
   return { buy, settle, steps, pending: () => open_.size };
 }

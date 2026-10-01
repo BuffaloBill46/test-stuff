@@ -1,6 +1,6 @@
 // Buying plays: RUNS, not stored credits (Cody, 2026-10-01: "remove the credit system. Leave the 3 options to buy 1, 5, 10 on
-// each game. Whatever they buy auto plays and at the end a transaction pops up to claim their winnings. This way we don't
-// really hold player funds."). Game rules only, no graphics.
+// each game. Whatever they buy auto plays ... This way we don't really hold player funds." Then: no claim button, "just after
+// their 1, 5 or 10 roll it auto sends", with no player signature). Game rules only, no graphics.
 // DEMO: the ledger lives in this browser. In the real version it lives ONLY in the database and only the server changes it.
 // Rules:
 //  - One payment buys a RUN: 1, 5 or 10 plays of one game at one size (Spin / Snowball Drop: 10¢ or $1; Big Hat: $1).
@@ -8,11 +8,11 @@
 //    (Spin and Snowball Drop: the Spin pool; Big Hat: the Slots pool).
 //  - The plays are made right after the payment is confirmed (each gets its secret locked then) and play straight away.
 //    Nothing is left over: a run has no balance to keep.
-//  - Winnings are UNCLAIMED until the player presses Claim; then they're paid to the player's wallet in one transfer
-//    per pool. A play the pool refuses (emergency stop, pool refilling) gives its price back as unclaimed money.
-//  - No cash-out of anything but winnings, no expiry, no bulk discount.
-// Invariants (audit): every run: plays made = played + refused; every payment buys one run, once;
-//   unclaimed + claimed = everything won + refunded.
+//  - When the run's last play is done, its winnings (plus the price of any play the pool refused: emergency stop, pool
+//    refilling) are SENT to the player's wallet automatically, in one transfer. Nothing waits on the player.
+//  - No bulk discount.
+// Invariants (audit): every run: plays made = played + refused ≤ n; every payment buys one run, once;
+//   a finished run is paid exactly once, exactly what it won + refunded; an unfinished run is paid nothing.
 import { IN_PER_DOLLAR } from './slots.js';
 
 // kind → the pool it pays, and the sizes it can be played at. Spin's sizes come from the game settings (settings.js
@@ -26,7 +26,7 @@ export const SIZES = { spin: [0.10, 1.00], drop: [0.10, 1.00], big: [1.00] };
 export const RUN_SIZES = [1, 5, 10];
 export const isSize = (kind, bet) => (SIZES[kind] || []).some((x) => Math.abs(x - bet) < 1e-9);
 export const costOf = (n, bet) => Math.round(n * bet * 100) / 100;
-export const newLedger = () => ({ runs: {}, payments: {}, plays: 0, unclaimed: { spin: 0, slots: 0 }, claimed: { spin: 0, slots: 0 }, won: { spin: 0, slots: 0 }, refunded: { spin: 0, slots: 0 } });
+export const newLedger = () => ({ runs: {}, payments: {}, plays: 0, sent: { spin: 0, slots: 0 } });
 
 // A confirmed payment for a run of n plays of `kind` at `bet`. `pools` is { spin: {pool}, slots: {pool} }.
 // Refuses unknown games or sizes, run sizes other than 1/5/10, and reused payments. Returns the run.
@@ -38,22 +38,20 @@ export function buyRun(ledger, pools, kind, bet, n, paymentId) {
   if (!paymentId || ledger.payments[paymentId]) return { ok: false, why: 'payment already used' };
   const cost = costOf(n, bet), id = 'run' + (Object.keys(ledger.runs).length + 1);
   ledger.payments[paymentId] = { run: id, cost };
-  const run = { id, kind, bet, n, made: 0, played: 0, refused: 0, cost };
+  const run = { id, kind, bet, n, made: 0, played: 0, refused: 0, cost, won: 0, refunded: 0, paid: null };
   ledger.runs[id] = run;
   pools[K.game].pool += cost * IN_PER_DOLLAR; // this game's pool only
   return { ok: true, run };
 }
-// Winnings and refunds wait as unclaimed money in that pool's column until claimed.
-export function credit(ledger, kind, usd, refund = false) {
-  const g = KINDS[kind].game; ledger.unclaimed[g] = Math.round((ledger.unclaimed[g] + usd) * 100) / 100;
-  if (refund) ledger.refunded[g] = Math.round((ledger.refunded[g] + usd) * 100) / 100; else ledger.won[g] = Math.round((ledger.won[g] + usd) * 100) / 100;
-}
-export const unclaimedTotal = (ledger) => Math.round((ledger.unclaimed.spin + ledger.unclaimed.slots) * 100) / 100;
-// Claim everything: returns what's paid out per pool (the real version queues one transfer per pool to the player's wallet).
-export function claim(ledger) {
-  const out = { ...ledger.unclaimed };
-  for (const g of Object.keys(out)) { ledger.claimed[g] = Math.round((ledger.claimed[g] + out[g]) * 100) / 100; ledger.unclaimed[g] = 0; }
-  return out;
+// A play's prize, or the price of a play the pool refused, adds to what the run will send.
+export function credit(run, usd, refund = false) { if (refund) run.refunded = Math.round((run.refunded + usd) * 100) / 100; else run.won = Math.round((run.won + usd) * 100) / 100; }
+export const runDone = (run) => run.made === run.n && run.played + run.refused === run.n;
+// The run's last play is done: send what it won + refunded, once. Returns the amount sent (0 if nothing to send).
+export function payRun(ledger, run) {
+  if (!runDone(run) || run.paid !== null) return null;
+  const amount = Math.round((run.won + run.refunded) * 100) / 100, g = KINDS[run.kind].game;
+  run.paid = amount; ledger.sent[g] = Math.round((ledger.sent[g] + amount) * 100) / 100;
+  return amount;
 }
 
 // Every rule that must hold. Returns a list of problems (empty = all good).
@@ -65,9 +63,10 @@ export function audit(ledger) {
   }
   if (Object.keys(ledger.payments).length !== Object.keys(ledger.runs).length) bad.push('a payment without its run (or a run without its payment)');
   for (const g of ['spin', 'slots']) {
-    const a = Math.round((ledger.unclaimed[g] + ledger.claimed[g]) * 100), b = Math.round((ledger.won[g] + ledger.refunded[g]) * 100);
-    if (a !== b) bad.push(`${g}: unclaimed + claimed ${a / 100} ≠ won + refunded ${b / 100}`);
-    if (ledger.unclaimed[g] < 0) bad.push(`${g}: unclaimed below zero`);
+    const runs = Object.values(ledger.runs).filter((r) => KINDS[r.kind].game === g);
+    const due = Math.round(runs.reduce((a, r) => a + (r.paid !== null ? r.won + r.refunded : 0), 0) * 100);
+    if (Math.round(ledger.sent[g] * 100) !== due) bad.push(`${g}: sent ${ledger.sent[g]} ≠ what the finished runs won + refunded ${due / 100}`);
   }
+  for (const r of Object.values(ledger.runs)) if (r.paid !== null && !runDone(r)) bad.push(`${r.id}: paid before its last play`);
   return bad;
 }
