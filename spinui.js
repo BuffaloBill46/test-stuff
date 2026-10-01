@@ -2,7 +2,7 @@
 // DEMO ONLY: play money (the same demo balance as Slots) and a demo Spin pool kept in this browser.
 import { SPIN_RULES, MAIN_SLICES, MAIN, BONUS, STAR, odds } from './spin.js';
 import { createWheel, MULT_STYLE } from './spin3d.js';
-import { ready, play, short, setSpinKind, spinKindFor } from './playcredits.js';
+import { ready, play, short } from './playcredits.js';
 import { play as sfx } from './sfx.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -34,15 +34,15 @@ function odds_() {
 export const visibleBottom = () => { const t = document.querySelector('#nav .tabs'), r = t?.getBoundingClientRect(); return r && r.top > innerHeight / 2 ? r.top : innerHeight; };
 export function showResult(el) { const r = el.getBoundingClientRect(); if (r.bottom > visibleBottom() || r.top < 0) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
 function stamp(text) { const fl = $('#spin .flash'); fl.textContent = text; fl.classList.remove('show'); void fl.offsetWidth; fl.classList.add('show'); }
-function setBet(b) { bet = b; setSpinKind(spinKindFor(b)); document.querySelectorAll('#spin .bets button').forEach((x) => x.setAttribute('aria-checked', String(+x.dataset.bet === b))); }
+function setBet(b) { bet = b; document.querySelectorAll('#spin .bets button').forEach((x) => x.setAttribute('aria-checked', String(+x.dataset.bet === b))); }
 
 async function doSpin() {
   if (busy) { view.finishNow(); return; } // tap again: land it now (same slice)
-  const res = $('#spin .res'), kind = spinKindFor(bet);
-  if (!(await ready(kind)) || busy) return; // no spins of this size left: the buy counter opens first
+  const res = $('#spin .res');
+  if (!(await ready('spin', bet)) || busy) return; // not enough Spin balance for this size: the buy counter opens first
   busy = true;
   const forced = test.next; test.next = undefined;
-  const p = await play(kind, forced); // the house: pool check, spend a spin, lock the secret, draw (house.js)
+  const p = await play('spin', forced, bet); // the house: pool check, spend a spin, lock the secret, draw (house.js)
   if (!p.r) { busy = false; res.textContent = p.failed ? `Couldn't spin (${p.why}). Your spin is still on your account.` : p.refused ? (p.stopped ? 'Spin is paused right now. Your spin stays on your account.' : 'The Spin pool is refilling. Try again in a moment; your spin is kept.') : 'No spins left.'; return; }
   const r = p.r;
   card().classList.remove('won', 'jackpot'); $('#spin .flash').classList.remove('show');

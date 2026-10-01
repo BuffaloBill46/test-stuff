@@ -6,7 +6,7 @@ import { MACHINES, SYMBOLS, SYM, stats, POOL_RULES, pull } from './slots.js';
 import { MAIN, BONUS, MAIN_SLICES, BONUS_SLICES, MAIN_COUNTS, BONUS_COUNTS, SPIN_RULES, layout, odds as spinOdds, payback as spinPaybackOf, topMult } from './spin.js';
 import { ITEMS, SLOTS, BY_ID } from './catalog.js';
 import { MAX_MULT as DROP_TOP, BETS as DROP_BETS } from './plinko.js'; // Snowball Drop shares the Spin pool (Cody, 2026-09-30)
-import { KINDS } from './credits.js';
+import { KINDS, SIZES } from './credits.js';
 
 const big = MACHINES.big;
 // The built-in items, captured before applyToGame() can change the shared ones.
@@ -48,6 +48,8 @@ export function check(s, rules = { spin: SPIN_RULES, slots: POOL_RULES }) {
   const p = [], num = (v) => typeof v === 'number' && Number.isFinite(v);
   for (const [k, v] of Object.entries(s.prices || {})) if (!num(v) || v < LIMITS.price[0] || v > LIMITS.price[1]) p.push(`price ${k} must be $0.01–$100`);
   if (!(s.prices?.spin10 < s.prices?.spin100)) p.push('the small spin must cost less than the big spin');
+  // Spin is played from a balance kept in whole 10¢ units (Cody: one balance, either size), so its sizes must be whole 10¢s
+  for (const k of ['spin10', 'spin100']) if (num(s.prices?.[k]) && Math.abs(s.prices[k] * 10 - Math.round(s.prices[k] * 10)) > 1e-9) p.push(`${k === 'spin10' ? 'the small' : 'the big'} spin must be a whole number of 10¢ (e.g. $0.10, $0.50, $2.00)`);
   const mw = s.spin?.main || {}, bw = s.spin?.bonus || {}, sum = (o) => Object.values(o).reduce((a, b) => a + b, 0);
   const bad = (o, star) => Object.entries(o).some(([m, n]) => !Number.isInteger(n) || n < 0 || !((star && m === 'star') || (/^\d+$/.test(m) && +m <= 100)));
   if (bad(mw, true) || bad(bw, false)) p.push('Spin segment counts must be whole numbers, for whole-number prizes (and "star" on the main wheel)');
@@ -118,6 +120,7 @@ export function applyToGame(s) {
   Object.assign(MACHINES.big, b.machine);
   MAIN.splice(0, MAIN.length, ...b.wheel.main); BONUS.splice(0, BONUS.length, ...b.wheel.bonus);
   for (const k of Object.keys(KINDS)) if (s.prices[k]) KINDS[k].bet = s.prices[k];
+  SIZES.spin.splice(0, SIZES.spin.length, s.prices.spin10, s.prices.spin100); // the Spin balance plays these two sizes
   const items = itemsWith(s); ITEMS.splice(0, ITEMS.length, ...items); BY_ID.clear(); for (const i of items) BY_ID.set(i.id, i);
   return b;
 }

@@ -1,7 +1,7 @@
 // Play credits on the page: the 1–10 buy counter, the credits readouts, and "Check this result".
 // DEMO ONLY: credits are kept in this browser and paid from the demo balance. The real credits live on the server
 // (the page will only show the number), and the house steps below run there. Rules: credits.js, the order: house.js.
-import { KINDS, MAX_BUY, newLedger, buy, costOf } from './credits.js';
+import { KINDS, MAX_BUY, newLedger, buy, costOf, balanceOf, unitsFor } from './credits.js';
 import { createHouse, check } from './house.js';
 import { newSeed } from './fair.js';
 import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js';
@@ -15,23 +15,24 @@ const KEY = 'sh_credits_demo';
 const store = { get() { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } }, set(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {} } };
 const POOL_NAME = { spin: 'Spin', slots: 'Slots' };
 
-let ledger, house, wallet, onChange = () => {}, last = {}, spinKind = 'spin10'; // last proof per kind; the chosen spin size
+let ledger, house, wallet, onChange = () => {}, last = {}; // last proof per kind
 const saved = store.get();
 ledger = saved && saved.credits && saved.bought ? { ...newLedger(), ...saved } : newLedger();
 
 export const creditsOf = (kind) => ledger.credits[kind];
 // Which spin size a price belongs to (prices can change in the settings, so compare with the small spin's price).
-export const spinKindFor = (bet) => (Math.abs(bet - KINDS.spin10.bet) < 1e-9 ? 'spin10' : 'spin100');
-export function setSpinKind(kind) { spinKind = kind; refresh(); }
 // The readouts under each play button.
 export function refresh() {
-  for (const [kind, id] of [['big', 'crBig'], [spinKind, 'crSpin']]) {
+  for (const [kind, id] of [['big', 'crBig']]) {
     const n = ledger.credits[kind], el = document.getElementById(id); if (!el) continue;
     el.textContent = n; document.getElementById(id + 'What').textContent = n === 1 ? KINDS[kind].one : KINDS[kind].many;
     el.closest('.credrow').classList.toggle('none', n === 0);
   }
-  const pb = $('[data-proof="big"]'), ps = $('[data-proof="spin"]');
-  if (pb) pb.hidden = !last.big; if (ps) ps.hidden = !last[spinKind];
+  for (const [kind, id] of [['spin', 'crSpin'], ['drop', 'crDrop']]) { // a dollar balance for both sizes (Cody)
+    const d = document.getElementById(id); if (d) { d.textContent = money(balanceOf(ledger, kind)); d.closest('.credrow').classList.toggle('none', ledger.credits[kind] === 0); }
+  }
+  const pb = $('[data-proof="big"]'), ps = $('[data-proof="spin"]'), pd = $('[data-proof="drop"]');
+  if (pb) pb.hidden = !last.big; if (ps) ps.hidden = !last.spin; if (pd) pd.hidden = !last.drop;
 }
 const changed = () => { refresh(); onChange(); };
 
@@ -55,9 +56,11 @@ export function initCredits(opts) {
     store.set(ledger); changed(); sfx('buy'); closeBuy(true);
   });
   $('[data-buy="big"]').addEventListener('click', () => openBuy('big'));
-  $('[data-buy="spin"]').addEventListener('click', () => openBuy(spinKind));
+  $('[data-buy="spin"]').addEventListener('click', () => openBuy('spin'));
   $('[data-proof="big"]').addEventListener('click', () => showProof('big'));
-  $('[data-proof="spin"]').addEventListener('click', () => showProof(spinKind));
+  $('[data-proof="spin"]').addEventListener('click', () => showProof('spin'));
+  $('[data-buy="drop"]')?.addEventListener('click', () => openBuy('drop'));
+  $('[data-proof="drop"]')?.addEventListener('click', () => showProof('drop'));
   $('#proofClose').addEventListener('click', () => $('#proofDlg').close?.());
   $('#proofCheck').addEventListener('click', recheck);
   if (serverMode) syncCredits();
@@ -66,7 +69,7 @@ export function initCredits(opts) {
 // Server mode: the credit numbers shown come from the server (the page never decides them).
 export async function syncCredits() {
   const r = await call('credits');
-  if (r.credits) { for (const k of Object.keys(ledger.credits)) ledger.credits[k] = 0; for (const c of r.credits) ledger.credits[c.kind] = +c.left_n; refresh(); }
+  if (r.credits) { for (const k of Object.keys(ledger.credits)) ledger.credits[k] = 0; for (const c of r.credits) ledger.credits[c.kind] += +c.left_n; refresh(); } // rows bought at different prices add up
   return r;
 }
 export function resetCredits() { Object.assign(ledger, newLedger()); last = {}; store.set(ledger); refresh(); }
@@ -77,21 +80,23 @@ export function setPrice(p) { price = p; if (resolveBuy) setCount(count); }
 function setCount(n) {
   count = Math.max(1, Math.min(MAX_BUY, n));
   const K = KINDS[buyKind], cost = costOf(buyKind, count), short = wallet.get() < cost - 1e-9;
-  $('#buyCount').textContent = count;
-  $('#buyWhat').textContent = count === 1 ? K.one : K.many;
+  $('#buyCount').textContent = K.balance ? '$' + count : count; // Snowball Drop: dollars of balance
+  $('#buyWhat').textContent = K.balance ? K.one : count === 1 ? K.one : K.many;
   $('#buyMinus').disabled = count <= 1; $('#buyPlus').disabled = count >= MAX_BUY;
   document.querySelectorAll('#buyQuick button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.n === count)));
-  $('#buyGo').textContent = `Buy ${count} · ${money(cost)}`; $('#buyGo').disabled = short;
+  $('#buyGo').textContent = K.balance ? `Add ${money(cost)} to your balance` : `Buy ${count} · ${money(cost)}`; $('#buyGo').disabled = short;
+  $('#buyQuick').querySelectorAll('button').forEach((b) => { b.textContent = K.balance ? '$' + b.dataset.n : b.dataset.n; });
   $('#buySanta').innerHTML = price ? `≈ <b>${fmtSanta(santaFor(cost, price))} SANTA</b> at today's price. The real checkout locks the price for ${QUOTE_SECONDS} seconds.` : '';
   $('#buyNote').textContent = short ? `Not enough demo money (${money(wallet.get())}). Tap Reset above the Slots.` : '';
 }
 // Resolves true once credits are there (bought now or already), false if the player backed out.
-export function ready(kind) { return ledger.credits[kind] > 0 ? Promise.resolve(true) : openBuy(kind); }
+// bet: a balance kind's play size (Snowball Drop: a $1 drop needs $1 of balance, a 10¢ drop 10¢).
+export function ready(kind, bet) { return ledger.credits[kind] >= unitsFor(kind, bet ?? KINDS[kind].bet) ? Promise.resolve(true) : openBuy(kind); }
 export function openBuy(kind) {
   if (resolveBuy) return Promise.resolve(false);
   const K = KINDS[kind]; buyKind = kind;
-  $('#buyTitle').textContent = K.game === 'spin' ? 'Buy spins' : 'Buy pulls';
-  $('#buyEyebrow').textContent = K.game === 'spin' ? `Santa Hat Spin · ${K.bet < 1 ? '10¢' : '$1'} a spin` : 'Big Hat · $1.00 a pull';
+  $('#buyTitle').textContent = K.balance ? 'Add to your balance' : K.game === 'spin' ? 'Buy spins' : 'Buy pulls';
+  $('#buyEyebrow').textContent = K.balance ? (kind === 'spin' ? 'Santa Hat Spin · play either size from it' : 'Snowball Drop · play 10¢ or $1 drops from it') : K.game === 'spin' ? `Santa Hat Spin · ${K.bet < 1 ? '10¢' : '$1'} a spin` : 'Big Hat · $1.00 a pull';
   $('#buyPool').textContent = POOL_NAME[K.game];
   setCount(count);
   const d = $('#buyDlg'); if (d.showModal) d.showModal(); else d.setAttribute('open', '');
@@ -116,10 +121,11 @@ async function buyFromServer() {
   await syncCredits(); sfx('buy'); closeBuy(true);
 }
 
-export async function play(kind, forced) {
+// bet: the size, for a balance kind (Snowball Drop).
+export async function play(kind, forced, bet) {
   if (serverMode) {
     try {
-      const o = await call('open', { kind });
+      const o = await call('open', { kind, bet });
       if (o.busy) return { failed: true, why: 'your last play is still finishing' }; // one play at a time
       if (!o.ticket) { await syncCredits(); return o.error ? { failed: true, why: o.error } : o; }
       const s = await call('settle', { ticket: o.ticket, seed: newSeed(16) }); // our number goes in only after the fingerprint came back
@@ -130,10 +136,10 @@ export async function play(kind, forced) {
       return { r: s.r, proof: s.proof, commit: o.commit, poolUsd: s.poolUsd, server: true };
     } catch (e) { refresh(); return { failed: true, why: 'the game server can\'t be reached' }; }
   }
-  try { return await play_(kind, forced); } catch (e) { refresh(); return { failed: true, why: e.message }; } // never leave a machine locked
+  try { return await play_(kind, forced, bet); } catch (e) { refresh(); return { failed: true, why: e.message }; } // never leave a machine locked
 }
-async function play_(kind, forced) {
-  const o = await house.open(kind);
+async function play_(kind, forced, bet) {
+  const o = await house.open(kind, bet);
   if (!o.ticket) { store.set(ledger); refresh(); return o; } // refused or failed (credit kept) or no credit
   refresh();
   const s = await house.settle(o.ticket, newSeed(16), forced); // the player's number is made only after the fingerprint arrived
@@ -166,7 +172,8 @@ async function recheck() {
   const p = shown; if (!p) return;
   const c = await check(p, await cfgForProof(p)), K = KINDS[p.kind];
   let what;
-  if (K.game === 'spin') what = c.outcome.bonusSlice !== undefined ? `main-wheel segment ${c.outcome.slice + 1} of 40 (a gold star), then bonus-wheel segment ${c.outcome.bonusSlice + 1} of 12: a ${c.outcome.mult}× result`
+  if (p.kind === 'drop') what = `the bounces ${c.outcome.path.map((x) => (x ? 'R' : 'L')).join(' ')} (one per row of pegs), present ${c.outcome.bin + 1} of 9: a ${c.outcome.mult}× result`;
+  else if (K.game === 'spin') what = c.outcome.bonusSlice !== undefined ? `main-wheel segment ${c.outcome.slice + 1} of 40 (a gold star), then bonus-wheel segment ${c.outcome.bonusSlice + 1} of 12: a ${c.outcome.mult}× result`
     : `main-wheel segment ${c.outcome.slice + 1} of 40, a ${c.outcome.mult}× result`;
   else if (c.outcome.jackpot) what = 'the pool jackpot (all 25 squares Santa Hats)';
   else what = `reel stops ${c.outcome.stops.join(', ')} (one per reel, each 0–75)`;
