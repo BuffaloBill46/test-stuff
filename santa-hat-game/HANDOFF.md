@@ -267,7 +267,7 @@ queued prizes; needs the pool keys, server-only). The pool lock is proven on rea
 
 To move to a fresh Claude Code session: open a new session on the `buffalobill46/test-stuff` repo, and say:
 
-> Check out branch `ccr-55527f21-p10a6h`, read `santa-hat-game/HANDOFF.md`, and carry on.
+> Check out branch `claude/test-stuff-section-egujzy`, read `santa-hat-game/HANDOFF.md`, and carry on.
 
 (Use whichever branch the last session's "Where we are right now" names as newest; each cloud session may work on its own branch.)
 

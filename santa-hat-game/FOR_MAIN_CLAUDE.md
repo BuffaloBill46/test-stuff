@@ -5,7 +5,7 @@ Kept by the Claude that built the game (cloud workspace, no wallets, no live con
 Tick items off here as they're done. Order is roughly the order to do them in for a devnet test.
 
 > ## ⚠ START HERE: branch `ccr-55527f21-p10a6h` is the newest (cloud session, 2026-10-01)
-> - **Work from `ccr-55527f21-p10a6h`.** It contains ALL of `claude/test-stuff-section-egujzy` plus this session. Merge it into
+> - **Done 2026-10-01: merged into `claude/test-stuff-section-egujzy`, which is now the branch to work and publish from.** (Was: work from `ccr-55527f21-p10a6h`.) It contains ALL of `claude/test-stuff-section-egujzy` plus this session. Merge it into
 >   whatever branch you use before changing anything.
 > - **The live site (gh-pages) was published from this branch.** Publishing from an older branch would silently REMOVE the
 >   avatar Hats/Backpacks, the Ice Ball and the admin screen's "Check for bots" from the live site.
