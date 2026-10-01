@@ -26,6 +26,7 @@ assert.match((() => { const r = check(S(), { spin: { ...SPIN_RULES, topOffTo: 8 
 assert.match(refused('jackpot too easy', (s) => { s.big.jackpotOdds = 50; }), /1 in 1,000/);
 assert.match(refused('free plays', (s) => { s.prices.big = 0; }), /\$0\.01–\$100/);
 assert.match(refused('small spin dearer than big', (s) => { s.prices.spin10 = 2; }), /small spin must cost less/);
+assert.match(refused('a spin price that isn\'t whole 10¢', (s) => { s.prices.spin100 = 1.25; }), /whole number of 10¢/, 'the Spin balance is kept in 10¢ units');
 assert.match(refused('prize for coal', (s) => { s.big.pays.coal = { 3: 5 }; }), /no prizes for coal/);
 assert.match(refused('negative symbols', (s) => { s.big.counts.hat = -1; }), /whole numbers/);
 
@@ -55,4 +56,4 @@ for (const bad of [{ id: 'face_alien', slot: 'face', name: 'Alien', face: 'alien
   b.big.counts = Object.fromEntries(Object.entries(a.big.counts).reverse()); b.spin = { main: Object.fromEntries(Object.entries(a.spin.main).reverse()), bonus: Object.fromEntries(Object.entries(a.spin.bonus).reverse()) };
   assert.deepEqual(build(a).machine.strips, build(b).machine.strips, 'same reels whatever the key order');
   assert.deepEqual(build(a).wheel, build(b).wheel, 'same wheels whatever the key order'); }
-console.log('OK: settings: version 0 = today exactly; 13 unsafe changes refused; odds, prices, wheel and store changes do what they say');
+console.log('OK: settings: version 0 = today exactly; 14 unsafe changes refused; odds, prices, wheel and store changes do what they say');

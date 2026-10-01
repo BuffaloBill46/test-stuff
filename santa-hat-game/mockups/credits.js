@@ -1,22 +1,26 @@
 // Play credits: buy 1–10 plays in one payment, each play spends one (Cody, 2026-09-30). Game rules only, no graphics.
 // DEMO: the ledger lives in this browser. In the real version it lives ONLY in the database and only the server changes it.
 // Rules (DESIGN_NOTES → "Paying: play credits"):
-//  - Credits are per game and size. Spin credits paid the Spin pool; Slots credits paid the Slots pool. Nothing crosses over.
-//  - EXCEPT Snowball Drop (Cody, 2026-10-01): a DOLLAR BALANCE, spendable on 10¢ or $1 drops in any mix ("when someone buys
-//    $10.00 in tokens they can play either the 0.10 or 1.00 game"). Kept in whole 10¢ units, so it's never a fraction:
-//    buying $1 adds 10 units; a 10¢ drop spends 1 unit, a $1 drop spends 10. It pays the Spin pool (shared, Cody).
+//  - Credits are PER GAME (Cody, 2026-10-01): "they buy 10 on spin, the spin credit counter shows 10 and other games show 0".
+//    Spin credits paid the Spin pool; Slots credits paid the Slots pool; Snowball Drop's paid the Spin pool (shared, Cody).
+//  - Games with two sizes keep a DOLLAR BALANCE spendable on either size, in any mix (Cody: "when someone buys $10.00 in
+//    tokens they can play either the 0.10 or 1.00 game", for Snowball Drop and Spin alike). Kept in whole 10¢ units, so it's
+//    never a fraction: buying $1 adds 10 units; a 10¢ play spends 1 unit, a $1 play 10. Big Hat (one size) counts pulls.
 //  - The money moves at purchase: 10% burned, the rest (after SANTA's 3% tax) lands in that game's pool right away.
 //  - No cash-out, no expiry, no bulk discount.
 // Invariant (checked by audit): for every kind, bought = used + left, and each payment buys credits exactly once.
 import { IN_PER_DOLLAR } from './slots.js';
 
 export const KINDS = {
-  spin10: { game: 'spin', bet: 0.10, one: '10¢ spin', many: '10¢ spins' },
-  spin100: { game: 'spin', bet: 1.00, one: '$1 spin', many: '$1 spins' },
+  spin: { game: 'spin', bet: 0.10, step: 1.00, units: 10, balance: true, one: 'Spin balance', many: 'Spin balance' },          // bet = one unit
   big: { game: 'slots', bet: 1.00, one: 'Big Hat pull', many: 'Big Hat pulls' },
   drop: { game: 'spin', bet: 0.10, step: 1.00, units: 10, balance: true, one: 'Snowball Drop balance', many: 'Snowball Drop balance' }, // bet = one unit
 };
-export const DROP_SIZES = [0.10, 1.00];
+// The sizes each balance can play. Spin's come from the game settings (prices spin10 / spin100; settings.js keeps them whole
+// multiples of 10¢); Snowball Drop's are fixed.
+export const SIZES = { spin: [0.10, 1.00], drop: [0.10, 1.00] };
+export const DROP_SIZES = SIZES.drop;
+export const isSize = (kind, bet) => (SIZES[kind] || []).some((x) => Math.abs(x - bet) < 1e-9);
 // How many units one play of this size spends (1 for every per-play kind).
 export const unitsFor = (kind, bet) => (KINDS[kind].balance ? Math.round(bet / KINDS[kind].bet) : 1);
 export const balanceOf = (ledger, kind) => Math.round(ledger.credits[kind] * KINDS[kind].bet * 100) / 100; // in dollars

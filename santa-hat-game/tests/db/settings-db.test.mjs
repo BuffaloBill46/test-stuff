@@ -25,8 +25,8 @@ assert.match((await admin.run(await sign(bad))).error, /Spin would pay back/);
 assert.equal((await server.settings()).version, 0);
 
 // A play is opened on version 0...
-await credit('spin100', 1, 3);
-const early = await server.open(me, 'spin100'); assert.ok(early.ticket);
+await credit('spin', 0.1, 40); // $4 of Spin balance
+const early = await server.open(me, 'spin', 1); assert.ok(early.ticket);
 // ...then Cody changes the wheel (fewer no-wins) and the Big Hat jackpot odds, and doubles the $1 spin's price.
 const s1 = S(); s1.spin.main = { 0: 18, 1: 12, 2: 6, star: 4 }; s1.spin.bonus = { 3: 8, 4: 3, 5: 1 }; s1.big.jackpotOdds = 10000; s1.prices.spin100 = 2;
 const saved = await admin.run(await sign(s1)); assert.ok(saved.ok, saved.error);
@@ -40,16 +40,16 @@ assert.equal((await check(e.proof, v0)).outcome.mult, e.r.mult, 'the early play 
 // New plays run on version 1 (the cache refreshes within 15 s; a fresh server sees it at once).
 const fresh = createGameServer({ db, chain: {}, livePrice: async () => ({ usd: PRICE }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: {} });
 assert.equal((await fresh.settings()).version, 1);
-const o = await fresh.open(me, 'spin100'), later = await fresh.settle(me, o.ticket, newSeed(16));
+assert.equal((await fresh.open(me, 'spin', 1)).error, 'unknown size', 'after the change, $1 is no longer a Spin size');
+const o = await fresh.open(me, 'spin', 2), later = await fresh.settle(me, o.ticket, newSeed(16));
 assert.equal(later.proof.settingsVersion, 1); assert.equal((await check(later.proof, v1)).outcome.mult, later.r.mult, 'a new play re-checks on version 1');
-// Credits keep their price: this $1 credit (bought before the change) still plays at $1, not the new $2.
-assert.equal(later.r.bet, 1, 'an old credit plays at the price it was bought at');
-// New purchases use the new price, and are kept apart from the old credits.
-assert.equal((await fresh.quote(me, 'spin100', 2)).usd, 4, 'quotes use the new price ($2 × 2)');
+// The balance is dollars (Cody: one balance, either size): the new $2 spin takes $2 of it (20 units).
+assert.equal(later.r.bet, 2); assert.equal(+(await db.query(`select left_n from public.credits where profile_id = $1 and kind = 'spin'`, [me]))[0].left_n, 40 - 10 - 20, '$4 − the $1 spin − the $2 spin');
+assert.equal((await fresh.quote(me, 'spin', 2)).usd, 2, 'buying balance: $2 is $2');
 // A replayed settings signature is refused.
 assert.match((await admin.run(await sign(s1))).error || '', /^$/, 'a fresh signature on the same settings is fine');
 const again = await sign(S()); assert.ok((await admin.run(again)).ok); assert.equal((await admin.run(again)).error, 'this signed message was already used');
 // Everyone can see every version (public): the log says who changed what.
 assert.equal((await db.query('select count(*)::int as n from public.game_settings'))[0].n, 3);
 assert.ok((await db.query(`select what from public.pool_log where game = 'all'`)).every((r) => /^settings v\d+$/.test(r.what)));
-console.log('OK: settings end to end: unsafe refused; changes never land mid-play; old plays re-check on their own odds; credits keep their price; new prices for new purchases; no replays');
+console.log('OK: settings end to end: unsafe refused; changes never land mid-play; old plays re-check on their own odds; the balance pays the sizes of the day; no replays');

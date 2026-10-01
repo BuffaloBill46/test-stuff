@@ -8,7 +8,7 @@
 //             5. the result is paid, THEN the secret is revealed so anyone can check it
 // DEMO: this runs in the browser. For real money the same steps run on the server and the secret never reaches the page
 // before step 5. `steps` records the order for the tests.
-import { KINDS, DROP_SIZES, spend, refund, unitsFor } from './credits.js';
+import { KINDS, isSize, spend, refund, unitsFor } from './credits.js';
 import { spin, canSpin, STAR, DEFAULT_WHEEL } from './spin.js';
 import { pull, canPull, MACHINES } from './slots.js';
 import { play as dropPlay, canPlay as canDrop, PAYS as DROP_PAYS, ROWS as DROP_ROWS } from './plinko.js';
@@ -22,12 +22,12 @@ export const NUMS = 8; // numbers drawn per play (Slots uses 6: the jackpot draw
 // `f` swaps the fair functions (tests only, to make them fail).
 export function createHouse(ledger, pools, f = fair) {
   const open_ = new Map(), steps = [];
-  const can = (K, kind, bet) => (kind === 'drop' ? canDrop(pools.spin, bet) : K.game === 'spin' ? canSpin(pools.spin, K.bet) : canPull(pools.slots, kind));
+  const can = (K, kind, bet) => (kind === 'drop' ? canDrop(pools.spin, bet) : K.game === 'spin' ? canSpin(pools.spin, bet) : canPull(pools.slots, kind));
 
-  // bet: the play's size, for a balance kind (Snowball Drop: 10¢ or $1 from the same balance).
+  // bet: the play's size, for a balance kind (Spin, Snowball Drop: 10¢ or $1 from the same balance).
   async function open(kind, bet) {
     const K = KINDS[kind];
-    if (K.balance) { if (!DROP_SIZES.includes(bet)) return { failed: true, why: 'unknown size' }; } else bet = K.bet;
+    if (K.balance) { if (!isSize(kind, bet)) return { failed: true, why: 'unknown size' }; } else bet = K.bet;
     const units = unitsFor(kind, bet);
     const c = can(K, kind, bet);
     if (!c.ok) return { refused: true, stopped: !!c.stopped };
@@ -54,7 +54,7 @@ export function createHouse(ledger, pools, f = fair) {
       const nums = await f.numbers(t.secret, playerSeed, t.playNo, NUMS);
       steps.push('drawn');
       const rand = randFrom(nums);
-      r = t.kind === 'drop' ? dropPlay(pools.spin, t.bet, rand, forced) : K.game === 'spin' ? spin(pools.spin, K.bet, rand, forced) : pull(pools.slots, t.kind, rand, forced);
+      r = t.kind === 'drop' ? dropPlay(pools.spin, t.bet, rand, forced) : K.game === 'spin' ? spin(pools.spin, t.bet, rand, forced) : pull(pools.slots, t.kind, rand, forced);
     } catch (e) { refund(ledger, t.kind, t.units); steps.push('refunded'); return { failed: true, why: e.message }; }
     if (r.paused) { refund(ledger, t.kind, t.units); steps.push('refunded'); return { refused: true, stopped: !!r.stopped }; }
     steps.push('revealed');

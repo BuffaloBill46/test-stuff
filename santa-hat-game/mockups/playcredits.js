@@ -15,25 +15,24 @@ const KEY = 'sh_credits_demo';
 const store = { get() { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } }, set(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {} } };
 const POOL_NAME = { spin: 'Spin', slots: 'Slots' };
 
-let ledger, house, wallet, onChange = () => {}, last = {}, spinKind = 'spin10'; // last proof per kind; the chosen spin size
+let ledger, house, wallet, onChange = () => {}, last = {}; // last proof per kind
 const saved = store.get();
 ledger = saved && saved.credits && saved.bought ? { ...newLedger(), ...saved } : newLedger();
 
 export const creditsOf = (kind) => ledger.credits[kind];
 // Which spin size a price belongs to (prices can change in the settings, so compare with the small spin's price).
-export const spinKindFor = (bet) => (Math.abs(bet - KINDS.spin10.bet) < 1e-9 ? 'spin10' : 'spin100');
-export function setSpinKind(kind) { spinKind = kind; refresh(); }
 // The readouts under each play button.
 export function refresh() {
-  for (const [kind, id] of [['big', 'crBig'], [spinKind, 'crSpin']]) {
+  for (const [kind, id] of [['big', 'crBig']]) {
     const n = ledger.credits[kind], el = document.getElementById(id); if (!el) continue;
     el.textContent = n; document.getElementById(id + 'What').textContent = n === 1 ? KINDS[kind].one : KINDS[kind].many;
     el.closest('.credrow').classList.toggle('none', n === 0);
   }
-  const d = document.getElementById('crDrop'); // Snowball Drop: a dollar balance for both sizes (Cody)
-  if (d) { d.textContent = money(balanceOf(ledger, 'drop')); d.closest('.credrow').classList.toggle('none', ledger.credits.drop === 0); }
+  for (const [kind, id] of [['spin', 'crSpin'], ['drop', 'crDrop']]) { // a dollar balance for both sizes (Cody)
+    const d = document.getElementById(id); if (d) { d.textContent = money(balanceOf(ledger, kind)); d.closest('.credrow').classList.toggle('none', ledger.credits[kind] === 0); }
+  }
   const pb = $('[data-proof="big"]'), ps = $('[data-proof="spin"]'), pd = $('[data-proof="drop"]');
-  if (pb) pb.hidden = !last.big; if (ps) ps.hidden = !last[spinKind]; if (pd) pd.hidden = !last.drop;
+  if (pb) pb.hidden = !last.big; if (ps) ps.hidden = !last.spin; if (pd) pd.hidden = !last.drop;
 }
 const changed = () => { refresh(); onChange(); };
 
@@ -57,9 +56,9 @@ export function initCredits(opts) {
     store.set(ledger); changed(); sfx('buy'); closeBuy(true);
   });
   $('[data-buy="big"]').addEventListener('click', () => openBuy('big'));
-  $('[data-buy="spin"]').addEventListener('click', () => openBuy(spinKind));
+  $('[data-buy="spin"]').addEventListener('click', () => openBuy('spin'));
   $('[data-proof="big"]').addEventListener('click', () => showProof('big'));
-  $('[data-proof="spin"]').addEventListener('click', () => showProof(spinKind));
+  $('[data-proof="spin"]').addEventListener('click', () => showProof('spin'));
   $('[data-buy="drop"]')?.addEventListener('click', () => openBuy('drop'));
   $('[data-proof="drop"]')?.addEventListener('click', () => showProof('drop'));
   $('#proofClose').addEventListener('click', () => $('#proofDlg').close?.());
@@ -82,7 +81,7 @@ function setCount(n) {
   count = Math.max(1, Math.min(MAX_BUY, n));
   const K = KINDS[buyKind], cost = costOf(buyKind, count), short = wallet.get() < cost - 1e-9;
   $('#buyCount').textContent = K.balance ? '$' + count : count; // Snowball Drop: dollars of balance
-  $('#buyWhat').textContent = K.balance ? 'Snowball Drop balance' : count === 1 ? K.one : K.many;
+  $('#buyWhat').textContent = K.balance ? K.one : count === 1 ? K.one : K.many;
   $('#buyMinus').disabled = count <= 1; $('#buyPlus').disabled = count >= MAX_BUY;
   document.querySelectorAll('#buyQuick button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.n === count)));
   $('#buyGo').textContent = K.balance ? `Add ${money(cost)} to your balance` : `Buy ${count} · ${money(cost)}`; $('#buyGo').disabled = short;
@@ -97,7 +96,7 @@ export function openBuy(kind) {
   if (resolveBuy) return Promise.resolve(false);
   const K = KINDS[kind]; buyKind = kind;
   $('#buyTitle').textContent = K.balance ? 'Add to your balance' : K.game === 'spin' ? 'Buy spins' : 'Buy pulls';
-  $('#buyEyebrow').textContent = K.balance ? 'Snowball Drop · play 10¢ or $1 drops from it' : K.game === 'spin' ? `Santa Hat Spin · ${K.bet < 1 ? '10¢' : '$1'} a spin` : 'Big Hat · $1.00 a pull';
+  $('#buyEyebrow').textContent = K.balance ? (kind === 'spin' ? 'Santa Hat Spin · play either size from it' : 'Snowball Drop · play 10¢ or $1 drops from it') : K.game === 'spin' ? `Santa Hat Spin · ${K.bet < 1 ? '10¢' : '$1'} a spin` : 'Big Hat · $1.00 a pull';
   $('#buyPool').textContent = POOL_NAME[K.game];
   setCount(count);
   const d = $('#buyDlg'); if (d.showModal) d.showModal(); else d.setAttribute('open', '');

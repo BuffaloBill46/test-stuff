@@ -9,7 +9,7 @@ import { livePrice, liveFee, santaFor, fmtSanta } from './market.js';
 import { FEE } from './slots.js';
 import { play as sfx } from './sfx.js';
 import { SERVER, call, settingsReady } from './gameserver.js';
-import { KINDS } from './credits.js';
+import { KINDS, SIZES } from './credits.js';
 import { topMult } from './spin.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -233,12 +233,12 @@ async function showMarket() {
 
 function labelsFromSettings() {
   const c = (v) => (v < 1 ? Math.round(v * 100) + '¢' : '$' + (Number.isInteger(v) ? v : v.toFixed(2))), top = topMult(); // the wheels as published (applyToGame updates them in place)
-  for (const [cls, k] of [['chip10', 'spin10'], ['chip100', 'spin100']]) {
-    const b = $('#spin .' + cls), bet = KINDS[k].bet; b.dataset.bet = bet; $('b', b).textContent = c(bet); $('small', b).textContent = `win up to ${c(bet * top)}`;
+  for (const [cls, i] of [['chip10', 0], ['chip100', 1]]) {
+    const b = $('#spin .' + cls), bet = SIZES.spin[i]; // the Spin balance's two sizes, as published b.dataset.bet = bet; $('b', b).textContent = c(bet); $('small', b).textContent = `win up to ${c(bet * top)}`;
   }
   $('#slots .machine header em').textContent = `${money(M.bet)} a pull · 5×5 · 11 lines`;
   document.querySelectorAll('.hatc').forEach((e) => { e.textContent = c(M.hatBonus * M.bet); }); // the per-hat bonus as published
-  $('#spin .wheelcard header em').textContent = `${c(KINDS.spin10.bet)} or ${c(KINDS.spin100.bet)} a spin · up to ${top}×`;
+  $('#spin .wheelcard header em').textContent = `${c(SIZES.spin[0])} or ${c(SIZES.spin[1])} a spin · up to ${top}×`;
 }
 
 export async function showGames(on, opts) {

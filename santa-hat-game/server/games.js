@@ -5,6 +5,7 @@
 // `db` = { query(sql, params) → rows, tx(fn) } on a direct Postgres connection (a transaction holds the pool row lock).
 // `chain.getTransaction(sig)` = Solana getTransaction (jsonParsed, finalized). Keys and secrets never leave the server.
 import { KINDS, DROP_SIZES, unitsFor } from '../mockups/credits.js';
+const near = (a, b) => Math.abs(a - b) < 1e-9;
 import { play as dropPlay, canPlay as canDrop } from '../mockups/plinko.js';
 import { DEFAULT_SETTINGS, build } from '../mockups/settings.js';
 import { spin, canSpin } from '../mockups/spin.js';
@@ -91,17 +92,17 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     return done;
   }
 
-  // bet: the size, for a balance kind (Snowball Drop: 10¢ or $1 from one balance, Cody 2026-10-01).
+  // bet: the size, for a balance kind (Spin, Snowball Drop: either size from one balance, Cody 2026-10-01).
   async function open(profile, kind, bet) {
     if (!isKind(kind)) return { error: 'unknown game' };
     const K = KINDS[kind];
-    if (K.balance && !DROP_SIZES.includes(bet)) return { error: 'unknown size' };
     if (!(await walletOf(profile))) return { error: 'playing for SANTA needs a linked wallet (winnings are paid to it)' };
     await tidy(profile);
     const p = await row('select * from public.pools where game = $1', [K.game]);
     let price; try { price = (await livePrice()).usd; } catch (e) { return { failed: true, why: 'no live SANTA price right now' }; }
     const version = await settingsVersion(), cfg = await cfgFor(version);
-    if (!K.balance) bet = cfg.prices[kind];
+    const sizes = kind === 'spin' ? [cfg.prices.spin10, cfg.prices.spin100] : kind === 'drop' ? DROP_SIZES : null; // the sizes today's settings allow
+    if (sizes) { if (!sizes.some((x) => near(x, bet))) return { error: 'unknown size' }; } else bet = cfg.prices[kind];
     const can = kind === 'drop' ? canDrop(poolState(p, price), bet) : K.game === 'spin' ? canSpin(poolState(p, price), bet, cfg.wheel) : canPull(poolState(p, price), { ...cfg.machine, bet });
     if (!can.ok) return { refused: true, stopped: !!can.stopped };                       // 1. pool check: credit untouched
     const units = unitsFor(kind, bet);                                                    // 2. spend one credit (a drop: 1 or 10 units)
@@ -153,7 +154,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     const rows = await db.query(`select pr.name, pl.kind, pl.pay, pl.bet, pl.settled_at, pl.result from public.plays pl join public.profiles pr on pr.id = pl.profile_id
       where pl.state = 'settled' and pl.pay > pl.bet order by pl.settled_at desc, pl.id desc limit $1`, [limit]);
     const list = rows.map((w) => { const bet = +w.bet || KINDS[w.kind].bet, pay = +w.pay;
-      return { game: w.kind === 'big' ? 'slots' : w.kind === 'drop' ? (bet >= 1 ? 'drop100' : 'drop10') : w.kind, name: w.name, amount: pay, gainPct: ((pay - bet) / bet) * 100, at: new Date(w.settled_at).getTime(),
+      return { game: w.kind === 'big' ? 'slots' : w.kind === 'drop' ? (bet >= 1 ? 'drop100' : 'drop10') : w.kind === 'spin' ? (bet >= 1 ? 'spin100' : 'spin10') : w.kind, name: w.name, amount: pay, gainPct: ((pay - bet) / bet) * 100, at: new Date(w.settled_at).getTime(),
         note: w.result?.jackpot ? 'pool jackpot' : w.result?.mult ? `${w.result.mult}×` : '', big: pay >= 10 * bet }; });
     winnersCache = { at: Date.now(), list }; return list;
   }

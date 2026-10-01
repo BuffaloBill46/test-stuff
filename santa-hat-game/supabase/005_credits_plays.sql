@@ -8,7 +8,7 @@
 create table public.quotes (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid not null references public.profiles (id) on delete cascade,
-  kind text not null check (kind in ('spin10', 'spin100', 'big', 'drop')),
+  kind text not null check (kind in ('spin', 'big', 'drop')),
   n int not null check (n between 1 and 10),        -- plays, or dollars for the Snowball Drop balance
   usd numeric(10, 2) not null check (usd > 0),
   santa_raw bigint not null check (santa_raw > 0),     -- smallest units (6 decimals)
@@ -30,10 +30,10 @@ create table public.payments (
 -- Credits, per player, game and size. The books must always balance: bought = used + left.
 create table public.credits (
   profile_id uuid not null references public.profiles (id) on delete cascade,
-  kind text not null check (kind in ('spin10', 'spin100', 'big', 'drop')),
+  kind text not null check (kind in ('spin', 'big', 'drop')),
   bet numeric(10, 2) not null check (bet > 0),           -- the price each of these credits was bought at (a play pays on it)
-                                                         -- Snowball Drop: a dollar BALANCE in 10¢ units (Cody, 2026-10-01): bet 0.10,
-                                                         -- left_n = units; a 10¢ drop spends 1 unit, a $1 drop 10
+                                                         -- Spin and Snowball Drop: a dollar BALANCE in 10¢ units (Cody, 2026-10-01):
+                                                         -- bet 0.10, left_n = units; a 10¢ play spends 1 unit, a $1 play 10
   left_n int not null default 0 check (left_n >= 0),
   bought int not null default 0, used int not null default 0,
   primary key (profile_id, kind, bet),                   -- credits bought at different prices are kept apart
@@ -64,7 +64,7 @@ create table public.plays (
   player_seed text,
   result jsonb,
   pay numeric(12, 2),
-  bet numeric(10, 2),                                  -- the price of this play (Snowball Drop: its size, 0.10 or 1.00)
+  bet numeric(10, 2),                                  -- the price of this play (Spin / Snowball Drop: its size, e.g. 0.10 or 1.00)
   credit_bet numeric(10, 2),                           -- the credits row it was paid from (same as bet except for a balance)
   units int not null default 1 check (units > 0),      -- credits it took (Snowball Drop: 1 or 10); a refund gives back exactly these
   settings_version int not null default 0,             -- the game settings (odds, prizes) this play ran on
@@ -148,9 +148,9 @@ begin
   insert into public.payments (signature, quote_id, profile_id, kind, n, paid_raw, burned_raw, arrived_raw)
     values (p_signature, q.id, q.profile_id, q.kind, q.n, p_paid, p_burned, p_arrived);  -- a reused signature fails here
   update public.quotes set used_by = p_signature where id = q.id;
-  -- n plays (or, for the Snowball Drop balance, n dollars = n × 10 units of 10¢)
+  -- n plays (or, for a balance (Spin, Snowball Drop), n dollars = n × 10 units of 10¢)
   insert into public.credits (profile_id, kind, bet, left_n, bought)
-    values (q.profile_id, q.kind, round(q.usd / (q.n * case when q.kind = 'drop' then 10 else 1 end), 2), q.n * case when q.kind = 'drop' then 10 else 1 end, q.n * case when q.kind = 'drop' then 10 else 1 end)
+    values (q.profile_id, q.kind, round(q.usd / (q.n * case when q.kind in ('spin', 'drop') then 10 else 1 end), 2), q.n * case when q.kind in ('spin', 'drop') then 10 else 1 end, q.n * case when q.kind in ('spin', 'drop') then 10 else 1 end)
     on conflict (profile_id, kind, bet) do update set left_n = public.credits.left_n + excluded.left_n, bought = public.credits.bought + excluded.bought
     returning left_n into left_now;
   -- the SANTA that arrived reaches that game's pool now

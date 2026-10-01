@@ -63,20 +63,20 @@ async function buy(kind, n) {
   assert.equal((await server.buy(me, (await server.quote(me, kind, n)).id, sig)).error, 'payment already used', 'the same payment can\'t buy twice');
   say(`bought ${n} ${kind}: paid ${(q.santaRaw / 1e6).toFixed(2)} SANTA, ${(split.burn / 1e6).toFixed(2)} burned, ${(split.arrives / 1e6).toFixed(2)} arrived in the pool`);
 }
-await buy('big', 10); await buy('spin100', 10);
+await buy('big', 10); await buy('spin', 10); await buy('drop', 5); // Spin and Snowball Drop are dollar balances
 
 console.log('4. Playing (a skim is forced on the Slots pool so it gets exercised)');
 const slotsUsd = (await db.query(`select santa_raw from public.pools where game = 'slots'`))[0].santa_raw / 1e6 * PRICE;
 await db.query(`update public.pools set rules = $1 where game = 'slots'`, [JSON.stringify({ skimAt: Math.floor(slotsUsd) - 2, skim: 5 })]);
 let wins = 0, won = 0;
-for (const kind of [...Array(10).fill('big'), ...Array(10).fill('spin100')]) {
-  const o = await server.open(me, kind); assert.ok(o.ticket, JSON.stringify(o));
+for (const [kind, bet] of [...Array(10).fill(['big']), ...Array(10).fill(['spin', 1]), ...[0.1, 1, 0.1, 1, 1].map((b) => ['drop', b])]) {
+  const o = await server.open(me, kind, bet); assert.ok(o.ticket, JSON.stringify(o));
   const s = await server.settle(me, o.ticket, newSeed(16)); assert.ok(s.r, JSON.stringify(s));
   if (s.r.pay > 0) { wins++; won += s.r.pay; }
 }
 const queued = await db.query(`select count(*)::int as n, coalesce(sum(amount_raw),0)::bigint as raw from public.payouts where status = 'queued'`);
 const skims = await db.query(`select count(*)::int as n from public.pool_transfers where kind = 'skim'`);
-say(`20 plays; ${wins} paid something ($${won.toFixed(2)} in prizes); ${queued[0].n} payouts queued; ${skims[0].n} skim(s) queued`);
+say(`25 plays (10 Big Hat, 10 Spin, 5 Snowball Drop); ${wins} paid something ($${won.toFixed(2)} in prizes); ${queued[0].n} payouts queued; ${skims[0].n} skim(s) queued`);
 assert.ok(skims[0].n >= 1, 'a skim was queued');
 
 console.log('5. The payout worker sends winnings and skims on the chain');
