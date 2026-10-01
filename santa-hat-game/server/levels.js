@@ -25,6 +25,11 @@ export function createLevels({ db }) {
     if (!countsForLevels(match)) return { counted: [] }; // practice, private rooms: nothing counts (not an error)
     const places = Array.isArray(match.places) ? match.places.slice(0, 8) : [];
     if (!places.some((p) => p === host)) return { error: 'only a player in the match can report it' };
+    // Every account's finish counts toward its match stats (games played, top-3 %: the load screen; supabase/013), once per match.
+    for (let i = 0; i < places.length; i++) {
+      const p = places[i];
+      if (p && UUID.test(String(p))) await db.query('select public.record_match_result($1, $2, $3, $4)', [String(match.id), p, i + 1, places.length]);
+    }
     const counted = [];
     for (let i = 0; i < Math.min(3, places.length); i++) {
       const p = places[i];
@@ -34,5 +39,12 @@ export function createLevels({ db }) {
     }
     return { counted };
   }
-  return { progress, finish };
+  // Public: the load screen's numbers for the players in a room (up to 8 accounts): games played, top-3 %, level, rank points.
+  async function stats(ids) {
+    const list = (Array.isArray(ids) ? ids : []).filter((x) => UUID.test(String(x))).slice(0, 8);
+    if (!list.length) return { players: [] };
+    const rows = await db.query('select * from public.player_stats($1::uuid[])', [list]);
+    return { players: rows.map((r) => ({ id: r.profile_id, games: r.games, top3: r.top3, top3Pct: r.games ? Math.round((r.top3 / r.games) * 100) : 0, level: r.level, rankPoints: r.rank_points })) };
+  }
+  return { progress, finish, stats };
 }

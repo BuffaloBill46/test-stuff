@@ -17,6 +17,7 @@ const fails = async (q, p, why) => { await assert.rejects(() => db.query(q, p), 
 // Before 010: a level-5 player wearing Gilded (as could exist on the live project).
 const goldie = await mk('Goldie', 5, { shirt: 'shirt_red', pants: 'pants_navy', face: 'face_dots', skin: 'skin_2', snow: 'snow_gold' });
 await db.pg.exec(readFileSync(new URL('../../supabase/010_levels.sql', import.meta.url), 'utf8'));
+await db.pg.exec(readFileSync(new URL('../../supabase/013_match_stats.sql', import.meta.url), 'utf8')); // match stats (load screen)
 assert.equal((await db.query(`select avatar->>'snow' as s from public.profiles where id = $1`, [goldie]))[0].s, 'snow_white', 'Gilded user moved to the white snowball');
 assert.equal((await db.query(`select count(*)::int n from public.items where id = 'snow_gold'`))[0].n, 0, 'Gilded is gone');
 await db.query(`select set_config('test.uid', $1, false)`, [goldie]);
@@ -106,5 +107,15 @@ assert.deepEqual((await ask('th', { action: 'finish', match: { id: 'practice-000
 assert.deepEqual((await ask('th', { action: 'finish', match: { id: 'private-0004', auto: false, places: [host] } })).counted, [], 'private rooms count nothing');
 assert.match((await ask('th', { action: 'finish', match: { id: 'x', auto: true, places: [host] } })).error, /bad match id/);
 assert.equal((await ask('', { action: 'progress' })).status, 401, 'progress needs sign-in');
+// Match stats for the load screen (013): every account's finish counts (4th too), once per match; public totals.
+const st = await ask('', { action: 'stats', profiles: [host, guest2, other, 'not-a-uuid'] });
+const byId = Object.fromEntries(st.players.map((x) => [x.id, x]));
+assert.equal(st.status, 200, 'stats are public (no sign-in)');
+assert.deepEqual([byId[host].games, byId[host].top3, byId[host].top3Pct], [1, 1, 100], 'host: 1 game, 1 top-3 (the resent report counted nothing)');
+assert.deepEqual([byId[other].games, byId[other].top3, byId[other].top3Pct], [1, 0, 0], '4th place: a game played, not a top-3');
+assert.ok(byId[host].level >= 1 && 'rankPoints' in byId[host], 'level and rank points included');
+await db.query('set role authenticated');
+await assert.rejects(() => db.query('select * from public.match_results'), undefined, 'the per-match rows are private');
+await db.query('reset role');
 console.log('OK: level actions through the web door: progress; the host\'s Auto match report counts top-3 accounts once (bots, 4th, practice, private, replays: nothing); only a player in the match can report');
 process.exit(0);

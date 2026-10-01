@@ -50,6 +50,9 @@ export function makeHandler(deps) {
     if (body?.action === 'settings') { // public: the game settings (prices, odds, prizes) by version
       try { return reply(origin, 200, await deps.server.settings(Number.isInteger(body.version) ? body.version : undefined)); } catch (e) { return reply(origin, 400, { error: 'unknown settings version' }); }
     }
+    if (body?.action === 'stats' && deps.levels) { // public: the match load screen's numbers for a room's players
+      try { return reply(origin, 200, await deps.levels.stats(body.profiles)); } catch (e) { console.error('stats error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
+    }
     if (body?.action === 'lottery-tickets' && deps.lottery) { // public: a drawn draw's ticket list, to re-check it
       try { const out = await deps.lottery.tickets(body.draw); return reply(origin, out.error ? 400 : 200, out); } catch (e) { console.error('lottery error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
     }
