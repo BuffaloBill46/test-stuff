@@ -3,7 +3,7 @@ import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON
 import { buildPlaza, makeHat, shadowBlob } from './plaza.js';
 import { createSim, K, PHASES, constrain } from './sim.js';
 import { openRoom, accounts, findWallet, gamesBoard } from './net.js';
-import { SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable } from './catalog.js';
+import { SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules } from './catalog.js';
 import { initTabs, avatarCharacter } from './tabs.js';
 import { play as sfx, initSoundButtons } from './sfx.js';
 
@@ -92,7 +92,7 @@ const nameOf = (e) => (e.bot ? BOT_NAMES[botHash(e.id) % BOT_NAMES.length] : (e.
 
 // ---------- referee hand-off
 function becomeHost() {
-  isHost = true; sim = createSim();
+  isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)) }); // each player's snowball rules (Ice Ball etc.)
   if (lastRaw) sim.load(lastRaw);
   room?.setHost(true);
   sim.S.ev.forEach((v) => { lastEv = Math.max(lastEv, v[0]); });
@@ -156,7 +156,7 @@ async function enterRoom(code, quick, opts = {}) {
 
 function startPractice() {
   if (!profile) { me.n = cleanName($('#name')?.value) || me.n; store.set('sq_name', me.n); }
-  practice = true; room = null; roomCode = ''; isHost = true; sim = createSim(); me.j = Date.now(); me.w = false; ctl.ep = -1; snaps = []; lastEv = 0;
+  practice = true; room = null; roomCode = ''; isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)) }); me.j = Date.now(); me.w = false; ctl.ep = -1; snaps = []; lastEv = 0;
   roomMode = null; autoStart = false; sim.S.mode = lobbyMode; closeLobby(); renderChrome();
 }
 
@@ -446,6 +446,7 @@ function draw(v, dt, t) {
   // hat
   const h = v.hat; let hx = h.x, hy = h.y, hz = h.z, rot = null;
   hatShadow.visible = landRing.visible = false;
+  for (const [id, w] of views) { const c = w.mesh.userData.hatMesh; if (c) c.visible = !(h.st === 'head' && h.holder === id); } // a worn cosmetic hat steps aside for the Santa hat
   if (h.st === 'head') { const w = views.get(h.holder); if (w) { hx = w.rx; hz = w.rz; hy = K.HEAD_Y + w.mesh.userData.body.position.y; rot = [0, w.mesh.rotation.y + Math.PI / 2, w.mesh.rotation.z]; } }
   else if (h.st === 'air') {
     const a = Math.min(v.age || 0, 1.2); hx = h.x + h.vx * a; hz = h.z + h.vz * a; hy = Math.max(0.15, h.y + h.vy * a - 0.5 * K.HAT_G * a * a);

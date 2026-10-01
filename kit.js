@@ -395,6 +395,32 @@ const HEADS = {
 export const HEAD_FACES = Object.keys(HEADS);
 
 // Blocky character with separate limbs for a walk cycle.
+// Cosmetic hats and backpacks (catalog.js slots 'hat' and 'pack'). Head top is ~2.1 high; the back is at z ≈ -0.2.
+function hatPieces(shape, color) {
+  if (shape === 'beanie') return [part(new G.IcosahedronGeometry(0.3, 1), color, { pos: [0, 2.0, 0], scale: [1, 0.62, 1], jit: 0.02 }),
+    part(new G.TorusGeometry(0.27, 0.06, 4, 10), C.brim, { pos: [0, 1.95, 0], rot: [Math.PI / 2, 0, 0] }),
+    part(new G.IcosahedronGeometry(0.09, 0), C.brim, { pos: [0, 2.22, 0] })];
+  if (shape === 'earmuffs') return [part(new G.TorusGeometry(0.31, 0.03, 4, 10, Math.PI), C.stoneDark, { pos: [0, 1.86, 0], rot: [0, Math.PI / 2, 0] }),
+    part(new G.IcosahedronGeometry(0.12, 0), color, { pos: [-0.3, 1.84, 0] }), part(new G.IcosahedronGeometry(0.12, 0), color, { pos: [0.3, 1.84, 0] })];
+  if (shape === 'antlers') return [-1, 1].flatMap((sd) => [
+    part(new G.BoxGeometry(0.06, 0.42, 0.06), color, { pos: [sd * 0.17, 2.22, 0], rot: [0, 0, -sd * 0.35] }),
+    part(new G.BoxGeometry(0.05, 0.2, 0.05), color, { pos: [sd * 0.3, 2.3, 0], rot: [0, 0, -sd * 1.0] }),
+    part(new G.BoxGeometry(0.05, 0.18, 0.05), color, { pos: [sd * 0.2, 2.42, 0.02], rot: [0, 0, sd * 0.4] })]);
+  if (shape === 'tophat') return [part(new G.CylinderGeometry(0.36, 0.36, 0.05, 10), color, { pos: [0, 2.04, 0] }),
+    part(new G.CylinderGeometry(0.22, 0.24, 0.42, 10), color, { pos: [0, 2.27, 0] }),
+    part(new G.CylinderGeometry(0.245, 0.245, 0.07, 10), C.hat, { pos: [0, 2.1, 0] })];
+  return [];
+}
+function packPieces(shape, color) {
+  if (shape === 'satchel') return [part(new G.BoxGeometry(0.42, 0.4, 0.16), color, { pos: [0, 1.22, -0.29], jit: 0.02 }),
+    part(new G.BoxGeometry(0.44, 0.12, 0.18), C.woodDark, { pos: [0, 1.38, -0.29] }), part(new G.BoxGeometry(0.08, 0.06, 0.03), C.gold, { pos: [0, 1.3, -0.38] })];
+  if (shape === 'sack') return [part(new G.IcosahedronGeometry(0.34, 1), color, { pos: [0, 1.28, -0.38], scale: [1, 1.15, 0.8], jit: 0.04 }),
+    part(new G.CylinderGeometry(0.06, 0.1, 0.14, 6), C.gold, { pos: [0, 1.66, -0.38] })];
+  if (shape === 'gift') return [part(new G.BoxGeometry(0.46, 0.46, 0.3), color, { pos: [0, 1.25, -0.36] }),
+    part(new G.BoxGeometry(0.08, 0.48, 0.32), C.gold, { pos: [0, 1.25, -0.36] }), part(new G.BoxGeometry(0.48, 0.08, 0.32), C.gold, { pos: [0, 1.25, -0.36] })];
+  return [];
+}
+
 export function character(o = {}) {
   const fullHead = HEADS[o.face];
   const shirt = o.shirt ?? C.hat, pants = o.pants ?? 0x34405e, skin = o.skin ?? C.skin, seed = o.seed ?? 1;
@@ -414,7 +440,11 @@ export function character(o = {}) {
     part(new G.ConeGeometry(0.3, 0.7, 6), o.cap, { pos: [0, 2.3, -0.05], rot: [-0.35, 0, 0], jit: 0.03 }),
     part(new G.TorusGeometry(0.27, 0.07, 4, 8), C.brim, { pos: [0, 2.0, 0], rot: [Math.PI / 2, 0, 0] }),
     part(new G.IcosahedronGeometry(0.09, 0), C.gold, { pos: [0, 2.6, -0.28] }));
+  if (o.pack) bodyParts.push(...packPieces(o.pack.shape, o.pack.color));
   const body = toon(build(bodyParts), 0.03); g.add(body);
+  // The hat is its own mesh (riding on the body's bob) so the game can hide it while this player wears the Santa hat.
+  const hp = o.hat ? hatPieces(o.hat.shape, o.hat.color) : [];
+  const hatMesh = hp.length ? toon(build(hp), 0.025) : null; if (hatMesh) body.add(hatMesh);
   const limb = (w, h, color, x, y, extra = []) => {
     const geo = build([part(new G.BoxGeometry(w, h, w), color, { pos: [0, -h / 2, 0], jit: 0.02 }), ...extra]);
     const m = toon(geo, 0.028); m.position.set(x, y, 0); g.add(m); return m;
@@ -424,7 +454,7 @@ export function character(o = {}) {
   const armR = limb(0.2, 0.66, shirt, 0.42, 1.52, [part(new G.BoxGeometry(0.2, 0.14, 0.2), hands, { pos: [0, -0.72, 0] })]);
   const legL = limb(0.24, 0.84, pants, -0.16, 0.86, [part(new G.BoxGeometry(0.26, 0.14, 0.34), C.woodDark, { pos: [0, -0.8, 0.05] })]);
   const legR = limb(0.24, 0.84, pants, 0.16, 0.86, [part(new G.BoxGeometry(0.26, 0.14, 0.34), C.woodDark, { pos: [0, -0.8, 0.05] })]);
-  g.userData = { armL, armR, legL, legR, body, phase: Math.random() * 6 };
+  g.userData = { armL, armR, legL, legR, body, hatMesh, phase: Math.random() * 6 };
   return g;
 }
 
