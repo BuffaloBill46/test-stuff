@@ -56,6 +56,9 @@ export function renderProgress(profile) {
   const buy = el.querySelector('#pgBuy');
   buy.hidden = price === null; // levels above 5 are earned, not bought
   if (price !== null) buy.textContent = `Buy level ${pl.level + 1} · $${price.toFixed(2)} · payments open soon`;
+  // the free way to the same level, with the count so far (Auto match top-3 finishes; guests: sign in to count them)
+  const or = el.querySelector('#pgOr'); or.hidden = price === null;
+  if (price !== null) { or.firstChild.textContent = `or win ${pl.need} matches top 3 or better `; el.querySelector('#pgOrN').textContent = `${pl.xp} / ${pl.need}`; }
 }
 // Put a special in a slot; if it was already in another slot it MOVES (the same special can't fill two slots; database 012).
 function withSpecial(a, slot, id) { for (const s of SB_SLOTS) if (s !== slot && a[s] === id && id !== 'sb_none') a[s] = 'sb_none'; a[slot] = id; return a; }

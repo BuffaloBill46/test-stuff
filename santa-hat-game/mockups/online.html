@@ -190,6 +190,9 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 .progress .pgside { display: grid; gap: 6px; }
 .progress .pgside div { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
 .progress .pgside i { color: var(--dim); font-style: normal; } .progress .pgside b { text-align: right; }
+/* Under Buy level: the free way up, with how far along you are (Cody, 2026-10-01). */
+#progress .pgor { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0; font-size: 14px; color: var(--dim); }
+.progress .pgor b { font: 700 15px/1 var(--digits); font-variant-numeric: tabular-nums; color: var(--lamp); white-space: nowrap; }
 @media (max-width: 640px) { .progress { grid-template-columns: auto minmax(0, 1fr); } .progress .pgside { grid-column: 1 / -1; } }
 .modes3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .mode { padding: 14px 16px 16px; display: flex; flex-direction: column; background: rgba(27,35,68,.94); }
@@ -607,6 +610,7 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
         <div><i>Season pass</i><b>Coming soon</b></div>
         <div><i>Rank points</i><b id="pgPts">—</b></div>
         <button class="sec" id="pgBuy" disabled>Buy level 2 · $1.00</button>
+        <p class="pgor" id="pgOr">or win 5 matches top 3 or better <b id="pgOrN">0 / 5</b></p>
       </div>
     </section>
     <div class="modes3">
