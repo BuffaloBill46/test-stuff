@@ -2,7 +2,16 @@
 
 Kept up to date as things get done. Details for lobbies, economy and open questions live in `DESIGN_NOTES.md`.
 
-## Waiting on Cody (settings only Cody can change)
+## Launch checklist (2026-10-01): what stands between today and real SANTA on the Games tab
+Details are in the sections below and in FOR_MAIN_CLAUDE.md. "Main Claude" = the session with wallets and live access.
+1. **Cody:** legal check of the paid games (see RESEARCH.md → "Other things that would help"), pool + treasury wallets, Supabase settings.
+2. **Main Claude:** devnet test token + pool wallets; apply `005` + `007`; deploy the Edge Function and set its secrets; check the visitor-address header.
+3. **Main Claude:** real wallet payment in the page (`window.santaPay`); then make server mode the default on the Games tab.
+4. **Main Claude:** payout worker, skim sending and the reconciliation check on a schedule; the emergency-withdrawal transfer.
+5. **Everyone:** the dress rehearsal on devnet, end to end; then real phones (Phantom sign-in, feel).
+6. **Publish** the site (`deploy-pages.sh`; the admin screen's bot box isn't live yet).
+Not needed for that launch: ranked (tickets, referee server, matchmaking), levels, lottery, store purchases, wager, tournaments.
+
 - [ ] **Turn on Solana sign-in:** Supabase → Authentication → Sign In / Providers → Web3 Wallet → Solana.
 - [ ] **Set sign-in addresses:** Supabase → Authentication → URL Configuration. Site URL `https://buffalobill46.github.io/test-stuff/`, Redirect URL `https://buffalobill46.github.io/test-stuff/**`.
 - [ ] **Email service so friends get sign-in emails:** connect Resend (free tier) to one of Cody's GoDaddy domains, then paste its SMTP settings into Supabase. Until then, email sign-in only reaches Supabase team members.

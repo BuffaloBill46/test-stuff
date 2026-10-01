@@ -246,6 +246,8 @@ Logic: `mockups/settings.js`. New item SHAPES (not colours) still need code.
 7. Whether to build a free daily spin (it costs real money from the Spin pool; with runs it would be a free run of 1 a day).
 8. Which new click game to build next (Present Pick, Hat Drop, …) and its odds.
 9. The "What's SANTA?" wording (`WHATS_SANTA.md`), and where it goes on the site.
+10. Which always-on server to sign up for (real money; options and prices in RESEARCH.md, Claude's pick: Fly.io).
+11. A lawyer's check of the paid games before real money (RESEARCH.md → "Other things that would help").
 
 **Next big step:** connect the Games page to the Edge Function instead of the in-browser stand-in (`house.js`), apply `005`,
 deploy the function. Before real money: Cody's pool wallets (real money), Solana sign-in turned on, a payout worker (sends

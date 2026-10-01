@@ -101,3 +101,38 @@ sounds make players remember them as wins. Research (Dixon et al.) shows players
 **Provably fair.** The server commits to a hidden seed (publishes its hash), mixes in the player's seed and a counter,
 and derives the reel stops from them. Afterwards anyone can re-run it and check.
 ([provablysmart](https://provablysmart.com/provably-fair-server-seed-client-seed-nonce/), [DeucesCracked](https://www.deucescracked.com/crypto-gambling/casino/provably-fair))
+
+## Always-on game servers, and other services that would help (researched 2026-10-01)
+
+Prices change often: check the provider's page at sign-up. **Signing up for any of these is real money: Cody's call.**
+What the server has to do: run the multiplayer referee for Snowball Square (WebSockets, ~10 updates a second, rooms of up
+to 8) and, later, the paid games instead of the Edge Function (then the speed limit's counts move into its memory:
+`server/ratelimit.js`). Both are plain Node.js, so any host that runs Node.js all the time works.
+
+| Host | Cheapest always-on | Good | Watch out for |
+|---|---|---|---|
+| **Fly.io** (Claude's pick) | shared-cpu-1x 256 MB **$1.94/mo**, 512 MB **$3.89**, 1 GB **$7.78**; data out $0.02/GB (N. America/Europe) | Managed (no server upkeep), regions near players, secrets store, cheap bandwidth | Pay-as-you-go, no free tier; `fly launch` can start 2 machines, so run ONE (the memory speed limit needs a single program) |
+| **DigitalOcean Droplet** | **$4/mo** (512 MB, 500 GB data), **$6/mo** (1 GB, 1 TB data) | Flat, predictable bill; US regions | A whole small server to keep updated (Claude can set it up; it still needs patching) |
+| **Hetzner Cloud** | EU: CX23 **€5.49/mo** (2 vCPU, 4 GB, 20 TB data): best value | Most server for the money | US regions are pricier and sources disagree on the US price; EU is ~80–120 ms from US players |
+| **Railway** | Hobby **$5/mo** incl. $5 usage; ~$10 per GB of memory a month, data out $0.05/GB | Easiest deploys (from GitHub), never sleeps | Usage bill; bandwidth costs more than Fly |
+| **Render** | Free tier **sleeps after 15 min idle** (no good for a game); paid plans not confirmed (their page didn't load) | Simple | Free tier unusable here |
+| **Colyseus Cloud** | from **$15/mo** | Built for multiplayer games (rooms, matchmaking) | Over budget, and our networking would be rewritten around Colyseus |
+| **Cloudflare Durable Objects** | Workers Paid **$5/mo** base | One object per room fits our design | Not plain Node.js (rewrite); a room with a live game loop is billed while it runs |
+
+Sources: fly.io/pricing, railway.com/pricing, render.com/docs/free, digitalocean.com/pricing/droplets, costgoat.com/pricing/hetzner,
+colyseus.io/pricing, developers.cloudflare.com/workers/platform/pricing (all read 2026-10-01).
+
+### Other things that would help
+- **A gaming lawyer before real money (most important).** Spin, Big Hat and Snowball Drop take SANTA for a chance at a SANTA
+  prize: prize + chance + payment is how most places define gambling. US states are actively banning sweepstakes-style casino
+  games (14 states as of July 2026; California's AB 831 from 2026-01-01 also reaches those who promote them). Likely needs:
+  terms, an age gate, blocking some locations. RESEARCH.md said this from the start; it's still open. (Not legal advice.)
+- **Helius** (Solana connection, Cody already has it): free plan 1M credits a month, 10 requests a second: enough for the devnet
+  test; Developer $49/mo for launch traffic.
+- **Squads multisig** for the treasury and the emergency-withdrawal safe wallet: money moves only with more than one approval.
+  Basic is a one-time 0.05 SOL (not for the pool wallets: their payouts are automatic).
+- **Cloudflare Turnstile**: free, usually invisible "are you human" check; could guard Buy. Pairs with the speed limit and bot signals.
+- **Sentry**: error alerts; free plan 5,000 errors a month.
+- **Uptime monitor** (tells Cody when the server is down): UptimeRobot's free plan no longer allows commercial use; Solo is ~$7/mo.
+- **Turnkey** (pool keys in secure hardware instead of a server secret): 25 free signatures a month, then $0.10 each: too
+  costly per payout for now. Keeping pool wallets small (the top-off design) is the cheaper protection.
