@@ -14,9 +14,10 @@
 // chain = { sign(payout) → { signature, tx, blockhash }, send(tx), status(signature, blockhash) → 'landed'|'pending'|'expired'|'failed' }
 export const MAX_ATTEMPTS = 5;
 
-// table: 'payouts' (winners) or 'pool_transfers' (skims, and top-offs once approved). Same rules for both.
+// table: 'payouts' (winners), 'pool_transfers' (skims, and top-offs once approved) or 'lottery_payouts' (lottery
+// winners and refunds, when the lottery pays automatically). Same rules for all.
 export async function runPayouts({ db, chain, limit = 20, table = 'payouts' }) {
-  const T = { payouts: 'public.payouts', pool_transfers: 'public.pool_transfers' }[table];
+  const T = { payouts: 'public.payouts', pool_transfers: 'public.pool_transfers', lottery_payouts: 'public.lottery_payouts' }[table];
   if (!T) throw new Error('unknown table ' + table);
   const report = { sent: 0, pending: 0, resigned: 0, failed: 0 };
   // Recover anything a previous run left half-done.
@@ -39,7 +40,9 @@ export async function runPayouts({ db, chain, limit = 20, table = 'payouts' }) {
   async function signAndSend(p) {
     if (p.attempts >= MAX_ATTEMPTS) { await db.query(`update ${T} set status = 'failed' where id = $1`, [p.id]); report.failed++; return; }
     const s = await chain.sign(p);
-    const clash = await db.query(`select 1 from public.payouts where tx = $1 union all select 1 from public.pool_transfers where tx = $1`, [s.signature]);
+    // every money table that exists here (the lottery's only once supabase/011 is applied): one transaction, one row, anywhere
+    const tables = (await db.query(`select t from unnest(array['public.payouts', 'public.pool_transfers', 'public.lottery_payouts']) t where to_regclass(t) is not null`)).map((r) => r.t);
+    const clash = await db.query(tables.map((t) => `select 1 from ${t} where tx = $1`).join(' union all '), [s.signature]);
     if (clash.length) throw new Error(`payout ${table} #${p.id} built the same transaction as another one: the chain adapter must add a unique memo`);
     // Save it ONLY if the row still holds the transaction we saw when we decided to sign (none, or the expired one). If
     // another worker got there first (two scheduled runs overlapping), it owns this payout now: we must not send ours.
