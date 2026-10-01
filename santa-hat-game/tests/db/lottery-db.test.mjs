@@ -54,6 +54,8 @@ await db.query('set role authenticated');
 await assert.rejects(() => db.query('select secret from public.lottery_draws'), undefined, 'the website can\'t read the draws table');
 await assert.rejects(() => db.query('select * from public.lottery_buys'), undefined, 'nor full wallets of buyers');
 assert.ok((await db.query('select * from public.lottery_ticket_list')).length >= 4, 'the public ticket list (shortened wallets) is readable');
+await assert.rejects(() => db.query('update public.lottery_public set pot_raw = 1'), undefined, 'the public draw view is read-only (AUDIT #11)');
+await assert.rejects(() => db.query('delete from public.lottery_ticket_list'), undefined, 'so is the public ticket list');
 await db.query('reset role');
 assert.equal((await lot.buy(A.id, bought[0].q.id, bought[0].sig)).error, 'quote already used', 'a payment buys once');
 

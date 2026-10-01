@@ -81,6 +81,8 @@ create view public.lottery_public as
 create view public.lottery_ticket_list as
   select draw_id, first_no, n, left(wallet, 4) || '…' || right(wallet, 4) as wallet_short from public.lottery_buys;
 grant select on public.lottery_public, public.lottery_ticket_list to anon, authenticated;
+-- READ only: Supabase gives anon/signed-in users ALL rights on new views, and a simple view can be written THROUGH (AUDIT #11).
+revoke insert, update, delete, truncate, references, trigger on public.lottery_public, public.lottery_ticket_list from anon, authenticated;
 
 -- Server-only functions ------------------------------------------------------------------------
 -- A confirmed ticket payment: numbers the tickets in its draw and adds what ARRIVED to that draw's pot. If the quote's draw has
