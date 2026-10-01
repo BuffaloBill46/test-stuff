@@ -2,7 +2,7 @@
 // odds, a $2 big spin and a new store item. The page must draw them all, and plays must land and re-check on the new odds.
 // (Same harness as server-mode-test.mjs.) Originally: the real game server steps (server/games.js) behind the real web door
 // (server/http.js, the same code the Edge Function runs) on real Postgres (PGlite) with the real 001–005 SQL.
-// The page gets its credits from the server, plays through it, lands the reels on the server's result, and re-checks it.
+// The page buys a run through the server, plays it, lands the reels on the server's result, and re-checks it.
 // Needs: npm install in tests/db (PGlite) and here. Wallet payments are NOT part of this (no wallet here; FOR_MAIN_CLAUDE.md).
 import { createRequire } from 'module'; import { readFileSync, existsSync } from 'fs'; import { execSync } from 'child_process'; import path from 'path'; import http from 'http';
 const require = createRequire(import.meta.url);
@@ -32,11 +32,14 @@ const txs = new Map();
 const { createAdmin, adminMessage, b58encode } = await import('../../server/admin.js');
 const { DEFAULT_SETTINGS, build } = await import('../../mockups/settings.js');
 const server = createGameServer({ db, chain: { getTransaction: async (s) => txs.get(s) ?? null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: POOLS });
-// Buy 3 Big Hat pulls the normal way (quote → a finalized payment → buy); the payment is a stand-in since there's no wallet here.
-const q = await server.quote(me, 'big', 3), sp = splitPayment(q.santaRaw, 1000, FEE), b = (i, o, a) => ({ accountIndex: i, mint: MINT, owner: o, uiTokenAmount: { amount: String(a) } });
-txs.set(S('1'), { blockTime: Math.floor(Date.now() / 1000), meta: { err: null, innerInstructions: [], preTokenBalances: [b(1, PLAYER, 1e13), b(2, POOLS.slots, 1e12)], postTokenBalances: [b(1, PLAYER, 1e13 - q.santaRaw), b(2, POOLS.slots, 1e12 + sp.arrives)] },
-  transaction: { message: { accountKeys: [{ pubkey: PLAYER, signer: true }], instructions: [{ program: 'spl-token', parsed: { type: 'burnChecked', info: { mint: MINT, authority: PLAYER, tokenAmount: { amount: String(sp.burn) } } } }] } } });
-check((await server.buy(me, q.id, S('1'))).ok, 'test purchase');
+// The stand-in wallet (as in server-mode-test.mjs): it "sends" the payment the page asks for and returns its signature.
+let paid = 0;
+function payFor(q) {
+  const sig = S('Pay' + 'abcdefgh'[paid++]), sp = splitPayment(q.santaRaw, 1000, FEE), b = (i, o, a) => ({ accountIndex: i, mint: MINT, owner: o, uiTokenAmount: { amount: String(a) } });
+  txs.set(sig, { blockTime: Math.floor(Date.now() / 1000), meta: { err: null, innerInstructions: [], preTokenBalances: [b(1, PLAYER, 1e13), b(2, q.pool, 1e12)], postTokenBalances: [b(1, PLAYER, 1e13 - q.santaRaw), b(2, q.pool, 1e12 + sp.arrives)] },
+    transaction: { message: { accountKeys: [{ pubkey: PLAYER, signer: true }], instructions: [{ program: 'spl-token', parsed: { type: 'burnChecked', info: { mint: MINT, authority: PLAYER, tokenAmount: { amount: String(sp.burn) } } } }] } } });
+  return sig;
+}
 // Cody publishes settings v1 (signed with a stand-in admin key, through the real admin code).
 const akey = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign', 'verify']), aaddr = b58encode(new Uint8Array(await crypto.subtle.exportKey('raw', akey.publicKey)));
 const adminSrv = createAdmin({ db, adminWallets: [aaddr], onSettings: () => server.settingsChanged() });
@@ -47,7 +50,7 @@ V1.big.counts = { ...V1.big.counts, hat: 9, coal: 24 }; V1.store.items = [{ id: 
   const sig = [...new Uint8Array(await crypto.subtle.sign('Ed25519', akey.privateKey, new TextEncoder().encode(message)))].map((x) => x.toString(16).padStart(2, '0')).join('');
   const r = await adminSrv.run({ wallet: aaddr, message, signature: sig }); check(r.ok, 'publish v1: ' + r.error); }
 const M1 = build(V1).machine;
-const handle = makeHandler({ server, profileFor: async (t) => (t === 'test-token' ? me : null), credits: (p) => db.query('select kind, left_n from public.credits where profile_id = $1', [p]) });
+const handle = makeHandler({ server, profileFor: async (t) => (t === 'test-token' ? me : null) });
 // One local address serves the page AND the game server (like the real site + Edge Function, both https in real life).
 const web = http.createServer(async (req, res) => {
   if (req.method === 'GET') { const pth = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]).replace(/^\//, '') || 'online.html');
@@ -71,12 +74,12 @@ const p = await ctx.newPage(); p.on('pageerror', (e) => errors.push(e.message));
 // Someone else's big win, already settled on the server: it must show in this player's Recent winners list.
 const other = (await db.query('insert into auth.users default values returning id'))[0].id;
 await db.query(`insert into public.profiles (id, wallet, name, avatar) values ($1, 'THEMwa11et11111111111111111111111111111111', 'Rudolph', '{}')`, [other]);
-await db.query(`insert into public.plays (profile_id, kind, play_no, state, commit, secret, player_seed, result, pay, bet, settled_at) values ($1, 'spin', 1, 'settled', $2, 's', 'p', '{"mult":5}', 5, 1, now())`, [other, 'f'.repeat(64)]);
+const rq = (await db.query(`insert into public.quotes (profile_id, kind, n, bet, usd, santa_raw, price_usd) values ($1, 'spin', 1, 1, 1, 1, 0.00085) returning id`, [other]))[0].id;
+const rrun = (await db.query(`select public.buy_run($1, $2, 1, 0, 0, 0) as id`, [rq, 'RUDOLPH' + '5'.repeat(81)]))[0].id;
+await db.query(`update public.plays set state = 'settled', commit = $2, secret = 's', player_seed = 'p', result = '{"mult":5}', pay = 5, settled_at = now() where run_id = $1`, [rrun, 'f'.repeat(64)]);
 await p.goto('http://localhost:8787/online.html?net=local&server=' + encodeURIComponent('http://localhost:8787/api') + '&token=test-token', { timeout: 90000 });
 await p.waitForFunction(() => window.__sq, null, { timeout: 60000 });
 await p.evaluate(() => document.querySelector('#t-games').click()); await p.waitForFunction(() => window.__slots, null, { timeout: 90000 });
-await p.waitForFunction(() => document.querySelector('#crBig').textContent === '3', null, { timeout: 15000 }).catch(() => {});
-check(await p.textContent('#crBig') === '3', `the page shows the server's 3 pulls, got ${await p.textContent('#crBig')}`);
 await p.waitForFunction(() => /Rudolph/.test(document.querySelector('#winList')?.textContent || ''), null, { timeout: 15000 }).catch(() => {});
 const winText = (await p.textContent('#winList')).replace(/\s+/g, ' ');
 check(/Rudolph/.test(winText) && /\$5\.00/.test(winText) && /5×/.test(winText), `another player's win shows in the shared list: "${winText.slice(0, 120)}"`);
@@ -89,29 +92,34 @@ check(await p.evaluate(() => window.__spin.SLICES && window.__spin.view.shownMul
 await p.evaluate(() => document.querySelector('#t-store').click()); await p.waitForTimeout(1500);
 check(/Mint/.test(await p.textContent('#carousels')) && /\$0\.30/.test(await p.textContent('#carousels')), 'the new Mint shirt is in the store at $0.30');
 await p.evaluate(() => document.querySelector('#t-games').click()); await p.waitForTimeout(800);
-const shown = [];
-for (let i = 0; i < 3; i++) {
-  await p.evaluate(() => document.querySelector('.machine .pull').click()); await p.waitForTimeout(400);
-  await p.waitForFunction(() => !window.__slots.busy, null, { timeout: 90000 });
-  const proof = await p.evaluate(() => window.__credits.last.big);
-  const row = (await db.query('select state, result, commit, secret from public.plays where profile_id = $1 order by id desc limit 1', [me]))[0];
-  check(row.state === 'settled' && row.commit === proof.commit && row.secret === proof.secret && proof.settingsVersion === 1, `pull ${i + 1}: the page's proof is the server's play, on settings v1`);
-  if (!row.result.jackpot) {
-    const { gridFor, MACHINES } = await import('../../mockups/slots.js');
-    const grid = gridFor(M1, row.result.stops), onScreen = await p.evaluate(() => window.__slots.view.shown());
-    check(JSON.stringify(grid) === JSON.stringify(onScreen), `pull ${i + 1}: the reels show exactly the server's stops`);
-  }
-  shown.push(await p.textContent('.machine .res'));
+// A run of 5 pulls through the server, on settings v1: every play lands and re-checks on the new reels.
+await p.exposeFunction('testPay', (q) => payFor(q));
+await p.evaluate(() => { window.santaPay = (q) => window.testPay(q); });
+await p.evaluate(() => document.querySelector('#slots [data-run="5"]').click());
+await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
+await p.evaluate(() => document.querySelector('#buyGo').click());
+await p.waitForFunction(() => window.__slots.busy, null, { timeout: 15000 }).catch(() => {});
+await p.waitForTimeout(800); await p.evaluate(() => document.querySelector('#slots .skip:not([hidden])')?.click());
+await p.waitForFunction(() => !window.__slots.busy, null, { timeout: 400000 });
+const shown = [await p.textContent('.machine .res')];
+const run = (await db.query('select * from public.runs where profile_id = $1 order by id desc limit 1', [me]))[0];
+check(run && run.n === 5 && run.paid_at && run.settings_version === 1, 'the run of 5 was bought and finished on settings v1');
+const rows = await db.query('select state, result, commit, secret, settings_version from public.plays where run_id = $1 order by play_no', [run.id]);
+check(rows.length === 5 && rows.every((x) => x.state === 'settled'), 'all 5 plays settled');
+const proof = await p.evaluate(() => window.__credits.last.big);
+check(rows.at(-1).commit === proof.commit && rows.at(-1).secret === proof.secret && proof.settingsVersion === 1, "the page's proof is the server's last play, on settings v1");
+if (!rows.at(-1).result.jackpot) {
+  const { gridFor } = await import('../../mockups/slots.js');
+  check(JSON.stringify(gridFor(M1, rows.at(-1).result.stops)) === JSON.stringify(await p.evaluate(() => window.__slots.view.shown())), "the reels show exactly the server's stops, on the new reels");
 }
-check(await p.textContent('#crBig') === '0', 'all 3 pulls used, as the server counts them');
 // ("My plays" was removed, Cody 2026-09-30: players don't need their history; every play stays in the backend log.)
 check(!(await p.$('#myPlays')), 'no My plays section');
 await p.evaluate(() => document.querySelector('[data-proof="big"]').click()); await p.evaluate(() => document.querySelector('#proofCheck').click());
 await p.waitForFunction(() => /atch/.test(document.querySelector('#proofOut').textContent), null, { timeout: 15000 });
 check(/^Matches\./.test(await p.textContent('#proofOut')), 'Check this result matches the server\'s revealed secret');
 await p.evaluate(() => document.querySelector('#proofClose').click());
-// No credits left: the counter opens; with no wallet connected, buying says so plainly (and nothing is charged).
-await p.evaluate(() => document.querySelector('.machine .pull').click()); await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
+// With no wallet connected, buying says so plainly (and nothing is charged).
+await p.evaluate(() => { delete window.santaPay; document.querySelector('#slots [data-run="1"]').click(); }); await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
 await p.evaluate(() => document.querySelector('#buyGo').click());
 await p.waitForFunction(() => /connected yet/.test(document.querySelector('#buyNote').textContent), null, { timeout: 15000 }).catch(() => {});
 check(/Wallet payments aren't connected yet/.test(await p.textContent('#buyNote')), `buy without a wallet: "${await p.textContent('#buyNote')}"`);
