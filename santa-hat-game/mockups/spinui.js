@@ -1,8 +1,9 @@
-// Santa Hat Spin page: bet chips, Spin button, pool readout, odds legend, last-spins strip, full screen.
+// Santa Hat Spin page: size chips, Spin 1 / 5 / 10 (a run that plays straight away), pool readout, odds, last spins, full screen.
 // DEMO ONLY: play money (the same demo balance as Slots) and a demo Spin pool kept in this browser.
 import { SPIN_RULES, MAIN_SLICES, MAIN, BONUS, STAR, odds } from './spin.js';
 import { createWheel, MULT_STYLE } from './spin3d.js';
-import { ready, play, short } from './playcredits.js';
+import { playRun, short } from './playcredits.js';
+import { runSummary } from './runui.js';
 import { play as sfx } from './sfx.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -11,10 +12,10 @@ const cents = (v) => (v < 1 ? Math.round(v * 100) + '¢' : money(v));
 const KEY = 'sh_spin_demo', MAX_HISTORY = 16;
 const store = { get() { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } }, set(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {} } };
 
-let view = null, busy = false, bet = 0.1, wallet = null, addWinner = () => {}, shownPool = 0;
+let view = null, busy = false, fast = false, bet = 0.1, wallet = null, addWinner = () => {}, shownPool = 0;
 const saved = store.get();
 const st = saved && Number.isFinite(saved.pool) ? { treasury: 0, history: [], ...saved } : { pool: SPIN_RULES.start, treasury: 0, history: [] };
-const test = { next: undefined }; // tests only: force the next main segment (0–39), or [main, bonus]
+const test = { run: undefined }; // tests only: the next run's results, one per spin: a main segment (0–39), or [main, bonus]
 const card = () => $('#spin .wheelcard');
 
 function render() {
@@ -34,37 +35,49 @@ function odds_() {
 export const visibleBottom = () => { const t = document.querySelector('#nav .tabs'), r = t?.getBoundingClientRect(); return r && r.top > innerHeight / 2 ? r.top : innerHeight; };
 export function showResult(el) { const r = el.getBoundingClientRect(); if (r.bottom > visibleBottom() || r.top < 0) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
 function stamp(text) { const fl = $('#spin .flash'); fl.textContent = text; fl.classList.remove('show'); void fl.offsetWidth; fl.classList.add('show'); }
-function setBet(b) { bet = b; document.querySelectorAll('#spin .bets button').forEach((x) => x.setAttribute('aria-checked', String(+x.dataset.bet === b))); }
+function setBet(b) {
+  bet = b; document.querySelectorAll('#spin .bets button').forEach((x) => x.setAttribute('aria-checked', String(+x.dataset.bet === b)));
+  const label = (v) => (v < 1 ? Math.round(v * 100) + '¢' : '$' + (Number.isInteger(v) ? v : v.toFixed(2)));
+  document.querySelectorAll('#spin [data-run]').forEach((x) => { $('small', x).textContent = label(Math.round(b * +x.dataset.run * 100) / 100); }); // each button's price
+}
 
-async function doSpin() {
-  if (busy) { view.finishNow(); return; } // tap again: land it now (same slice)
+// A run of n spins at the chosen size: pay once, then each spin plays in turn; winnings are sent at the end (Cody).
+async function startRun(n) {
+  if (busy) return;
+  busy = true; fast = false; setButtons(false);
+  const res = $('#spin .res'), forced = test.run || []; test.run = undefined;
+  try {
+    const out = await playRun('spin', bet, n, showOne, forced);
+    if (out) { res.innerHTML = runSummary(out, 'spin', 'spins'); showResult(res); }
+  } finally { busy = false; fast = false; setButtons(true); $('#runSpin').textContent = ''; }
+}
+function setButtons(on) { document.querySelectorAll('#spin [data-run], #spin .bets button').forEach((b) => { b.disabled = !on; }); $('#spin .skip').hidden = on; }
+// One spin of the run, animated: the wheel lands exactly on the segment the draw picked.
+async function showOne(p, i, n) {
   const res = $('#spin .res');
-  if (!(await ready('spin', bet)) || busy) return; // not enough Spin balance for this size: the buy counter opens first
-  busy = true;
-  const forced = test.next; test.next = undefined;
-  const p = await play('spin', forced, bet); // the house: pool check, spend a spin, lock the secret, draw (house.js)
-  if (!p.r) { busy = false; res.textContent = p.failed ? `Couldn't spin (${p.why}). Your spin is still on your account.` : p.refused ? (p.stopped ? 'Spin is paused right now. Your spin stays on your account.' : 'The Spin pool is refilling. Try again in a moment; your spin is kept.') : 'No spins left.'; return; }
+  $('#runSpin').innerHTML = `Spin <b>${i + 1}</b> of <b>${n}</b>`;
+  if (!p.r) { res.textContent = p.refunded ? `Spin ${i + 1} couldn't play (${p.stopped ? 'Spin is paused' : p.why || 'the pool is refilling'}): its ${cents(p.refunded)} comes back with your winnings.` : `Couldn't spin (${p.why}).`; return; }
   const r = p.r;
   card().classList.remove('won', 'jackpot'); $('#spin .flash').classList.remove('show');
-  store.set(st);
-  res.textContent = `Spinning… result locked (${short(p.commit)}). Tap again to land it early.`;
+  res.textContent = `Spinning… result locked (${short(p.proof.commit)}).`;
+  const land = async (slice, info) => { const go = view.spinTo(slice, info); if (fast) view.finishNow(); await go; };
   if (view.mode !== 'main') await view.flipTo('main');
   if (r.bonusSlice !== undefined) { // a gold star: the wheel turns round to its bonus face and spins again
-    await view.spinTo(r.slice, { star: true });
+    await land(r.slice, { star: true });
     sfx('smallWin'); stamp('★ BONUS'); res.textContent = 'Gold star! Spinning the bonus wheel: 3×, 4× or 5×.';
-    await view.flipTo('bonus'); await view.spinTo(r.bonusSlice, r);
-  } else await view.spinTo(r.slice, r);
-  if (p.server) { st.pool = p.poolUsd; shownPool = st.pool; } // the server's pool; winnings go out as a real payout
-  else { shownPool = st.pool; wallet.add(r.received); }
+    await view.flipTo('bonus'); await land(r.bonusSlice, r);
+  } else await land(r.slice, r);
+  if (p.poolUsd !== undefined) st.pool = p.poolUsd; // server mode: the server's pool
+  shownPool = st.pool;
   st.history.unshift(r.mult); st.history.length = Math.min(st.history.length, MAX_HISTORY);
   if (r.mult >= 2) { // a real win: more back than the spin cost
     sfx(r.mult >= 4 ? 'bigWin' : 'smallWin'); card().classList.add(r.mult >= 5 ? 'jackpot' : 'won'); stamp(r.mult >= 5 ? '5× !' : `${r.mult}× WIN`);
-    res.innerHTML = `<b>${r.mult}× win!</b> ${money(r.pay)} <span class="dim">· you get ${money(r.received)} after the 3% tax</span>`;
-    addWinner(bet >= 1 ? 'spin100' : 'spin10', r.pay, bet, `${r.mult}×`);
-  } else if (r.mult === 1) res.innerHTML = `<span class="dim">Money back, less SANTA's 3% tax: you get ${money(r.received)}.</span>`;
+    res.innerHTML = `<b>${r.mult}× win!</b> ${money(r.pay)}`;
+    addWinner(r.bet >= 1 ? 'spin100' : 'spin10', r.pay, r.bet, `${r.mult}×`);
+  } else if (r.mult === 1) res.innerHTML = `<span class="dim">Money back: ${money(r.pay)}.</span>`;
   else res.textContent = 'No win this time.';
-  store.set(st); render(); busy = false;
-  showResult(res);
+  store.set(st); render();
+  if (i < n - 1 && !fast) await new Promise((x) => setTimeout(x, 450)); // a breath between spins
 }
 
 function toggleFull() {
@@ -80,8 +93,9 @@ export function initSpin(opts) {
   if (inited) return; inited = true;
   wallet = opts.wallet; addWinner = opts.addWinner || addWinner; shownPool = st.pool;
   view = createWheel($('#spin canvas'));
-  $('#spin .spinbtn').addEventListener('click', doSpin);
-  $('#spin canvas').addEventListener('click', doSpin);
+  document.querySelectorAll('#spin [data-run]').forEach((b) => b.addEventListener('click', () => startRun(+b.dataset.run)));
+  $('#spin .skip').addEventListener('click', () => { fast = true; view.finishNow(); });
+  $('#spin canvas').addEventListener('click', () => { if (busy) view.finishNow(); }); // tap the wheel: land this spin now
   document.querySelectorAll('#spin .bets button').forEach((b) => b.addEventListener('click', () => { if (!busy) setBet(+b.dataset.bet); }));
   $('#spinFs').addEventListener('click', toggleFull);
   // The label follows the browser's own report (entering can take longer than a moment on a busy or slow device).

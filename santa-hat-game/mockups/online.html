@@ -270,12 +270,8 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
 .buydlg { width: min(420px, calc(100vw - 24px)); }
 .buydlg h2 { margin: 2px 0 12px; font: 800 36px/1 var(--display); color: var(--brim); text-shadow: 2px 2px 0 var(--ink); }
 .buydlg p { margin: 10px 0 0; line-height: 1.4; color: #d6ddf0; }
-.counter { display: grid; grid-template-columns: 56px 1fr 56px; align-items: center; gap: 10px; text-align: center; background: var(--ink); border: 2px solid #3a4570; border-radius: 3px; padding: 10px; }
-.counter .sec { font-size: 26px; padding: 8px 0; }
-.counter b { display: block; font: 700 54px/1 var(--digits); color: var(--lamp); }
-.counter span { font-size: 14px; color: var(--dim); }
-.quick { display: flex; gap: 8px; margin-top: 8px; } .quick .sec { flex: 1; font-family: var(--digits); }
-.quick .sec[aria-pressed="true"] { border-color: var(--lamp); color: var(--lamp); }
+.counter { text-align: center; background: var(--ink); border: 2px solid #3a4570; border-radius: 3px; padding: 12px 10px; }
+.counter b { display: block; font: 700 28px/1.1 var(--digits); color: var(--lamp); }
 .livechip { margin-top: 8px !important; font-size: 15px !important; } .livechip b { font: 700 15px/1 var(--digits); color: var(--lamp); } .livechip .warn { color: #ff7a6e; }
 .buysanta b { font: 700 16px/1 var(--digits); color: var(--lamp); }
 .warnline { color: #ff7a6e !important; min-height: 1.2em; font-size: 14px; }
@@ -474,6 +470,12 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
   #nav .tabs { gap: 2px; } #nav .tabs button { padding: 8px 8px; }
   #tixchip { display: none; }
 }
+/* Runs (Cody, 2026-10-01): three buy-and-play buttons per game, the count big and the price under it. */
+.runbtns { display: flex; gap: 8px; flex-wrap: wrap; }
+.runbtns .go { flex: 1 1 0; min-width: 84px; display: grid; justify-items: center; gap: 2px; padding: 8px 10px 14px; }
+.runbtns .go b { font: 800 22px/1 var(--display); } .runbtns .go small { font: 700 12px/1 var(--digits); color: var(--brim); opacity: .9; }
+.runbtns .go:disabled { opacity: .5; }
+.runstat { font-size: 14px; color: #d6ddf0; } .runstat b { font: 700 16px/1 var(--digits); color: var(--lamp); }
 /* Snowball Drop: the board is taller than wide (500 × 560), so it doesn't use the wheel's square canvas. */
 .dropcard canvas { aspect-ratio: 500 / 560; max-width: 520px; margin: 4px auto; }
 /* Touch screens: every control at least 44 px tall so thumbs hit it (the tab bar and small buttons were 26–36 px). */
@@ -601,8 +603,9 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
         <div class="jp topline"><span>Top line prize<small>5 Santa Hats in a row on a line</small></span><b id="topAmt">$100.00</b></div>
         <div class="screen"><canvas aria-label="Big Hat slot machine, 5 by 5 reels"></canvas><div class="flash" aria-hidden="true"></div>
           <button class="sec howbtn" id="howBtn" type="button">How to win · examples &amp; win table</button></div>
-        <div class="pullrow"><button class="go pull">Pull</button><output class="res" aria-live="polite">Pull the pom-pom, or tap the machine. Tap again to stop the reels early.</output>
-          <div class="credrow"><span class="cred"><b id="crBig">0</b> <span id="crBigWhat">Big Hat pulls</span> left</span><button class="sec" type="button" data-buy="big">Buy 1–10</button><button class="sec" type="button" data-proof="big" hidden>Check last result</button></div></div>
+        <div class="pullrow"><div class="runbtns" role="group" aria-label="Buy and play"><button class="go pull" data-run="1"><b>Pull 1</b><small>$1</small></button><button class="go" data-run="5"><b>Pull 5</b><small>$5</small></button><button class="go" data-run="10"><b>Pull 10</b><small>$10</small></button></div>
+          <output class="res" aria-live="polite">Pick 1, 5 or 10 pulls: they play straight away, and anything you win is sent to your wallet at the end.</output>
+          <div class="credrow"><span class="cred runstat" id="runBig"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="big" hidden>Check last result</button></div></div>
         <ul class="facts"></ul>
       </article>
       <details class="paytable"><summary>Paytable <span class="dim">· draft, payouts not final</span></summary><div id="payRows"></div>
@@ -622,8 +625,9 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
           <button class="chip100" role="radio" aria-checked="false" data-bet="1"><b>$1</b><small>win up to $5</small></button>
         </div>
         <div class="screen"><canvas aria-label="Santa Hat prize wheel"></canvas><div class="flash" aria-hidden="true"></div></div>
-        <div class="pullrow"><button class="go spinbtn">Spin</button><output class="res" aria-live="polite">Pick 10¢ or $1, then spin. Both come out of your Spin balance. Tap again to land it early.</output>
-          <div class="credrow"><span class="cred"><b id="crSpin">$0.00</b> <span id="crSpinWhat">Spin balance</span></span><button class="sec" type="button" data-buy="spin">Add $1–$10</button><button class="sec" type="button" data-proof="spin" hidden>Check last result</button></div></div>
+        <div class="pullrow"><div class="runbtns" role="group" aria-label="Buy and play"><button class="go spinbtn" data-run="1"><b>Spin 1</b><small>10¢</small></button><button class="go" data-run="5"><b>Spin 5</b><small>50¢</small></button><button class="go" data-run="10"><b>Spin 10</b><small>$1</small></button></div>
+          <output class="res" aria-live="polite">Pick 10¢ or $1, then 1, 5 or 10 spins: they play straight away, and anything you win is sent to your wallet at the end.</output>
+          <div class="credrow"><span class="cred runstat" id="runSpin"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="spin" hidden>Check last result</button></div></div>
         <div class="oddsbox"><h4>What's on the wheel</h4><ul class="oddslist" id="oddsList"></ul></div>
         <div class="history"><h4>Your last spins</h4><ol id="spinHistory"></ol></div>
       </article>
@@ -640,19 +644,18 @@ p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fon
           <button role="radio" aria-checked="false" data-dbet="1"><b>$1</b><small>win up to $10</small></button>
         </div>
         <div class="screen"><canvas aria-label="Snowball Drop board: tap to drop a snowball"></canvas><div class="flash" aria-hidden="true"></div></div>
-        <div class="pullrow"><button class="go dropbtn">Drop</button><output class="res" aria-live="polite">Pick 10¢ or $1, then drop. Both come out of one balance.</output>
-          <div class="credrow"><span class="cred"><b id="crDrop">$0.00</b> <span>Snowball Drop balance</span></span><button class="sec" type="button" data-buy="drop">Add $1–$10</button><button class="sec" type="button" data-proof="drop" hidden>Check last result</button></div></div>
+        <div class="pullrow"><div class="runbtns" role="group" aria-label="Buy and play"><button class="go dropbtn" data-run="1"><b>Drop 1</b><small>10¢</small></button><button class="go" data-run="5"><b>Drop 5</b><small>50¢</small></button><button class="go" data-run="10"><b>Drop 10</b><small>$1</small></button></div>
+          <output class="res" aria-live="polite">Pick 10¢ or $1, then 1, 5 or 10 snowballs: they drop straight away, and anything you win is sent to your wallet at the end.</output>
+          <div class="credrow"><span class="cred runstat" id="runDrop"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="drop" hidden>Check last result</button></div></div>
         <div class="oddsbox"><h4>What's in the presents</h4><ul class="oddslist" id="dropOdds"></ul></div>
         <div class="history"><h4>Your last drops</h4><ol id="dropHistory"></ol></div>
       </article>
     </section>
     <dialog id="buyDlg" class="plaque howdlg buydlg" aria-labelledby="buyTitle">
-      <div class="eyebrow" id="buyEyebrow">Big Hat · $1.00 a pull</div><h2 id="buyTitle">Buy pulls</h2>
-      <div class="counter"><button class="sec" id="buyMinus" type="button" aria-label="One fewer">−</button>
-        <div><b id="buyCount" aria-live="polite">1</b><span id="buyWhat">Big Hat pull</span></div>
-        <button class="sec" id="buyPlus" type="button" aria-label="One more">+</button></div>
-      <div class="quick" id="buyQuick" role="group" aria-label="Quick picks"><button class="sec" type="button" data-n="1">1</button><button class="sec" type="button" data-n="5">5</button><button class="sec" type="button" data-n="10">10</button></div>
-      <p>One payment in SANTA. 10% is burned and the rest goes into the <b id="buyPool">Slots</b> prize pool right away. Your plays wait on your account: they don't expire and can't be cashed out.</p>
+      <div class="eyebrow" id="buyEyebrow">Big Hat · $1 a pull</div><h2 id="buyTitle">Play 1 pull</h2>
+      <div class="counter"><b id="buyWhat" aria-live="polite">1 × $1 = $1.00</b></div>
+      <p>One payment in SANTA. 10% is burned and the rest goes into the <b id="buyPool">Slots</b> prize pool right away. Your plays
+        start straight away, and when the last one is done everything you won is sent to your wallet automatically. Nothing is kept on an account.</p>
       <p class="buysanta" id="buySanta"></p>
       <p class="dim">Demo: paid from your demo balance. Winnings arrive 3% lighter (SANTA's token tax).</p>
       <p class="warnline" id="buyNote" aria-live="polite"></p>

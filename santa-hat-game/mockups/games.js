@@ -4,7 +4,8 @@ import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount } f
 import { createMachine, symbolImages } from './slots3d.js';
 import { initSpin, showSpin, resetSpin, spinState, refreshSpin, showResult } from './spinui.js';
 import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js';
-import { initCredits, ready, play, short, refresh as refreshCredits, resetCredits, setPrice } from './playcredits.js';
+import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice } from './playcredits.js';
+import { runSummary } from './runui.js';
 import { livePrice, liveFee, santaFor, fmtSanta } from './market.js';
 import { FEE } from './slots.js';
 import { play as sfx } from './sfx.js';
@@ -32,7 +33,7 @@ const saved = store.get();
 const state = saved && Number.isFinite(saved.pool) && Number.isFinite(saved.bal)
   ? { treasury: 0, winners: [], ...saved } : { pool: POOL_RULES.start, bal: DEMO_START, treasury: 0, winners: [] };
 let shownPool = state.pool; // readouts update when the reels land, so a result isn't spoiled early
-const test = { next: undefined }; // tests only: force the next pull ('JACKPOT' or an array of 5 reel stops)
+const test = { run: undefined }; // tests only: the next run's pulls, one each ('JACKPOT' or an array of 5 reel stops)
 
 function render() {
   $('#slotPool').textContent = money(shownPool);
@@ -135,37 +136,45 @@ export function addWinner(game, amount, bet, note) {
 
 function stamp(text) { const fl = $('#slots .machine .flash'); fl.textContent = text; fl.classList.remove('show'); void fl.offsetWidth; fl.classList.add('show'); }
 
-async function doPull() {
-  if (busy) { view.slam(); return; } // tap during a spin: stop the reels early
+// A run of 1, 5 or 10 pulls (Cody, 2026-10-01): pay once, the pulls play one after another, winnings are sent at the end.
+let fast = false;
+async function startRun(n) {
+  if (busy) return;
+  busy = true; fast = false; setButtons(false);
+  const res = $('#slots .machine .res'), forced = test.run || [];
+  test.run = undefined;
+  try {
+    const out = await playRun('big', M.bet, n, showPull, forced);
+    if (out) { res.innerHTML = runSummary(out, 'pull', 'pulls'); showResult(res); }
+  } finally { busy = false; fast = false; setButtons(true); $('#runBig').textContent = ''; }
+}
+function setButtons(on) { document.querySelectorAll('#slots [data-run]').forEach((b) => { b.disabled = !on; }); $('#slots .skip').hidden = on; }
+async function showPull(p, i, n) {
   const card = $('#slots .machine'), res = $('#slots .machine .res');
-  if (!(await ready('big')) || busy) return; // no pulls left: the buy counter opens first
-  busy = true;
-  const forced = test.next; test.next = undefined;
-  const p = await play('big', forced); // the house: pool check, spend a pull, lock the secret, draw (house.js)
-  if (!p.r) { busy = false; res.textContent = p.failed ? `Couldn't pull (${p.why}). Your pull is still on your account.` : p.refused ? (p.stopped ? 'Slots are paused right now. Your pull stays on your account.' : 'The pool is refilling. Try again in a moment; your pull is kept.') : 'No pulls left.'; return; }
+  $('#runBig').innerHTML = `Pull <b>${i + 1}</b> of <b>${n}</b>`;
+  if (!p.r) { res.textContent = p.refunded ? `Pull ${i + 1} couldn't play (${p.stopped ? 'Slots are paused' : p.why || 'the pool is refilling'}): its $1 comes back with your winnings.` : `Couldn't pull (${p.why}).`; return; }
   const r = p.r;
   card.classList.remove('won', 'jackpot'); $('#slots .machine .flash').classList.remove('show');
-  store.set(state);
-  res.textContent = `Spinning… result locked (${short(p.commit)}). Tap again to stop early.`;
-  await view.spin(r.stops, r);
-  if (p.server) { state.pool = p.poolUsd; shownPool = state.pool; } // the server's pool; winnings go out as a real payout
-  else { shownPool = state.pool; state.bal += r.received; }
+  res.textContent = `Spinning… result locked (${short(p.proof.commit)}).`;
+  const go = view.spin(r.stops, r); if (fast) view.slam(); await go;
+  if (p.poolUsd !== undefined) state.pool = p.poolUsd; // server mode: the server's pool
+  shownPool = state.pool;
   const lines = r.wins.length, hatsTxt = r.hats ? `${r.hats} Santa Hat${r.hats > 1 ? 's' : ''} +${money(r.hatPay)}` : '';
   if (r.jackpot) {
     card.classList.add('jackpot'); stamp('JACKPOT!'); sfx('jackpot');
-    res.innerHTML = `<b>POOL JACKPOT!</b> ${money(r.pay)} · you get ${money(r.received)} after the 3% tax`;
+    res.innerHTML = `<b>POOL JACKPOT!</b> ${money(r.pay)}`;
     addWinner('slots', r.pay, M.bet, 'pool jackpot');
   } else if (r.ahead) { // only celebrate when the pull pays more than it cost
     const top = r.wins.some((w) => w.top), big = r.pay >= 10 * M.bet;
     sfx(big || top ? 'bigWin' : 'smallWin'); card.classList.add('won'); stamp(top ? '100×!' : big ? 'BIG WIN ' + money(r.pay) : 'WIN ' + money(r.pay));
     res.innerHTML = `<b>${top ? '5 Santa Hats!' : big ? 'Big win!' : 'Win!'}</b> ${money(r.pay)}` +
-      ` <span class="dim">(${lines} line${lines === 1 ? '' : 's'}${hatsTxt ? ' + ' + hatsTxt : ''}) · you get ${money(r.received)}</span>`;
+      ` <span class="dim">(${lines} line${lines === 1 ? '' : 's'}${hatsTxt ? ' + ' + hatsTxt : ''})</span>`;
     addWinner('slots', r.pay, M.bet, top ? '5 Santa Hats' : lines > 1 ? lines + ' lines' : '');
   } else if (r.pay > 0) {
     res.innerHTML = `<span class="dim">Returned ${money(r.pay)}${hatsTxt ? ' (' + hatsTxt + ')' : ''}. Less than the $1 pull.</span>`;
   } else res.textContent = 'No win this time.';
-  store.set(state); render(); busy = false;
-  showResult(res);
+  store.set(state); render();
+  if (i < n - 1 && !fast) await new Promise((x) => setTimeout(x, 450)); // a breath between pulls
 }
 
 // Full screen: the real Fullscreen API where it works, a fixed overlay where it doesn't (iPhone Safari).
@@ -183,8 +192,9 @@ export async function initGames(opts = {}) {
   // Server mode: draw the machine, wheel and prices from the published settings (Cody's admin screen), not the built-in ones.
   if (SERVER && (await settingsReady)) labelsFromSettings();
   view = createMachine($('#slots .machine canvas'));
-  $('#slots .machine .pull').addEventListener('click', doPull);
-  $('#slots .machine canvas').addEventListener('click', doPull);
+  document.querySelectorAll('#slots [data-run]').forEach((b) => b.addEventListener('click', () => startRun(+b.dataset.run)));
+  $('#slots .skip').addEventListener('click', () => { fast = true; view.slam(); });
+  $('#slots .machine canvas').addEventListener('click', () => { if (busy) view.slam(); }); // tap the machine: stop the reels now
   $('#fsBtn').addEventListener('click', toggleFull);
   $('#howBtn').addEventListener('click', openHow);
   $('#howClose').addEventListener('click', () => $('#howDlg').close?.() ?? $('#howDlg').removeAttribute('open'));
@@ -238,6 +248,7 @@ function labelsFromSettings() {
     const b = $('#spin .' + cls), bet = SIZES.spin[i]; b.dataset.bet = bet; $('b', b).textContent = c(bet); $('small', b).textContent = `win up to ${c(bet * top)}`;
   }
   $('#slots .machine header em').textContent = `${money(M.bet)} a pull · 5×5 · 11 lines`;
+  document.querySelectorAll('#slots [data-run]').forEach((x) => { $('small', x).textContent = c(M.bet * +x.dataset.run); }); // each button's price
   document.querySelectorAll('.hatc').forEach((e) => { e.textContent = c(M.hatBonus * M.bet); }); // the per-hat bonus as published
   $('#spin .wheelcard header em').textContent = `${c(SIZES.spin[0])} or ${c(SIZES.spin[1])} a spin · up to ${top}×`;
 }
