@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Publishes the game to the gh-pages branch (served free by GitHub Pages).
-#   Site root  -> Snowball Square Online
+#   Site root  -> Santa Hat Legends (Snowball Square + Games tab)
 #   /mockups/  -> the four single-player mockups
 set -euo pipefail
 cd "$(dirname "$0")/.."

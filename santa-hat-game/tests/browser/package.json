@@ -1,7 +1,7 @@
 {
   "name": "santa-hat-browser-tests",
   "version": "1.0.0",
-  "description": "Headless browser checks for Santa Hat Arcade. Run from this folder after npm install.",
+  "description": "Headless browser checks for Santa Hat Legends. Run from this folder after npm install.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

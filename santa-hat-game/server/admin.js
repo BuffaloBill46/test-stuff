@@ -35,7 +35,7 @@ const unhex = (h) => new Uint8Array((h.match(/../g) || []).map((x) => parseInt(x
 import { adminMessage } from '../mockups/adminmsg.js';
 export { adminMessage };
 function parse(message) {
-  const lines = message.split('\n'); if (lines[0] !== 'Santa Hat Arcade admin' || lines.length !== 6) return null;
+  const lines = message.split('\n'); if (lines[0] !== 'Santa Hat Legends admin' || lines.length !== 6) return null;
   const get = (i, k) => (lines[i].startsWith(k + ': ') ? lines[i].slice(k.length + 2) : null);
   try { return { action: get(1, 'action'), game: get(2, 'game'), settings: JSON.parse(get(3, 'settings')), at: get(4, 'at'), nonce: get(5, 'nonce') }; } catch { return null; }
 }

@@ -1,4 +1,4 @@
-// Snowball Square Online: lobby, rooms, referee hand-off, smoothing, HUD.
+// Santa Hat Legends (the Snowball Square game): lobby, rooms, referee hand-off, smoothing, HUD.
 import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo } from './kit.js';
 import { buildPlaza, makeHat, shadowBlob } from './plaza.js';
 import { createSim, K, PHASES, constrain } from './sim.js';

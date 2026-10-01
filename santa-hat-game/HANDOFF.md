@@ -6,7 +6,7 @@ It's written so you can take over mid-stream with no other context. **Keep it cu
 
 ## The project in one paragraph
 
-**Santa Hat Arcade** is a free browser game for the Solana token $SANTA (brand site santahat.gold). The
+**Santa Hat Legends** (called Santa Hat Arcade until 2026-10-01) is a free browser game for the Solana token $SANTA (brand site santahat.gold). The
 main game is **Snowball Square**: up to 8 players (real people plus bots) in a snowy low-poly plaza throw
 snowballs and fight over a giant Santa hat, in FFA or TEAM mode. Around it is a small site with tabs:
 **Play** (lobbies, ranked and unranked), **Store** (items priced in USD, paid in SANTA; buying not built

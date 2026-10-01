@@ -1,4 +1,4 @@
-// Room connections for Snowball Square Online.
+// Room connections for Santa Hat Legends (Snowball Square).
 // Supabase Realtime in production; a same-computer BroadcastChannel stand-in for testing (?net=local).
 // Message plan (Supabase counts every delivery): the host sends snapshots on the room channel;
 // each player sends their moves on their own channel, which only the host listens to.
@@ -146,7 +146,7 @@ export function openRoom(code, me, { local = false } = {}) {
 }
 
 // ---------- accounts: Solana wallet sign-in (Supabase Web3 auth) and profiles
-const STATEMENT = 'Sign in to Snowball Square. This only proves you own this wallet: it sends no transaction and costs nothing.';
+const STATEMENT = 'Sign in to Santa Hat Legends. This only proves you own this wallet: it sends no transaction and costs nothing.';
 export const findWallet = () => window.phantom?.solana || window.solflare || window.backpack?.solana || window.solana || null;
 
 function remoteAccounts() {

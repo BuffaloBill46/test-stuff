@@ -1,6 +1,6 @@
 # How Cody + Claude Build Games Together
 
-> **Current project: Santa Hat Arcade.** Before doing anything, read
+> **Current project: Santa Hat Legends** (called Santa Hat Arcade until 2026-10-01). Before doing anything, read
 > `santa-hat-game/HANDOFF.md`. It says where everything is, how to test and
 > publish, what's waiting on Cody, and what's next. Update its "Where we are
 > right now" section at the end of every session.
