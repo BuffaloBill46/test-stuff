@@ -45,11 +45,17 @@ await fails('update public.profiles set xp = 5 where id = $1', [p], 'progress is
 
 // Bought levels: one per payment, $1 $1 $1 then $5, never past 5, progress kept.
 const b = await mk('Bea'); await db.query('update public.profiles set xp = 3 where id = $1', [b]);
-const buy = (sig) => db.query('select public.buy_level($1, $2, 1000) as l', [b, sig]).then((r) => r[0].l);
+const levelOf = async (id) => (await db.query('select level from public.profiles where id = $1', [id]))[0].level;
+const buy = async (sig) => db.query('select public.buy_level($1, $2, 1000, $3) as l', [b, sig, (await levelOf(b)) + 1]).then((r) => r[0].l);
 for (const [i, want] of [[1, 2], [2, 3], [3, 4], [4, 5]]) assert.equal(await buy('payment' + i), want);
-await fails('select public.buy_level($1, $2, 1000)', [b, 'payment5'], 'no buying past level 5');
+await fails('select public.buy_level($1, $2, 1000, 6)', [b, 'payment5'], 'no buying past level 5');
 await db.query('update public.profiles set level = 2 where id = $1', [b]);
-await fails('select public.buy_level($1, $2, 1000)', [b, 'payment1'], 'a payment buys one level, once');
+await fails('select public.buy_level($1, $2, 1000, 3)', [b, 'payment1'], 'a payment buys one level, once');
+// A price given for level 4 ($1), paid after the player already reached level 4: refused, never turned into the $5 level.
+await db.query('update public.profiles set level = 4 where id = $1', [b]);
+await fails('select public.buy_level($1, $2, 1000, 4)', [b, 'stalepayment'], 'a $1 price for level 4 cannot buy level 5');
+assert.equal(await levelOf(b), 4, 'and the level did not change');
+await db.query('update public.profiles set level = 2 where id = $1', [b]);
 assert.deepEqual((await db.query('select usd from public.level_purchases order by from_level')).map((r) => +r.usd), [1, 1, 1, 5], 'prices: $1, $1, $1, $5');
 assert.equal((await db.query('select xp from public.profiles where id = $1', [b]))[0].xp, 3, 'progress kept through buying');
 
@@ -61,7 +67,7 @@ assert.equal((await bsave({ shirt: 'shirt_gold', pants: 'pants_navy', face: 'fac
 // The website: can read nothing private, change nothing, call nothing.
 await db.query('set role authenticated');
 await fails('select * from public.record_level_finish($1, $2, 1)', ['match-web1', b], 'the website can\'t record a finish');
-await fails('select public.buy_level($1, $2, 1)', [b, 'webpayment'], 'the website can\'t buy a level without the server');
+await fails('select public.buy_level($1, $2, 1, 3)', [b, 'webpayment'], 'the website can\'t buy a level without the server');
 await fails('update public.profiles set level = 9 where id = $1', [b], 'the website can\'t set its level');
 await fails('select * from public.level_finishes', [], 'the website can\x27t read who finished where');
 await fails('select * from public.level_purchases', [], 'nor the purchase records');
@@ -71,7 +77,7 @@ await db.query('reset role');
 const c = await mk('Cal'); let js = { level: 1, xp: 0 }, seed = 7;
 const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
 for (let i = 0; i < 400; i++) {
-  if (rnd() < 0.08 && js.level < 5) { js = afterBuy(js); await db.query('select public.buy_level($1, $2, 1)', [c, 'mix' + i]); }
+  if (rnd() < 0.08 && js.level < 5) { js = afterBuy(js); await db.query('select public.buy_level($1, $2, 1, $3)', [c, 'mix' + i, js.level]); }
   else { const place = 1 + Math.floor(rnd() * 6); js = afterMatch(js, place, { auto: true });
     if (place <= 3) await db.query('select * from public.record_level_finish($1, $2, $3)', ['mixmatch' + i, c, place]); }
   const row = (await db.query('select level, xp from public.profiles where id = $1', [c]))[0];

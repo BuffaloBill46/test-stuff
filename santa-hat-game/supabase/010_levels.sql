@@ -62,13 +62,16 @@ end $$;
 
 -- A level bought with a confirmed payment (the server checks the payment first). Same rules as levels.js afterBuy:
 -- one level per payment, up to level 5, progress toward the next level kept.
-create function public.buy_level(p_profile uuid, p_signature text, p_paid_raw bigint)
+-- p_to_level: the level the PRICE was for. A payment only ever buys that level: if the player's level changed after the price
+-- was given (another tab, a level earned meanwhile), it's refused, so a $1 price can never buy the $5 level.
+create function public.buy_level(p_profile uuid, p_signature text, p_paid_raw bigint, p_to_level int)
 returns int language plpgsql security definer set search_path = '' as $$
 declare pr public.profiles;
 begin
   select * into pr from public.profiles where id = p_profile for update;
   if pr.id is null then raise exception 'unknown player'; end if;
   if pr.level >= 5 then raise exception 'levels above 5 are earned in Auto match games, not bought'; end if;
+  if p_to_level is distinct from pr.level + 1 then raise exception 'your level changed since this price was given'; end if;
   insert into public.level_purchases (signature, profile_id, from_level, to_level, usd, paid_raw)
     values (p_signature, p_profile, pr.level, pr.level + 1, case when pr.level + 1 = 5 then 5 else 1 end, p_paid_raw); -- a reused payment fails here
   update public.profiles set level = pr.level + 1, updated_at = now() where id = p_profile;
