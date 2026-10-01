@@ -1,6 +1,11 @@
 // Snowball Square match referee. Runs only on the host's browser; everyone else renders its snapshots.
 // Pure game logic, no rendering, so it can be tested headless.
 import { levelInfo } from './levels.js';
+import { SPECIALS, SPECIAL_KINDS, DROP_HIT_RADIUS, cantThrow, costOf } from './specials.js';
+// Ball kinds in snapshots (B[9]): 0 normal, 1 ice, 2 split (before it splits), 3 giant, 4 fire, 5 a split piece.
+const BALL_KIND = { '': 0, ice: 1, split: 2, giant: 3, fire: 4, piece: 5 }, KIND_OF = ['', 'ice', 'split', 'giant', 'fire', 'piece'];
+const DROP_KIND = { sky: 1, rain: 2 }, DROP_OF = ['', 'sky', 'rain'];
+export const HAT_IMMUNE = 2; // seconds a player can't be hit after getting the Santa hat (Cody: fully untouchable)
 export const K = {
   ARENA: 13.2, HEAD_Y: 2.05, BALL_G: 7, BALL_SPEED: 18, HAT_G: 16, PED_TOP: 1.71,
   ROUND_TIME: 90, ROUNDS: 3, BREAK_TIME: 6, END_TIME: 12, MAX_HUMANS: 8, MIN_BODIES: 4,
@@ -26,10 +31,12 @@ export function constrain(p) {
 
 // rulesOf(ent) → that player's snowball rules (catalog.js ballRules); none = normal snowballs.
 // startOf(ent) → that player's starting snowballs, from their level (levels.js; Cody 2026-10-01). Default: level 1. Bots keep 4.
-export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = () => levelInfo(1).start } = {}) {
+// specialsOf(ent) → the special snowballs that player has in their slots (specials.js kinds); levelOf(ent) → their level.
+// Bots never throw specials (Cody: bots stay normal).
+export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = () => levelInfo(1).start, specialsOf = () => [], levelOf = () => 1 } = {}) {
   const startCount = (e) => (e.bot ? 4 : Math.min(20, Math.max(1, Math.floor(Number(startOf(e))) || levelInfo(1).start)));
   const S = {
-    phase: 'lobby', mode: 'ffa', round: 0, time: 0, seq: 0, ents: [], balls: [], ev: [], evId: 0, mid: '',
+    phase: 'lobby', mode: 'ffa', round: 0, time: 0, seq: 0, ents: [], balls: [], drops: [], gh: {}, ev: [], evId: 0, mid: '',
     nextId: 1, nextBall: 1, team: [0, 0], result: null,
     hat: { st: 'ped', x: 0, y: K.PED_TOP, z: 0, vx: 0, vy: 0, vz: 0, holder: -1, last: -1, cool: 0, bounces: 0, rest: 0, acc: 0 },
     landing: { x: 0, z: 0 },
@@ -95,7 +102,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     const q = num(r.q, -1); if (q <= e.rq) return; e.rq = q;
     const th = Math.floor(num(r.t));
     if (e.lastTh === null || th < e.lastTh) e.lastTh = th;
-    else if (th > e.lastTh) { e.lastTh = th; if (moving()) throwBall(e, clamp(num(r.ax), -20, 20), clamp(num(r.az), -20, 20)); }
+    else if (th > e.lastTh) { e.lastTh = th; if (moving()) throwBall(e, clamp(num(r.ax), -20, 20), clamp(num(r.az), -20, 20), typeof r.sp === 'string' ? r.sp : ''); }
     if (num(r.ep) !== e.ep || e.stun > 0 || !moving()) return;
     let vx = num(r.vx), vz = num(r.vz); const sp = hyp(vx, vz), top = K.HUMAN_SPEED * 1.05;
     if (sp > top) { vx *= top / sp; vz *= top / sp; }
@@ -111,7 +118,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     S.ents.forEach((e, i) => { spawn(e, i, S.ents.length); e.max = startCount(e); e.ammo = e.max; // a level-up shows from the next round
       e.cool = e.bot ? 0.8 + rand() : 0; e.regen = 0; });
     Object.assign(S.hat, { st: 'ped', holder: -1, last: -1, x: 0, y: K.PED_TOP, z: 0, vx: 0, vy: 0, vz: 0, acc: 0 });
-    S.balls = [];
+    S.balls = []; S.drops = []; S.gh = {};
   }
   function startMatch(mode) {
     S.mode = mode === 'team' ? 'team' : 'ffa';
@@ -145,6 +152,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
   // ---------- hat + snowballs (same rules as the single-player mockup)
   function giveHat(e, caught) {
     Object.assign(S.hat, { st: 'head', holder: e.id, acc: 0 });
+    e.immune = HAT_IMMUNE; // untouchable for 2 s, so a player can get out of a crowd with it (Cody)
     if (caught) { if (S.phase !== 'lobby') addScore(e, PTS.header); ev('catch', e.id); botChat(e, 0); } else ev('grab', e.id);
   }
   function knockHat(e, dir, by) {
@@ -155,19 +163,44 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     ev('knock', e.id, by ? by.id : 0);
     botChat(e, 2);
   }
-  function throwBall(e, tx, tz) {
+  // kind: '' a normal snowball, or a special (specials.js) the player has in a slot. A special uses its cost from the counter.
+  function throwBall(e, tx, tz, kind = '') {
     if (e.ammo <= 0 || e.cool > 0 || e.stun > 0) return false;
+    if (kind) {
+      if (e.bot || !SPECIAL_KINDS.includes(kind) || !(specialsOf(e) || []).includes(kind)) return false; // only what's in their slots
+      if (cantThrow(kind, { ammo: e.ammo, max: e.max, level: levelOf(e) })) return false;
+    }
     let dx = tx - e.x, dz = tz - e.z; const dist = Math.max(1.5, hyp(dx, dz)); const l = hyp(dx, dz) || 1; dx /= l; dz /= l;
-    e.ammo--; e.cool = e.bot ? 1.1 + rand() * 1.1 : K.HUMAN_COOL; e.throwT = 1; e.face = Math.atan2(dx, dz);
-    const tt = dist / K.BALL_SPEED, R = rulesOf(e) || {}, sm = Number.isFinite(R.stun) && R.stun > 0 && R.stun <= 3 ? R.stun : 1; // stun ×, capped at 3
-    S.balls.push({ id: S.nextBall++, owner: e.id, sm, x: e.x + dx * 0.45, y: 1.6, z: e.z + dz * 0.45, vx: dx * K.BALL_SPEED, vy: (1.15 - 1.6) / tt + 0.5 * K.BALL_G * tt, vz: dz * K.BALL_SPEED, life: 2 });
+    e.ammo -= kind ? costOf(kind, e.max) : 1; e.regen = 0; e.cool = e.bot ? 1.1 + rand() * 1.1 : K.HUMAN_COOL; e.throwT = 1; e.face = Math.atan2(dx, dz);
+    if (kind === 'sky' || kind === 'rain') return dropsFrom(e, kind, tx, tz);
+    const SP = SPECIALS[kind] || {};
+    let speed = K.BALL_SPEED * (SP.speed || 1), tt = dist / speed;
+    // A normal throw lands in about half a second, so a Split Ball lobs to the aim point in exactly 1 s and bursts there (Cody: splits after 1 s).
+    if (kind === 'split') { tt = Math.max(SP.splitAfter, tt); speed = dist / tt; }
+    const R = rulesOf(e) || {}, sm = Number.isFinite(R.stun) && R.stun > 0 && R.stun <= 3 ? R.stun : 1; // a colour's stun ×, capped at 3
+    const id = S.nextBall++;
+    S.balls.push({ id, owner: e.id, sm, kind, r: SP.size || 1, stunSec: SP.stunSec || 0, g: kind === 'split' ? id : 0, age: 0,
+      x: e.x + dx * 0.45, y: 1.6, z: e.z + dz * 0.45, vx: dx * speed, vy: (1.15 - 1.6) / tt + 0.5 * K.BALL_G * tt, vz: dz * speed, life: 2 });
     if (S.balls.length > K.MAX_BALLS) S.balls.shift();
     return true;
   }
+  // Sky Ball: up, then 2 waves of snowballs landing around where it was aimed. Snowball Rain: drops all over the ring for 3 s.
+  function dropsFrom(e, kind, tx, tz) {
+    const SP = SPECIALS[kind], add = (x, z, t) => { const p = { x, z }; constrain(p); S.drops.push({ x: p.x, z: p.z, t, owner: e.id, kind }); };
+    if (kind === 'sky') for (let w = 0; w < SP.waves; w++) for (let k = 0; k < SP.perWave; k++) { const a = rand() * Math.PI * 2, r = Math.sqrt(rand()) * SP.radius; add(tx + Math.cos(a) * r, tz + Math.sin(a) * r, SP.firstAt + w * SP.gap); }
+    else for (let t = 0.4; t < 0.4 + SP.seconds; t += SP.every) { const a = rand() * Math.PI * 2, r = Math.sqrt(rand()) * K.ARENA; add(Math.cos(a) * r, Math.sin(a) * r, t); }
+    if (S.drops.length > 60) S.drops.splice(0, S.drops.length - 60);
+    ev(kind === 'sky' ? 'sky' : 'rain', e.id);
+    return true;
+  }
+  // Can this snowball hit this player? (Not its thrower, not a teammate, not someone knocked down or holding the hat's immunity.)
+  const hittable = (e, owner) => e.id !== owner && e.stun <= 0 && !(e.immune > 0) && !(S.mode === 'team' && byId(owner) && byId(owner).team === e.team);
   function hit(e, b) {
-    e.stun = K.STUN * (b.sm || 1); const l = hyp(b.vx, b.vz) || 1; e.vx = (b.vx / l) * 5; e.vz = (b.vz / l) * 5;
+    e.stun = b.stunSec || K.STUN * (b.sm || 1); const l = hyp(b.vx, b.vz) || 1; e.vx = (b.vx / l) * 5; e.vz = (b.vz / l) * 5;
     const thrower = byId(b.owner);
     if (thrower) addScore(thrower, PTS.hit);
+    // Getting hit costs 1 point (Cody); a score never goes below 0 (a team loses only what its player had).
+    if (scoring()) { const lost = Math.min(1, e.score); e.score -= lost; if (S.mode === 'team') S.team[e.team] -= lost; }
     ev('hit', e.id, r2(b.x), r2(b.y), r2(b.z));
     if (rand() < 0.5) botChat(e, 3); else botChat(thrower, 1);
     if (S.hat.holder === e.id) knockHat(e, { x: b.vx, z: b.vz }, thrower);
@@ -215,6 +248,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
       const pile = nearestPile(e);
       e.regen += dt * (hyp(pile[0] - e.x, pile[1] - e.z) < 1.6 ? 9 : 1);
       if (e.regen > (e.bot ? 3 : 2.2) && e.ammo < e.max) { e.ammo++; e.regen = 0; }
+      if (e.immune > 0) e.immune -= dt;
       if (e.stun > 0) { e.stun -= dt; const f = 1 - Math.min(1, dt * 4); e.vx *= f; e.vz *= f; }
       else if (e.bot) {
         const want = moving() ? ai(e) : [0, 0], top = K.BOT_SPEED * (h.holder === e.id ? K.HOLD_SLOW : 1), k = Math.min(1, dt * 10);
@@ -231,15 +265,30 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     }
 
     for (let i = S.balls.length - 1; i >= 0; i--) {
-      const b = S.balls[i]; b.vy -= K.BALL_G * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt; b.life -= dt;
+      const b = S.balls[i]; b.vy -= K.BALL_G * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt; b.life -= dt; b.age = (b.age || 0) + dt;
+      // Split Ball: after 1 s it becomes 3 pieces fanning out; a player can be hit by only one piece of it (Cody).
+      if (b.kind === 'split' && b.age >= SPECIALS.split.splitAfter) {
+        S.balls.splice(i, 1); const fan = (SPECIALS.split.fanDeg * Math.PI) / 180;
+        for (const a of [-fan, 0, fan]) { const c = Math.cos(a), s = Math.sin(a);
+          const k = Math.max(1, 8 / (Math.hypot(b.vx, b.vz) || 1)); // the pieces fly on at least 8 m/s, with a small hop, from the burst
+          S.balls.push({ ...b, id: S.nextBall++, kind: 'piece', y: Math.max(b.y, 1.2), vy: 3, life: 1, vx: (b.vx * c - b.vz * s) * k, vz: (b.vx * s + b.vz * c) * k }); }
+        continue;
+      }
       let done = b.life <= 0 || b.y < 0.08;
       if (b.y < 0.08) ev('splat', r2(b.x), r2(b.z));
-      const owner = byId(b.owner);
+      const r = b.r || 1;
       if (!done) for (const e of S.ents) {
-        if (e.id === b.owner || e.stun > 0 || (S.mode === 'team' && owner && owner.team === e.team)) continue;
-        if (d2(e, b) < 0.6 && b.y > 0.3 && b.y < 2.4) { hit(e, b); done = true; break; }
+        if (!hittable(e, b.owner) || (b.g && (S.gh[b.g] || []).includes(e.id))) continue;
+        if (d2(e, b) < 0.6 * r && b.y > 0.3 - (r - 1) * 0.3 && b.y < 2.4 + (r - 1) * 0.3) { hit(e, b); if (b.g) (S.gh[b.g] ||= []).push(e.id); done = true; break; }
       }
       if (done) S.balls.splice(i, 1);
+    }
+    // Sky Ball and Snowball Rain: each falling snowball hits everyone hittable within reach of where it lands.
+    for (let i = S.drops.length - 1; i >= 0; i--) {
+      const p = S.drops[i]; p.t -= dt; if (p.t > 0) continue;
+      S.drops.splice(i, 1); ev('splat', r2(p.x), r2(p.z));
+      if (!moving()) continue;
+      for (const e of S.ents) if (hittable(e, p.owner) && hyp(e.x - p.x, e.z - p.z) < DROP_HIT_RADIUS) hit(e, { owner: p.owner, x: p.x, y: 1, z: p.z, vx: e.x - p.x || 0.01, vz: e.z - p.z, sm: 1 });
     }
 
     if (h.st === 'ped') {
@@ -286,9 +335,11 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     const h = S.hat;
     return {
       s: ++S.seq, ph: PHASES.indexOf(S.phase), md: S.mode === 'team' ? 1 : 0, rd: S.round, tm: Math.round(S.time * 10) / 10, ts: S.team.slice(),
-      E: S.ents.map((e) => [e.id, e.peer || 0, e.bot ? 1 : 0, e.team, r2(e.x), r2(e.z), r2(e.vx), r2(e.vz), r2(e.face), e.stun > 0 ? 1 : 0, e.ammo, e.score, e.throwT > 0.5 ? 1 : 0, e.ep]),
+      E: S.ents.map((e) => [e.id, e.peer || 0, e.bot ? 1 : 0, e.team, r2(e.x), r2(e.z), r2(e.vx), r2(e.vz), r2(e.face), e.stun > 0 ? 1 : 0, e.ammo, e.score, e.throwT > 0.5 ? 1 : 0, e.ep, e.immune > 0 ? 1 : 0]),
       H: [HAT.indexOf(h.st), r2(h.x), r2(h.y), r2(h.z), r2(h.vx), r2(h.vy), r2(h.vz), h.holder, r2(S.landing.x), r2(S.landing.z)],
-      B: S.balls.map((b) => [b.id, r2(b.x), r2(b.y), r2(b.z), r2(b.vx), r2(b.vy), r2(b.vz), b.owner, ...(b.sm && b.sm !== 1 ? [b.sm] : [])]), // special balls keep their rule through a host handover
+      // balls: … owner, stun ×, kind (BALL_KIND), size, split group: special balls keep their rule through a host handover
+      B: S.balls.map((b) => [b.id, r2(b.x), r2(b.y), r2(b.z), r2(b.vx), r2(b.vy), r2(b.vz), b.owner, b.sm || 1, BALL_KIND[b.kind || ''] || 0, b.r || 1, b.g || 0, r2(b.age || 0)]),
+      D: S.drops.map((p) => [r2(p.x), r2(p.z), r2(p.t), p.owner, DROP_KIND[p.kind] || 0]), // falling snowballs (Sky Ball, Rain)
       V: S.ev.slice(-10),
       R: S.result ? [S.result.team ?? -2, S.result.top ?? -2, S.result.mvp] : 0,
       c: [S.nextId, S.nextBall, S.evId],
@@ -301,13 +352,16 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     if (!snap || !Array.isArray(snap.E)) return false;
     S.phase = PHASES[snap.ph] || 'lobby'; S.mode = snap.md ? 'team' : 'ffa'; S.round = num(snap.rd); S.time = num(snap.tm);
     S.team = Array.isArray(snap.ts) ? [num(snap.ts[0]), num(snap.ts[1])] : [0, 0]; S.seq = num(snap.s); S.mid = /^[0-9a-f]{8,64}$/.test(String(snap.mid)) ? snap.mid : '';
-    S.ents = snap.E.map((r) => ({ ...mkEnt(r[1] || null, !!r[2], num(r[3])), id: num(r[0]), x: num(r[4]), z: num(r[5]), vx: num(r[6]), vz: num(r[7]), face: num(r[8]), stun: r[9] ? 0.5 : 0, ammo: num(r[10]), score: num(r[11]), throwT: r[12] ? 0.6 : 0, ep: num(r[13]) }));
+    S.ents = snap.E.map((r) => ({ ...mkEnt(r[1] || null, !!r[2], num(r[3])), id: num(r[0]), x: num(r[4]), z: num(r[5]), vx: num(r[6]), vz: num(r[7]), face: num(r[8]), stun: r[9] ? 0.5 : 0, ammo: num(r[10]), score: num(r[11]), throwT: r[12] ? 0.6 : 0, ep: num(r[13]), immune: r[14] ? 1 : 0 }));
     S.ents.forEach((e) => { e.max = startCount(e); e.ammo = Math.min(e.ammo, e.max); }); // the level's maximum, not the default
     const H = snap.H || []; const h = S.hat;
     Object.assign(h, { st: HAT[H[0]] || 'ped', x: num(H[1]), y: num(H[2], K.PED_TOP), z: num(H[3]), vx: num(H[4]), vy: num(H[5]), vz: num(H[6]), holder: num(H[7], -1), acc: 0, cool: 0, bounces: 0, rest: 0 });
     if (h.st === 'head' && !byId(h.holder)) { h.st = 'ped'; h.holder = -1; }
     S.landing.x = num(H[8]); S.landing.z = num(H[9]);
-    S.balls = (snap.B || []).map((b) => ({ id: b[0], x: b[1], y: b[2], z: b[3], vx: b[4], vy: b[5], vz: b[6], owner: b[7], sm: Number.isFinite(b[8]) ? b[8] : 1, life: 1 }));
+    S.balls = (snap.B || []).map((b) => { const kind = KIND_OF[num(b[9])] || '';
+      return { id: b[0], x: b[1], y: b[2], z: b[3], vx: b[4], vy: b[5], vz: b[6], owner: b[7], sm: Number.isFinite(b[8]) ? b[8] : 1, life: 1, kind, r: num(b[10], 1) || 1,
+        stunSec: SPECIALS[kind === 'piece' ? 'split' : kind]?.stunSec || 0, g: num(b[11]), age: num(b[12]) }; });
+    S.drops = (Array.isArray(snap.D) ? snap.D : []).map((p) => ({ x: num(p[0]), z: num(p[1]), t: num(p[2]), owner: num(p[3]), kind: DROP_OF[num(p[4])] || 'rain' }));
     const c = snap.c || [];
     S.nextId = Math.max(num(c[0], 1), ...S.ents.map((e) => e.id + 1)); S.nextBall = num(c[1], 1); S.evId = num(c[2]);
     S.ev = Array.isArray(snap.V) ? snap.V.slice() : [];
