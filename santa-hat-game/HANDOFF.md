@@ -191,10 +191,11 @@ branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from
   browser: pay → 5 plays → ONE payout sent, books = wallets (`tests/browser/devnet-pay-test.mjs`).
 - **Not done yet:** Edge Function deploy + its settings (waits on `npx supabase login` by Cody), a real-Phantom check in Cody's
   Chrome, the scheduled payout worker, skims on chain, reconcile on a schedule, applying 010/011 live (with their pages).
-- **Waiting on Cody:** `npx supabase login`; devnet SOL to `3dGDmcfu7f6DTjYtyL2xZV9E5qzKiCBWMD88aZEakGog`; treasury wallet address
-  (needed for buying levels and items); lottery payout mode (escrow or by hand).
-- **Next, in order:** Player Progress box + levels in matches → lottery page + admin panel → special snowballs → special gear →
-  themes; deploy + devnet test of everything once the login is done.
+- **Waiting on Cody:** `npx supabase login` typed in a real terminal (the CLI refuses non-interactive logins; Claude won't handle
+  account tokens). Decided: devnet wallets are Claude's to make and fund (labelled in `devnet.json`; the funder was topped up from
+  Cody's general devnet key); lottery payouts manual; real wallets at launch.
+- **Next, in order:** deploy the Edge Function + settings once logged in, then a full devnet test through it → lottery page + admin
+  panel → special snowballs → special gear → themes.
 
 **Built and live (all demo, no real money):**
 - **Play tab:** Snowball Square multiplayer (rooms, bots that now sometimes emote, idle kicks), unranked lobby, FFA RANKED layout
