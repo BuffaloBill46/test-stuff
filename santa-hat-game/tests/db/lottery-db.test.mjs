@@ -158,6 +158,9 @@ assert.ok(ok.ok, JSON.stringify(ok)); assert.equal((await db.query('select statu
 const other = (await db.query(`select id from public.lottery_payouts where status = 'manual' order by id limit 1`))[0];
 assert.match((await admin.run(await signed({ action: 'lottery-paid', game: 'lottery', settings: { payout: +other.id, tx: good } }))).error, /already recorded/, 'one transaction, one payout');
 assert.match((await admin.run(await signed({ action: 'lottery-paid', game: 'lottery', settings: { payout: +due.id, tx: handTx(due.to_wallet, +due.amount_raw) } }))).error, /isn't waiting/, 'already paid: refused');
+const list = await admin.run(await signed({ action: 'lottery-owed', game: 'lottery' }));
+assert.ok(list.ok && list.mode && list.owed.length >= 1 && list.owed.every((o) => /^LTwa11et/.test(o.wallet) && o.raw > 0 && o.lottery), 'the private list: full wallets and amounts to send by hand');
+assert.ok(!list.owed.some((o) => o.id === due.id), 'a recorded payment is off the list');
 const replay = await signed({ action: 'lottery-mode', game: 'lottery', settings: { mode: 'manual' } });
 assert.equal((await admin.run(replay)).mode, 'manual'); assert.match((await admin.run(replay)).error, /already used/, 'a signed message works once');
 assert.equal((await db.query('select payout_mode from public.lottery_settings'))[0].payout_mode, 'manual');

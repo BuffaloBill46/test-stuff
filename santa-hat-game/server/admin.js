@@ -7,7 +7,8 @@
 //   release-payout (a run payout frozen by the safety cap: Cody looked at it and lets it go out; Cody, 2026-10-01),
 //   bot-signals (READ only: players whose timing looks scripted, server/bots.js; private, not logged, changes nothing),
 //   lottery-mode (game 'lottery': winners paid by the worker 'auto', or by Cody 'manual'),
-//   lottery-paid (game 'lottery': Cody paid a winner by hand; checked on the chain: left the lottery wallet, arrived at the winner).
+//   lottery-paid (game 'lottery': Cody paid a winner by hand; checked on the chain: left the lottery wallet, arrived at the winner),
+//   lottery-owed (game 'lottery', READ only, private: who to pay by hand, full wallets and amounts).
 // Changes take the pool's row lock, so they wait for any play being settled: never mid-pull. Every change is logged publicly.
 // NOT here (needs the pool key; FOR_MAIN_CLAUDE.md): the emergency withdrawal transfer itself.
 import { POOL_RULES } from '../mockups/slots.js';
@@ -16,7 +17,7 @@ import { check as checkSettings } from '../mockups/settings.js';
 import { MINT } from '../mockups/market.js';
 import { botSignals, BOT_RULES } from './bots.js';
 
-export const ACTIONS = ['pause', 'resume', 'set-rules', 'set-settings', 'record-deposit', 'release-payout', 'bot-signals', 'lottery-mode', 'lottery-paid']; // set-settings: prices, odds, prizes, store (game 'all')
+export const ACTIONS = ['pause', 'resume', 'set-rules', 'set-settings', 'record-deposit', 'release-payout', 'bot-signals', 'lottery-mode', 'lottery-paid', 'lottery-owed']; // set-settings: prices, odds, prizes, store (game 'all')
 export const FRESH_SECONDS = 300;
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 export function b58decode(s) {
@@ -87,6 +88,7 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
     if (m.action === 'bot-signals') return signals();
     if (m.action === 'lottery-mode') return lotteryMode(m, wallet, message, signature);
     if (m.action === 'lottery-paid') return lotteryPaid(m, wallet, message, signature);
+    if (m.action === 'lottery-owed') return lotteryOwed();
     return db.tx(async (t) => {
       if ((await t.query('select 1 from public.pool_log where nonce = $1', [m.nonce])).length) return { error: 'this signed message was already used' };
       const [p] = await t.query('select * from public.pools where game = $1 for update', [m.game]); // waits for any play being settled
@@ -204,6 +206,15 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
       await t.query(`insert into public.pool_log (game, what, by_wallet, nonce, details) values ('lottery', 'paid by hand', $1, $2, $3)`, [wallet, m.nonce, JSON.stringify({ payout: +id, to: po.to_wallet, raw: +po.amount_raw, arrived, tx: sig, message, signature })]);
       return { ok: true, payout: +id, sent: left, arrived };
     });
+  }
+  // READ only, private to the admin (like bot-signals): the lottery winners and refunds waiting for Cody to send by hand, with the
+  // FULL wallet (he needs it to send; the public lists only show it shortened), the draw, the place and the amount. Nothing logged.
+  async function lotteryOwed() {
+    const [s] = await db.query('select payout_mode from public.lottery_settings');
+    const rows = await db.query(`select p.id, p.place, p.to_wallet, p.amount_raw, p.created_at, d.kind, d.draws_at, pr.name
+      from public.lottery_payouts p join public.lottery_draws d on d.id = p.draw_id join public.profiles pr on pr.id = p.profile_id
+      where p.status = 'manual' order by p.id`);
+    return { ok: true, mode: s?.payout_mode || 'manual', owed: rows.map((r) => ({ id: +r.id, place: r.place, wallet: r.to_wallet, raw: +r.amount_raw, name: r.name, lottery: r.kind, drawsAt: new Date(r.draws_at).getTime(), at: new Date(r.created_at).getTime() })) };
   }
   // Bot signals: private to the admin (a guess must never be shown publicly), read only, so nothing is logged or changed.
   // Each run with when its quote was asked for and when its last play settled (paid_at), over the last 24 hours.
