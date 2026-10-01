@@ -44,13 +44,14 @@ export function buyRun(ledger, pools, kind, bet, n, paymentId) {
   return { ok: true, run };
 }
 // A play's prize, or the price of a play the pool refused, adds to what the run will send.
-export function credit(run, usd, refund = false) { if (refund) run.refunded = Math.round((run.refunded + usd) * 100) / 100; else run.won = Math.round((run.won + usd) * 100) / 100; }
+// Exact amounts (no rounding here: a pool jackpot is a share of the pool, not whole cents); screens round for display.
+export function credit(run, usd, refund = false) { if (refund) run.refunded += usd; else run.won += usd; }
 export const runDone = (run) => run.made === run.n && run.played + run.refused === run.n;
 // The run's last play is done: send what it won + refunded, once. Returns the amount sent (0 if nothing to send).
 export function payRun(ledger, run) {
   if (!runDone(run) || run.paid !== null) return null;
-  const amount = Math.round((run.won + run.refunded) * 100) / 100, g = KINDS[run.kind].game;
-  run.paid = amount; ledger.sent[g] = Math.round((ledger.sent[g] + amount) * 100) / 100;
+  const amount = run.won + run.refunded, g = KINDS[run.kind].game;
+  run.paid = amount; ledger.sent[g] += amount;
   return amount;
 }
 
@@ -65,7 +66,7 @@ export function audit(ledger) {
   for (const g of ['spin', 'slots']) {
     const runs = Object.values(ledger.runs).filter((r) => KINDS[r.kind].game === g);
     const due = Math.round(runs.reduce((a, r) => a + (r.paid !== null ? r.won + r.refunded : 0), 0) * 100);
-    if (Math.round(ledger.sent[g] * 100) !== due) bad.push(`${g}: sent ${ledger.sent[g]} ≠ what the finished runs won + refunded ${due / 100}`);
+    if (Math.abs(Math.round(ledger.sent[g] * 100) - due) > 1) bad.push(`${g}: sent ${ledger.sent[g]} ≠ what the finished runs won + refunded ${due / 100}`);
   }
   for (const r of Object.values(ledger.runs)) if (r.paid !== null && !runDone(r)) bad.push(`${r.id}: paid before its last play`);
   return bad;

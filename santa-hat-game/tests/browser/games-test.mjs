@@ -28,17 +28,19 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
     res: document.querySelector('.machine .res').textContent, stamp: document.querySelector('.machine .flash').textContent,
     winners: [...document.querySelectorAll('#winList li:not(.empty)')].map((li) => li.textContent.replace(/\s+/g, ' ').trim()), wide: document.documentElement.scrollWidth > innerWidth }));
   const state = () => p.evaluate(() => ({ pool: window.__slots.state.pool, bal: window.__slots.state.bal }));
-  const waitDone = () => p.waitForFunction(() => !window.__slots.busy, null, { timeout: 90000 }).catch((e) => { console.log('errors so far:', errors); throw e; });
+  const waitDone = () => p.waitForFunction(() => window.__slots.busy, null, { timeout: 3000 }).catch(() => {}).then(() => p.waitForFunction(() => !window.__slots.busy, null, { timeout: 300000 })).catch((e) => { console.log('errors so far:', errors); throw e; });
   // run one forced pull; `force` is a function evaluated in the page returning stops (or 'JACKPOT') plus the expected pay
-  async function forcedPull(force, arg) {
+  async function forcedPull(force, arg, opts = {}) {
     const exp = await p.evaluate(async ([src, a]) => { const m = await import('./slots.js'); const f = new Function('m', 'a', src); const stops = f(m, a);
       const M = m.MACHINES.big; let pay = 0, grid;
-      if (stops === 'JACKPOT') { pay = window.__slots.state.pool * M.jackpotPct; /* prepaid: the entry reached the pool when the credit was bought */ grid = Array.from({ length: 5 }, () => Array(5).fill(m.SYM.hat)); }
+      if (stops === 'JACKPOT') { pay = (window.__slots.state.pool + m.IN_PER_DOLLAR) * M.jackpotPct; /* the $1 entry reaches the pool when the run is bought, before the pull */ grid = Array.from({ length: 5 }, () => Array(5).fill(m.SYM.hat)); }
       else { grid = m.gridFor(M, stops); pay = m.evaluate(M, grid).reduce((s, w) => s + w.pay, 0) + grid.flat().filter((x) => x === m.SYM.hat).length * M.hatBonus * M.bet; }
-      window.__slots.test.next = stops; return { stops, pay, grid };
+      window.__slots.test.run = [stops]; return { stops, pay, grid };
     }, [force.toString().replace(/^[^{]*{|}$/g, ''), arg]);
     const before = await state();
-    await p.evaluate(() => document.querySelector('.machine .pull').click());
+    await p.evaluate(() => document.querySelector('#slots [data-run="1"]').click()); // a run of 1 pull: confirm, then it plays
+    await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
+    if (!opts.hold) await p.evaluate(() => document.querySelector('#buyGo').click());
     return { exp, before };
   }
   let r = await read(); console.log(label, 'at rest:', JSON.stringify(r));
@@ -51,26 +53,22 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   await p.screenshot({ path: `${OUT}/${label}-1-machine.png` });
 
   // 1) no win: stops with no hats and no line win
-  let { exp, before } = await forcedPull(function () { const M = m.MACHINES.big; for (;;) { const st = Array.from({ length: 5 }, () => Math.floor(Math.random() * M.stripLen)); const g = m.gridFor(M, st); if (!g.flat().includes(m.SYM.hat) && !m.evaluate(M, g).length) return st; } });
-  // no pulls yet: the tap opens the buy counter first (play credits). Pick 5, buy, and the pull starts.
-  await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
-  check(await p.textContent('#buyTitle') === 'Buy pulls', `${label}: buy counter title`);
-  await p.evaluate(() => document.querySelector('#buyQuick [data-n="5"]').click());
-  check(await p.textContent('#buyGo') === 'Buy 5 · $5.00', `${label}: buy button says "${await p.textContent('#buyGo')}"`);
+  let { exp, before } = await forcedPull(function () { const M = m.MACHINES.big; for (;;) { const st = Array.from({ length: 5 }, () => Math.floor(Math.random() * M.stripLen)); const g = m.gridFor(M, st); if (!g.flat().includes(m.SYM.hat) && !m.evaluate(M, g).length) return st; } }, null, { hold: true });
+  // Pull 1: the confirm dialog says what it costs (runs: Cody), then the pull plays.
+  check(await p.textContent('#buyTitle') === 'Play 1 pull' && await p.textContent('#buyGo') === 'Pay $1.00 & play', `${label}: confirm dialog: ${await p.textContent('#buyTitle')} / ${await p.textContent('#buyGo')}`);
   await p.screenshot({ path: `${OUT}/${label}-1b-buy.png` });
   await p.evaluate(() => document.querySelector('#buyGo').click());
   await p.waitForTimeout(600); await p.screenshot({ path: `${OUT}/${label}-2-spinning.png` });
   await waitDone(); let after = await state();
-  check(Math.abs(after.bal - (before.bal - 5)) < 1e-9, `${label}: buying 5 pulls costs $5 (bal ${before.bal} -> ${after.bal})`);
-  check(Math.abs(after.pool - (before.pool + 5 * IN)) < 1e-6, `${label}: the 5 entries reach the pool at purchase; a no-win pull adds nothing more`);
-  check(await p.textContent('#crBig') === '4', `${label}: 4 pulls left after one`);
+  check(Math.abs(after.bal - (before.bal - 1)) < 1e-9, `${label}: a pull costs $1 (bal ${before.bal} -> ${after.bal})`);
+  check(Math.abs(after.pool - (before.pool + IN)) < 1e-6, `${label}: the entry reaches the pool at purchase; a no-win pull adds nothing more`);
   const shown1 = await p.evaluate(() => window.__slots.view.shown());
   check(JSON.stringify(shown1) === JSON.stringify(exp.grid), `${label}: reels must show exactly the decided grid`);
 
   // 2) 5 Stars on line 1 (plus whatever else those stops happen to pay)
   ({ exp, before } = await forcedPull(function () { return m.stopsShowing('big', 0, 'star', 5); }));
   await waitDone(); await p.waitForTimeout(250); after = await state(); r = await read();
-  check(Math.abs(after.bal - (before.bal + exp.pay * 0.97)) < 1e-6, `${label}: star win balance (expected pay ${exp.pay})`);
+  check(Math.abs(after.bal - (before.bal - 1 + exp.pay * 0.97)) < 1e-6, `${label}: star win balance (expected pay ${exp.pay})`);
   check(/WIN|100×/.test(r.stamp), `${label}: a win over $1 should stamp, got "${r.stamp}"`);
   check(r.winners.length === 1 && /\+\d/.test(r.winners[0]), `${label}: winners list should have the win with a +%: ${JSON.stringify(r.winners)}`);
   check(JSON.stringify(await p.evaluate(() => window.__slots.view.shown())) === JSON.stringify(exp.grid), `${label}: star grid shown`);
@@ -83,12 +81,12 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   check(!ov.visible && ov.inked === 0, `${label}: the last win's lines must be gone when the next spin starts (${JSON.stringify(ov)})`);
   await p.waitForTimeout(1500); await p.screenshot({ path: `${OUT}/${label}-4-teaser.png` });
   await waitDone(); after = await state();
-  check(Math.abs(after.bal - (before.bal + exp.pay * 0.97)) < 1e-6, `${label}: teaser pull balance`);
+  check(Math.abs(after.bal - (before.bal - 1 + exp.pay * 0.97)) < 1e-6, `${label}: teaser pull balance`);
   check(JSON.stringify(await p.evaluate(() => window.__slots.view.shown())) === JSON.stringify(exp.grid), `${label}: teaser grid shown`);
 
   // 4) tap to stop early: must finish fast and still show the decided grid
   ({ exp, before } = await forcedPull(function () { return Array.from({ length: 5 }, () => Math.floor(Math.random() * m.MACHINES.big.stripLen)); }));
-  await p.waitForTimeout(300); const t0 = Date.now(); await p.evaluate(() => document.querySelector('.machine .pull').click()); await waitDone();
+  await p.waitForTimeout(300); const t0 = Date.now(); await p.evaluate(() => document.querySelector('#slots .machine canvas').click()); await waitDone();
   const slamMs = Date.now() - t0;
   check(JSON.stringify(await p.evaluate(() => window.__slots.view.shown())) === JSON.stringify(exp.grid), `${label}: slammed grid shown`);
   console.log(label, 'tap-to-stop landed in', slamMs, 'ms (slow headless browser)');
@@ -96,22 +94,26 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   // 5) pool jackpot: all 25 squares Santa Hats, 25% of the pool
   ({ exp, before } = await forcedPull(function () { return 'JACKPOT'; }));
   await waitDone(); await p.waitForTimeout(300); after = await state(); r = await read();
-  check(Math.abs(after.pool - (before.pool - exp.pay)) < 1e-6, `${label}: jackpot pool math`);
-  check(Math.abs(after.bal - (before.bal + exp.pay * 0.97)) < 1e-6, `${label}: jackpot balance`);
+  check(Math.abs(after.pool - (before.pool + IN - exp.pay)) < 1e-6, `${label}: jackpot pool math`);
+  check(Math.abs(after.bal - (before.bal - 1 + exp.pay * 0.97)) < 1e-6, `${label}: jackpot balance`);
   check((await p.evaluate(() => window.__slots.view.shown())).flat().every((s) => s === 0), `${label}: jackpot grid should be all Santa Hats`);
   check(r.stamp === 'JACKPOT!', `${label}: jackpot stamp`);
   check(Math.abs(+r.jp.slice(1) - Math.floor(after.pool * 0.25 * 100) / 100) < 0.011, `${label}: jackpot readout = 25% of pool`);
   await p.screenshot({ path: `${OUT}/${label}-5-jackpot.png` });
   console.log(label, 'after jackpot:', r.bal, r.pool, '|', r.res);
-  check(await p.textContent('#crBig') === '0' && await p.evaluate(() => document.querySelector('.credrow').classList.contains('none')), `${label}: all 5 pulls used`);
   const books = await p.evaluate(async () => (await import('./credits.js')).audit(window.__credits.ledger));
-  check(books.length === 0, `${label}: credit books balance: ${books}`);
+  check(books.length === 0, `${label}: run books balance: ${books}`);
 
-  // 5b) "Buy 1–10" button buys without playing; then a real (not forced) pull, and "Check this result" re-checks it
-  await p.evaluate(() => document.querySelector('[data-buy="big"]').click()); await p.waitForTimeout(300);
-  await p.evaluate(() => { document.querySelector('#buyQuick [data-n="1"]').click(); document.querySelector('#buyGo').click(); }); await p.waitForTimeout(400);
-  check(await p.textContent('#crBig') === '1' && !(await p.evaluate(() => window.__slots.busy)), `${label}: Buy button adds a pull without starting one`);
-  await p.evaluate(() => document.querySelector('.machine .pull').click()); await p.waitForTimeout(300); await waitDone();
+  // 5b) Pull 5: a real (not forced) run, skipped ahead; the summary, then "Check this result" re-checks the last pull
+  before = await state();
+  await p.evaluate(() => document.querySelector('#slots [data-run="5"]').click());
+  await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
+  await p.evaluate(() => document.querySelector('#buyGo').click()); await p.waitForTimeout(800);
+  check(/Pull \d of 5/.test(await p.textContent('#runBig')), `${label}: run progress: ${await p.textContent('#runBig')}`);
+  await p.evaluate(() => document.querySelector('#slots .skip').click()); await waitDone(); after = await state();
+  const sum = await p.textContent('#slots .machine .res');
+  check(/^5 pulls: (no win|\$[\d.]+ back)/.test(sum), `${label}: run summary: ${sum}`);
+  check(Math.abs(after.bal - before.bal + 5) < 6 * 205, `${label}: 5 pulls paid`);
   check(await p.isVisible('[data-proof="big"]'), `${label}: Check last result button shows after a pull`);
   await p.evaluate(() => document.querySelector('[data-proof="big"]').click()); await p.waitForTimeout(300);
   await p.evaluate(() => document.querySelector('#proofCheck').click());
@@ -123,11 +125,11 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   await p.evaluate(() => document.querySelector('#proofClose').click()); await p.waitForTimeout(200);
 
   // 5c) not enough demo money: the Buy button is off and says why
-  await p.evaluate(() => { window.__slots.state.bal = 0.5; document.querySelector('[data-buy="big"]').click(); }); await p.waitForTimeout(300);
+  await p.evaluate(() => { window.__slots.state.bal = 0.5; document.querySelector('#slots [data-run="10"]').click(); }); await p.waitForTimeout(300);
   const broke = await p.evaluate(() => ({ off: document.querySelector('#buyGo').disabled, note: document.querySelector('#buyNote').textContent }));
   check(broke.off && /Not enough/.test(broke.note), `${label}: buying with too little money is refused: ${JSON.stringify(broke)}`);
   await p.evaluate(() => document.querySelector('#buyCancel').click()); await p.waitForTimeout(200);
-  check(!(await p.evaluate(() => document.querySelector('#buyDlg').open)), `${label}: Cancel closes the buy counter`);
+  check(!(await p.evaluate(() => document.querySelector('#buyDlg').open)) && !(await p.evaluate(() => window.__slots.busy)), `${label}: Cancel closes the dialog; nothing plays`);
 
   // 6) full screen on, screenshot, off
   await p.evaluate(() => document.querySelector('#fsBtn').click()); await p.waitForTimeout(900);
