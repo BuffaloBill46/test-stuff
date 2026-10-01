@@ -48,19 +48,20 @@ export const ITEMS = [
   { id: 'snow_green', slot: 'snow', name: 'Mint', color: 0x9dffb0, level: 4 },
   { id: 'snow_gold', slot: 'snow', name: 'Gilded', color: 0xffd060, level: 5 },
   { id: 'snow_ember', slot: 'snow', name: 'Ember', color: 0xff7a3a, price: 0.25 },
-  // The first special snowball (Cody's example): stuns 50% longer than normal. Level 4 is a placeholder until Cody sets it.
-  { id: 'snow_iceball', slot: 'snow', name: 'Ice Ball', color: 0xbfeaff, level: 4, rules: { stun: 1.5 }, note: 'Stuns 50% longer' },
+  // The first special snowball (Cody's example): stuns 50% longer than normal. Bought in the Store for now (Cody); levels later.
+  { id: 'snow_iceball', slot: 'snow', name: 'Ice Ball', color: 0xbfeaff, price: 0.50, rules: { stun: 1.5 }, note: 'Stuns 50% longer' },
 
+  // Hats and backpacks are bought in the Store for now (Cody, 2026-10-01; he'll set levels later); prices are Claude's placeholders.
   // Hats (2026-10-01): worn on the head, hidden while that player wears the Santa hat (the prize must always be seen).
   { id: 'hat_none', slot: 'hat', name: 'No hat', hat: 'none', level: 1 },
-  { id: 'hat_beanie', slot: 'hat', name: 'Knit Beanie', hat: 'beanie', color: 0x3d6fb8, level: 1 },
-  { id: 'hat_earmuffs', slot: 'hat', name: 'Earmuffs', hat: 'earmuffs', color: 0xd76aa0, level: 2 },
-  { id: 'hat_antlers', slot: 'hat', name: 'Reindeer Antlers', hat: 'antlers', color: 0x8a5a33, level: 4 },
+  { id: 'hat_beanie', slot: 'hat', name: 'Knit Beanie', hat: 'beanie', color: 0x3d6fb8, price: 0.25 },
+  { id: 'hat_earmuffs', slot: 'hat', name: 'Earmuffs', hat: 'earmuffs', color: 0xd76aa0, price: 0.25 },
+  { id: 'hat_antlers', slot: 'hat', name: 'Reindeer Antlers', hat: 'antlers', color: 0x8a5a33, price: 0.50 },
   { id: 'hat_tophat', slot: 'hat', name: 'Snowman Top Hat', hat: 'tophat', color: 0x2a2a35, price: 0.25 },
   // Backpacks (2026-10-01).
   { id: 'pack_none', slot: 'pack', name: 'No backpack', pack: 'none', level: 1 },
-  { id: 'pack_satchel', slot: 'pack', name: 'Elf Satchel', pack: 'satchel', color: 0x3f9a66, level: 2 },
-  { id: 'pack_sack', slot: 'pack', name: 'Toy Sack', pack: 'sack', color: 0xcf3128, level: 3 },
+  { id: 'pack_satchel', slot: 'pack', name: 'Elf Satchel', pack: 'satchel', color: 0x3f9a66, price: 0.25 },
+  { id: 'pack_sack', slot: 'pack', name: 'Toy Sack', pack: 'sack', color: 0xcf3128, price: 0.50 },
   { id: 'pack_gift', slot: 'pack', name: 'Gift Box', pack: 'gift', color: 0x7a4fa3, price: 0.25 },
 ];
 

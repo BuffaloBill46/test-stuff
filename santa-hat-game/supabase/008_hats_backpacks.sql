@@ -5,15 +5,15 @@ alter table public.items drop constraint items_slot_check;
 alter table public.items add constraint items_slot_check check (slot in ('shirt', 'pants', 'face', 'skin', 'hat', 'pack', 'snow'));
 
 insert into public.items (id, slot, name, unlock_level, price_usd) values
-  ('snow_iceball', 'snow', 'Ice Ball', 4, null),
+  ('snow_iceball', 'snow', 'Ice Ball', null, 0.50),
   ('hat_none', 'hat', 'No hat', 1, null),
-  ('hat_beanie', 'hat', 'Knit Beanie', 1, null),
-  ('hat_earmuffs', 'hat', 'Earmuffs', 2, null),
-  ('hat_antlers', 'hat', 'Reindeer Antlers', 4, null),
+  ('hat_beanie', 'hat', 'Knit Beanie', null, 0.25),
+  ('hat_earmuffs', 'hat', 'Earmuffs', null, 0.25),
+  ('hat_antlers', 'hat', 'Reindeer Antlers', null, 0.50),
   ('hat_tophat', 'hat', 'Snowman Top Hat', null, 0.25),
   ('pack_none', 'pack', 'No backpack', 1, null),
-  ('pack_satchel', 'pack', 'Elf Satchel', 2, null),
-  ('pack_sack', 'pack', 'Toy Sack', 3, null),
+  ('pack_satchel', 'pack', 'Elf Satchel', null, 0.25),
+  ('pack_sack', 'pack', 'Toy Sack', null, 0.50),
   ('pack_gift', 'pack', 'Gift Box', null, 0.25)
 on conflict (id) do update set slot = excluded.slot, name = excluded.name, unlock_level = excluded.unlock_level, price_usd = excluded.price_usd;
 
