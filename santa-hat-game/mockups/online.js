@@ -318,7 +318,25 @@ function syncViews(v) {
 
 // ---------- input
 const input = { keys: new Set() };
+// Floating joystick (Cody, 2026-10-01): on touch screens it sits on screen during a match and is the ONLY way to move; any
+// other tap, anywhere (the left side too), throws there. Pull past its edge and it follows your thumb; it stays where you
+// let go (remembered), which is how players move it. ox/oy: its centre on screen.
 const joy = { x: 0, y: 0, id: null, ox: 0, oy: 0 };
+const JOY_MAX = 42, JOY_GRAB = 72; // knob travel; how near its centre a touch must start to steer
+const touchUI = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+function joyHome() { // remembered as a share of the screen, so it survives turning the phone
+  let p = null; try { p = JSON.parse(store.get('sh_joy') || 'null'); } catch {}
+  const x = p ? p.fx * W : 84, y = p ? p.fy * H : H - (H < 480 ? 84 : 176); // default: bottom left (above the emotes when they span the bottom)
+  joy.ox = Math.min(W - 60, Math.max(60, x)); joy.oy = Math.min(H - 60, Math.max(110, y));
+  const j = $('#joy'); j.style.left = joy.ox + 'px'; j.style.top = joy.oy + 'px';
+}
+// Zoom (Cody): ＋/− during a match, and the mouse wheel. Remembered. No pinch: a finger landing throws in this game.
+// Zoom steps (Cody: "let them pick in sections until they get what they want"): each − press pulls back 15%, as far as anyone
+// likes; ZOOM_MAX only stops where the scene would stop drawing. The fog pulls back with the camera, so a far view isn't fogged.
+const ZOOM_MIN = 0.6, ZOOM_MAX = 4;
+let fog0 = null; // the plaza fog as built (plaza.js); the camera code scales it with the zoom
+let zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(store.get('sh_zoom')) || 1));
+const setZoom = (z) => { zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z)); store.set('sh_zoom', String(Math.round(zoom * 100) / 100)); };
 addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement) return;
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
@@ -333,17 +351,29 @@ const ray = new THREE.Raycaster(), ground = new THREE.Plane(new V3(0, 1, 0), 0);
 const groundAt = (cx, cy) => { ray.setFromCamera({ x: (cx / W) * 2 - 1, y: -(cy / H) * 2 + 1 }, camera); return ray.ray.intersectPlane(ground, new V3()); };
 canvas.addEventListener('pointerdown', (e) => {
   if (!inRoom()) return;
-  if (e.pointerType === 'touch' && e.clientX < W * 0.45 && joy.id === null) {
-    joy.id = e.pointerId; joy.ox = e.clientX; joy.oy = e.clientY; const j = $('#joy'); j.hidden = false; j.style.left = e.clientX + 'px'; j.style.top = e.clientY + 'px'; return;
+  if (e.pointerType === 'touch' && !$('#joy').hidden && joy.id === null && Math.hypot(e.clientX - joy.ox, e.clientY - joy.oy) <= JOY_GRAB) {
+    joy.id = e.pointerId; $('#joy').classList.add('on'); steer(e.clientX, e.clientY); return;
   }
   const p = groundAt(e.clientX, e.clientY); if (p) tryThrow(p.x, p.z);
 });
-addEventListener('pointermove', (e) => {
+function steer(cx, cy) {
+  let x = cx - joy.ox, y = cy - joy.oy; const l = Math.hypot(x, y);
+  if (l > JOY_MAX) { // pulled past the edge: the joystick follows the thumb
+    joy.ox = Math.min(W - 60, Math.max(60, cx - (x / l) * JOY_MAX)); joy.oy = Math.min(H - 60, Math.max(110, cy - (y / l) * JOY_MAX));
+    x = cx - joy.ox; y = cy - joy.oy; const l2 = Math.hypot(x, y); if (l2 > JOY_MAX) { x *= JOY_MAX / l2; y *= JOY_MAX / l2; }
+  }
+  joy.x = x / JOY_MAX; joy.y = y / JOY_MAX; const j = $('#joy');
+  j.style.left = joy.ox + 'px'; j.style.top = joy.oy + 'px'; j.style.setProperty('--jx', x + 'px'); j.style.setProperty('--jy', y + 'px');
+}
+addEventListener('pointermove', (e) => { if (e.pointerId === joy.id) steer(e.clientX, e.clientY); });
+const endJoy = (e) => {
   if (e.pointerId !== joy.id) return;
-  let x = e.clientX - joy.ox, y = e.clientY - joy.oy; const l = Math.hypot(x, y), m = 42; if (l > m) { x *= m / l; y *= m / l; }
-  joy.x = x / m; joy.y = y / m; const j = $('#joy'); j.style.setProperty('--jx', x + 'px'); j.style.setProperty('--jy', y + 'px');
-});
-const endJoy = (e) => { if (e.pointerId === joy.id) { joy.id = null; joy.x = joy.y = 0; $('#joy').hidden = true; } };
+  joy.id = null; joy.x = joy.y = 0; const j = $('#joy'); j.classList.remove('on'); j.style.setProperty('--jx', '0px'); j.style.setProperty('--jy', '0px');
+  store.set('sh_joy', JSON.stringify({ fx: joy.ox / W, fy: joy.oy / H })); // it stays where it was let go
+};
+canvas.addEventListener('wheel', (e) => { if (inRoom()) setZoom(zoom * (e.deltaY > 0 ? 1.1 : 1 / 1.1)); }, { passive: true });
+$('#zoomIn').addEventListener('click', () => setZoom(zoom / 1.15));
+$('#zoomOut').addEventListener('click', () => setZoom(zoom * 1.15));
 addEventListener('pointerup', endJoy); addEventListener('pointercancel', endJoy);
 
 // ---------- chrome: home, lobby, HUD, board
@@ -353,6 +383,9 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s; re
 function renderChrome() {
   const v = currentView;
   $('#roomchip').hidden = !inRoom(); $('#emotes').hidden = !inRoom() || !!me.w; $('#leave').hidden = !inRoom();
+  const joyOn = inRoom() && touchUI && !me.w; // players on touch screens; never watchers
+  if (joyOn && $('#joy').hidden) joyHome();
+  $('#joy').hidden = !joyOn; $('#zoom').hidden = !inRoom();
   $('#nav').hidden = inRoom(); $('#pages').hidden = inRoom(); $('#gamebar').hidden = !inRoom(); $('#tags').hidden = !inRoom();
   preview.visible = !inRoom() && tabs?.tab === 'avatar';
   if (inRoom()) {
@@ -476,18 +509,19 @@ function draw(v, dt, t) {
     if (b.y < 0.08 || b.life <= 0) { scene.remove(b.mesh); localBalls.splice(i, 1); }
   }
   // camera
+  if (!inRoom() && fog0 && scene.fog) { scene.fog.near = fog0.near; scene.fog.far = fog0.far; } // outside a match: the normal fog
   if (viewShifted && !(tabs?.tab === 'avatar' && !inRoom())) { camera.clearViewOffset(); viewShifted = false; }
-  if (mine) {
-    camTarget.lerp(tmp.set(ctl.x * 0.55, 0, ctl.z * 0.55), Math.min(1, dt * 3));
-    const portrait = H > W * 1.1; camera.fov = portrait ? 62 : 50; camera.updateProjectionMatrix();
-    camPos.lerp(tmp.copy(camTarget).add(portrait ? new V3(0, 21, 15) : new V3(0, 14, 12.5)), Math.min(1, dt * 3));
-    camera.position.copy(camPos); camera.lookAt(camTarget.x, 0.6, camTarget.z - 1.2);
-  } else if (inRoom()) {
-    const hx = hatMesh.position.x * 0.5, hz = hatMesh.position.z * 0.5;
-    camTarget.lerp(tmp.set(hx, 0, hz), Math.min(1, dt * 1.5));
-    const portrait = H > W * 1.1; camera.fov = portrait ? 66 : 52; camera.updateProjectionMatrix();
-    camPos.lerp(tmp.copy(camTarget).add(portrait ? new V3(0, 26, 19) : new V3(0, 18, 16)), Math.min(1, dt * 2));
-    camera.position.copy(camPos); camera.lookAt(camTarget.x, 0.5, camTarget.z - 1);
+  if (inRoom()) {
+    // Players follow themselves; watchers follow the hat. The zoom scales how far back the camera sits.
+    const portrait = H > W * 1.1, watch = !mine, rate = Math.min(1, dt * (watch ? 1.5 : 3));
+    const fov = watch ? (portrait ? 66 : 52) : (portrait ? 62 : 50);
+    const base = watch ? (portrait ? new V3(0, 26, 19) : new V3(0, 18, 16)) : (portrait ? new V3(0, 21, 15) : new V3(0, 14, 12.5));
+    const lookY = watch ? 0.5 : 0.6, lookBack = watch ? 1 : 1.2;
+    camTarget.lerp(watch ? tmp.set(hatMesh.position.x * 0.5, 0, hatMesh.position.z * 0.5) : tmp.set(ctl.x * 0.55, 0, ctl.z * 0.55), rate);
+    if (camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
+    const pos = camTarget.clone().add(base.clone().multiplyScalar(zoom)), look = new V3(camTarget.x, lookY, camTarget.z - lookBack);
+    camPos.lerp(pos, rate); camera.position.copy(camPos); camera.lookAt(look);
+    if (scene.fog) { fog0 ||= { near: scene.fog.near, far: scene.fog.far }; const k = Math.max(1, zoom); scene.fog.near = fog0.near * k; scene.fog.far = fog0.far * k; } // the plaza's own fog, pulled back with the camera
   } else if (tabs?.tab === 'avatar') {
     // Frame the whole character, hat included, in the space the page actually leaves free: below the top bar and above
     // (phones upright) or beside (wide or sideways screens) the editor panel. Fixed camera spots cut the head off on
@@ -633,4 +667,6 @@ const tabs = initTabs(app);
 $('#loading')?.remove();
 frame();
 
-window.__sq = { get room() { return room; }, get isHost() { return isHost; }, get sim() { return sim; }, get view() { return currentView; }, me, ctl, enterRoom, leaveRoom, startPractice, idleFor: (ms) => { lastInput = performance.now() - ms; } };
+window.__sq = { camDist: () => camera.position.distanceTo(camTarget), setZoom, get zoom() { return zoom; },
+  // tests: where the ring's outer wall lands on screen (-1..1 = inside the view), all the way round, at the ground and wall top
+  ringFit: (r = 15.0) => { let x0 = 9, x1 = -9, y0 = 9, y1 = -9; for (let i = 0; i < 72; i++) for (const y of [0, 1]) { const a = (i / 72) * Math.PI * 2, p = new V3(Math.cos(a) * r, y, Math.sin(a) * r).project(camera); x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); } return { x0, x1, y0, y1 }; }, get room() { return room; }, get isHost() { return isHost; }, get sim() { return sim; }, get view() { return currentView; }, me, ctl, enterRoom, leaveRoom, startPractice, idleFor: (ms) => { lastInput = performance.now() - ms; } };

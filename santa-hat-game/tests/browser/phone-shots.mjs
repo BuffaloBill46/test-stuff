@@ -23,7 +23,7 @@ for (const [label, w, h] of SIZES) {
   // How much of the screen the floating UI covers during play, and whether any of it overlaps.
   const m = await page.evaluate(() => {
     const box = (s) => { const e = document.querySelector(s); if (!e || e.hidden || getComputedStyle(e).display === 'none' || !e.offsetParent && getComputedStyle(e).position !== 'fixed') return null; const r = e.getBoundingClientRect(); return r.width && r.height ? r : null; };
-    const parts = ['#gamebar .brand', '#roomchip', '#gamebar .sndbtn', '#leave', '#hud', '#board', '#emotes'].map((s) => [s, box(s)]).filter(([, r]) => r);
+    const parts = ['#gamebar .brand', '#roomchip', '#gamebar .sndbtn', '#leave', '#hud', '#board', '#emotes', '#joy', '#zoom'].map((s) => [s, box(s)]).filter(([, r]) => r);
     const hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
     const over = []; for (let i = 0; i < parts.length; i++) for (let j = i + 1; j < parts.length; j++) if (hit(parts[i][1], parts[j][1])) over.push(parts[i][0] + ' × ' + parts[j][0]);
     const top = Math.max(...parts.filter(([s]) => s === '#hud' || s.startsWith('#gamebar') || s === '#leave' || s === '#roomchip').map(([, r]) => r.bottom));
