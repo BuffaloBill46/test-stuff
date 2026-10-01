@@ -274,3 +274,9 @@ because Supabase's security advisor was run right after applying the file. Rules
 grants (`SUPABASE_GRANTS` in `tests/db/setup.mjs`); (2) run `get_advisors` (security) after every live database change;
 (3) prove a "refused" claim on the live database as the real role (`set local role authenticated` inside a block that
 rolls back), not by reading the SQL file.
+
+## A "must fail" check on a NEW file can't be confirmed with git diff (2026-10-01)
+Breaking `server/solanachain.js` on purpose: `git diff --stat` printed nothing before AND after, because the file was new and
+untracked, so it proved nothing about the restore. Back up with `cp`, restore, and confirm with `cmp backup file`.
+Also from that check: the payout crash test must restart the worker while the payout is STILL IN FLIGHT. Waiting for it to
+land first made the test pass even with an adapter that said "expired" too early (which would pay twice).
