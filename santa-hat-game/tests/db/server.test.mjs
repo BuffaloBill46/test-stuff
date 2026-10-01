@@ -167,4 +167,40 @@ assert.equal(wins.length, Math.min(30, realWins));
 assert.ok(wins.every((w) => w.amount > (w.game === 'spin10' ? 0.1 : 1) && w.gainPct > 0), 'only real wins');
 assert.ok(!JSON.stringify(wins).includes('wa11et'), 'no wallet addresses in the public list');
 assert.ok(wins.every((w, i) => i === 0 || wins[i - 1].at >= w.at), 'newest first');
+// Snowball Drop: buy a $10 BALANCE in one payment, then play 10¢ and $1 drops from it in any mix (Cody, 2026-10-01).
+// Invariants: units left = 100 − units spent, always; a refund gives back exactly the play's units; each drop re-checks.
+{
+  const unitsLeft = () => credits(me, 'drop');
+  const dq = await server.quote(me, 'drop', 10);
+  assert.equal(dq.usd, 10, '$10 of balance costs $10'); assert.equal(dq.pool, POOLS.spin, 'paid into the Spin pool (shared)');
+  pay(S('Drop'), { to: POOLS.spin, total: dq.santaRaw });
+  const db_ = await server.buy(me, dq.id, S('Drop'));
+  assert.equal(db_.ok, true, JSON.stringify(db_)); assert.equal(await unitsLeft(), 100, '$10 = 100 units of 10¢');
+  let spent = 0;
+  for (const bet of [1, 0.1, 1, 0.1, 0.1, 1]) {
+    const o = await server.open(me, 'drop', bet); assert.ok(o.ticket, JSON.stringify(o));
+    spent += Math.round(bet * 10); assert.equal(await unitsLeft(), 100 - spent, `a ${bet} drop takes ${Math.round(bet * 10)} unit(s)`);
+    const st = await server.settle(me, o.ticket, newSeed(16)); assert.ok(st.r, JSON.stringify(st));
+    assert.equal(st.proof.bet, bet); const c = await check(st.proof); assert.ok(c.matches); assert.deepEqual([c.outcome.path, c.outcome.mult], [st.r.path, st.r.mult], 'the drop re-checks');
+    const row = await one('select bet, units, result from public.plays where id = $1', [o.ticket]);
+    assert.deepEqual([+row.bet, row.units, row.result.bin], [bet, Math.round(bet * 10), st.r.bin], 'the play row records its size, units and result');
+  }
+  assert.equal(await unitsLeft(), 100 - 33, '$10 − $3.30 played = $6.70 left');
+  assert.equal((await server.open(me, 'drop', 0.37)).error, 'unknown size');
+  // a refused play (pool stopped between open and settle) gives back exactly the $1
+  const o = await server.open(me, 'drop', 1); assert.equal(await unitsLeft(), 57);
+  await db.query(`update public.pools set rules = '{"paused": true}' where game = 'spin'`);
+  assert.equal((await server.settle(me, o.ticket, newSeed(16))).refused, true);
+  assert.equal(await unitsLeft(), 67, 'refund: exactly 10 units back');
+  await db.query(`update public.pools set rules = '{}' where game = 'spin'`);
+  const bal = await one(`select left_n, bought, used from public.credits where profile_id = $1 and kind = 'drop'`, [me]);
+  assert.equal(+bal.bought, +bal.used + +bal.left_n, 'the books balance (bought = used + left)');
+  // only what's left can be played: spend down to 6 units, then a $1 drop is refused and nothing is taken
+  for (let i = 0; i < 6; i++) { const x = await server.open(me, 'drop', 1); await server.settle(me, x.ticket, newSeed(16)); }
+  for (let i = 0; i < 1; i++) { const x = await server.open(me, 'drop', 0.1); await server.settle(me, x.ticket, newSeed(16)); }
+  assert.equal(await unitsLeft(), 6);
+  assert.deepEqual(await server.open(me, 'drop', 1), { noCredit: true }, 'a $1 drop needs 10 units; 6 are left');
+  assert.equal(await unitsLeft(), 6, 'nothing taken');
+  console.log('Snowball Drop on real Postgres: $10 balance bought once, 10¢ and $1 drops mixed, units exact, refund exact, every drop re-checked');
+}
 console.log(`OK: quote → pay → buy → open → settle on real Postgres; 5 bad payments refused; 20 plays re-checked; 10 settles at once all counted (balances add/subtract, so none can be lost); price halving checked; paused pool keeps the credit`);

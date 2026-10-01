@@ -50,7 +50,7 @@ export function makeHandler(deps) {
         case 'credits': out = { credits: await deps.credits(profile) }; break;
         case 'quote': out = await s.quote(profile, String(body.kind), Number(body.n)); break;
         case 'buy': out = await s.buy(profile, String(body.quote), String(body.signature)); break;
-        case 'open': out = await s.open(profile, String(body.kind)); break;
+        case 'open': out = await s.open(profile, String(body.kind), Number(body.bet)); break;
         case 'settle': out = await s.settle(profile, String(body.ticket), String(body.seed)); break;
         default: return reply(origin, 400, { error: 'unknown action' });
       }

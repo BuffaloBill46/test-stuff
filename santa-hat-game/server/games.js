@@ -4,7 +4,8 @@
 //   buy    → check the finalized payment, add credits     settle → player's number in, draw, pay, reveal the secret
 // `db` = { query(sql, params) → rows, tx(fn) } on a direct Postgres connection (a transaction holds the pool row lock).
 // `chain.getTransaction(sig)` = Solana getTransaction (jsonParsed, finalized). Keys and secrets never leave the server.
-import { KINDS } from '../mockups/credits.js';
+import { KINDS, DROP_SIZES, unitsFor } from '../mockups/credits.js';
+import { play as dropPlay, canPlay as canDrop } from '../mockups/plinko.js';
 import { DEFAULT_SETTINGS, build } from '../mockups/settings.js';
 import { spin, canSpin } from '../mockups/spin.js';
 import { pull, canPull, FEE } from '../mockups/slots.js';
@@ -48,7 +49,8 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     const recent = (await row(`select count(*)::int as n from public.quotes where profile_id = $1 and created_at > now() - interval '1 hour'`, [profile])).n;
     if (recent >= QUOTES_PER_HOUR) return { error: 'too many price quotes; try again in a little while' };
     const cfg = await cfgFor(await settingsVersion());
-    const price = await livePrice(), usd = Math.round(cfg.prices[kind] * n * 100) / 100, santaRaw = Math.round((usd / price.usd) * DEC);
+    const step = KINDS[kind].balance ? KINDS[kind].step : cfg.prices[kind]; // Snowball Drop: n dollars of balance
+    const price = await livePrice(), usd = Math.round(step * n * 100) / 100, santaRaw = Math.round((usd / price.usd) * DEC);
     const q = await row(`insert into public.quotes (profile_id, kind, n, usd, santa_raw, price_usd) values ($1, $2, $3, $4, $5, $6) returning id, created_at`,
       [profile, kind, n, usd, santaRaw, price.usd]);
     // where to pay: the page builds the one transaction from this (mockups/pay.js); the live tax so its fee matches the token
@@ -89,17 +91,21 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     return done;
   }
 
-  async function open(profile, kind) {
+  // bet: the size, for a balance kind (Snowball Drop: 10¢ or $1 from one balance, Cody 2026-10-01).
+  async function open(profile, kind, bet) {
     if (!isKind(kind)) return { error: 'unknown game' };
     const K = KINDS[kind];
+    if (K.balance && !DROP_SIZES.includes(bet)) return { error: 'unknown size' };
     if (!(await walletOf(profile))) return { error: 'playing for SANTA needs a linked wallet (winnings are paid to it)' };
     await tidy(profile);
     const p = await row('select * from public.pools where game = $1', [K.game]);
     let price; try { price = (await livePrice()).usd; } catch (e) { return { failed: true, why: 'no live SANTA price right now' }; }
-    const version = await settingsVersion(), cfg = await cfgFor(version), bet = cfg.prices[kind];
-    const can = K.game === 'spin' ? canSpin(poolState(p, price), bet, cfg.wheel) : canPull(poolState(p, price), { ...cfg.machine, bet });
+    const version = await settingsVersion(), cfg = await cfgFor(version);
+    if (!K.balance) bet = cfg.prices[kind];
+    const can = kind === 'drop' ? canDrop(poolState(p, price), bet) : K.game === 'spin' ? canSpin(poolState(p, price), bet, cfg.wheel) : canPull(poolState(p, price), { ...cfg.machine, bet });
     if (!can.ok) return { refused: true, stopped: !!can.stopped };                       // 1. pool check: credit untouched
-    const playId = (await row('select public.spend_credit($1, $2, $3) as id', [profile, kind, version])).id; // 2. spend one credit
+    const units = unitsFor(kind, bet);                                                    // 2. spend one credit (a drop: 1 or 10 units)
+    const playId = (await row('select public.spend_credit($1, $2, $3, $4, $5) as id', [profile, kind, version, units, K.balance ? bet : null])).id;
     if (!playId) return { noCredit: true };
     if (+playId === -1) return { busy: true }; // one play at a time per player
     try {                                                                                 // 3. only now: the secret
@@ -126,7 +132,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
         state = poolState(p, price);
         const rand = fair.randFrom(await f.numbers(pl.secret, playerSeed, +pl.play_no, NUMS));  // 4. the player's number goes in
         const cfg = await cfgFor(+pl.settings_version), bet = +pl.bet;                         // the play's own settings and price
-        r = K.game === 'spin' ? spin(state, bet, rand, undefined, cfg.wheel) : pull(state, { ...cfg.machine, bet }, rand);
+        r = pl.kind === 'drop' ? dropPlay(state, bet, rand) : K.game === 'spin' ? spin(state, bet, rand, undefined, cfg.wheel) : pull(state, { ...cfg.machine, bet }, rand);
       } catch (e) { await t.query('select public.refund_play($1)', [pl.id]); return { failed: true, why: e.message }; }
       if (r.paused) { await t.query('select public.refund_play($1)', [pl.id]); return { refused: true, stopped: !!r.stopped }; }
       const cap = r.jackpot ? r.pay : PAYOUT_CAP; // jackpots are expected to be big; still logged and paid through the queue
@@ -134,10 +140,10 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
       const skimRaw = toRaw(r.skim || 0, price), topRaw = toRaw(r.topOff || 0, price);
       const payRaw = Math.min(toRaw(r.pay, price), +p.santa_raw + topRaw - skimRaw); // never more than the pool holds
       const poolDelta = topRaw - skimRaw - payRaw, treasuryDelta = Math.round(skimRaw * (1 - FEE)) - Math.round(topRaw / (1 - FEE));
-      const result = K.game === 'spin' ? { slice: r.slice, ...(r.bonusSlice !== undefined ? { bonusSlice: r.bonusSlice } : {}), mult: r.mult } : { stops: r.stops, jackpot: r.jackpot, wins: r.wins.length, hats: r.hats };
+      const result = pl.kind === 'drop' ? { path: r.path, bin: r.bin, mult: r.mult } : K.game === 'spin' ? { slice: r.slice, ...(r.bonusSlice !== undefined ? { bonusSlice: r.bonusSlice } : {}), mult: r.mult } : { stops: r.stops, jackpot: r.jackpot, wins: r.wins.length, hats: r.hats };
       await t.query('select public.settle_play($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',  // skims/top-offs queued as real transfers
         [pl.id, playerSeed, JSON.stringify(result), Math.round(r.pay * 100) / 100, payRaw, price, poolDelta, treasuryDelta, wallet, cap, skimRaw, topRaw]);
-      return { r, payRaw, poolDelta, price, poolUsd: state.pool, proof: { kind: pl.kind, commit: pl.commit, secret: pl.secret, playerSeed, playNo: +pl.play_no, settingsVersion: +pl.settings_version } };  // 5. revealed
+      return { r, payRaw, poolDelta, price, poolUsd: state.pool, proof: { kind: pl.kind, bet: +pl.bet, commit: pl.commit, secret: pl.secret, playerSeed, playNo: +pl.play_no, settingsVersion: +pl.settings_version } };  // 5. revealed
     });
   }
   // Recent winners for everyone: settled plays that paid more than they cost (display names only, never wallets).

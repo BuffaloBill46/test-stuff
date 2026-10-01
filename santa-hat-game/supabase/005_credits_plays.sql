@@ -8,8 +8,8 @@
 create table public.quotes (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid not null references public.profiles (id) on delete cascade,
-  kind text not null check (kind in ('spin10', 'spin100', 'big')),
-  n int not null check (n between 1 and 10),
+  kind text not null check (kind in ('spin10', 'spin100', 'big', 'drop')),
+  n int not null check (n between 1 and 10),        -- plays, or dollars for the Snowball Drop balance
   usd numeric(10, 2) not null check (usd > 0),
   santa_raw bigint not null check (santa_raw > 0),     -- smallest units (6 decimals)
   price_usd numeric not null check (price_usd > 0),
@@ -30,8 +30,10 @@ create table public.payments (
 -- Credits, per player, game and size. The books must always balance: bought = used + left.
 create table public.credits (
   profile_id uuid not null references public.profiles (id) on delete cascade,
-  kind text not null check (kind in ('spin10', 'spin100', 'big')),
+  kind text not null check (kind in ('spin10', 'spin100', 'big', 'drop')),
   bet numeric(10, 2) not null check (bet > 0),           -- the price each of these credits was bought at (a play pays on it)
+                                                         -- Snowball Drop: a dollar BALANCE in 10¢ units (Cody, 2026-10-01): bet 0.10,
+                                                         -- left_n = units; a 10¢ drop spends 1 unit, a $1 drop 10
   left_n int not null default 0 check (left_n >= 0),
   bought int not null default 0, used int not null default 0,
   primary key (profile_id, kind, bet),                   -- credits bought at different prices are kept apart
@@ -62,7 +64,9 @@ create table public.plays (
   player_seed text,
   result jsonb,
   pay numeric(12, 2),
-  bet numeric(10, 2),                                  -- the price paid for this play's credit
+  bet numeric(10, 2),                                  -- the price of this play (Snowball Drop: its size, 0.10 or 1.00)
+  credit_bet numeric(10, 2),                           -- the credits row it was paid from (same as bet except for a balance)
+  units int not null default 1 check (units > 0),      -- credits it took (Snowball Drop: 1 or 10); a refund gives back exactly these
   settings_version int not null default 0,             -- the game settings (odds, prizes) this play ran on
   price_usd numeric,                                   -- the live SANTA price the play was settled at
   spent_at timestamptz not null default now(), opened_at timestamptz, settled_at timestamptz,
@@ -144,8 +148,10 @@ begin
   insert into public.payments (signature, quote_id, profile_id, kind, n, paid_raw, burned_raw, arrived_raw)
     values (p_signature, q.id, q.profile_id, q.kind, q.n, p_paid, p_burned, p_arrived);  -- a reused signature fails here
   update public.quotes set used_by = p_signature where id = q.id;
-  insert into public.credits (profile_id, kind, bet, left_n, bought) values (q.profile_id, q.kind, round(q.usd / q.n, 2), q.n, q.n)
-    on conflict (profile_id, kind, bet) do update set left_n = public.credits.left_n + q.n, bought = public.credits.bought + q.n
+  -- n plays (or, for the Snowball Drop balance, n dollars = n × 10 units of 10¢)
+  insert into public.credits (profile_id, kind, bet, left_n, bought)
+    values (q.profile_id, q.kind, round(q.usd / (q.n * case when q.kind = 'drop' then 10 else 1 end), 2), q.n * case when q.kind = 'drop' then 10 else 1 end, q.n * case when q.kind = 'drop' then 10 else 1 end)
+    on conflict (profile_id, kind, bet) do update set left_n = public.credits.left_n + excluded.left_n, bought = public.credits.bought + excluded.bought
     returning left_n into left_now;
   -- the SANTA that arrived reaches that game's pool now
   update public.pools set santa_raw = santa_raw + p_arrived, updated_at = now() where game = case when q.kind = 'big' then 'slots' else 'spin' end;
@@ -154,7 +160,8 @@ end $$;
 
 -- Step 2 of the order: take one credit (only if there is one; the row lock makes two taps safe) and start the play.
 -- Returns the play id, null when there's no credit, or -1 when another play of this player isn't finished yet.
-create function public.spend_credit(p_profile uuid, p_kind text, p_version int default 0) returns bigint
+-- p_units / p_bet: a balance play (Snowball Drop) takes p_units credits and is a play of size p_bet.
+create function public.spend_credit(p_profile uuid, p_kind text, p_version int default 0, p_units int default 1, p_bet numeric default null) returns bigint
 language plpgsql security definer set search_path = '' as $$
 declare next_no bigint; play_id bigint; b numeric;
 begin
@@ -162,12 +169,13 @@ begin
   perform pg_advisory_xact_lock(hashtext(p_profile::text));
   if exists (select 1 from public.plays where profile_id = p_profile and state in ('spent', 'open')) then return -1; end if;
   -- the oldest-priced credits first; the play remembers that price and the settings version it runs on
-  update public.credits set left_n = left_n - 1, used = used + 1
-    where (profile_id, kind, bet) = (select profile_id, kind, bet from public.credits where profile_id = p_profile and kind = p_kind and left_n > 0 order by bet limit 1)
+  if p_units is null or p_units < 1 then raise exception 'bad units'; end if;
+  update public.credits set left_n = left_n - p_units, used = used + p_units
+    where (profile_id, kind, bet) = (select profile_id, kind, bet from public.credits where profile_id = p_profile and kind = p_kind and left_n >= p_units order by bet limit 1)
     returning bet into b;
   if b is null then return null; end if;
   select coalesce(max(play_no), 0) + 1 into next_no from public.plays where profile_id = p_profile;
-  insert into public.plays (profile_id, kind, play_no, bet, settings_version) values (p_profile, p_kind, next_no, b, p_version) returning id into play_id;
+  insert into public.plays (profile_id, kind, play_no, bet, credit_bet, units, settings_version) values (p_profile, p_kind, next_no, coalesce(p_bet, b), b, p_units, p_version) returning id into play_id;
   return play_id;
 end $$;
 
@@ -206,7 +214,7 @@ declare pl public.plays;
 begin
   update public.plays set state = 'refunded' where id = p_play and state in ('spent', 'open') returning * into pl;
   if pl.id is null then raise exception 'play % cannot be refunded', p_play; end if;
-  update public.credits set left_n = left_n + 1, used = used - 1 where profile_id = pl.profile_id and kind = pl.kind and bet = pl.bet;
+  update public.credits set left_n = left_n + pl.units, used = used - pl.units where profile_id = pl.profile_id and kind = pl.kind and bet = coalesce(pl.credit_bet, pl.bet);
 end $$;
 
 revoke execute on function public.buy_credits, public.spend_credit, public.lock_play, public.settle_play, public.refund_play from public, anon, authenticated;
