@@ -1,5 +1,6 @@
 // Snowball Square match referee. Runs only on the host's browser; everyone else renders its snapshots.
 // Pure game logic, no rendering, so it can be tested headless.
+import { levelInfo } from './levels.js';
 export const K = {
   ARENA: 13.2, HEAD_Y: 2.05, BALL_G: 7, BALL_SPEED: 18, HAT_G: 16, PED_TOP: 1.71,
   ROUND_TIME: 90, ROUNDS: 3, BREAK_TIME: 6, END_TIME: 12, MAX_HUMANS: 8, MIN_BODIES: 4,
@@ -24,9 +25,11 @@ export function constrain(p) {
 }
 
 // rulesOf(ent) → that player's snowball rules (catalog.js ballRules); none = normal snowballs.
-export function createSim(rand = Math.random, { rulesOf = () => ({}) } = {}) {
+// startOf(ent) → that player's starting snowballs, from their level (levels.js; Cody 2026-10-01). Default: level 1. Bots keep 4.
+export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = () => levelInfo(1).start } = {}) {
+  const startCount = (e) => (e.bot ? 4 : Math.min(20, Math.max(1, Math.floor(Number(startOf(e))) || levelInfo(1).start)));
   const S = {
-    phase: 'lobby', mode: 'ffa', round: 0, time: 0, seq: 0, ents: [], balls: [], ev: [], evId: 0,
+    phase: 'lobby', mode: 'ffa', round: 0, time: 0, seq: 0, ents: [], balls: [], ev: [], evId: 0, mid: '',
     nextId: 1, nextBall: 1, team: [0, 0], result: null,
     hat: { st: 'ped', x: 0, y: K.PED_TOP, z: 0, vx: 0, vy: 0, vz: 0, holder: -1, last: -1, cool: 0, bounces: 0, rest: 0, acc: 0 },
     landing: { x: 0, z: 0 },
@@ -39,7 +42,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}) } = {}) {
   const d2 = (a, b) => hyp(a.x - b.x, a.z - b.z);
 
   function mkEnt(peer, bot, team) {
-    return { id: S.nextId++, peer, bot, team, x: 0, z: 0, vx: 0, vz: 0, face: 0, stun: 0, cool: bot ? 1 : 0, ammo: bot ? 4 : 6, max: bot ? 4 : 6,
+    return { id: S.nextId++, peer, bot, team, x: 0, z: 0, vx: 0, vz: 0, face: 0, stun: 0, cool: bot ? 1 : 0, ammo: bot ? 4 : levelInfo(1).start, max: bot ? 4 : levelInfo(1).start,
       regen: 0, score: 0, lastTh: null, wob: rand() * 9, throwT: 0, ep: 0, since: 9, rq: -1 };
   }
   function spawn(e, i = Math.floor(rand() * 16), n = 16) {
@@ -80,7 +83,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}) } = {}) {
     const humans = peers.slice(0, K.MAX_HUMANS);
     S.ents.filter((e) => !e.bot && !humans.includes(e.peer)).forEach(removeEnt);
     let added = false;
-    for (const p of humans) if (!S.ents.some((e) => e.peer === p)) { const e = mkEnt(p, false, -1); spawn(e); S.ents.push(e); added = true; }
+    for (const p of humans) if (!S.ents.some((e) => e.peer === p)) { const e = mkEnt(p, false, -1); e.max = e.ammo = startCount(e); spawn(e); S.ents.push(e); added = true; }
     balance(S.phase === 'lobby');
     return added;
   }
@@ -105,13 +108,15 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}) } = {}) {
 
   // ---------- flow
   function resetRound() {
-    S.ents.forEach((e, i) => { spawn(e, i, S.ents.length); e.ammo = e.max; e.cool = e.bot ? 0.8 + rand() : 0; e.regen = 0; });
+    S.ents.forEach((e, i) => { spawn(e, i, S.ents.length); e.max = startCount(e); e.ammo = e.max; // a level-up shows from the next round
+      e.cool = e.bot ? 0.8 + rand() : 0; e.regen = 0; });
     Object.assign(S.hat, { st: 'ped', holder: -1, last: -1, x: 0, y: K.PED_TOP, z: 0, vx: 0, vy: 0, vz: 0, acc: 0 });
     S.balls = [];
   }
   function startMatch(mode) {
     S.mode = mode === 'team' ? 'team' : 'ffa';
     S.phase = 'play'; S.round = 1; S.time = K.ROUND_TIME; S.team = [0, 0]; S.result = null;
+    S.mid = Array.from({ length: 4 }, () => Math.floor(rand() * 2 ** 32).toString(16).padStart(8, '0')).join('');
     balance(true);
     S.ents.forEach((e) => { e.score = 0; });
     resetRound(); ev('round', 1);
@@ -287,6 +292,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}) } = {}) {
       V: S.ev.slice(-10),
       R: S.result ? [S.result.team ?? -2, S.result.top ?? -2, S.result.mvp] : 0,
       c: [S.nextId, S.nextBall, S.evId],
+      mid: S.mid,
     };
   }
 
@@ -294,8 +300,9 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}) } = {}) {
   function load(snap) {
     if (!snap || !Array.isArray(snap.E)) return false;
     S.phase = PHASES[snap.ph] || 'lobby'; S.mode = snap.md ? 'team' : 'ffa'; S.round = num(snap.rd); S.time = num(snap.tm);
-    S.team = Array.isArray(snap.ts) ? [num(snap.ts[0]), num(snap.ts[1])] : [0, 0]; S.seq = num(snap.s);
+    S.team = Array.isArray(snap.ts) ? [num(snap.ts[0]), num(snap.ts[1])] : [0, 0]; S.seq = num(snap.s); S.mid = /^[0-9a-f]{8,64}$/.test(String(snap.mid)) ? snap.mid : '';
     S.ents = snap.E.map((r) => ({ ...mkEnt(r[1] || null, !!r[2], num(r[3])), id: num(r[0]), x: num(r[4]), z: num(r[5]), vx: num(r[6]), vz: num(r[7]), face: num(r[8]), stun: r[9] ? 0.5 : 0, ammo: num(r[10]), score: num(r[11]), throwT: r[12] ? 0.6 : 0, ep: num(r[13]) }));
+    S.ents.forEach((e) => { e.max = startCount(e); e.ammo = Math.min(e.ammo, e.max); }); // the level's maximum, not the default
     const H = snap.H || []; const h = S.hat;
     Object.assign(h, { st: HAT[H[0]] || 'ped', x: num(H[1]), y: num(H[2], K.PED_TOP), z: num(H[3]), vx: num(H[4]), vy: num(H[5]), vz: num(H[6]), holder: num(H[7], -1), acc: 0, cool: 0, bounces: 0, rest: 0 });
     if (h.st === 'head' && !byId(h.holder)) { h.st = 'ped'; h.holder = -1; }

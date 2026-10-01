@@ -4,7 +4,9 @@ import { buildPlaza, makeHat, shadowBlob } from './plaza.js';
 import { createSim, K, PHASES, constrain } from './sim.js';
 import { openRoom, accounts, findWallet, gamesBoard } from './net.js';
 import { SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules } from './catalog.js';
-import { initTabs, avatarCharacter } from './tabs.js';
+import { initTabs, avatarCharacter, renderProgress } from './tabs.js';
+import { levelInfo, clampLevel } from './levels.js';
+import { SERVER, call } from './gameserver.js';
 import { play as sfx, initSoundButtons } from './sfx.js';
 
 const V3 = THREE.Vector3;
@@ -92,7 +94,7 @@ const nameOf = (e) => (e.bot ? BOT_NAMES[botHash(e.id) % BOT_NAMES.length] : (e.
 
 // ---------- referee hand-off
 function becomeHost() {
-  isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)) }); // each player's snowball rules (Ice Ball etc.)
+  isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)), startOf }); // each player's snowball rules (Ice Ball etc.) and starting snowballs (level)
   if (lastRaw) sim.load(lastRaw);
   room?.setHost(true);
   sim.S.ev.forEach((v) => { lastEv = Math.max(lastEv, v[0]); });
@@ -156,7 +158,7 @@ async function enterRoom(code, quick, opts = {}) {
 
 function startPractice() {
   if (!profile) { me.n = cleanName($('#name')?.value) || me.n; store.set('sq_name', me.n); }
-  practice = true; room = null; roomCode = ''; isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)) }); me.j = Date.now(); me.w = false; ctl.ep = -1; snaps = []; lastEv = 0;
+  practice = true; room = null; roomCode = ''; isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)), startOf }); me.j = Date.now(); me.w = false; ctl.ep = -1; snaps = []; lastEv = 0;
   roomMode = null; autoStart = false; sim.S.mode = lobbyMode; closeLobby(); renderChrome();
 }
 
@@ -289,6 +291,29 @@ function sendEmote(i) {
 }
 
 // ---------- entity meshes
+// A player's level (their profile's, announced with their look; guests 1). Until the referee runs on our server, this is what
+// each player's browser says (the same trust as today's unranked matches; server/levels.js).
+function levelOf(e) {
+  if (e.bot) return 1;
+  if (e.peer === me.id) return me.l || 1;
+  return clampLevel(room?.peers().find((q) => q.id === e.peer)?.l);
+}
+const startOf = (e) => levelInfo(levelOf(e)).start;
+// Levels: when an Auto match ends, the host reports every finishing place (bots and guests as empty places) to the game
+// server, which counts top-3 finishes for players with accounts, once per match (the match id travels with handovers).
+// Only in server mode, and only from a signed-in host (the server checks the host played in it). Practice/private: nothing.
+const reportedMatches = new Set();
+async function reportFinish(v) {
+  if (!SERVER || practice || !isHost || !autoStart || !sim?.S.mid || reportedMatches.has(sim.S.mid) || !me.pid) return;
+  reportedMatches.add(sim.S.mid);
+  const order = [...v.ents].sort((a, b) => b.score - a.score || a.id - b.id);
+  const pidOf = (e) => (e.bot ? null : e.peer === me.id ? me.pid : room?.peers().find((q) => q.id === e.peer)?.pid || null);
+  try {
+    const r = await call('finish', { match: { id: sim.S.mid, auto: true, places: order.map(pidOf) } });
+    const mine = r?.counted?.find((c) => c.you);
+    if (mine && profile) { profile.level = mine.level; profile.xp = mine.xp; me.l = mine.level; renderProgress(profile); }
+  } catch { /* the next match counts; nothing is lost but this one finish */ }
+}
 function avatarOf(e) {
   if (e.bot) return botAvatar(e.id);
   if (e.peer === me.id) return me.a;
@@ -412,6 +437,7 @@ function renderChrome() {
       ${isHost && !me.w ? `<div class="modes" role="radiogroup" aria-label="Match mode"><button data-mode="ffa" aria-checked="${v.mode === 'ffa'}" role="radio">Everyone vs the hat</button><button data-mode="team" aria-checked="${v.mode === 'team'}" role="radio">Nice vs Naughty</button></div>
       <button class="go" id="start">Start match</button>` : `<p class="wait">Mode: <b>${v.mode === 'team' ? 'Nice vs Naughty' : 'Everyone vs the hat'}</b>. Waiting for the referee to start…</p>`}`;
   } else if (v.phase === 'end' && v.res) {
+    reportFinish(v); // levels: once per Auto match, from the host (server mode)
     const sorted = [...v.ents].sort((a, b) => b.score - a.score);
     const mvp = v.ents.find((e) => e.id === v.res.mvp);
     const headline = v.mode === 'team' ? (v.res.team < 0 ? "It's a tie!" : `${TEAM_NAME[v.res.team]} team wins!`) : v.res.top < 0 ? "It's a tie!" : `${esc(nameOf(v.ents.find((e) => e.id === v.res.top) || {}))} wins!`;
@@ -431,7 +457,7 @@ function renderChrome() {
     setHud(`<div class="stat plaque"><i>Round</i><b>${v.round}/${K.ROUNDS}</b></div>
       <div class="stat plaque ${v.time < 10 && v.phase === 'play' ? 'warn' : ''}"><i>${v.phase === 'break' ? 'Next round' : 'Time'}</i><b>${Math.ceil(v.time)}</b></div>
       ${m ? `<div class="stat plaque nice"><i>You</i><b>${m.score}</b></div>` : ''}
-      ${m ? `<div class="stat plaque"><i>Snowballs</i><div class="pips">${Array.from({ length: 6 }, (_, i) => `<u class="${i < m.ammo ? '' : 'off'}"></u>`).join('')}</div></div>` : ''}`);
+      ${m ? `<div class="stat plaque"><i>Snowballs</i><div class="pips">${Array.from({ length: startOf(m) }, (_, i) => `<u class="${i < m.ammo ? '' : 'off'}"></u>`).join('')}</div></div>` : ''}`);
   } else setHud('');
   // scoreboard
   let board = '';
@@ -655,7 +681,7 @@ const app = {
   me, accounts: acct,
   hasWallet: () => LOCAL || !!findWallet(),
   get profile() { return profile; }, set profile(p) { profile = p; },
-  setIdentity(name, a) { me.n = cleanName(name) || me.n; me.a = cleanAvatar(a); $('#name').value = me.n; $('#name').readOnly = !!profile; setPreview(me.a); },
+  setIdentity(name, a) { me.n = cleanName(name) || me.n; me.a = cleanAvatar(a); me.l = clampLevel(profile?.level); me.pid = profile?.id || null; $('#name').value = me.n; $('#name').readOnly = !!profile; setPreview(me.a); },
   preview: (a) => setPreview(a),
   onTab: (tab) => {
     ui.lastBoard = '';
@@ -664,6 +690,7 @@ const app = {
 };
 let gamesMod = null; // Games tab code loads the first time it's opened
 const tabs = initTabs(app);
+renderProgress(app.profile); // the Play page's Player Progress box (guests: level 1; updated on sign-in)
 $('#loading')?.remove();
 frame();
 
