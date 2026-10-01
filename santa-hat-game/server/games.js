@@ -36,7 +36,8 @@ const isSignature = (s) => /^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(String(s));
 const DEC = 1e6;
 
 // mint: which token is SANTA here (defaults to real SANTA; set to the test token on devnet, e.g. the SANTA_MINT secret).
-export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f = fair, mint = MINT }) {
+// cluster: the network the page must sign on ('mainnet' | 'devnet'); it goes in every quote with the wallet that must pay.
+export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f = fair, mint = MINT, cluster = 'mainnet' }) {
   const row = async (q, p) => (await db.query(q, p))[0];
   // Game settings (Cody's admin screen): the newest version for new plays; each play settles on the version it started with.
   const built = new Map(); let latest = { at: 0, version: 0 };
@@ -65,7 +66,8 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   async function quote(profile, kind, n, bet) {
     if (!isKind(kind)) return { error: 'unknown game' };
     if (!RUN_SIZES.includes(n)) return { error: 'buy 1, 5 or 10' };
-    if (!(await walletOf(profile))) return { error: 'playing for SANTA needs a linked wallet (winnings are sent to it)' };
+    const payer = await walletOf(profile);
+    if (!payer) return { error: 'playing for SANTA needs a linked wallet (winnings are sent to it)' };
     const recent = (await row(`select count(*)::int as n from public.quotes where profile_id = $1 and created_at > now() - interval '1 hour'`, [profile])).n;
     if (recent >= QUOTES_PER_HOUR) return { error: 'too many price quotes; try again in a little while' };
     const cfg = await cfgFor(await settingsVersion());
@@ -81,7 +83,9 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     // where to pay: the page builds the one transaction from this (mockups/pay.js); the live tax so its fee matches the token
     const fee = await liveFee();
     return { id: q.id, kind, n, bet, usd, santaRaw, price: price.usd, expiresAt: new Date(q.created_at).getTime() + QUOTE_SECONDS * 1000,
-      mint, pool: poolWallets?.[KINDS[kind].game] || null, fee: { bps: fee.bps, max: fee.max }, burnBps: 1000 };
+      mint, pool: poolWallets?.[KINDS[kind].game] || null, fee: { bps: fee.bps, max: fee.max }, burnBps: 1000,
+      // only a payment FROM this wallet is accepted (verify.js): the page refuses to sign with any other, so nobody pays for nothing
+      payer, cluster };
   }
 
   async function buy(profile, quoteId, signature) {

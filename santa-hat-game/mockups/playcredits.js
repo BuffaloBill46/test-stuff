@@ -9,7 +9,7 @@ import { newSeed } from './fair.js';
 import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js';
 import { FEE } from './slots.js';
 import { play as sfx } from './sfx.js';
-import { SERVER, call } from './gameserver.js';
+import { SERVER, call, walletReady } from './gameserver.js';
 export const serverMode = !!SERVER; // ?server=<address>: plays come from the game server
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -63,14 +63,49 @@ async function payOnServer(kind, bet, n) {
   if (q.busy) { note.textContent = 'Your last run is still finishing. Try again in a moment.'; $('#buyGo').disabled = false; return null; }
   if (q.refused) { note.textContent = q.stopped ? 'This game is paused right now. Nothing was charged.' : 'The prize pool is refilling. Try again soon; nothing was charged.'; $('#buyGo').disabled = false; return null; }
   if (q.error) { note.textContent = q.error; $('#buyGo').disabled = false; return null; }
+  await walletReady;
   if (typeof window.santaPay !== 'function') { note.textContent = 'Wallet payments aren\'t connected yet.'; $('#buyGo').disabled = false; return null; }
   let signature; try { note.textContent = 'Approve the payment in your wallet…'; signature = await window.santaPay(q); }
-  catch (e) { note.textContent = 'Payment cancelled.'; $('#buyGo').disabled = false; return null; }
+  catch (e) { note.textContent = /reject|cancel|denied/i.test(e?.message || '') ? 'Payment cancelled.' : 'Not paid: ' + (e?.message || 'the wallet said no'); $('#buyGo').disabled = false; return null; }
   note.textContent = 'Confirming the payment…';
-  const b = await call('buy', { quote: q.id, signature });
+  const b = await buyPaid(q.id, signature);
   $('#buyGo').disabled = false;
   if (b.error) { note.textContent = b.error; return null; }
   return b;
+}
+
+// The player HAS paid: keep asking the server until it accepts the payment (it only takes finalized ones). The payment is
+// remembered in this browser first, so if the tab closes or the network drops right now, the next visit hands it to the
+// server again (resumePaid). A payment is used once by the server, so asking twice can never buy twice.
+const PENDING = 'santa.pendingPayment';
+const remember = (v) => { try { v ? localStorage.setItem(PENDING, JSON.stringify(v)) : localStorage.removeItem(PENDING); } catch {} };
+async function buyPaid(quote, signature) {
+  remember({ quote, signature, at: Date.now() });
+  let b;
+  for (let i = 0; i < 40; i++) {
+    try { b = await call('buy', { quote, signature }); } catch { b = { error: 'the game server didn\'t answer', retry: true }; }
+    if (!b.error || !(b.retry || /not finalized|not found/.test(b.error))) break;
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+  if (!b.error || /already used/.test(b.error)) remember(null); // done (or done before); anything else stays to retry next visit
+  else if (!(b.retry || /not finalized|not found/.test(b.error))) remember(null); // refused for good (e.g. paid too late): retrying can't help
+  else b = { error: `Your payment went through but isn't confirmed yet. We'll keep trying when you come back (payment ${signature.slice(0, 8)}…).` };
+  return b;
+}
+// On load in server mode: a payment the server never got (closed tab, dropped network) is handed over now, and its plays are
+// played straight away (same fair order; the last one queues the run's payout), so the winnings still reach the wallet.
+// Kept for a day, then dropped (a payment the server still refuses after a day isn't going to be accepted).
+export async function resumePaid() {
+  let p; try { p = JSON.parse(localStorage.getItem(PENDING) || 'null'); } catch {}
+  if (!serverMode || !p?.signature) return null;
+  if (Date.now() - p.at > 86_400_000) { remember(null); return null; }
+  const b = await call('buy', { quote: p.quote, signature: p.signature });
+  if (b.error && !/already used/.test(b.error)) return null;
+  remember(null);
+  if (b.error) return null; // it had been accepted already
+  let won = 0;
+  for (const pl of b.plays || []) { const s = await call('settle', { ticket: pl.ticket, seed: newSeed(16) }); won += s?.r?.pay || 0; }
+  return { ...b, won };
 }
 
 // ---- one run ----

@@ -35,7 +35,9 @@ const auth = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'),
 const poolWallets = { spin: env('SPIN_POOL_WALLET') || null, slots: env('SLOTS_POOL_WALLET') || null }, mintOpt = env('SANTA_MINT') ? { mint: env('SANTA_MINT') } : {};
 // The tax is read from the token this server accepts, on its own network (the test token on devnet), not always real SANTA.
 const feeOfMint = () => liveFee(env('SANTA_MINT') || undefined, [rpcUrl]);
-const server = createGameServer({ db, chain, livePrice: makePrice({ db, livePrice }), liveFee: feeOfMint, poolWallets, ...mintOpt });
+// The network the page signs on: SOLANA_CLUSTER if set, else read from the RPC address (a devnet URL says devnet).
+const cluster = env('SOLANA_CLUSTER') || (/devnet/.test(rpcUrl) ? 'devnet' : 'mainnet');
+const server = createGameServer({ db, chain, livePrice: makePrice({ db, livePrice }), liveFee: feeOfMint, poolWallets, ...mintOpt, cluster });
 
 // Speed limit: counts in the database (table rate_hits, supabase/007_rate_limits.sql: apply it with 005), because each call
 // here may run in a fresh copy that remembers nothing. On the planned always-on game server: memoryStore() instead (one line).

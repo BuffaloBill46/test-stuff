@@ -5,7 +5,8 @@
 //   - each wallet gets a token account and a little devnet SOL for fees; the pools get their starting SANTA
 // Keys are kept OUTSIDE the repo (default C:\santa-devnet-keys, or SANTA_KEYS=<folder>); only public addresses are printed and
 // written to ../../devnet.json. Safe to run again: existing keys and accounts are reused, balances only topped up.
-// Fees are paid from a funded devnet key (FUNDER=<keypair json>, default: the Solana CLI's id.json inside WSL).
+// Fees are paid from a funded devnet key (FUNDER=<keypair json>; default: funder.json in the keys folder, Santa's own devnet
+// funding wallet 3dGDmcfu7f6DTjYtyL2xZV9E5qzKiCBWMD88aZEakGog; else the Solana CLI's id.json inside WSL).
 // Run: cd tests/solana && node devnet-setup.mjs
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -20,7 +21,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const RPC = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
 if (!/devnet/.test(RPC)) throw new Error('devnet only: SOLANA_RPC_URL must be a devnet URL');
 const KEYS = process.env.SANTA_KEYS || 'C:\\santa-devnet-keys';
-const FUNDER = process.env.FUNDER || '\\\\wsl.localhost\\Ubuntu\\root\\.config\\solana\\id.json';
+// Santa's own devnet funding wallet (Cody sends devnet SOL to it); else the Solana CLI's key inside WSL.
+const FUNDER = process.env.FUNDER || (existsSync(join(KEYS, 'funder.json')) ? join(KEYS, 'funder.json') : '\\\\wsl.localhost\\Ubuntu\\root\\.config\\solana\\id.json');
 const DEC = 6, BPS = 300, MAX_FEE = 10n ** 15n;
 const POOLS_USD = { spin: 50, slots: 500, lottery: 0 }; // demo starting pools (DESIGN_NOTES); the lottery's pots start empty
 const PLAYER_USD = 100, SOL_EACH = 50_000_000n; // 0.05 devnet SOL per wallet for fees
