@@ -199,6 +199,12 @@ Costume looks like one), not just an icon.
 - **No cap** on tickets per wallet per draw. Paid in SANTA at the live price (prices in dollars, like everything else).
 - **90% to winners, 10% burned** (already decided, Economy above).
 
+- **Lottery payouts are MANUAL for now (Cody, 2026-10-01):** "that way we don't need SOL to launch except for the games". Cody sends
+  each winner from the lottery wallet and records it on the admin screen (lottery-paid, checked on the chain). Switching to
+  automatic later is one admin action (lottery-mode auto).
+- **Devnet first (Cody, 2026-10-01):** every wallet the test needs is a labelled devnet wallet (`devnet.json`); Cody gives the
+  real wallets at launch.
+
 **Claude's picks (Cody can overrule):**
 - **The burn happens at purchase**, in the player's one transaction (10% burned, the rest straight to the lottery wallet), the
   same as every game: never an in-between wallet, never a second 3% tax. So "90% to winners" means the whole pot (what
