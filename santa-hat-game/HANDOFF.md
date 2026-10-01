@@ -64,8 +64,8 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
     original single-player mockups (published under `/mockups/`). **Not dead code; keep them.**
 - **Database:** `santa-hat-game/supabase/001..004_*.sql` and `008` are applied to the live project.
   **`008_hats_backpacks.sql` IS applied** (2026-10-01: avatar Hats/Backpacks + Ice Ball items, 7-slot save_profile).
-  **`007_rate_limits.sql` is NOT applied either** (the speed limit's counts; apply with 005).
-  **`005_credits_plays.sql` is NOT applied** (runs, plays, payouts for the server; despite the name, no credits; apply when the server goes live, with Cody's OK).
+  **`007_rate_limits.sql` applied live 2026-10-01** (the speed limit's counts).
+  **`005_credits_plays.sql` applied live 2026-10-01** (Cody's OK; runs, plays, payouts; despite the name, no credits), verified identical to the file; **`009_lock_my_plays.sql` applied right after** (AUDIT #11). `006` (ranked tickets) is still NOT applied.
   New changes go in a new numbered file, checked with `tests/db/`, applied with the Supabase tools, then committed.
 
 ## Services and access
@@ -215,7 +215,7 @@ FOR_MAIN_CLAUDE.md.
 **Fifth session (2026-10-01): speed limit** (Cody: "build it but plan to move it to an always-on game server").
 - 60 requests per connection and 40 per player per 10 s, then "slow down, try again in N seconds" (no ban). An honest run of 10
   is ~12 requests; the real page peaked at 3. Built in `server/ratelimit.js`, wired into the web door and the Edge Function,
-  counts in the database for now (`007_rate_limits.sql`, NOT applied), one-line move to the always-on server later.
+  counts in the database for now (`007_rate_limits.sql`, applied 2026-10-01), one-line move to the always-on server later.
 - Proven on the real Edge Function code under Deno against real Postgres. Open: check the live visitor-address header (TODO).
 - Found: the Edge Function's type check had been failing since record-deposit (a type note fixed it); HANDOFF had said it passed.
 

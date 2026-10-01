@@ -10,7 +10,7 @@ Tick items off here as they're done. Order is roughly the order to do them in fo
 > - **The live site (gh-pages) was published from this branch.** Publishing from an older branch would silently REMOVE the
 >   avatar Hats/Backpacks, the Ice Ball and the admin screen's "Check for bots" from the live site.
 > - **The live database now has `008_hats_backpacks.sql` applied** (migration `008_hats_backpacks`; checked after: 5 hats,
->   4 backpacks, 7 snowballs, save_profile 7 slots, anon still can't call it). 005, 006 and 007 are still NOT applied.
+>   4 backpacks, 7 snowballs, save_profile 7 slots, anon still can't call it). 005, 007 and 009 applied 2026-10-01 by main Claude; 006 still NOT applied.
 > - What this session built, in order (each committed with tests; details in HANDOFF → "Where we are right now"):
 >   1. **Payout worker double-send FIXED** (High): overlapping worker runs could pay a winner twice. Compare-and-set before
 >      sending (`server/payouts.js`). Keep it if you rewrite the worker. Proven on a REAL Postgres (`tests/db/lock.test.mjs`).
@@ -139,7 +139,7 @@ through the real server code and checks ONE payout equal to the plays' winnings,
 
 - [x] **Credits removed; RUNS with automatic payouts (Cody, 2026-10-01).** A payment buys a run of 1, 5 or 10 plays of one game at
       one size; the plays run straight away and the run's last play queues ONE payout (its winnings + any refused play's price)
-      to the player's linked wallet. No claim, no player signature. What changed in `005_credits_plays.sql` (still NOT applied;
+      to the player's linked wallet. No claim, no player signature. What changed in `005_credits_plays.sql` (applied live 2026-10-01;
       the file name is older than the design): no `credits` table; new `runs` (one per payment signature); `quotes.n` in 1/5/10
       with `usd = n × bet`; `plays.run_id` (required) and `plays.pay_raw`; `payouts.run_id` unique (was `play_id`); functions
       `buy_run`, `lock_play`, `settle_play` (no payout insert), `refund_play`, `finish_run(p_run, p_to_wallet, p_cap)`, with
@@ -151,7 +151,7 @@ through the real server code and checks ONE payout equal to the plays' winnings,
       (one payout per run, books = wallets).
 
 ## Needs live systems (this workspace can't reach them)
-- [ ] **Apply `supabase/005_credits_plays.sql`** to the project (checked on real Postgres in `tests/db/`), then insert the two
+- [x] **Apply `supabase/005_credits_plays.sql`** (done 2026-10-01, with 007 and 009; pools rows: see the devnet step) to the project (checked on real Postgres in `tests/db/`), then insert the two
       `pools` rows with the pools' real starting SANTA balances (smallest units, 6 decimals).
 - [ ] **Apply `supabase/006_ranked_tickets.sql`** when ranked opens (checked on real Postgres, `tests/db/tickets.test.mjs`).
 - [x] **Applied to the live database 2026-10-01: `supabase/008_hats_backpacks.sql`** (checked after; the site was then published) (avatar Hats/Backpacks + Ice Ball item rows, 7-slot
