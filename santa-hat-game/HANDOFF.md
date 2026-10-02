@@ -175,6 +175,11 @@ between two devices has never been tested from here. Cody and friends testing on
 - **Played the LIVE site like a player** (real Chrome, real GPU, clicks/keys/touch, desktop + phone): 33/33 as a guest.
   In server mode found and fixed: raw "sign in first" + "Demo" wording in the buy dialog. Test: tests/browser/live-player.mjs.
 - **Lottery: tickets are final, no refunds** (Cody), shown on every card.
+- **Snowball Drop board 2 (Cody, mix B):** 17 presents, 100× centre at 1 in 5,000, 25× 1 in 250, 10× 1 in 83, 5× 1 in 25, 2× 1 in 5.9
+  (78.0% exact); presents similar sizes, a little narrower when rarer. Shared pool now starts $300, $25 skim at $1,025, top-off
+  below $100, so 10¢ and $1 play the same board. LIVE on the game server (v15); devnet Drop pool filled to $300 the proper way
+  (tests/solana/devnet-pool-deposit.mjs: books = wallet). A real devnet payment for 5 drops played on it and its win was sent.
+  At mainnet: Cody funds the shared pool with $300 (he said $300–500; one number if he wants more). Not published yet.
 - **Live game server** now on Edge Function version 14 (price/tax + network, my tickets). Database: 017 (referee login) and
   018 (ranked results) applied live.
 - **Not published:** everything above that changes the page (the public site still runs the previous build). Publishing is
