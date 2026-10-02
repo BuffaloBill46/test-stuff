@@ -3,6 +3,7 @@
 // Message plan (Supabase counts every delivery): the host sends snapshots on the room channel;
 // each player sends their moves on their own channel, which only the host listens to.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm';
+import { humanToken, resetHumanCheck } from './human.js';
 
 const SB_URL = 'https://olganobdypnxfpmsxibe.supabase.co';
 const SB_KEY = 'sb_publishable_eLn_YYzLDOTuUAOTZLeyKQ_PLGT8B6N'; // publishable key: meant to be public
@@ -108,13 +109,14 @@ async function localRoom(code, me) {
 // server has let us in; rejects with the server's reason (room full, too many watchers…). 'gone' fires if the line drops.
 // token: the player's Supabase sign-in, so the server uses their SAVED level and look (and records their finishes).
 // ranked: search for a ranked game instead of joining a code (the server picks the room and holds a ticket).
-function refereeRoom(url, code, me, token, ranked = false) {
+// auto: what's ticked for Auto match ({ modes: ['ffa', 'team'], styles: ['normal', 'gear'] }): the server picks the best room.
+function refereeRoom(url, code, me, token, ranked = false, auto = null) {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(url), L = listeners();
     let peers = [], own = null, joined = false, left = false, at = code;
     const send = (m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
     const t = setTimeout(() => { if (!joined) { left = true; ws.close(); reject(new Error('timed out')); } }, 12000);
-    ws.onopen = () => send({ t: ranked ? 'ranked' : 'join', code, ...(token ? { token } : {}), me: { id: me.id, n: me.n, j: me.j, a: me.a, w: !!me.w, l: me.l || 1, pid: me.pid || null } });
+    ws.onopen = () => send({ t: ranked ? 'ranked' : auto ? 'auto' : 'join', code, ...(auto ? { modes: auto.modes, styles: auto.styles } : {}), ...(token ? { token } : {}), me: { id: me.id, n: me.n, j: me.j, a: me.a, w: !!me.w, l: me.l || 1, pid: me.pid || null } });
     ws.onmessage = ({ data }) => {
       let m; try { m = JSON.parse(data); } catch { return; }
       if (m.t === 'peers') {
@@ -195,8 +197,8 @@ let board = null;
 export function gamesBoard({ local = false, referee = null } = {}) { return board || (board = referee ? refereeBoard(referee) : local ? localBoard() : supabaseBoard()); }
 
 // referee: the referee server's address (wss://…); when set, every room runs there instead of in a player's page.
-export function openRoom(code, me, { local = false, referee = null, token = null, ranked = false } = {}) {
-  return referee ? refereeRoom(referee, code, me, token, ranked) : local ? localRoom(code, me) : supabaseRoom(code, me);
+export function openRoom(code, me, { local = false, referee = null, token = null, ranked = false, auto = null } = {}) {
+  return referee ? refereeRoom(referee, code, me, token, ranked, auto) : local ? localRoom(code, me) : supabaseRoom(code, me);
 }
 
 // ---------- accounts: Solana wallet sign-in (Supabase Web3 auth) and profiles
@@ -211,7 +213,9 @@ function remoteAccounts() {
     async signIn() {
       const wallet = findWallet(); if (!wallet) throw new Error('NO_WALLET');
       if (!wallet.isConnected && wallet.connect) await wallet.connect();
-      const { error } = await c.auth.signInWithWeb3({ chain: 'solana', statement: STATEMENT, wallet });
+      // the "are you human?" token (human.js; none while it's off), used once
+      const captchaToken = await humanToken();
+      const { error } = await c.auth.signInWithWeb3({ chain: 'solana', statement: STATEMENT, wallet, ...(captchaToken ? { options: { captchaToken } } : {}) }).finally(resetHumanCheck);
       if (error) throw new Error(error.message);
       return true; // the caller loads the profile, or redeems a pending link code instead
     },
@@ -219,7 +223,8 @@ function remoteAccounts() {
     createLinkCode: (want) => rpc('create_link_code', { p_want: want }),
     redeem: (code) => rpc('redeem_link_code', { p_code: code }),
     async signInEmail(email) {
-      const { error } = await c.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true } });
+      const captchaToken = await humanToken();
+      const { error } = await c.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true, ...(captchaToken ? { captchaToken } : {}) } }).finally(resetHumanCheck);
       if (error) throw new Error(error.message);
       return null; // finishes when they tap the link in their email and land back here (or type its code: verifyEmailCode)
     },

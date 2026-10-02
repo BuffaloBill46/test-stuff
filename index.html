@@ -136,6 +136,13 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 #emotes button { font: 700 14px/1 var(--body); color: var(--ink); background: var(--brim); border: 2px solid var(--ink); border-radius: 3px; padding: 7px 9px; box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
 #joy { position: fixed; z-index: 4; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; border: 2px solid rgba(245,241,232,.5); background: rgba(12,15,26,.25); pointer-events: none; opacity: .7; }
 #joy.on { opacity: 1; border-color: rgba(245,241,232,.85); }
+.ticks { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 8px 0 2px; }
+.ticks { margin: 6px 0 0; }
+.ticks + .ticks { margin-top: 2px; padding-top: 6px; border-top: 1px dashed rgba(245,241,232,.15); }
+.ticks label { display: flex; align-items: center; gap: 8px; cursor: pointer; min-height: 30px; margin: 0; font: 600 15px/1.2 var(--body); text-transform: none; letter-spacing: 0; color: #f5f1e8; }
+.ticks input { width: 20px; height: 20px; accent-color: #cf3128; margin: 0; }
+.ticks small { color: var(--dim); margin-left: 4px; font-size: 12px; }
+#joy.moving { opacity: 1; border-color: #ffbe5c; box-shadow: 0 0 0 6px rgba(255,190,92,.28), 0 0 24px rgba(255,190,92,.45); } /* picked up: triple-tap and hold */
 /* Zoom (Cody 2026-10-01): right edge, halfway down, clear of the emotes and the top bar. */
 #zoom { position: fixed; z-index: 4; right: 12px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; }
 #zoom button { width: 44px; height: 44px; font: 800 24px/1 var(--body); color: var(--ink); background: var(--brim); border: 2px solid var(--ink); border-radius: 3px; box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
@@ -702,11 +709,11 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       <div class="cols3">
         <div><h4>Controls</h4>
           <p><b>Computer:</b> WASD or arrows to move, click to throw where you point, Space to auto-aim, 1–4 for emotes.</p>
-          <p><b>Phone:</b> drag on the left side to move, tap on the right side to throw.</p></div>
+          <p><b>Phone:</b> move with the joystick, tap anywhere else to throw there. To move the joystick, triple-tap it and hold, then drag it where you like.</p></div>
         <div><h4>Game types</h4>
           <p><b>Free-for-all:</b> everyone chases whoever wears the hat.</p>
           <p><b>Nice vs Naughty:</b> two teams; team points add up.</p>
-          <p>A match is 3 rounds of 90 seconds. Most points wins.</p></div>
+          <p>A match is 3 rounds of 60 seconds. Most points wins.</p></div>
         <div><h4>Scoring</h4>
           <table class="scores"><tbody>
             <tr><td>Wearing the hat</td><td>10 / sec</td></tr>
@@ -922,20 +929,25 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
     </div>
   </div>
   <div id="acctIn" hidden></div>
+  <div id="humanCheck" class="human" hidden></div>
   <p id="acctMsg" role="status"></p>
 </section>
 <section id="home" class="plaque sheet lobby" hidden>
   <button class="close" id="homeClose" aria-label="Close">×</button>
   <div class="eyebrow" id="lobbyEyebrow">Unranked · free</div>
   <h2 id="lobbyTitle">Unranked</h2>
-  <div class="modes" role="radiogroup" aria-label="Game type" id="lobbyModes">
-    <button role="radio" data-lmode="ffa" aria-checked="true">FFA</button>
-    <button role="radio" data-lmode="team" aria-checked="false">TEAM</button>
-  </div>
   <label for="name">Your name</label>
   <input id="name" type="text" maxlength="14" autocomplete="off" spellcheck="false">
   <div class="actions">
     <button class="go" id="quick">Auto match</button>
+    <div class="ticks unr" id="autoModes" role="group" aria-label="Game types for Auto match">
+      <label><input type="checkbox" data-amode="ffa"> <span>Everyone vs the hat <small>FFA</small></span></label>
+      <label><input type="checkbox" data-amode="team"> <span>Nice vs Naughty <small>TEAM</small></span></label>
+    </div>
+    <div class="ticks unr" id="autoStyles" role="group" aria-label="Play style for Auto match">
+      <label><input type="checkbox" data-astyle="normal"> <span>Normal play <small>plain snowballs</small></span></label>
+      <label><input type="checkbox" data-astyle="gear"> <span>Special gear <small>your specials and gear count</small></span></label>
+    </div>
     <p class="dim" id="tixLine" aria-live="polite" hidden></p>
     <button class="sec" id="tourney" disabled hidden>Tournament · Coming soon</button>
     <div class="row unr"><input id="code" type="text" maxlength="6" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code"><button class="sec" id="joinBtn">Join room</button></div>

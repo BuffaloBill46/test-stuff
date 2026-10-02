@@ -1,5 +1,6 @@
 // Site tabs: Play / Store / Avatar / Ranks, wallet sign-in, avatar editor, leaderboard.
 import { THREE, character, lights, toon, part, build, hatGeo, giftGeo, C } from './kit.js';
+import { mountHumanCheck } from './human.js';
 import { GEAR_SLOTS } from './catalog.js';
 import { shopBuy, resumeShop } from './shopui.js';
 import { forSale } from './shoprules.js';
@@ -207,7 +208,7 @@ export function initTabs(app) {
         renderWho(); $('#acct').hidden = true; show(state.tab);
       });
     }
-    $('#acct').hidden = false;
+    $('#acct').hidden = false; mountHumanCheck($('#humanCheck')); // "are you human?" (human.js; off until it has a site key)
   }
   $('#signin').addEventListener('click', () => { linkBox = null; openAcct(); });
   $('#acctClose').addEventListener('click', () => { $('#acct').hidden = true; });

@@ -9,7 +9,8 @@ export const KIND_OF = ['', 'ice', 'split', 'giant', 'fire', 'piece'], DROP_OF =
 export const HAT_IMMUNE = 2; // seconds a player can't be hit after getting the Santa hat (Cody: fully untouchable)
 export const K = {
   ARENA: 13.2, HEAD_Y: 2.05, BALL_G: 7, BALL_SPEED: 18, HAT_G: 16, PED_TOP: 1.71,
-  ROUND_TIME: 90, ROUNDS: 3, BREAK_TIME: 6, END_TIME: 12, INTRO_TIME: 5, COUNT_TIME: 5, MAX_HUMANS: 8, MIN_BODIES: 4,
+  // ROUND_TIME: seconds a round (Cody, 2026-10-02: was 90)
+  ROUND_TIME: 60, ROUNDS: 3, BREAK_TIME: 6, END_TIME: 12, INTRO_TIME: 5, COUNT_TIME: 5, MAX_HUMANS: 8, MIN_BODIES: 4,
   HUMAN_SPEED: 6.4, BOT_SPEED: 5.2, HOLD_SLOW: 0.86, MAX_BALLS: 18, HUMAN_COOL: 0.26,
   STUN: 0.9, // seconds a normal snowball hit knocks you down (special snowballs multiply it: catalog.js → rules.stun)
 };
