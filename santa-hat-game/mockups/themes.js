@@ -16,8 +16,8 @@ export const THEMES = {
   halloween: {
     name: 'Halloween', props: 'halloween',
     sky: ['#140d2b', '#3d2150', '#b3592e'], fog: [0x3a2440, 26, 78], // indigo overhead to a burnt-orange horizon; plum haze
-    lights: { hemi: 1.3, sky: 0xb7a0e0, ground: 0x3b2c22, moon: 0xffd2a8, moonI: 1.3 }, // dusk: violet sky light, warm low moon
-    ground: 0x6f7a4f, hills: 0x56603c, floor: 0x9aa283, // frosty grass; the square is trampled frost-pale grass
+    lights: { hemi: 1.3, sky: 0xa9a6d8, ground: 0x3b2c22, moon: 0xffd2a8, moonI: 1.3 }, // dusk: violet sky light, warm low moon
+    ground: 0x66784a, hills: 0x4f5c39, floor: 0x8c9e6c, // frosty grass; the square is trampled frost-pale grass
     stars: 160, aurora: false, moon: { pos: [-70, 24, -115], color: 0xffcf8a, glow: 0xffa860, size: 30, opacity: 0.45, r: 6 },
     snowfall: 140, // a few stray flurries, not a snowstorm
   },

@@ -113,7 +113,7 @@ its vault would always hold 3% less than its books promise (the winner's claim o
   players, then bots. Numbers come from the server's public `stats` action once per match; without the server they show as
   dashes with a note. **Special gear shows "coming soon"** until gear is built. Rounds 2 and 3 keep the old 6 s break.
 
-### Plaza themes (decided, Cody 2026-10-01; NOT BUILT YET)
+### Plaza themes (decided, Cody 2026-10-01; BUILT 2026-10-01 on a branch, not yet published: `mockups/themes.js`, picker under the Avatar panel, `sh_theme`; tests `theme-test.mjs`, `theme-christmas-same.mjs`)
 - The plaza gets **themes** ("skins"): same ring, hat, snowballs, scoring and bots; only the look changes. First new one: **Halloween,
   with less snow, like a real Halloween** (frosty grass with thin snow patches, so snowballs still make sense; jack-o'-lanterns,
   bare trees, harvest stalls, dusk sky). Christmas stays the default.

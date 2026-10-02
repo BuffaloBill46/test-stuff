@@ -262,7 +262,7 @@ function graveyardGeo(seed = 1) { // a little fenced graveyard, open at the fron
 
 function snowPatchGeo(seed = 1) { // a thin, ragged patch of old snow lying flat on the grass
   const g = new G.CircleGeometry(1, 10), p = g.attributes.position, rr = rng(seed);
-  for (let i = 1; i < p.count; i++) { const k = 0.7 + rr() * 0.5; p.setXY(i, p.getX(i) * k, p.getY(i) * k); }
+  for (let i = 1; i < p.count; i++) { const k = 0.82 + rr() * 0.3; p.setXY(i, p.getX(i) * k, p.getY(i) * k); }
   g.rotateX(-Math.PI / 2);
   return build([part(g, C.snow, {})]);
 }

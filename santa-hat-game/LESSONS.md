@@ -309,3 +309,8 @@ re-checks silently never asked; both halves looked right on their own. The list 
 Adding `// at the run's locked price` to the end of a refund call in server/games.js commented out the `finishRun(...)` that
 followed on the SAME line: a stuck run would have been refunded but never paid. Only the stuck-run test caught it. In this
 codebase several statements share a line; put a new comment on its own line above, never at the end of an existing one.
+
+## A "reload" to the same URL with a new hash isn't a reload (2026-10-01)
+The plaza theme test checked "still Halloween after a reload" and passed, but nothing had reloaded: the Avatar tab rewrites the
+hash to `#avatar`, so the test's `goto('…#play')` was a same-page hash change and the old page answered. Caught only because the
+storage-throws case ("Christmas again after a reload") failed. A test that means reload calls `page.reload()`.

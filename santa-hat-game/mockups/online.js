@@ -10,6 +10,7 @@ import { SERVER, call } from './gameserver.js';
 import { SPECIALS, cantThrow } from './specials.js';
 import { initLottery } from './lotteryui.js';
 import { play as sfx, initSoundButtons } from './sfx.js';
+import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js';
 
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
@@ -48,8 +49,18 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPrefere
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 400);
-const plaza = buildPlaza(scene);
+// The plaza theme is this player's own view (themes.js): the referee, the network and every other player never see it.
+let theme = savedTheme(), plaza = buildPlaza(scene, { theme });
 const snow = new Snow(1400, [60, 24, 60]); scene.add(snow.points);
+snow.points.geometry.setDrawRange(0, themeOf(theme).snowfall); // Halloween: a few stray flakes of the 1400
+function setTheme(id) { // from the Avatar screen; swaps the plaza in place, mid-match too
+  if (!THEMES[id]) return;
+  saveTheme(id);
+  if (id === theme) return;
+  plaza.dispose(); theme = id; plaza = buildPlaza(scene, { theme });
+  snow.points.geometry.setDrawRange(0, themeOf(theme).snowfall);
+  fog0 = null; // the new plaza's own fog; the match camera re-reads it and pulls it back with the zoom
+}
 const burst = new Burst(320); scene.add(burst.mesh);
 const ballGeo = build([part(new THREE.IcosahedronGeometry(0.17, 0), C.brim, { jit: 0.02 })]);
 const hatMesh = makeHat(0.88); scene.add(hatMesh);
@@ -748,6 +759,7 @@ const app = {
   get profile() { return profile; }, set profile(p) { profile = p; },
   setIdentity(name, a) { me.n = cleanName(name) || me.n; me.a = cleanAvatar(a); me.l = clampLevel(profile?.level); me.pid = profile?.id || null; $('#name').value = me.n; $('#name').readOnly = !!profile; setPreview(me.a); },
   preview: (a) => setPreview(a),
+  get theme() { return theme; }, setTheme,
   onTab: (tab) => {
     ui.lastBoard = '';
     if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
@@ -762,4 +774,6 @@ frame();
 
 window.__sq = { get armed() { return armed; }, throwAt: (x, z) => tryThrow(x, z), drawn: () => ({ drops: drawDrops.filter((m) => m.visible).length }), camDist: () => camera.position.distanceTo(camTarget), setZoom, get zoom() { return zoom; },
   // tests: where the ring's outer wall lands on screen (-1..1 = inside the view), all the way round, at the ground and wall top
-  ringFit: (r = 15.0) => { let x0 = 9, x1 = -9, y0 = 9, y1 = -9; for (let i = 0; i < 72; i++) for (const y of [0, 1]) { const a = (i / 72) * Math.PI * 2, p = new V3(Math.cos(a) * r, y, Math.sin(a) * r).project(camera); x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); } return { x0, x1, y0, y1 }; }, get room() { return room; }, get isHost() { return isHost; }, get sim() { return sim; }, get view() { return currentView; }, me, ctl, enterRoom, leaveRoom, startPractice, idleFor: (ms) => { lastInput = performance.now() - ms; } };
+  ringFit: (r = 15.0) => { let x0 = 9, x1 = -9, y0 = 9, y1 = -9; for (let i = 0; i < 72; i++) for (const y of [0, 1]) { const a = (i / 72) * Math.PI * 2, p = new V3(Math.cos(a) * r, y, Math.sin(a) * r).project(camera); x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); } return { x0, x1, y0, y1 }; }, get room() { return room; }, get isHost() { return isHost; }, get sim() { return sim; }, get view() { return currentView; }, me, ctl, enterRoom, leaveRoom, startPractice, idleFor: (ms) => { lastInput = performance.now() - ms; },
+  // tests: the plaza theme, and what's on the GPU / in the scene (a theme swap must not leave the old plaza behind)
+  get theme() { return theme; }, setTheme, gpu: () => ({ ...renderer.info.memory, kids: scene.children.length, fog: scene.fog && [scene.fog.color.getHex(), scene.fog.near, scene.fog.far] }) };
