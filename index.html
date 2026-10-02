@@ -238,7 +238,10 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 /* The five lotteries (lotteryui.js): a card each, in the site's plaque style; buttons at the 44 px tap size. */
 /* Lottery cards laid out and coloured like Cody's other game (2026-10-01): dark rounded cards two to a row, a ticket icon and
    bold title, an amber notice, label/value rows, and a purple→blue→green "Buy tickets" pill. */
-.lotgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 165px), 1fr)); gap: 12px; margin-top: 12px; }
+/* Cody 2026-10-02: the two weekly lotteries side by side, the Christmas one across the full width under them. */
+.lotgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.lotcard[data-lot="christmas"] { grid-column: 1 / -1; }
+@media (max-width: 330px) { .lotgrid { grid-template-columns: 1fr; } }
 .lotcard { background: #1b1c22; border: 2px solid #34353f; border-radius: 20px; padding: 14px; display: grid; gap: 10px; align-content: start; box-shadow: 0 0 22px rgba(130, 90, 255, .08); }
 .lotcard header { display: flex; align-items: center; gap: 10px; }
 .lotcard h3 { margin: 0; font: 800 18px/1.2 var(--body); color: #fff; text-shadow: none; }
