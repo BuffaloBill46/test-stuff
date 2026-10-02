@@ -347,3 +347,10 @@ fine. Found by a 3-way experiment, after two blind retries that changed nothing:
 Tests that need a real WebSocket (the referee server) serve the game's files from a plain local web server instead
 (`tests/browser/referee-server-test.mjs`), and wait with `waitUntil: 'domcontentloaded'` (fonts from the internet can hold
 the 'load' event for over a minute when 3 test browsers start at once).
+
+## After money is sent, nothing may throw it away (2026-10-02)
+`wallet.js` waited for a sent payment to become final by polling the network, and a single failed poll THREW, so the page
+never got the signature: the player paid and the run never reached the server (nothing to resume either: the signature was
+only ever returned). Found while checking whether a new "Nothing was charged" message was true. Rule: once a transaction is
+sent, only a confirmed on-chain failure is an error; every other problem (network, timeouts) retries and hands the signature
+on, because the server verifies payments itself. And never write "nothing was charged" unless the code path makes it certain.

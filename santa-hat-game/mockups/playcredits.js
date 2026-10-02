@@ -9,7 +9,7 @@ import { newSeed } from './fair.js';
 import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js';
 import { FEE } from './slots.js';
 import { play as sfx } from './sfx.js';
-import { SERVER, call, walletReady } from './gameserver.js';
+import { SERVER, call, walletReady, payError } from './gameserver.js';
 import { withSlowDown } from './slowdown.js';
 export const serverMode = !!SERVER; // ?server=<address>: plays come from the game server
 
@@ -74,7 +74,7 @@ async function payOnServer(kind, bet, n) {
   await walletReady;
   if (typeof window.santaPay !== 'function') { note.textContent = 'Wallet payments aren\'t connected yet.'; $('#buyGo').disabled = false; return null; }
   let signature; try { note.textContent = 'Approve the payment in your wallet…'; signature = await window.santaPay(q); }
-  catch (e) { note.textContent = /reject|cancel|denied/i.test(e?.message || '') ? 'Payment cancelled.' : 'Not paid: ' + (e?.message || 'the wallet said no'); $('#buyGo').disabled = false; return null; }
+  catch (e) { note.textContent = payError(e); $('#buyGo').disabled = false; return null; }
   note.textContent = 'Confirming the payment…';
   const b = await buyPaid(q.id, signature);
   $('#buyGo').disabled = false;

@@ -234,7 +234,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   async function market() {
     const [p, f] = await Promise.allSettled([livePrice(), Date.now() - feeKept.at < 60_000 ? feeKept.fee : liveFee()]);
     if (f.status === 'fulfilled' && f.value) feeKept = { at: Date.now(), fee: f.value };
-    return { ...(p.status === 'fulfilled' ? { usd: p.value.usd } : {}), ...(f.status === 'fulfilled' && f.value ? { fee: { bps: f.value.bps, max: f.value.max } } : {}) };
+    return { cluster, ...(p.status === 'fulfilled' ? { usd: p.value.usd } : {}), ...(f.status === 'fulfilled' && f.value ? { fee: { bps: f.value.bps, max: f.value.max } } : {}) };
   }
   // Called when Cody publishes new settings, so the very next play uses them (no 15-second wait).
   const settingsChanged = () => { latest = { at: 0, version: 0 }; };

@@ -34,3 +34,11 @@ between devices, phone sizes, the live SANTA price (blocked here).
 
 ## Fixes (Claude, after reviewing the report)
 Recorded below as they land.
+- (1) Entering/leaving a match keeps `?server=` (and `?ref=`) in the address; checked in `server-mode-test.mjs`. Building the
+  server address into the public site stays Cody's call (HANDOFF list #4).
+- (2) In server mode the "Test version" notes follow the server's network (its `market` answer now says it): devnet → "test
+  SANTA, real steps, no real value"; mainnet → hidden. Checked (mainnet stand-in: hidden).
+- (3) Ranked runs on the referee server (TODO); the top-bar ticket chip shows my tickets (`tickets` answer); checked.
+- (4) One plain-English payment message for games, lottery and shop (`gameserver.js payError`); checked. While checking it, a
+  real bug: a network hiccup AFTER a payment was sent lost its signature (paid, never handed to the server). Fixed in
+  `wallet.js`; LESSONS.

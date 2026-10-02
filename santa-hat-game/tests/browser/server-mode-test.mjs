@@ -45,7 +45,8 @@ const watched = { hit: async (key, w, t) => { const n = await mem.hit(key, w, t)
 // The real server always has a lottery (supabase/functions/games/index.ts); without one the page's public "lottery" request got
 // 400 "unknown action". This payment test needs no real draws (lottery-test.mjs covers them), so: none open.
 const noDraws = { draws: async () => ({ open: [], recent: [] }), tickets: async () => ({ error: 'no such draw' }) };
-const handle = makeHandler({ lottery: noDraws, limiter: makeLimiter({ store: watched }), server, profileFor: async (t) => (t === 'test-token' ? me : null) }); // the real speed limit and numbers: a player clicking through must never be slowed
+const noShop = { tickets: async () => ({ free: 7, extra: 2, held: 0, resetsAt: Date.now() + 5 * 3600e3 }) }; // the ticket chip (shop-db.test.mjs covers the real one)
+const handle = makeHandler({ lottery: noDraws, shop: noShop, limiter: makeLimiter({ store: watched }), server, profileFor: async (t) => (t === 'test-token' ? me : null) }); // the real speed limit and numbers: a player clicking through must never be slowed
 // One local address serves the page AND the game server (like the real site + Edge Function, both https in real life).
 const web = http.createServer(async (req, res) => {
   if (req.method === 'GET') { const pth = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]).replace(/^\//, '') || 'online.html');
@@ -80,6 +81,14 @@ await p.waitForFunction(() => /Rudolph/.test(document.querySelector('#winList')?
 await p.waitForFunction(() => /0\.000850/.test(document.querySelector('#liveMarket')?.textContent || ''), null, { timeout: 15000 }).catch(() => {});
 const mk = await p.evaluate(() => document.querySelector('#liveMarket')?.textContent || '');
 check(/\$0\.000850/.test(mk) && /tax 3%/.test(mk), 'the price/tax line should come from the server: ' + mk);
+// Button-audit fixes (2026-10-02): this server says mainnet, so no "Test version / nothing can be bought" notes; the ticket chip
+// shows my tickets; a practice match keeps ?server= in the address (a reload used to fall back to the demo); a wallet step that
+// can't load says so in plain English.
+check(await p.waitForFunction(() => [...document.querySelectorAll('.testnote')].every((n) => n.hidden), null, { timeout: 15000 }).then(() => true, () => false), 'mainnet server: the "Test version" notes are hidden');
+check(await p.waitForFunction(() => /^\d+\/10/.test(document.querySelector('#tixchip b')?.textContent || ''), null, { timeout: 15000 }).then(() => true, () => false), 'the ticket chip shows my tickets: ' + await p.evaluate(() => document.querySelector('#tixchip b')?.textContent));
+await p.evaluate(() => { window.__sq.startPractice(); window.__sq.leaveRoom(); });
+check(/server=/.test(await p.evaluate(() => location.search)), 'leaving a match keeps ?server= in the address: ' + await p.evaluate(() => location.search));
+check(await p.evaluate(async () => (await import('./gameserver.js')).payError(new Error('Failed to fetch dynamically imported module: https://cdn.jsdelivr.net/x'))) === "Couldn't load the wallet step. Check your connection and try again. Nothing was charged.", 'a wallet step that cannot load: plain English');
 const winText = (await p.textContent('#winList')).replace(/\s+/g, ' ');
 check(/Rudolph/.test(winText) && /\$5\.00/.test(winText) && /5×/.test(winText), `another player's win shows in the shared list: "${winText.slice(0, 120)}"`);
 check(!/wa11et/.test(winText), 'no wallet addresses on the page');

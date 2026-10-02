@@ -22,6 +22,16 @@ export const settingsReady = SERVER ? (async () => {
 // The actions anyone may call without signing in: must match the server's public ones (server/http.js; tests/public-actions.test.mjs).
 // (It once listed only three, so guests' lottery cards and draw re-checks never asked the server.)
 export const PUBLIC_ACTIONS = ['pools', 'settings', 'stats', 'lottery-tickets', 'lottery', 'winners', 'market'];
+// What a player reads when a payment didn't happen (button audit 2026-10-02: a failed wallet-library download showed
+// "Failed to fetch dynamically imported module: https://cdn…"). Says "nothing was charged" only where that's certain: the
+// player cancelled, or the wallet step never loaded (wallet.js never throws once a payment is sent, except for a payment the
+// network rejected, whose own message says no SANTA was taken).
+export function payError(e) {
+  const m = String(e?.message || '');
+  if (/reject|cancel|denied/i.test(m)) return 'Payment cancelled. Nothing was charged.';
+  if (/dynamically imported module|importing a module/i.test(m)) return "Couldn't load the wallet step. Check your connection and try again. Nothing was charged.";
+  return 'Not paid: ' + (m || 'the wallet said no');
+}
 export async function call(action, body = {}) {
   const t = await token();
   if (!t && !PUBLIC_ACTIONS.includes(action)) return { error: 'sign in first' };

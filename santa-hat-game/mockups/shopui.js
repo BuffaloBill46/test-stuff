@@ -4,7 +4,7 @@
 //   payment and grants it → the page reloads what the player owns.
 // Remembered in this browser between paying and the server accepting it, so a closed tab or a dropped network never loses a paid
 // purchase (resumeShop runs on the next visit). Without the game server (today's site) it says plainly that nothing is sold yet.
-import { SERVER, call, walletReady } from './gameserver.js';
+import { SERVER, call, walletReady, payError } from './gameserver.js';
 
 const PENDING = 'santa.pendingShop';
 const remember = (v) => { try { v ? localStorage.setItem(PENDING, JSON.stringify(v)) : localStorage.removeItem(PENDING); } catch {} };
@@ -44,7 +44,7 @@ export async function shopBuy(what, note) {
   if (typeof window.santaPay !== 'function') { note('Wallet payments aren\'t connected yet.'); return null; }
   let signature;
   try { note(`Approve ${usd(q.usd)} in your wallet…`); signature = await window.santaPay(q); }
-  catch (e) { note(/reject|cancel|denied/i.test(e?.message || '') ? 'Payment cancelled. Nothing was charged.' : 'Not paid: ' + (e?.message || 'the wallet said no')); return null; }
+  catch (e) { note(payError(e)); return null; }
   note('Confirming the payment…');
   const b = await buyPaid(q.id, signature);
   if (b.error) { note(b.error); return null; }

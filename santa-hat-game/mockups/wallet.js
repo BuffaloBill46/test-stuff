@@ -53,9 +53,13 @@ export async function santaPay(quote) {
   const signature = kit.getBase58Decoder().decode(out.signature);
   // Wait for FINALIZED (about 15–30 s). A failed transaction moved nothing: say so. If it's slow, hand the signature on anyway:
   // the page keeps asking the server, which accepts it the moment it's final.
+  // From here the payment is SENT: nothing below may lose the signature. A network hiccup while asking is retried (it used to
+  // throw, so a paid run never reached the server: found 2026-10-02 after the button audit); only a payment the network
+  // REJECTED (s.err: nothing moved) is an error. Whatever happens, the server checks the payment before accepting it.
   const t0 = Date.now();
   while (Date.now() - t0 < FINAL_WAIT_MS) {
-    const [s] = (await rpc.getSignatureStatuses([signature]).send()).value;
+    let s = null;
+    try { [s] = (await rpc.getSignatureStatuses([signature]).send()).value; } catch { /* asking failed, not the payment: ask again */ }
     if (s?.err) throw new Error('the payment failed on the network; no SANTA was taken');
     if (s?.confirmationStatus === 'finalized') break;
     await new Promise((r) => setTimeout(r, 2000));

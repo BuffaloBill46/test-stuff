@@ -22,7 +22,8 @@ const LOCAL = params.get('net') === 'local';
 // Opt-in until it also reports match finishes and checks loadouts (TODO "Cheat-proof referee server", phase 2).
 const REFEREE = /^wss:\/\/|^ws:\/\/localhost[:/]/.test(params.get('ref') || '') ? params.get('ref') : null;
 // What a room's address keeps of this page's own address (so a reload or a shared link stays on the same network).
-const KEEP = (LOCAL ? '&net=local' : '') + (REFEREE ? '&ref=' + encodeURIComponent(REFEREE) : '');
+// (button audit 2026-10-02: it used to drop ?server=, so a reload after a match fell back to the demo)
+const KEEP = (LOCAL ? '&net=local' : '') + (REFEREE ? '&ref=' + encodeURIComponent(REFEREE) : '') + (SERVER ? '&server=' + encodeURIComponent(SERVER) : '');
 const REP_MIN_MS = 160, REP_MOVING_MS = 350, REP_IDLE_MS = 1000; // the referee stops extrapolating after 400 ms
 const EMOTES = ['Ho ho ho!', 'Nice throw!', 'Gimme the hat!', 'Oops!'];
 const TEAM_SHIRT = [0xcf3128, C.elf], TEAM_RING = [0xffbe5c, 0x7fe0a0], TEAM_NAME = ['Nice', 'Naughty'];
@@ -790,6 +791,20 @@ function publishSummary() {
     leader: top && v.phase !== 'lobby' ? nameOf(top) : '', lscore: top ? top.score : 0 }).catch(() => {});
 }
 
+// Server mode: the "Test version" notes tell the truth for this mode (button audit 2026-10-02: they said nothing could be bought
+// while buying worked). Devnet: real steps with test SANTA; mainnet: no note. The network comes from the server's 'market'.
+if (SERVER) call('market').then((m) => {
+  const notes = document.querySelectorAll('.testnote');
+  if (m?.cluster === 'devnet') notes.forEach((n) => { n.innerHTML = '<b>Test network</b> Purchases and prizes use test SANTA on Solana devnet: the real steps, with no real value.'; });
+  else if (m?.cluster) notes.forEach((n) => { n.hidden = true; });
+}).catch(() => {});
+// The top-bar ticket chip (server mode, signed in): free tickets left today, with bought ones in its tooltip.
+function showTicketChip(r) {
+  const chip = $('#tixchip'); if (!chip || !r || !Number.isFinite(r.free)) return;
+  chip.classList.remove('soon'); chip.querySelector('b').textContent = `${r.free}/10${r.extra ? ' +' + r.extra : ''}`;
+  chip.title = `Ranked tickets: ${r.free} free left today${r.extra ? `, ${r.extra} bought` : ''}. 1 per ranked match.`;
+}
+if (SERVER) setTimeout(() => call('tickets').then(showTicketChip).catch(() => {}), 1500); // after sign-in has had a moment
 // The ranked lobby's ticket line (game server 'tickets'): free ones left today, bought ones, when the free ones refill.
 async function showTickets(ranked) {
   const el = $('#tixLine'); el.hidden = true;
@@ -798,6 +813,7 @@ async function showTickets(ranked) {
   if (lobbyKind !== 'ranked') return; // the player switched lobbies meanwhile
   if (r?.error === 'sign in first') { el.textContent = 'Sign in to play ranked.'; el.hidden = false; return; }
   if (!r || r.error || !Number.isFinite(r.free)) return;
+  showTicketChip(r);
   const h = Math.max(0, Math.ceil((r.resetsAt - Date.now()) / 3600000));
   el.textContent = `Ranked tickets: ${r.free} free today${r.extra ? ` + ${r.extra} bought` : ''}${r.free < 10 ? ` · free ones refill in ${h} h` : ''}`;
   el.hidden = false;
