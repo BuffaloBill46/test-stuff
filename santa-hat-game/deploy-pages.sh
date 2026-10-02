@@ -27,6 +27,13 @@ cp "$SRC"/{kit,plaza,themes,village,snowball,bethehat,sleigh,hatchase}.js "$OUT/
 { printf '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>\n'
   cat "$SRC/index.html"; printf '\n</body></html>\n'; } > "$OUT/mockups/index.html"
 touch "$OUT/.nojekyll"
+# The game's own address (Cody bought santahatgames.com, 2026-10-02). GitHub serves the site there when the branch holds a
+# CNAME file, and then forwards the old github.io address to it. Written ONLY once the domain really points at GitHub
+# (otherwise the old address would forward to a name that doesn't work yet and the site would go dark).
+DOMAIN=santahatgames.com
+if nslookup "$DOMAIN" 2>/dev/null | grep -q '185\.199\.10[89]\.153\|185\.199\.11[01]\.153'; then
+  echo "$DOMAIN" > "$OUT/CNAME"; echo "custom domain: $DOMAIN"
+else echo "custom domain NOT set: $DOMAIN doesn't point at GitHub yet (site stays on github.io)"; fi
 
 # Refuse to publish a build with a missing file: every './x.js' a published page imports must have been copied.
 missing=0
