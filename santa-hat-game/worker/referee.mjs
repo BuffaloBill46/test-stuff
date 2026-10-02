@@ -21,7 +21,9 @@ const addressOf = (req) => { const direct = req.socket.remoteAddress || ''; retu
 
 const SB_URL = process.env.SUPABASE_URL || 'https://olganobdypnxfpmsxibe.supabase.co';
 const SB_KEY = process.env.SUPABASE_KEY || 'sb_publishable_eLn_YYzLDOTuUAOTZLeyKQ_PLGT8B6N'; // publishable: meant to be public
-let identify = null, finish = null;
+let identify = null, finish = null, ranked = null;
+// Whether special snowballs count in RANKED (Cody's open question, HANDOFF): RANKED_SPECIALS=0 turns them off there.
+const rankedSpecials = process.env.RANKED_SPECIALS !== '0';
 if (process.env.DATABASE_URL) {
   const { default: postgres } = await import('postgres');
   const sql = postgres(process.env.DATABASE_URL, { max: 3, prepare: false });
@@ -32,12 +34,21 @@ if (process.env.DATABASE_URL) {
     if (!r.ok) return null;
     const user = await r.json(); if (!user?.id) return null;
     const p = (await db.query('select * from public.referee_profile($1)', [user.id]))[0]; // 017: the referee login's one lookup
-    return p ? { pid: p.id, l: p.level, a: p.avatar, n: p.name } : null;
+    return p ? { pid: p.id, l: p.level, a: p.avatar, n: p.name, rp: p.rank_points } : null;
   };
   finish = createLevels({ db }).finishByReferee;
+  // Ranked (supabase/006 tickets + 018 results), through the same limited login.
+  const one = async (q, p) => Object.values((await db.query(q, p))[0] || {})[0];
+  ranked = {
+    hold: (pid, rid) => one('select public.hold_ticket($1, $2)', [pid, rid]),
+    start: (rid) => one('select public.start_ranked_match($1)', [rid]),
+    release: (pid, rid) => one('select public.release_ticket($1, $2)', [pid, rid]),
+    result: (mid, pid, change) => one('select public.record_ranked_result($1, $2, $3)', [mid, pid, change]),
+    cleanup: (prefix) => one('select public.release_room_holds($1)', [prefix]),
+  };
   console.log('referee: sign-ins checked, finishes recorded');
 } else console.log('referee: no DATABASE_URL: phase-1 rooms (the page word is used, nothing recorded)');
-const ref = createReferee({ identify, finish });
+const ref = createReferee({ identify, finish, ranked, rankedSpecials });
 const perAddress = new Map();
 const server = http.createServer((req, res) => {
   if (req.url === '/health') {

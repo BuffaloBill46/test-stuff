@@ -1,3 +1,4 @@
+-- APPLIED live 2026-10-02 (through the Supabase connector).
 -- 018: RANKED on the referee server (server/referee.js), 2026-10-02. Rank points recorded once per match per player, and the
 -- referee's login (017) allowed to use the ranked tickets (006): hold on joining, spend at the start, release on leaving before.
 -- The points themselves are worked out by mockups/ranked.js (settleRanked) on the referee; the database keeps them honest:

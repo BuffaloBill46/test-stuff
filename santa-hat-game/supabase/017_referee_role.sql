@@ -1,3 +1,4 @@
+-- APPLIED live 2026-10-02 (through the Supabase connector).
 -- 017: the match referee server's own database login (server/referee.js, worker/referee.mjs on the Droplet), 2026-10-02.
 -- Least privilege: it can look up which profile a sign-in belongs to (with that profile's saved level and look) and record
 -- an Auto match's finishes. Nothing else: no money tables, no payouts, no writing profiles directly, no other logins.
