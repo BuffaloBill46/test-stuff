@@ -413,6 +413,9 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
 .shopitem b { display: block; font-size: 15px; color: var(--text); } .shopitem .uses { display: block; margin-top: 2px; font: 700 10px/1.2 var(--digits); text-transform: uppercase; color: var(--lamp); }
 .shopitem p { margin: 3px 0 2px; font-size: 13px; line-height: 1.35; color: #c7cfe6; }
 .shopitem button { padding: 8px 10px; font-size: 13px; }
+.shopbtns { display: grid; gap: 6px; } .shopbtns .go { font-size: 16px; padding: 6px 12px 10px; } .shopbtns .ok { font: 700 11px/1 var(--digits); color: #7fe0a0; text-transform: uppercase; text-align: center; }
+.shopnote { grid-column: 1 / -1; margin: 0; min-height: 0; font-size: 13px; color: var(--lamp); } .shopnote:empty { display: none; }
+.pgnote { margin: 4px 0 0; font-size: 13px; color: var(--lamp); min-height: 0; } .pgnote:empty { display: none; }
 .avrule { grid-column: 1 / -1; margin: 2px 0 0; font-size: 13px; line-height: 1.45; color: #d6ddf0; }
 /* The Avatar screen's Special Snowballs and Special Gear tabs: one row per item (icon, name, what it does, price/status) */
 #avgrid.list { grid-template-columns: minmax(0, 1fr); gap: 6px; }
@@ -672,7 +675,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
         <div><i>Special gear</i><b id="pgGear">None yet</b></div>
         <div><i>Season pass</i><b>Coming soon</b></div>
         <div><i>Rank points</i><b id="pgPts">—</b></div>
-        <button class="sec" id="pgBuy" disabled>Buy level 2 · $1.00</button>
+        <button class="sec" id="pgBuy">Buy level 2 · $1.00</button><p class="pgnote" id="pgNote" aria-live="polite"></p>
         <p class="pgor" id="pgOr">or win 5 matches top 3 or better <b id="pgOrN">0 / 5</b></p>
       </div>
     </section>
@@ -861,10 +864,10 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
     <section class="block plaque">
       <h2>Ranked tickets</h2><p class="dim">Up to 10 extra tickets every 24 hours. Buying needs a wallet sign-in.</p>
       <div class="packs">
-        <div class="pack"><b>1</b><span>ticket</span><em>$0.10</em><button class="sec" disabled>Payments open soon</button></div>
-        <div class="pack"><b>5</b><span>tickets</span><em>$0.45</em><small>save 10%</small><button class="sec" disabled>Payments open soon</button></div>
-        <div class="pack"><b>10</b><span>tickets</span><em>$0.90</em><small>save 10%</small><button class="sec" disabled>Payments open soon</button></div>
-      </div>
+        <div class="pack"><b>1</b><span>ticket</span><em>$0.10</em><button class="sec" data-tix="1">Buy</button></div>
+        <div class="pack"><b>5</b><span>tickets</span><em>$0.45</em><small>save 10%</small><button class="sec" data-tix="5">Buy</button></div>
+        <div class="pack"><b>10</b><span>tickets</span><em>$0.90</em><small>save 10%</small><button class="sec" data-tix="10">Buy</button></div>
+      </div><p class="pgnote" id="tixNote" aria-live="polite"></p>
     </section>
     <section class="block plaque lottery" id="lottery">
       <h2>Santa Lottery</h2><p>Weekly draws every Sunday (10¢ and $1 tickets) and a $1 Christmas draw that closes December 23. The top 3 tickets win: 60% · 25% · 15% of the pot. Every ticket: 10% burned, the rest into the pot for the winners.</p><p class="taxnote"><b>3% SANTA tax</b> Prizes are paid in SANTA and arrive 3% lighter.</p>
@@ -883,7 +886,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       <div class="sbslots" id="avsb" hidden></div>
       <div class="grid" id="avgrid"></div>
       <div class="level" id="avlevel"></div>
-      <div class="saverow"><button class="go" id="avsave">Save look</button><span id="avmsg" role="status"></span></div>
+      <div class="saverow"><button class="go" id="avsave">Save look</button><button class="sec" id="avbuy" hidden>Buy</button><span id="avmsg" role="status"></span></div>
       <label id="avthemeL">Plaza theme <span class="note">· only you see it</span></label>
       <div class="themes" id="avtheme" role="group" aria-labelledby="avthemeL"></div>
     </div>
