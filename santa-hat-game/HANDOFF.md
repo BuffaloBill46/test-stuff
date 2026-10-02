@@ -192,11 +192,15 @@ between two devices has never been tested from here. Cody and friends testing on
 - **Special snowballs in RANKED:** count them, or plain snowballs only in ranked so it can't be pay-to-win? One switch
   (`rankedSpecials` in worker/referee.mjs); it's ON (they count) until you say.
 
-1. **Email sign-in for real players:** make a free Resend account (resend.com) and, when you buy the game domain (santahat.gold in the
-   notes), add the few DNS records Resend gives you at your domain company (GoDaddy is fine). Then Claude connects it to Supabase
-   (Auth → Emails → SMTP). Until then: wallet sign-in works; email sign-in only reaches your own Supabase team address.
+0. **Your other project "Green Life Game" is using most of the free game-server calls** (found 2026-10-02): the Supabase account
+   has 500,000 a month; it was at 155,000 after 4 days (Santa Hat itself: about 200 a day). If the account runs out, Supabase
+   pauses BOTH games (requests answer 402). Have that game's Claude look at what's calling it so often, or upgrade the plan.
+1. **Email sign-in for real players:** the domain exists now (santahatgames.com). Make a free Resend account (resend.com),
+   add the domain there, then tell Claude: the DNS records Resend lists go into GoDaddy (Claude can do that in your Chrome, as
+   with the game's records) and Claude connects Resend to Supabase (Auth → Emails → SMTP; the SMTP password is yours to paste).
+   Until then: wallet sign-in works; email sign-in only reaches your own Supabase team address.
 2. **Try a real wallet on devnet (Phantom):** set Phantom to devnet, then open
-   https://buffalobill46.github.io/test-stuff/?server=https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games
+   https://santahatgames.com/?server=https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games
    and sign in with the wallet. Send Claude your Phantom devnet address and Claude will send it test SANTA + devnet SOL, so you can
    buy a run, a lottery ticket, a special snowball, gear, a level and ranked tickets for real (devnet). (Claude can't create
    accounts on the live project or sign in for you.)
@@ -229,6 +233,13 @@ between two devices has never been tested from here. Cody and friends testing on
   /etc/santa/keys (empty, chmod 700). Update: `runuser -u santa -- git -C /opt/santa/repo fetch` + checkout the new commit, then
   `systemctl restart santa-worker`. Logs: `journalctl -u santa-worker`. Memory note "santa-droplet".
 - **Helius:** Developer plan confirmed (not wired: devnet uses the public RPC).
+- **Domain santahatgames.com (Cody bought it at GoDaddy 2026-10-02; Claude set it up in his Chrome):** DNS at GoDaddy:
+  @ → GitHub Pages (185.199.108/109/110/111.153), www → buffalobill46.github.io, play → the Droplet 147.182.219.161; the name
+  servers and the _dmarc record unchanged. The site: GitHub Pages with the custom domain (CNAME file on gh-pages; deploy-pages.sh
+  writes it only while the domain points at GitHub); the old github.io address forwards to it. The match server: Caddy serves
+  play.santahatgames.com (sslip.io name kept as a fallback). Supabase Auth: Site URL https://santahatgames.com/, redirects
+  santahatgames.com/**, www.santahatgames.com/**, the old github.io/test-stuff/**. Game server and match server accept it.
+  Live links: https://santahatgames.com and, for the devnet server, https://santahatgames.com/?server=https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games
 - **Match referee server LIVE on the Droplet (2026-10-02, phase 1, opt-in):** service `santa-referee` (worker/referee.mjs on
   127.0.0.1:8081) behind Caddy at `wss://147-182-219-161.sslip.io` (free automatic certificate; health:
   https://147-182-219-161.sslip.io/health). Try it: add `&ref=wss://147-182-219-161.sslip.io` to the game's address (needs the
