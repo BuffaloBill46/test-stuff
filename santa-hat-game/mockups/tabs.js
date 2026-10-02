@@ -320,7 +320,8 @@ export function initTabs(app) {
     save.textContent = app.profile ? 'Save look' : 'Save on this device';
     if (blocked.length) $('#avmsg').textContent = `Previewing: ${blocked.map((i) => i.name).join(', ')} isn't unlocked yet.`;
     // buy what's being previewed, right here (looks are bought on the Avatar screen; Cody)
-    const sale = blocked.find((i) => forSale(i)), ab = $('#avbuy'); ab.hidden = !sale;
+    // the item just tapped first (button audit 2026-10-02: it offered the first locked item in the outfit, maybe not the one tapped)
+    const sale = blocked.find((i) => i.id === state.lastPick && forSale(i)) || blocked.find((i) => forSale(i)), ab = $('#avbuy'); ab.hidden = !sale;
     if (sale) { ab.dataset.item = sale.id; ab.textContent = `Buy ${sale.name} · $${sale.price.toFixed(2)}`; }
     renderThemes();
     app.preview(d.a);
@@ -331,7 +332,7 @@ export function initTabs(app) {
   }
   $('#avtheme').addEventListener('click', (e) => { const b = e.target.closest('[data-theme]'); if (!b) return; app.setTheme(b.dataset.theme); renderThemes(); });
   $('#avslots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (b) { state.slot = b.dataset.slot; $('#avmsg').textContent = ''; renderAvatar(); } });
-  $('#avgrid').addEventListener('click', (e) => { const b = e.target.closest('[data-pick]'); if (!b) return; const it = BY_ID.get(b.dataset.pick);
+  $('#avgrid').addEventListener('click', (e) => { const b = e.target.closest('[data-pick]'); if (!b) return; const it = BY_ID.get(b.dataset.pick); state.lastPick = b.dataset.pick;
     $('#avmsg').textContent = '';
     if (it.slot === 'sball') withSpecial(state.draft.a, state.sbSlot, it.id);
     else if (it.slot === 'gear') { if (!withGear(state.draft.a, state.gSlot, it.id)) { $('#avmsg').textContent = `Can't stack: ${NO_STACK_NOTE}`; return; } }
