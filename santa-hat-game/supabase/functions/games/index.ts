@@ -22,7 +22,21 @@ import { createShop } from '../../../server/shop.js';
 import { livePrice, liveFee } from '../../../mockups/market.js';
 
 const env = (k: string) => Deno.env.get(k) ?? '';
-const sql = postgres(env('SUPABASE_DB_URL'), { prepare: false, max: 3 });
+// The database through Supabase's TRANSACTION POOLER when DB_POOLER_HOST is set (e.g. aws-0-us-east-1.pooler.supabase.com, from the
+// dashboard's Connect panel: an address, not a secret). Found live 2026-10-02: with direct connections every copy of this function
+// opened its own, a burst of ~70 requests used up the free plan's connection slots, ~1 in 7 requests failed and the speed limit
+// couldn't count. The pooler shares a few real connections between all copies. Same password; user becomes postgres.<project>.
+// (Only transaction-scoped locks are used, e.g. 005's pg_advisory_xact_lock, which the transaction pooler supports.)
+function dbUrl(): string {
+  const raw = env('SUPABASE_DB_URL'), pooler = env('DB_POOLER_HOST');
+  if (!pooler) return raw;
+  const u = new URL(raw), m = u.hostname.match(/^db\.([a-z0-9]+)\.supabase\.co$/);
+  if (!m) return raw; // not the usual direct address: leave it alone
+  if (u.username === 'postgres') u.username = 'postgres.' + m[1];
+  u.hostname = pooler; u.port = '6543';
+  return u.toString();
+}
+const sql = postgres(dbUrl(), { prepare: false, max: 3 });
 const db = {
   query: (q: string, p: unknown[] = []) => sql.unsafe(q, p as never[]),
   tx: (fn: (t: { query: (q: string, p?: unknown[]) => Promise<unknown[]> }) => Promise<unknown>) =>
