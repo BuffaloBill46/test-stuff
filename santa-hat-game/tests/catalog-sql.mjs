@@ -11,6 +11,8 @@ for (const it of ITEMS) {
   if ((it.level == null) === (it.price == null)) fail(it.id + ' must have exactly one of level or price');
   if (!/^[a-z0-9_]{3,40}$/.test(it.id)) fail('bad id ' + it.id);
 }
+// every hat and backpack names the shape the character draws (a scripted edit once stripped the backpacks' `pack` shapes)
+for (const it of ITEMS) if ((it.slot === 'hat' || it.slot === 'pack') && !it[it.slot]) fail(it.id + ' has no ' + it.slot + ' shape');
 // special gear: every gear item does a gear.js kind, and every kind can be had (one item each)
 for (const it of ITEMS) if (it.slot === 'gear' && it.id !== 'gear_none' && !GEAR[it.gear]) fail('gear item ' + it.id + ' has no gear.js kind');
 for (const k of GEAR_KINDS) if (ITEMS.filter((i) => i.gear === k).length !== 1) fail('gear ' + k + ' needs exactly one item');

@@ -78,9 +78,9 @@ export const ITEMS = [
 
   // Backpacks (2026-10-01).
   { id: 'pack_none', slot: 'pack', name: 'No backpack', pack: 'none', level: 1 },
-  { id: 'pack_satchel', slot: 'pack', name: 'Elf Satchel', color: 0x3f9a66, price: 0.25 },
-  { id: 'pack_sack', slot: 'pack', name: 'Toy Sack', color: 0xcf3128, price: 0.50 },
-  { id: 'pack_gift', slot: 'pack', name: 'Gift Box', color: 0x7a4fa3, price: 0.25 },
+  { id: 'pack_satchel', slot: 'pack', name: 'Elf Satchel', pack: 'satchel', color: 0x3f9a66, price: 0.25 },
+  { id: 'pack_sack', slot: 'pack', name: 'Toy Sack', pack: 'sack', color: 0xcf3128, price: 0.50 },
+  { id: 'pack_gift', slot: 'pack', name: 'Gift Box', pack: 'gift', color: 0x7a4fa3, price: 0.25 },
 
   // Special gear (2026-10-01). Cody: existing items become gear and keep their names: Toy Sack = Santa Bag, Gift Box =
   // Present Box, Elf Satchel keeps its name. They are NEW items (gear_sack, gear_gift, gear_satchel) next to the backpacks
