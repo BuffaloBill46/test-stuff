@@ -320,3 +320,9 @@ ball speeds up (a Fire Ball moves 1.8 a step), check the worst frame rate, not t
 The plaza theme test checked "still Halloween after a reload" and passed, but nothing had reloaded: the Avatar tab rewrites the
 hash to `#avatar`, so the test's `goto('…#play')` was a same-page hash change and the old page answered. Caught only because the
 storage-throws case ("Christmas again after a reload") failed. A test that means reload calls `page.reload()`.
+
+## Added light cannot show red on white snow (2026-10-01)
+The first special-snowball tracers were all additive glow (light ADDED to the picture). On the bright snow plaza a red flame
+trail turned pink and the split ball's red/green ribbon nearly vanished; overlapping Giant Ball halos whited out the middle of
+a phone screen. Only the maxed-out screenshot showed it. Tracers now pick per point: glow (added light) for halos, SOLID colour
+(painted over) for flames, ribbons and chips, and a crisp star for twinkles (kit.js Sparks). Colour that must read on snow is solid.
