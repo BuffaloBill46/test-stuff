@@ -1,19 +1,23 @@
-// The winter plaza shared by Snowball Square and Be the Hat.
+// The winter plaza shared by Snowball Square and Be the Hat. Its look comes from a theme (themes.js); the ring, pedestal and
+// snowball piles are the same in every theme, because the referee (sim.js) plays on them whatever each player sees.
 import { THREE, C, part, build, toon, toonInstanced, setInstance, pineGeo, cottage, snowmanGeo, hatGeo, glow, glowMat,
-  skyTexture, stars, aurora, lights, rng } from './kit.js';
+  skyTexture, stars, aurora, lights, rng, disposeTree } from './kit.js';
+import { themeOf } from './themes.js';
 
 const G = THREE, V3 = THREE.Vector3;
 export const ARENA = 13.2;
 
-function stallGeo(seed) {
+// Market stall. awn: the awning's two stripe colours; goods: parts for the counter (default: three wrapped presents).
+function stallGeo(seed, awn = [C.hat, C.brim], goods = null) {
   const ps = [
     part(new G.BoxGeometry(2.6, 1.0, 1.1), C.wood, { pos: [0, 0.5, 0.3], jit: 0.03, seed }),
     part(new G.BoxGeometry(2.8, 0.12, 1.3), C.woodDark, { pos: [0, 1.04, 0.3] }),
     part(new G.BoxGeometry(2.6, 2.2, 0.12), C.woodDark, { pos: [0, 1.1, -0.35] }),
   ];
   for (const x of [-1.3, 1.3]) for (const z of [-0.35, 0.85]) ps.push(part(new G.BoxGeometry(0.12, 2.5, 0.12), C.woodDark, { pos: [x, 1.25, z] }));
-  for (let i = 0; i < 7; i++) ps.push(part(new G.BoxGeometry(0.44, 0.1, 1.9), i % 2 ? C.brim : C.hat, { pos: [-1.32 + i * 0.44, 2.55, 0.3], rot: [0.28, 0, 0], jit: 0.02, seed: seed + i }));
-  for (let i = 0; i < 3; i++) ps.push(part(new G.BoxGeometry(0.3, 0.3, 0.3), [C.gold, C.elf, C.brim][i], { pos: [-0.7 + i * 0.7, 1.25, 0.4], rot: [0, i, 0], jit: 0.02 }));
+  for (let i = 0; i < 7; i++) ps.push(part(new G.BoxGeometry(0.44, 0.1, 1.9), i % 2 ? awn[1] : awn[0], { pos: [-1.32 + i * 0.44, 2.55, 0.3], rot: [0.28, 0, 0], jit: 0.02, seed: seed + i }));
+  if (goods) ps.push(...goods);
+  else for (let i = 0; i < 3; i++) ps.push(part(new G.BoxGeometry(0.3, 0.3, 0.3), [C.gold, C.elf, C.brim][i], { pos: [-0.7 + i * 0.7, 1.25, 0.4], rot: [0, i, 0], jit: 0.02 }));
   return build(ps);
 }
 
@@ -26,32 +30,64 @@ function ringGeo(r, n = 32) {
   return build(ps);
 }
 
-function groundGeo(radius, seg, color, jit, y = 0, seed = 1) {
+function groundGeo(radius, seg, color, jit, y = 0, seed = 1, hills = C.snow) {
   const g = new G.CircleGeometry(radius, seg, 0, Math.PI * 2);
   g.rotateX(-Math.PI / 2);
   // add rings so the ground can undulate
   const r2 = new G.RingGeometry(radius, radius * 3.2, seg, 3); r2.rotateX(-Math.PI / 2);
   const p = r2.attributes.position;
   for (let i = 0; i < p.count; i++) { const d = Math.hypot(p.getX(i), p.getZ(i)); if (d > radius + 0.1) p.setY(i, (d - radius) * 0.18 * (0.6 + Math.sin(p.getX(i) * 0.3) * 0.4)); }
-  return build([part(g, color, { pos: [0, y, 0], jit, seed }), part(r2, C.snow, { pos: [0, y, 0], jit: jit * 3, seed: seed + 1 })]);
+  return build([part(g, color, { pos: [0, y, 0], jit, seed }), part(r2, hills, { pos: [0, y, 0], jit: jit * 3, seed: seed + 1 })]);
 }
 
+const PILES = [[-8, -5], [8, -6], [-7, 8], [8, 7]]; // snowball piles (ammo points); the referee has its own copy in sim.js
+
+// o.theme: a themes.js id (default Christmas). Everything is added under one group so a theme can be swapped at runtime:
+// out.dispose() removes it and frees what it owns, then buildPlaza again with the new theme.
 export function buildPlaza(scene, o = {}) {
-  const r = rng(o.seed ?? 42);
-  scene.background = skyTexture();
-  scene.fog = new THREE.Fog(0x232c52, 26, 78);
-  lights(scene, { hemi: 1.35, moonI: 1.3 });
+  const th = themeOf(o.theme), r = rng(o.seed ?? 42), root = new G.Group(); scene.add(root);
+  const sky = skyTexture(...th.sky); scene.background = sky;
+  scene.fog = new THREE.Fog(...th.fog);
+  lights(root, th.lights);
   const out = { tick: [] };
 
-  scene.add(toon(groundGeo(40, 40, C.snow, 0.05, 0, 3), 0));
-  scene.add(toon(build([part(new G.CircleGeometry(ARENA + 0.8, 36).rotateX(-Math.PI / 2), 0xd7deec, { pos: [0, 0.02, 0], jit: 0.03 })]), 0));
-  scene.add(toon(ringGeo(ARENA + 1.2), 0.03));
+  root.add(toon(groundGeo(40, 40, th.ground, 0.05, 0, 3, th.hills), 0));
+  root.add(toon(build([part(new G.CircleGeometry(ARENA + 0.8, 36).rotateX(-Math.PI / 2), th.floor, { pos: [0, 0.02, 0], jit: 0.03 })]), 0));
+  root.add(toon(ringGeo(ARENA + 1.2), 0.03));
 
-  const st = stars(); scene.add(st);
-  const au = aurora(); au.position.set(0, 44, -90); scene.add(au); out.tick.push(au.userData.tick);
-  const moon = glow(0xdfe8ff, 26, 0.5); moon.position.set(-60, 55, -110); scene.add(moon);
-  const moonDisc = new THREE.Mesh(new G.IcosahedronGeometry(4, 1), glowMat(0xf2f5ff)); moonDisc.position.copy(moon.position); scene.add(moonDisc);
+  const st = stars(th.stars); root.add(st);
+  if (th.aurora) { const au = aurora(); au.position.set(0, 44, -90); root.add(au); out.tick.push(au.userData.tick); }
+  const mo = th.moon, moon = glow(mo.glow, mo.size, mo.opacity); moon.position.set(...mo.pos); root.add(moon);
+  const moonDisc = new THREE.Mesh(new G.IcosahedronGeometry(mo.r, 1), glowMat(mo.color)); moonDisc.position.copy(moon.position); root.add(moonDisc);
 
+  const halloween = th.props === 'halloween';
+  (halloween ? halloweenProps : christmasProps)(root, r, out);
+
+  // centre pedestal, ringed by iron lanterns (Christmas) or jack-o'-lanterns (Halloween)
+  if (o.pedestal !== false) {
+    const ped = toon(build([
+      part(new G.BoxGeometry(2.4, 0.4, 2.4), C.stoneDark, { pos: [0, 0.2, 0], jit: 0.04 }),
+      part(new G.BoxGeometry(1.8, 1.1, 1.8), C.stone, { pos: [0, 0.95, 0], jit: 0.05, seed: 3 }),
+      part(new G.BoxGeometry(2.1, 0.22, 2.1), C.stoneDark, { pos: [0, 1.6, 0], jit: 0.03, seed: 4 }),
+    ]), 0.04);
+    root.add(ped); out.pedestalTop = 1.71;
+  }
+  (halloween ? jackLanterns : ironLanterns)(root, o.lanterns ?? 6, out);
+
+  out.piles = PILES.map(([x, z], i) => {
+    const pg = [];
+    const rr = rng(i + 9);
+    for (let k = 0; k < 9; k++) { const a = rr() * 6.28, d = rr() * 0.5, y = k < 6 ? 0.22 : 0.5; pg.push(part(new G.IcosahedronGeometry(0.24, 0), C.snow, { pos: [Math.cos(a) * d, y, Math.sin(a) * d], jit: 0.02, seed: k })); }
+    const m = toon(build(pg), 0.025); m.position.set(x, 0, z); root.add(m);
+    return new V3(x, 0, z);
+  });
+
+  out.update = (t) => out.tick.forEach((f) => f(t));
+  out.dispose = () => { scene.remove(root); disposeTree(root); sky.dispose(); if (scene.background === sky) scene.background = null; scene.fog = null; out.tick.length = 0; };
+  return out;
+}
+
+function christmasProps(root, r, out) {
   // forest ring
   const trees = [];
   for (let i = 0; i < 46; i++) {
@@ -61,26 +97,26 @@ export function buildPlaza(scene, o = {}) {
   }
   const tg = pineGeo(9), ti = toonInstanced(tg, trees.length, 0.04);
   trees.forEach(([x, z, s, ry], i) => setInstance(ti, i, new V3(x, 0, z), ry, s));
-  scene.add(ti);
+  root.add(ti);
 
   // cottages behind the plaza, facing in
   const lit = new THREE.MeshBasicMaterial({ vertexColors: true });
-  [[-12, -24, 0.35], [-3, -27, 0.1], [7, -25, -0.2], [16, -21, -0.55]].forEach(([x, z, ry], i) => {
+  COTTAGES.forEach(([x, z, ry], i) => {
     const c = cottage(i + 3, { w: 3.4 + (i % 2) * 0.8 });
     const g = new G.Group(); g.add(toon(c.body, 0.04)); g.add(new THREE.Mesh(c.windows, lit));
-    g.position.set(x, 0, z); g.rotation.y = ry; g.scale.setScalar(1.3); scene.add(g);
+    g.position.set(x, 0, z); g.rotation.y = ry; g.scale.setScalar(1.3); root.add(g);
   });
 
   // market stalls + snowmen on the rim
-  [[-15.5, 4, 1.9], [15.8, 3, -1.8], [-9, 13.5, 2.6]].forEach(([x, z, ry], i) => {
-    const m = toon(stallGeo(i * 5), 0.035); m.position.set(x, 0, z); m.rotation.y = ry; scene.add(m);
+  STALLS.forEach(([x, z, ry], i) => {
+    const m = toon(stallGeo(i * 5), 0.035); m.position.set(x, 0, z); m.rotation.y = ry; root.add(m);
   });
-  [[-17, -6], [14, 12]].forEach(([x, z], i) => { const m = toon(snowmanGeo(i + 1), 0.035); m.position.set(x, 0, z); m.lookAt(0, 0, 0); scene.add(m); });
+  RIM.forEach(([x, z], i) => { const m = toon(snowmanGeo(i + 1), 0.035); m.position.set(x, 0, z); m.lookAt(0, 0, 0); root.add(m); });
 
   // the big tree with bulbs
-  const big = toon(pineGeo(21, 2.3), 0.05); big.position.set(-10, 0, -15); scene.add(big);
-  const star = new THREE.Mesh(new G.OctahedronGeometry(0.55, 0), glowMat(0xffd76a)); star.position.set(-10, 7.7, -15); scene.add(star);
-  const sg = glow(0xffc34d, 5, 0.7); sg.position.copy(star.position); scene.add(sg);
+  const big = toon(pineGeo(21, 2.3), 0.05); big.position.set(-10, 0, -15); root.add(big);
+  const star = new THREE.Mesh(new G.OctahedronGeometry(0.55, 0), glowMat(0xffd76a)); star.position.set(-10, 7.7, -15); root.add(star);
+  const sg = glow(0xffc34d, 5, 0.7); sg.position.copy(star.position); root.add(sg);
   const bulbs = new THREE.InstancedMesh(new G.IcosahedronGeometry(0.13, 0), new THREE.MeshBasicMaterial(), 36);
   const bc = [0xff4b3e, 0xffd24a, 0x4bd1ff, 0x7dff8a];
   for (let i = 0; i < 36; i++) {
@@ -88,19 +124,16 @@ export function buildPlaza(scene, o = {}) {
     setInstance(bulbs, i, new V3(-10 + Math.cos(a) * rad, h, -15 + Math.sin(a) * rad));
     bulbs.setColorAt(i, new THREE.Color(bc[i % 4]));
   }
-  scene.add(bulbs);
-  const treeLight = new THREE.PointLight(0xffb45a, 6, 10, 1.6); treeLight.position.set(-10, 3, -12); scene.add(treeLight);
+  root.add(bulbs);
+  const treeLight = new THREE.PointLight(0xffb45a, 6, 10, 1.6); treeLight.position.set(-10, 3, -12); root.add(treeLight);
   out.tick.push((t) => { sg.material.opacity = 0.55 + Math.sin(t * 2) * 0.15; star.rotation.y = t; });
+}
+// Where the props stand (both themes put their own prop in each spot, so the plaza keeps its shape).
+const COTTAGES = [[-12, -24, 0.35], [-3, -27, 0.1], [7, -25, -0.2], [16, -21, -0.55]];
+const STALLS = [[-15.5, 4, 1.9], [15.8, 3, -1.8], [-9, 13.5, 2.6]];
+const RIM = [[-17, -6], [14, 12]]; // snowmen / scarecrows, facing the middle
 
-  // centre pedestal with lanterns
-  if (o.pedestal !== false) {
-    const ped = toon(build([
-      part(new G.BoxGeometry(2.4, 0.4, 2.4), C.stoneDark, { pos: [0, 0.2, 0], jit: 0.04 }),
-      part(new G.BoxGeometry(1.8, 1.1, 1.8), C.stone, { pos: [0, 0.95, 0], jit: 0.05, seed: 3 }),
-      part(new G.BoxGeometry(2.1, 0.22, 2.1), C.stoneDark, { pos: [0, 1.6, 0], jit: 0.03, seed: 4 }),
-    ]), 0.04);
-    scene.add(ped); out.pedestalTop = 1.71;
-  }
+function ironLanterns(root, n, out) {
   const lanterns = [];
   const lg = build([
     part(new G.BoxGeometry(0.34, 0.08, 0.34), C.coal, { pos: [0, 0.04, 0] }),
@@ -109,26 +142,205 @@ export function buildPlaza(scene, o = {}) {
     ...[[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => part(new G.BoxGeometry(0.05, 0.5, 0.05), C.coal, { pos: [a * 0.15, 0.32, b * 0.15] })),
   ]);
   const core = new G.BoxGeometry(0.22, 0.46, 0.22);
-  for (let i = 0; i < (o.lanterns ?? 6); i++) {
+  for (let i = 0; i < n; i++) {
     const a = (i / 6) * Math.PI * 2 + 0.5, x = Math.cos(a) * 2.2, z = Math.sin(a) * 2.2;
-    const l = toon(lg, 0.02); l.position.set(x, 0, z); scene.add(l);
-    const c = new THREE.Mesh(core, glowMat(C.glass)); c.position.set(x, 0.32, z); scene.add(c);
-    const gl = glow(C.lantern, 1.3, 0.4); gl.position.set(x, 0.4, z); scene.add(gl); lanterns.push(gl);
+    const l = toon(lg, 0.02); l.position.set(x, 0, z); root.add(l);
+    const c = new THREE.Mesh(core, glowMat(C.glass)); c.position.set(x, 0.32, z); root.add(c);
+    const gl = glow(C.lantern, 1.3, 0.4); gl.position.set(x, 0.4, z); root.add(gl); lanterns.push(gl);
   }
-  const pedLight = new THREE.PointLight(0xffa94a, 5, 8, 1.5); pedLight.position.set(0, 1.4, 1.5); scene.add(pedLight);
+  const pedLight = new THREE.PointLight(0xffa94a, 5, 8, 1.5); pedLight.position.set(0, 1.4, 1.5); root.add(pedLight);
   out.tick.push((t) => lanterns.forEach((g, i) => { g.material.opacity = 0.34 + Math.sin(t * 7 + i * 2.1) * 0.05 + Math.sin(t * 13 + i) * 0.03; }));
+}
 
-  // snowball piles (ammo points)
-  out.piles = [[-8, -5], [8, -6], [-7, 8], [8, 7]].map(([x, z], i) => {
-    const pg = [];
-    const rr = rng(i + 9);
-    for (let k = 0; k < 9; k++) { const a = rr() * 6.28, d = rr() * 0.5, y = k < 6 ? 0.22 : 0.5; pg.push(part(new G.IcosahedronGeometry(0.24, 0), C.snow, { pos: [Math.cos(a) * d, y, Math.sin(a) * d], jit: 0.02, seed: k })); }
-    const m = toon(build(pg), 0.025); m.position.set(x, 0, z); scene.add(m);
-    return new V3(x, 0, z);
+// ---------- Halloween: same spots, harvest-time props. Same kit as Christmas (faceted parts, toon shading, ink outlines).
+const H = { pumpkin: 0xe0731f, pumpkinDark: 0xb4501a, stem: 0x55602c, candle: 0xffcf5a, bark: 0x3e322d, barkDark: 0x2c2422,
+  straw: 0xd2ab55, strawDark: 0x9a7a35, burlap: 0xc4a77a, flannel: 0x8c3a2c, grave: 0x7e7c88, graveDark: 0x5a5866, bat: 0x1c1621,
+  roof: 0x4a3c50, apple: 0xb3302a, corn: 0xe2b84a, earth: 0x4f4030 };
+
+function pumpkinGeo(seed = 1, s = 1) { // standing on y=0, about 0.5 tall; built facing +z (the carved side for a jack-o'-lantern)
+  return build([
+    part(new G.SphereGeometry(0.32, 9, 6), H.pumpkin, { pos: [0, 0.23, 0], scale: [1, 0.72, 1], jit: 0.02, seed }),
+    part(new G.CylinderGeometry(0.03, 0.05, 0.16, 5), H.stem, { pos: [0.02, 0.5, 0], rot: [0, 0, -0.25] }),
+    part(new G.BoxGeometry(0.14, 0.02, 0.07), H.stem, { pos: [-0.07, 0.47, 0.03], rot: [0, 0.6, 0.3] }),
+  ].map((g) => { g.scale(s, s, s); return g; }));
+}
+// The carved face, drawn unlit so it reads as candlelight from inside.
+function jackFaceGeo() {
+  const tri = (r, x, y, z) => part(new G.CylinderGeometry(r, r, 0.08, 3), H.candle, { pos: [x, y, z], rot: [-Math.PI / 2, 0, 0] });
+  return build([tri(0.07, -0.11, 0.29, 0.27), tri(0.07, 0.11, 0.29, 0.27), tri(0.04, 0, 0.225, 0.3),
+    part(new G.BoxGeometry(0.24, 0.05, 0.08), H.candle, { pos: [0, 0.15, 0.285] }),
+    part(new G.BoxGeometry(0.07, 0.05, 0.08), H.candle, { pos: [-0.13, 0.175, 0.265], rot: [0, 0.4, 0.6] }),
+    part(new G.BoxGeometry(0.07, 0.05, 0.08), H.candle, { pos: [0.13, 0.175, 0.265], rot: [0, -0.4, -0.6] }),
+    part(new G.BoxGeometry(0.05, 0.035, 0.08), H.candle, { pos: [-0.05, 0.12, 0.285] }), part(new G.BoxGeometry(0.05, 0.035, 0.08), H.candle, { pos: [0.05, 0.12, 0.285] }),
+  ]);
+}
+function jackLanterns(root, n, out) {
+  const body = pumpkinGeo(4), face = jackFaceGeo(), lit = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), glows = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / 6) * Math.PI * 2 + 0.5, x = Math.cos(a) * 2.2, z = Math.sin(a) * 2.2;
+    const j = jack(body, face, lit, 1.2); j.position.set(x, 0, z); j.lookAt(x * 2, 0, z * 2); root.add(j); // grinning outwards
+    const gl = glow(0xff8f3a, 1.2, 0.32); gl.position.set(x, 0.38, z); root.add(gl); glows.push(gl);
+  }
+  // the same warm light as the Christmas lanterns, a shade more orange (LESSONS: 2 real lights per scene, ~5-6 intensity)
+  const pedLight = new THREE.PointLight(0xff9440, 5, 8, 1.5); pedLight.position.set(0, 1.4, 1.5); root.add(pedLight);
+  out.tick.push((t) => glows.forEach((g, i) => { g.material.opacity = 0.3 + Math.sin(t * 6 + i * 2.1) * 0.05 + Math.sin(t * 15 + i) * 0.03; }));
+}
+function jack(body, face, lit, s = 1) { const j = new G.Group(); j.add(toon(body, 0.025)); j.add(new THREE.Mesh(face, lit)); j.scale.setScalar(s); return j; }
+
+// A leafless tree: a leaning trunk and crooked branches, each with a twig. Returns the twig tips (for hanging lanterns).
+function bareTreeGeo(seed = 1, h = 1, n = 5) {
+  const rr = rng(seed), ps = [], tips = [];
+  const limb = (base, yaw, tilt, len, r0, r1, color) => {
+    const dir = new V3(Math.sin(tilt) * Math.cos(yaw), Math.cos(tilt), -Math.sin(tilt) * Math.sin(yaw));
+    ps.push(part(new G.CylinderGeometry(r1, r0, len, 5), color, { pos: base.clone().addScaledVector(dir, len / 2).toArray(), rot: [0, yaw, -tilt], jit: r0 * 0.25, seed: seed + ps.length }));
+    return base.clone().addScaledVector(dir, len);
+  };
+  const top = limb(new V3(0, 0, 0), rr() * 6.28, 0.07, 2.3, 0.26, 0.13, H.barkDark);
+  limb(top, rr() * 6.28, 0.25, 0.9, 0.13, 0.04, H.bark);
+  for (let k = 0; k < n; k++) {
+    const yaw = k * 2.4 + rr() * 0.8, base = new V3(0, 1.0 + (k / n) * 1.3, 0), tip = limb(base, yaw, 0.7 + rr() * 0.4, 1.0 + rr() * 0.5, 0.1, 0.05, H.bark);
+    tips.push(tip, limb(tip, yaw + (rr() < 0.5 ? -0.7 : 0.7), 0.35 + rr() * 0.3, 0.5 + rr() * 0.3, 0.05, 0.02, H.bark));
+  }
+  return { geo: build(ps.map((g) => { g.scale(h, h, h); return g; })), tips: tips.map((p) => p.multiplyScalar(h)) };
+}
+
+function scarecrowGeo(seed = 1) { // built facing +z, standing on y=0
+  const ps = [
+    part(new G.BoxGeometry(0.12, 2.5, 0.12), C.woodDark, { pos: [0, 1.25, -0.05], jit: 0.02, seed }),
+    part(new G.BoxGeometry(1.8, 0.1, 0.1), C.woodDark, { pos: [0, 1.72, -0.05], jit: 0.02, seed: seed + 1 }),
+    part(new G.BoxGeometry(0.6, 0.72, 0.34), H.flannel, { pos: [0, 1.4, 0.03], jit: 0.04, seed: seed + 2 }),
+    part(new G.BoxGeometry(1.4, 0.2, 0.22), H.flannel, { pos: [0, 1.72, 0], jit: 0.03, seed: seed + 3 }),
+    part(new G.BoxGeometry(0.62, 0.08, 0.36), C.wood, { pos: [0, 1.12, 0.03] }), // rope belt
+    part(new G.IcosahedronGeometry(0.27, 1), H.burlap, { pos: [0, 2.06, 0], scale: [1, 1.08, 0.95], jit: 0.03, seed: seed + 4 }),
+    part(new G.TorusGeometry(0.16, 0.04, 4, 8), C.wood, { pos: [0, 1.82, 0], rot: [Math.PI / 2, 0, 0] }),
+    part(new G.CylinderGeometry(0.46, 0.46, 0.04, 9), H.strawDark, { pos: [0, 2.26, 0], jit: 0.03, seed: seed + 5 }),
+    part(new G.ConeGeometry(0.24, 0.42, 7), H.strawDark, { pos: [0, 2.48, 0], rot: [0.1, 0, 0.12], jit: 0.03, seed: seed + 6 }),
+    part(new G.BoxGeometry(0.07, 0.07, 0.04), C.coal, { pos: [-0.1, 2.1, 0.25] }), part(new G.BoxGeometry(0.07, 0.07, 0.04), C.coal, { pos: [0.1, 2.1, 0.25] }),
+    part(new G.BoxGeometry(0.22, 0.025, 0.04), C.coal, { pos: [0, 1.96, 0.25] }),
+    ...[-0.08, 0, 0.08].map((x) => part(new G.BoxGeometry(0.015, 0.06, 0.04), C.coal, { pos: [x, 1.96, 0.26] })), // stitched mouth
+  ];
+  for (const s of [-1, 1]) for (let k = 0; k < 3; k++) ps.push(part(new G.ConeGeometry(0.06, 0.24, 4), H.straw, { pos: [s * (0.78 + k * 0.03), 1.72 + (k - 1) * 0.07, 0], rot: [0, 0, s * -(Math.PI / 2) + (k - 1) * 0.4] }));
+  for (let k = 0; k < 5; k++) ps.push(part(new G.ConeGeometry(0.06, 0.26, 4), H.straw, { pos: [-0.24 + k * 0.12, 0.98, 0.05], rot: [Math.PI, 0, (k - 2) * 0.15] }));
+  return build(ps);
+}
+
+const haleParts = (x, z, ry = 0, seed = 1) => [ // a hay bale with its two twine bands
+  part(new G.BoxGeometry(1.1, 0.5, 0.6), H.straw, { pos: [x, 0.25, z], rot: [0, ry, 0], jit: 0.04, seed }),
+  ...[-0.3, 0.3].map((b) => part(new G.BoxGeometry(0.05, 0.52, 0.62), H.strawDark, { pos: [x + Math.cos(ry) * b, 0.25, z - Math.sin(ry) * b], rot: [0, ry, 0] })),
+];
+function harvestGoods(seed) { // on and around a harvest stall: pumpkins, an apple crate, corn cobs; hay bales and a corn shock beside it
+  const ps = [
+    ...[-0.9, -0.5].map((x, i) => part(new G.SphereGeometry(0.19, 8, 5), i ? H.pumpkinDark : H.pumpkin, { pos: [x, 1.24, 0.42], scale: [1, 0.75, 1], jit: 0.015, seed: seed + i })),
+    part(new G.BoxGeometry(0.5, 0.22, 0.4), C.wood, { pos: [0.15, 1.21, 0.4], jit: 0.02, seed }),
+    ...[[-0.05, 0.32], [0.12, 0.48], [0.3, 0.34], [0.2, 0.42]].map(([x, z], i) => part(new G.IcosahedronGeometry(0.08, 0), H.apple, { pos: [x, 1.36, z], jit: 0.01, seed: seed + i })),
+    ...[0, 1, 2].map((i) => part(new G.ConeGeometry(0.07, 0.4, 5), H.corn, { pos: [0.85, 1.17 + i * 0.03, 0.3 + i * 0.12], rot: [0, 0.3, Math.PI / 2] })),
+    part(new G.ConeGeometry(0.5, 2.0, 7), H.strawDark, { pos: [1.85, 1.0, -0.25], jit: 0.06, seed: seed + 3 }),
+    part(new G.TorusGeometry(0.2, 0.06, 4, 8), C.wood, { pos: [1.85, 1.25, -0.25], rot: [Math.PI / 2, 0, 0] }),
+    ...haleParts(-1.95, 0.55, 0.3, seed + 4), ...haleParts(-1.9, 0.6, 0.2, seed + 5).map((g) => g.translate(0.05, 0.5, -0.05)),
+  ];
+  return ps;
+}
+
+function graveyardGeo(seed = 1) { // a little fenced graveyard, open at the front (+z); about 4 wide
+  const rr = rng(seed), ps = [];
+  [[-1.2, -0.2], [0, 0], [1.2, -0.3], [-0.6, -1.4], [0.7, -1.3]].forEach(([x, z], i) => {
+    const t = (rr() - 0.5) * 0.2, tilt = [0, 0, t], col = i % 2 ? H.graveDark : H.grave;
+    // one stone cross, the rest round-topped headstones; each leans a little
+    if (i === 2) ps.push(part(new G.BoxGeometry(0.14, 0.95, 0.12), col, { pos: [x, 0.47, z], rot: tilt, jit: 0.02, seed: seed + i }),
+      part(new G.BoxGeometry(0.5, 0.13, 0.12), col, { pos: [x - Math.sin(t) * 0.19, 0.66, z], rot: tilt, jit: 0.02 }));
+    else ps.push(part(new G.BoxGeometry(0.56, 0.62, 0.16), col, { pos: [x, 0.31, z], rot: tilt, jit: 0.03, seed: seed + i }),
+      part(new G.CylinderGeometry(0.28, 0.28, 0.16, 8, 1, false, 0, Math.PI), col, { pos: [x - Math.sin(t) * 0.31, 0.62, z], rot: [Math.PI / 2, 0, Math.PI / 2 + t, 'ZYX'], jit: 0.02, seed: seed + i + 9 }));
+    ps.push(part(new G.BoxGeometry(0.62, 0.06, 0.6), H.earth, { pos: [x, 0.03, z + 0.4], jit: 0.04, seed: seed + i + 20 })); // the mound
+  });
+  const post = (x, z) => part(new G.BoxGeometry(0.1, 0.85, 0.1), C.woodDark, { pos: [x, 0.42, z], jit: 0.02, seed: seed + Math.round(x * 7 + z * 3) });
+  const rail = (x, z, len, ry) => [0.3, 0.65].map((y) => part(new G.BoxGeometry(len, 0.07, 0.05), C.wood, { pos: [x, y, z], rot: [0, ry, (rr() - 0.5) * 0.06] }));
+  for (const x of [-2.1, -1.05, 0, 1.05, 2.1]) ps.push(post(x, -2.0));
+  for (const s of [-1, 1]) { for (const z of [-1.0, 0, 1.0]) ps.push(post(s * 2.1, z)); ps.push(...rail(s * 2.1, -0.5, 3.0, Math.PI / 2)); ps.push(...rail(s * 1.6, 1.0, 1.0, 0)); ps.push(post(s * 1.1, 1.0)); }
+  ps.push(...rail(0, -2.0, 4.2, 0));
+  return build(ps);
+}
+
+function snowPatchGeo(seed = 1) { // a thin, ragged patch of old snow lying flat on the grass
+  const g = new G.CircleGeometry(1, 10), p = g.attributes.position, rr = rng(seed);
+  for (let i = 1; i < p.count; i++) { const k = 0.7 + rr() * 0.5; p.setXY(i, p.getX(i) * k, p.getY(i) * k); }
+  g.rotateX(-Math.PI / 2);
+  return build([part(g, C.snow, {})]);
+}
+
+function batGroup() { // a bat: body with ears and two flapping wings (the tick moves it)
+  const b = new G.Group();
+  b.add(toon(build([part(new G.IcosahedronGeometry(0.12, 0), H.bat, { scale: [0.9, 0.8, 1.3] }),
+    part(new G.TetrahedronGeometry(0.06), H.bat, { pos: [-0.05, 0.1, 0.1] }), part(new G.TetrahedronGeometry(0.06), H.bat, { pos: [0.05, 0.1, 0.1] })]), 0.015));
+  for (const s of [-1, 1]) {
+    const w = toon(build([part(new G.BoxGeometry(0.42, 0.02, 0.22), H.bat, { pos: [s * 0.24, 0, 0], jit: 0.03 }),
+      part(new G.BoxGeometry(0.2, 0.02, 0.14), H.bat, { pos: [s * 0.5, 0, -0.06], rot: [0, s * 0.4, 0] })]), 0.012);
+    b.add(w); b.userData[s < 0 ? 'l' : 'r'] = w;
+  }
+  return b;
+}
+
+function halloweenProps(root, r, out) {
+  const GY = [18.5, -9]; // the little graveyard, outside the ring on the east side
+  // bare trees in the same ring as the Christmas forest, clear of the cottages and the graveyard
+  const trees = [];
+  for (let i = 0; i < 46; i++) {
+    const a = (i / 46) * Math.PI * 2 + r() * 0.1, d = 19 + r() * 14, x = Math.cos(a) * d, z = Math.sin(a) * d;
+    if ((Math.sin(a) < -0.55 && d < 26) || Math.hypot(x - GY[0], z - GY[1]) < 4.5) continue;
+    trees.push([x, z, 0.9 + r() * 0.8, r() * 6]);
+  }
+  [bareTreeGeo(9).geo, bareTreeGeo(14, 1, 6).geo].forEach((tg, k) => {
+    const mine = trees.filter((_, i) => i % 2 === k), ti = toonInstanced(tg, mine.length, 0.035);
+    mine.forEach(([x, z, s, ry], i) => setInstance(ti, i, new V3(x, 0, z), ry, s * 1.15)); root.add(ti);
   });
 
-  out.update = (t) => out.tick.forEach((f) => f(t));
-  return out;
+  // cottages: the same houses with slate roofs instead of snow, and a jack-o'-lantern on each doorstep
+  const lit = new THREE.MeshBasicMaterial({ vertexColors: true }), body = pumpkinGeo(6), face = jackFaceGeo(), faceLit = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false });
+  const glows = [];
+  COTTAGES.forEach(([x, z, ry], i) => {
+    const c = cottage(i + 3, { w: 3.4 + (i % 2) * 0.8, roof: H.roof });
+    const g = new G.Group(); g.add(toon(c.body, 0.04)); g.add(new THREE.Mesh(c.windows, lit));
+    const j = jack(body, face, faceLit, 0.8); j.position.set(0.75, 0.35, 1.2); g.add(j);
+    const gl = glow(0xff8f3a, 0.8, 0.28); gl.position.set(0.75, 0.6, 1.3); g.add(gl); glows.push(gl);
+    g.position.set(x, 0, z); g.rotation.y = ry; g.scale.setScalar(1.3); root.add(g);
+  });
+
+  // harvest stalls (orange-and-black awnings, pumpkins, apples, corn, hay) + scarecrows on the rim
+  STALLS.forEach(([x, z, ry], i) => {
+    const m = toon(stallGeo(i * 5, [H.pumpkin, H.bat], harvestGoods(i * 5)), 0.035); m.position.set(x, 0, z); m.rotation.y = ry; root.add(m);
+  });
+  RIM.forEach(([x, z], i) => { const m = toon(scarecrowGeo(i + 1), 0.035); m.position.set(x, 0, z); m.lookAt(0, 0, 0); root.add(m); });
+
+  const gy = toon(graveyardGeo(5), 0.03); gy.position.set(GY[0], 0, GY[1]); gy.lookAt(0, 0, 0); root.add(gy);
+
+  // pumpkins piled by the stalls, the graveyard and the doors (never on the ring: pushed out past its wall)
+  const pr = rng(31), spots = [];
+  for (const [ax, az, n] of [...STALLS.map(([x, z]) => [x, z, 5]), [GY[0], GY[1], 3], ...COTTAGES.map(([x, z]) => [x * 0.82, z * 0.82, 2])])
+    for (let k = 0; k < n; k++) { let x = ax + (pr() - 0.5) * 3.6, z = az + (pr() - 0.5) * 3.6; const d = Math.hypot(x, z); if (d < 15.6) { x *= 15.6 / d; z *= 15.6 / d; } spots.push([x, z, 0.7 + pr() * 0.7, pr() * 6]); }
+  const pi = toonInstanced(pumpkinGeo(2), spots.length, 0.025);
+  spots.forEach(([x, z, s, ry], i) => setInstance(pi, i, new V3(x, 0, z), ry, s)); root.add(pi);
+
+  // "less snow, like a real Halloween": thin old patches on the grass, a bigger one under each snowball pile
+  const sr = rng(57), patches = PILES.map(([x, z]) => [x, z, 1.7, 1.3, sr() * 6]);
+  for (let k = 0; k < 34; k++) { const a = sr() * 6.28, d = 2.5 + sr() * 30; patches.push([Math.cos(a) * d, Math.sin(a) * d, 0.6 + sr() * 1.2, 0.4 + sr() * 0.7, sr() * 6]); }
+  const sp = toonInstanced(snowPatchGeo(3), patches.length, 0);
+  patches.forEach(([x, z, sx, sz, ry], i) => setInstance(sp, i, new V3(x, 0.04, z), ry, new V3(sx, 1, sz))); root.add(sp);
+
+  // the big tree: an old bare oak hung with orange and purple paper lanterns, bats circling it
+  const oak = bareTreeGeo(21, 2.2, 7), big = toon(oak.geo, 0.05); big.position.set(-10, 0, -15); root.add(big);
+  const lamps = new THREE.InstancedMesh(new G.IcosahedronGeometry(0.16, 0), new THREE.MeshBasicMaterial(), oak.tips.length);
+  oak.tips.forEach((p, i) => { setInstance(lamps, i, new V3(-10 + p.x, p.y - 0.3, -15 + p.z), 0, new V3(1, 1.3, 1)); lamps.setColorAt(i, new THREE.Color([0xff9a3a, 0xb46cff, 0xff9a3a, 0x9be35a][i % 4])); });
+  root.add(lamps);
+  const treeLight = new THREE.PointLight(0xff9a4a, 6, 10, 1.6); treeLight.position.set(-10, 3, -12); root.add(treeLight);
+  const bats = [0, 1, 2, 3, 4].map(() => { const b = batGroup(); root.add(b); return b; });
+  out.tick.push((t) => {
+    bats.forEach((b, i) => {
+      const a = t * (0.5 + i * 0.08) * (i % 2 ? -1 : 1) + i * 1.3, rad = 3.2 + i * 0.7;
+      b.position.set(-10 + Math.cos(a) * rad, 8.2 + i * 0.5 + Math.sin(t * 1.3 + i) * 0.5, -15 + Math.sin(a) * rad);
+      b.rotation.y = -a + (i % 2 ? Math.PI : 0); // facing the way it flies (odd bats circle the other way)
+      const f = Math.sin(t * 13 + i * 2) * 0.7; b.userData.l.rotation.z = -f; b.userData.r.rotation.z = f;
+    });
+    glows.forEach((g, i) => { g.material.opacity = 0.26 + Math.sin(t * 6 + i * 1.7) * 0.04; });
+  });
 }
 
 export function makeHat(scale = 1) { return toon(hatGeo({ scale }), 0.035 * scale); }
