@@ -195,11 +195,12 @@ between two devices has never been tested from here. Cody and friends testing on
 0. **Your other project "Green Life Game" is using most of the free game-server calls** (found 2026-10-02): the Supabase account
    has 500,000 a month; it was at 155,000 after 4 days (Santa Hat itself: about 200 a day). If the account runs out, Supabase
    pauses BOTH games (requests answer 402). Have that game's Claude look at what's calling it so often, or upgrade the plan.
-1. ~~Email sign-in for real players~~ **DONE 2026-10-02:** Resend (domain santahatgames.com verified; DNS records resend._domainkey TXT,
-   send + rsend CNAMEs added at GoDaddy by Claude; click/open tracking off) → Supabase custom SMTP (smtp.resend.com:465, user resend,
-   sender Santa Hat Legends <signin@santahatgames.com>; the API key pasted by Cody). Cody tested: the sign-in email arrived and worked.
-   Supabase allows 30 auth emails an hour to start (Auth → Rate Limits). Email text is still Supabase's default (Claude offered a
-   game-voiced version).
+1. **Email sign-in for real players: ONE STEP LEFT (corrected 2026-10-02: it was wrongly marked done).** Resend has the domain
+   santahatgames.com VERIFIED (DNS added at GoDaddy by Claude; tracking off). Missing: a Resend API key, pasted as the password in
+   Supabase → Auth → Emails → SMTP Settings (Claude fills the rest: smtp.resend.com, 465, user resend, sender Santa Hat Legends
+   <signin@santahatgames.com>), then Save. Cody's test email "worked" only because Supabase's built-in sender reaches the team's
+   own address; custom SMTP was found switched off, no key existed and Resend had sent nothing. The game-voiced templates
+   (supabase/email/) can only be set once custom SMTP is on.
 2. **Try a real wallet on devnet (Phantom):** set Phantom to devnet, then open
    https://santahatgames.com/?server=https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games
    and sign in with the wallet. Send Claude your Phantom devnet address and Claude will send it test SANTA + devnet SOL, so you can
