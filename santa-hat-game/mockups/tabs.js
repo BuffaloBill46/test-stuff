@@ -1,5 +1,6 @@
 // Site tabs: Play / Store / Avatar / Ranks, wallet sign-in, avatar editor, leaderboard.
-import { THREE, character, lights, toon, part, build, hatGeo, giftGeo, C } from './kit.js';
+import { THREE, character, lights, toon, part, build, hatGeo, giftGeo, C, Sparks, TOON } from './kit.js';
+import { BALL_COLOR, tracer, dropStreak } from './ballfx.js';
 import { mountHumanCheck } from './human.js';
 import { GEAR_SLOTS } from './catalog.js';
 import { shopBuy, resumeShop } from './shopui.js';
@@ -19,12 +20,13 @@ const store = { get(k) { try { return localStorage.getItem(k); } catch { return 
 // ---------- item thumbnails: each item rendered once on the real model, cached as an image
 let thumbR = null;
 const thumbs = new Map();
-function thumbnail(item) {
+export function thumbnail(item) {
   if (thumbs.has(item.id)) return thumbs.get(item.id);
   if (!thumbR) { thumbR = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); thumbR.setSize(160, 160, false); }
   const scene = new THREE.Scene(); lights(scene, { hemi: 1.7, moonI: 1.6 });
   const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
-  if (item.slot === 'snow' || item.slot === 'sball') { // special snowballs: a ball in their own colour (an empty slot: faint grey)
+  if (item.slot === 'sball' && item.special) ballShot(scene, cam, item);
+  else if (item.slot === 'snow' || item.slot === 'sball') { // a snowball colour (and the empty special slot: faint grey)
     const ball = new THREE.Mesh(build([part(new THREE.IcosahedronGeometry(0.5, 1), item.color ?? 0x5a6688, { jit: 0.04 })]), new THREE.MeshToonMaterial({ vertexColors: true, transparent: item.id === 'sb_none', opacity: item.id === 'sb_none' ? 0.35 : 1 }));
     scene.add(ball); cam.position.set(0.4, 0.5, 2.4); cam.lookAt(0, 0, 0);
   } else {
@@ -39,8 +41,31 @@ function thumbnail(item) {
   }
   thumbR.render(scene, cam);
   const url = thumbR.domElement.toDataURL('image/png');
-  scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+  scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.isPoints) o.material.dispose(); });
   thumbs.set(item.id, url); return url;
+}
+
+// Special snowball thumbnails (Cody 2026-10-02: "match what they look like in the game not just colors"): the ball caught in
+// flight with the game's OWN tracer and glow (ballfx.js, the code the match draws with), at the game's ball size. Thrown
+// slower than in a match so the whole trail fits the little picture (same shapes, shorter). Drawn on the tiles' own colour
+// (#141b36): a glow adds light, so on a see-through picture it would vanish. Sky Ball / Snowball Rain: balls falling with
+// their streaks (Sky's are ice-blue, a few; Rain's are white, many).
+function ballShot(scene, cam, item) {
+  const kind = item.special, sp = new Sparks(400), T = 1.37; // T: a moment where the twinkles are mid-sparkle
+  scene.background = new THREE.Color(0x141b36); sp.uH.value = 80; sp.begin(); scene.add(sp.points);
+  const ball = (x, y, color, r = 1) => { const m = toon(build([part(new THREE.IcosahedronGeometry(0.17, 0), C.brim, { jit: 0.02 })]), 0.02);
+    m.material = TOON.clone(); m.material.color = new THREE.Color(color); m.scale.setScalar(r); m.position.set(x, y, 0); scene.add(m); };
+  if (kind === 'sky' || kind === 'rain') {
+    const spots = kind === 'sky' ? [[0, 0.5], [-0.55, 0.1], [0.55, 0.0]] : [[-0.65, 0.85], [0.05, 0.45], [0.65, 0.8], [-0.3, -0.05], [0.4, -0.15]];
+    spots.forEach(([x, y], i) => { ball(x, y, kind === 'sky' ? 0x9fd8ff : 0xf5f1e8); dropStreak(sp, { kind, x, z: 0 }, y, i, T); });
+    cam.position.set(0, 0.55, 3.6); cam.lookAt(0, 0.5, 0);
+  } else {
+    const giant = kind === 'giant', b = { id: 7, kind, vx: giant ? 6 : kind === 'fire' ? 9 : 8, vz: 0, r: giant ? 3 : 1 }, x = giant ? 0.55 : 0.6;
+    ball(x, 0, BALL_COLOR[kind]?.(b) ?? item.color, b.r);
+    tracer(sp, b, x, 0, 0, 1.2, T);
+    cam.position.set(0, 0.05, giant ? 4.6 : 2.7); cam.lookAt(giant ? 0.05 : 0.22, 0.08, 0);
+  }
+  sp.end();
 }
 
 // Special gear thumbnails: the gear worn on the real model, framed on the part it changes (a Gift Box: just the wrapped present)

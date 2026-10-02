@@ -31,13 +31,14 @@ function payFor(q) {
 }
 const shop = createShop({ db, chain: { getTransaction: async (s) => txs.get(s) ?? null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, treasury: TREASURY, mint: MINT, cluster: 'devnet' });
 const noDraws = { draws: async () => ({ open: [], recent: [] }), tickets: async () => ({ error: 'no such draw' }) };
-const handle = makeHandler({ shop, lottery: noDraws, limiter: null, server: { winners: async () => [], settings: async () => ({}), pools: async () => ({}) }, profileFor: async (t) => (t === 'test-token' ? me : null) });
+const handle = makeHandler({ shop, lottery: noDraws, limiter: null, server: { winners: async () => [], settings: async () => ({}), pools: async () => ({}), market: async () => ({ cluster: 'devnet' }) }, profileFor: async (t) => (t === 'test-token' ? me : null) });
 const web = http.createServer(async (req, res) => {
   if (req.method === 'GET') { const pth = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]).replace(/^\//, '') || 'online.html');
     if (!pth.startsWith(ROOT) || !existsSync(pth)) { res.writeHead(404); return res.end(); }
     res.writeHead(200, { 'content-type': pth.endsWith('.js') ? 'text/javascript' : pth.endsWith('.png') ? 'image/png' : 'text/html' }); return res.end(readFileSync(pth)); }
   const chunks = []; for await (const c of req) chunks.push(c);
   const r = await handle(new Request('http://localhost:8788' + req.url, { method: req.method, headers: req.headers, body: req.method === 'POST' ? Buffer.concat(chunks) : undefined }));
+  if (r.status >= 500) console.log('  (server answered', r.status, 'to', Buffer.concat(chunks).toString().slice(0, 80) + ')');
   res.writeHead(r.status, Object.fromEntries(r.headers)); res.end(Buffer.from(await r.arrayBuffer()));
 }).listen(8788);
 const owns = async (id) => !!(await db.query('select 1 from public.inventory where profile_id = $1 and item_id = $2', [me, id]))[0];

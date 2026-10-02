@@ -35,7 +35,10 @@ const throwAt = async (p) => { await p.waitForFunction(() => window.__sq.ctl.coo
 console.log('1. A computer: three SB buttons; arming Ice Ball (button) throws one; Sky Ball (key E) rains 2 waves; Rain needs a full counter');
 { const { p, errors, ctx } = await practice({ width: 1200, height: 800 }, false);
   const names = await p.evaluate(() => [...document.querySelectorAll('#hud .sbrow button')].map((b) => b.textContent.replace(/\s+/g, ' ').trim()));
-  check(names.length === 3 && /SB1 Ice Ball 2/.test(names[0]) && /SB2 Sky Ball 5/.test(names[1]) && /SB3 Snowball Rain all/.test(names[2]), 'buttons: ' + names.join(' | '));
+  check(names.length === 3 && /Ice Ball 2/.test(names[0]) && /Sky Ball 5/.test(names[1]) && /Snowball Rain all/.test(names[2]), 'buttons: ' + names.join(' | '));
+  // each button shows the item's picture (the Store's, drawn in flight) in place of the SB1/SB2/SB3 letters (Cody 2026-10-02)
+  const pics = await p.evaluate(() => [...document.querySelectorAll('#hud .sbrow button img.sbpic')].map((i) => i.complete && i.naturalWidth === 160 && i.alt));
+  check(pics.join() === 'SB1,SB2,SB3', 'each button has its item picture: ' + pics.join());
   await p.evaluate(() => document.querySelector('#hud [data-sb="0"]').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
   // wait for the redraw (the next frame), not a fixed time: test browsers draw ~3 frames a second
   check(await p.waitForFunction(() => document.querySelector('#hud [data-sb="0"]')?.getAttribute('aria-pressed') === 'true', null, { timeout: 10000 }).then(() => true, () => false), 'SB1 shows armed');

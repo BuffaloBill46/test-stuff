@@ -46,6 +46,8 @@ header.bar { position: fixed; left: 0; right: 0; top: 0; z-index: 5; display: fl
 .sbrow { display: flex; gap: 4px; margin-top: 6px; pointer-events: auto; flex-wrap: wrap; }
 .sbrow button { font: 700 12px/1 var(--body); color: var(--ink); background: var(--brim); border: 2px solid var(--ink); border-radius: 3px; padding: 6px 7px; min-height: 36px; cursor: pointer; box-shadow: 2px 2px 0 var(--ink); }
 #hud .sbrow button b { font: 700 10px/1 var(--digits); color: var(--hat); margin-right: 3px; text-shadow: none; } /* (beats the counter's own big white .stat b) */ .sbrow button small { opacity: .7; margin-left: 2px; }
+/* Cody 2026-10-02: the item picture (the Store one, tabs.js thumbnail) in place of the SB1/SB2/SB3 letters */
+.sbrow button { display: inline-flex; align-items: center; } .sbrow .sbpic { width: 24px; height: 24px; margin-right: 4px; border-radius: 2px; flex: none; }
 .sbrow button[aria-pressed="true"] { background: var(--lamp); outline: 2px solid var(--hat); }
 .sbrow button:disabled { opacity: .45; cursor: default; }
 #hud { position: fixed; z-index: 4; left: 16px; top: calc(env(safe-area-inset-top, 0px) + 64px); display: flex; gap: 8px; flex-wrap: wrap; pointer-events: none; max-width: calc(100% - 32px); }
