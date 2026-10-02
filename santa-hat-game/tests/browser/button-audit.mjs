@@ -174,7 +174,7 @@ function auditInit() {
 const results = [], purchases = [], notes = [];
 let deadN = 0;
 // in-between messages: keep waiting while one of these is the newest thing on screen
-const PENDING = /^(Connecting|Getting a price|Approve|Confirming|Sending|Saving|Checking|Loading|Wrapping|Lighting|Waiting for the referee)/i;
+const PENDING = /^(Connecting|Joining|Getting a price|Approve|Confirming|Sending|Saving|Checking|Loading|Wrapping|Lighting|Waiting for the referee)/i;
 const EXPLAIN = /soon|not yet|aren't|isn't|is not|sign in|test version|not connected|connected yet|connect the|no solana wallet|unlocked|can't|cannot|couldn't|didn't|opens at|doesn't look right|type the room code|nothing changed|nothing is sold|first\.|paste the|open this page with/i;
 async function exercise(ctx, sc, c) {
   const { p, st, mode } = ctx;
@@ -183,9 +183,10 @@ async function exercise(ctx, sc, c) {
   if (c.disabled) { row.result = 'DISABLED'; row.notes = `shows "${c.label}"` + (c.title ? ` · tooltip "${c.title}"` : ''); return row; }
   if (sc.pre) await sc.pre(p, c);
   const n0 = st.net.length, e0 = st.errors.length, g0 = st.dialogs.length;
-  await p.evaluate(() => window.__audit.mark());
+  // clear the message lines first: a second button that says the SAME thing as the last one would otherwise look like it did nothing
+  await p.evaluate(() => { for (const e of document.querySelectorAll('#msg, #tixNote, #pgNote, .shopnote, .lotnote, #avmsg, #acctMsg, #status, #buyNote')) e.textContent = ''; window.__audit.mark(); });
   try { await p.click(c.sel, { timeout: 15000 }); }
-  catch (e) { const why = e.message.split('\n').filter((l) => /intercepts|not stable|not visible|outside of the viewport|not enabled|detached/.test(l)).pop() || e.message.split('\n')[0];
+  catch (e) { const lines = e.message.split('\n'), why = lines.filter((l) => /intercepts|not stable|not visible|outside of the viewport|not enabled|detached/.test(l)).pop() || lines.slice(-2).join(' ');
     row.notes += `REAL MOUSE CLICK FAILED (${clean(why).slice(0, 170)}), used a script click. `; await p.evaluate((s) => document.querySelector(s)?.click(), c.sel).catch(() => {}); }
   // wait for an effect; once something changes, wait until it stops changing (a server call can show 2–3 messages in a row)
   const limit = sc.wait || (mode === 'server' ? 3500 : 2500);
@@ -198,7 +199,8 @@ async function exercise(ctx, sc, c) {
     if (changed) { if (!last) deadline = Date.now() + Math.max(limit, pending ? 20000 : 6000); if (sig === last && !pending) break; last = sig; await p.waitForTimeout(400); }
     if (Date.now() > deadline) break;
   }
-  const net = st.net.slice(n0).filter((x) => !/^lottery →/.test(x) || /lot|store/i.test(c.sel + sc.name));
+  // the lottery cards refresh themselves every 30 s ("lottery"): counted only for the lottery's own buttons
+  const net = st.net.slice(n0).filter((x) => !/^lottery →/.test(x) || /lot|draw/i.test(c.sel));
   const cls = [];
   if (d) {
     const k = new Set(d.keys), ph = (s) => s.split('/')[2] || '';
@@ -266,6 +268,7 @@ async function reset(p) {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     document.querySelector('.machine.max')?.classList.remove('max');
     const sq = window.__sq; if (sq && (sq.room || sq.sim)) sq.leaveRoom();
+    if (sq && window.__auditSaved && !sq.sim) { sq.me.l = window.__auditSaved.l; for (const k of Object.keys(sq.me.a)) delete sq.me.a[k]; Object.assign(sq.me.a, window.__auditSaved.a); delete window.__auditSaved; }
     if (document.querySelector('#acct') && !document.querySelector('#acct').hidden) document.querySelector('#acctClose').click();
     if (document.querySelector('#home') && !document.querySelector('#home').hidden) document.querySelector('#homeClose').click();
     const t = document.querySelector('#toast'); if (t) t.hidden = true;
@@ -294,7 +297,8 @@ async function privateRoom(p) { await reset(p); await gotoTab(p, 'play'); await 
 async function practiceMatch(p) {
   await reset(p); await gotoTab(p, 'play');
   // test set-up (as tests/browser/specials-play.mjs): a level-10 player with Ice Ball, Sky Ball and Snowball Rain in SB1–SB3, so the SB buttons exist
-  await p.evaluate(() => { const s = window.__sq; s.me.l = 10; Object.assign(s.me.a, { sb1: 'sb_ice', sb2: 'sb_sky', sb3: 'sb_rain' }); });
+  // (put back by reset() when the match is left, so the test's specials don't leak into the Avatar screen's preview)
+  await p.evaluate(() => { const s = window.__sq; window.__auditSaved = { l: s.me.l, a: { ...s.me.a } }; s.me.l = 10; Object.assign(s.me.a, { sb1: 'sb_ice', sb2: 'sb_sky', sb3: 'sb_rain' }); });
   await p.click('#playUnranked'); await p.click('#practice'); await p.waitForSelector('#panel #start', { state: 'visible', timeout: 90000 }); await p.click('#panel #start');
   await p.waitForFunction(() => { const s = window.__sq; if (/^(intro|count)$/.test(s.sim?.S.phase)) s.sim.S.time = 0; return s.view?.phase === 'play'; }, null, { timeout: 90000 });
   await p.waitForSelector('#hud [data-sb]', { timeout: 30000 }).catch(() => {});
@@ -312,11 +316,16 @@ async function proofDlg(p) { await reset(p); await gotoTab(p, 'games'); await p.
 const avatarSlot = (s) => async (p) => { await reset(p); await gotoTab(p, 'avatar'); await p.click(`#avslots [data-slot="${s}"]`); await p.waitForTimeout(250); };
 
 // ---------------------------------------------------------------- purchase traces
+// The page's own wallet step (wallet.js's window.santaPay) can't work here: it loads its Solana libraries from a CDN, which this
+// test answers 503. So each purchase is tried twice: first with the page's own santaPay (records what a player sees when the
+// wallet step fails), then with the stand-in wallet that pays like pay.js would. realPay() puts the page's own one back.
 async function installPay(ctx) {
-  if (ctx.payInstalled) return; ctx.payInstalled = true;
-  await ctx.p.exposeFunction('auditPay', (q) => payFor(q));
-  await ctx.p.evaluate(() => { window.santaPay = (q) => window.auditPay(q); });
+  if (!ctx.payExposed) { ctx.payExposed = true; await ctx.p.exposeFunction('auditPay', (q) => payFor(q)); }
+  await ctx.p.evaluate(() => { if (!('__realPay' in window)) window.__realPay = window.santaPay; window.santaPay = (q) => window.auditPay(q); });
 }
+// a purchase is complete when every step passed except the page's own wallet step (it can't work in this test, see above)
+const allOk = (steps) => steps.filter((s) => !/page's own/.test(s.step)).every((s) => s.ok);
+const realPay = (ctx) => ctx.p.evaluate(() => { if ('__realPay' in window) window.santaPay = window.__realPay; });
 const count = async (sql, args = [me]) => +(await db.query(sql, args))[0].n;
 async function waitNote(p, sel, timeout = 60000) { await p.waitForFunction((s) => { const t = document.querySelector(s)?.textContent || ''; return t && !/^(Getting a price|Approve|Confirming)/.test(t); }, sel, { timeout }).catch(() => {}); return clean(await p.textContent(sel)); }
 async function skipRow(ctx, scope) { // Skip ahead is only on screen during a run: exercise it there
@@ -343,11 +352,11 @@ async function traceRun(ctx, game) {
     return;
   }
   const q0 = await count('select count(*) n from public.quotes where profile_id = $1'), n0 = st.net.length;
-  await p.click('#buyGo'); const note = await waitNote(p, '#buyNote');
+  await realPay(ctx); await p.click('#buyGo'); const note = await waitNote(p, '#buyNote');
   const q1 = await count('select count(*) n from public.quotes where profile_id = $1');
   add('server quote', q1 > q0, `quotes for this player ${q0} → ${q1}; network: ${st.net.slice(n0).join(', ') || 'none'}`);
-  add('wallet pay step (no wallet in this browser)', /connected yet/.test(note), `"${note}" (wallet.js could not load its Solana libraries: they come from a CDN, blocked here)`);
-  await p.click('#buyCancel');
+  add("wallet pay step (the page's own wallet.js)", false, `"${note}" (wallet.js's Solana libraries come from a CDN, blocked in this test, so this step can't finish here; nothing was charged)`);
+  await reset(p); await gotoTab(p, 'games');
   await installPay(ctx);
   const r0 = await count('select coalesce(max(id),0) n from public.runs where profile_id = $1'), paid0 = paidCount, n1 = st.net.length;
   await p.click(sel); await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 }); await p.click('#buyGo');
@@ -359,7 +368,7 @@ async function traceRun(ctx, game) {
   const won = plays.reduce((a, x) => a + +x.pay_raw, 0);
   add('granted (plays settled, winnings queued)', plays.length > 0 && plays.every((x) => x.state === 'settled') && (won ? pays.length === 1 : true),
     `${plays.filter((x) => x.state === 'settled').length}/${plays.length} plays settled; won ${won} raw; payouts: ${pays.map((x) => x.amount_raw + ' ' + x.status).join(', ') || 'none (nothing won)'}; page says "${clean(await p.textContent(res)).slice(0, 90)}"; network: ${st.net.slice(n1).join(', ')}`);
-  const ok = steps.every((s) => s.ok);
+  const ok = allOk(steps);
   purchases.push({ mode, item, steps, furthest: ok ? 'COMPLETE: paid, confirmed by the server, played, winnings queued for the payout worker' : 'stopped short (see steps)', missing: ok ? 'nothing in the page/server path; real wallet (Phantom) + deployed Edge Function still unproven here' : 'see failed step' });
 }
 async function traceLottery(ctx) {
@@ -369,6 +378,7 @@ async function traceLottery(ctx) {
   const item = `Store: Santa Lottery (${kind}), 1 ticket`;
   add('price shown', true, `card rows: "${clean(await p.textContent(card + ' .lotrows')).slice(0, 120)}"`);
   await p.fill(card + ' input', '1');
+  await realPay(ctx);
   const n0 = st.net.length, q0 = await count('select count(*) n from public.lottery_quotes where profile_id = $1').catch(() => -1);
   await p.click(card + ' [data-buy]'); const note = await waitNote(p, card + ' .lotnote');
   if (mode === 'demo') {
@@ -377,7 +387,7 @@ async function traceLottery(ctx) {
   }
   const q1 = await count('select count(*) n from public.lottery_quotes where profile_id = $1').catch(() => -1);
   add('server quote', q1 > q0, `lottery quotes ${q0} → ${q1}; network: ${st.net.slice(n0).join(', ')}`);
-  add('wallet pay step (no wallet in this browser)', /connected yet/.test(note), `"${note}"`);
+  add("wallet pay step (the page's own wallet.js)", false, `"${note}" (its Solana libraries are blocked in this test; nothing was charged)`);
   await installPay(ctx);
   const b0 = await count('select count(*) n from public.lottery_buys where profile_id = $1').catch(() => -1), n1 = st.net.length;
   await p.click(card + ' [data-buy]'); await p.waitForFunction((s) => /tickets #|Not paid|error|wrong|refund|closed/i.test(document.querySelector(s)?.textContent || ''), card + ' .lotnote', { timeout: 60000 }).catch(() => {});
@@ -386,7 +396,7 @@ async function traceLottery(ctx) {
   add('wallet pay step (stand-in wallet)', true, 'window.santaPay(quote) called');
   add('server confirms payment', b1 > b0, `lottery_buys for this player ${b0} → ${b1}; network: ${st.net.slice(n1).join(', ')}`);
   add('granted (tickets numbered, shown)', /tickets #/.test(note2), `"${note2}"; card "Yours": "${clean(await p.evaluate((c) => [...document.querySelectorAll(c + ' .lotrows div')].find((d) => /Yours/.test(d.textContent))?.textContent, card))}"`);
-  const ok = steps.every((s) => s.ok);
+  const ok = allOk(steps);
   purchases.push({ mode, item, steps, furthest: ok ? 'COMPLETE: paid, server checked the payment and numbered the tickets' : 'stopped short (see steps)', missing: ok ? 'nothing in the page/server path (needs the server deployed + a real wallet)' : 'see failed step' });
 }
 // The shop (shopui.js → server/shop.js, Cody 2026-10-02): ranked tickets, Buy level, a Store special snowball, a Store gear, a look
@@ -400,12 +410,14 @@ async function traceShop(ctx) {
   const extra = async () => +((await db.query('select extra from public.tickets where profile_id = $1', [me]).catch(() => []))[0]?.extra || 0);
   const quotes = () => count('select count(*) n from public.shop_quotes where profile_id = $1');
   // one purchase: open(): go to the screen and return { btn, note } selectors; granted(): the database check
-  const one = async (item, open, granted) => {
+  const one = (item, open, granted) => one1(item, open, granted).catch((e) => { purchases.push({ mode, item, steps: [], furthest: 'the trace failed', missing: 'trace error: ' + clean(e.message).slice(0, 200) }); log('  trace failed: ' + item + ': ' + e.message.split('\n')[0]); });
+  const one1 = async (item, open, granted) => {
     const steps = [], add = (step, ok, ev) => steps.push({ step, ok, ev });
     let s; try { s = await open(); } catch (e) { purchases.push({ mode, item, steps, furthest: 'could not reach its Buy button', missing: clean(e.message).slice(0, 160) }); return; }
     add('price shown', true, `button "${clean(await p.textContent(s.btn))}"${s.price ? '; ' + s.price : ''}`);
     const dis = await p.evaluate((b) => document.querySelector(b).disabled, s.btn);
     if (dis) { add('buy button', false, 'disabled'); purchases.push({ mode, item, steps, furthest: 'price shown; Buy is disabled', missing: 'Buy button disabled' }); return; }
+    await realPay(ctx);
     const before = await granted(), q0 = await quotes(), n0 = st.net.length;
     await p.evaluate((x) => { const n = document.querySelector(x); if (n) n.textContent = ''; }, s.note);
     await p.click(s.btn); const note = await waitNote(p, s.note, 30000);
@@ -416,7 +428,8 @@ async function traceShop(ctx) {
     const q1 = await quotes();
     add('server quote', q1 > q0, `shop quotes ${q0} → ${q1}; network: ${st.net.slice(n0).join(', ') || 'none'}${q1 > q0 ? '' : '; page says "' + note + '"'}`);
     if (q1 <= q0) { purchases.push({ mode, item, steps, furthest: 'price shown; the server gave no quote', missing: `server refused: "${note}"` }); return; }
-    add('wallet pay step (no wallet in this browser)', /connected yet/.test(note), `"${note}"`);
+    const mid = await granted();
+    add("wallet pay step (the page's own wallet.js)", false, `"${note}" (its Solana libraries are blocked in this test)${JSON.stringify(mid) !== JSON.stringify(before) ? ' BUT SOMETHING WAS GRANTED ANYWAY' : '; nothing granted'}`);
     await installPay(ctx);
     if (s.reopen) await s.reopen();
     const paid0 = paidCount, n1 = st.net.length;
@@ -426,7 +439,7 @@ async function traceShop(ctx) {
     add('wallet pay step (stand-in wallet)', paidCount > paid0, 'window.santaPay(quote) ' + (paidCount > paid0 ? 'called, payment made' : 'NOT called'));
     add('server confirms payment', st.net.slice(n1).some((x) => /^shop-buy → 200/.test(x)), `network: ${st.net.slice(n1).join(', ') || 'none'}`);
     add('granted (database)', JSON.stringify(after) !== JSON.stringify(before), `${JSON.stringify(before)} → ${JSON.stringify(after)}; page says "${note2}"`);
-    const ok = steps.every((x) => x.ok);
+    const ok = allOk(steps);
     purchases.push({ mode, item, steps, furthest: ok ? 'COMPLETE: quoted, paid, checked by the server and granted' : 'stopped short (see steps)', missing: ok ? 'nothing in the page/server path (real wallet + deployed server still unproven here)' : 'see the failed step' });
   };
   await one('Store: ranked tickets, 1-ticket pack', async () => { await reset(p); await gotoTab(p, 'store'); return { btn: '.packs [data-tix="1"]', note: '#tixNote', price: clean(await p.textContent('.packs .pack em')) }; }, extra);
@@ -438,9 +451,8 @@ async function traceShop(ctx) {
   for (const [what, prefix] of [['Store: special snowball', 'sb_'], ['Store: special gear', 'gear_']]) {
     let id = null;
     await one(what, async () => { const s = await storeItem(prefix)(); id = storeItem.id;
-      // the note under this item (stays even when the button turns into "Owned")
-      await p.evaluate((i) => { document.querySelector(`[data-buyitem="${i}"]`).closest('.shopitem').querySelector('.shopnote').id = 'auditShopNote'; }, id); s.note = '#auditShopNote';
-      s.reopen = async () => { await p.evaluate((i) => { const b = document.querySelector(`[data-buyitem="${i}"]`); if (b) b.closest('.shopitem').querySelector('.shopnote').id = 'auditShopNote'; }, id); };
+      // the note under this item (the Store is redrawn after a purchase and its Buy turns into "Owned")
+      s.note = `#carousels .shopitem:has([data-buyitem="${id}"], [data-owned="${id}"]) .shopnote`;
       return s; }, async () => (id ? owns(id) : null));
   }
   // a look on the Avatar screen: preview a priced locked one, then its Buy
@@ -451,7 +463,9 @@ async function traceShop(ctx) {
       look = await p.evaluate(() => [...document.querySelectorAll('#avgrid .pick.locked')].find((x) => /\$/.test(x.textContent))?.dataset.pick || null); if (look) break; }
     if (!look) throw new Error('no priced locked look at this level');
     await p.click(`#avgrid [data-pick="${look}"]`); await p.waitForSelector('#avbuy:not([hidden])', { timeout: 5000 });
-    return { btn: '#avbuy', note: '#avmsg', price: 'item ' + look }; }, async () => (look ? owns(look) : null));
+    // Buy offers the FIRST locked item in the preview, which may not be the one just picked (earlier picks stay in the draft)
+    const offered = await p.evaluate(() => document.querySelector('#avbuy').dataset.item), picked = look; look = offered;
+    return { btn: '#avbuy', note: '#avmsg', price: `picked ${picked}; Buy offers ${offered}${offered !== picked ? ' (NOT the one just picked)' : ''}` }; }, async () => (look ? owns(look) : null));
 }
 // ---------------------------------------------------------------- one full pass in one mode
 async function runMode(mode) {
@@ -471,7 +485,7 @@ async function runMode(mode) {
     { name: 'Practice match (playing)', enter: practiceMatch, roots: '#hud, #emotes, #zoom, #gamebar', persistent: true, last: rank(['#leave']), wait: 4000,
       pre: async (pp, c) => { if (/data-e=/.test(c.sel)) await pp.waitForTimeout(1300); } }, // emotes: one per 1.2 s by design
     { name: 'Games tab', enter: T('games'), roots: '#tab-games', exclude: 'dialog' },
-    { name: 'Buy dialog (Big Hat, Pull 1)', enter: buyDlg, roots: '#buyDlg', wait: 6000, after: async (pp) => { await waitIdle(pp); } },
+    { name: 'Buy dialog (Big Hat, Pull 1)', enter: buyDlg, roots: '#buyDlg', wait: 6000, after: async (pp) => { await reset(pp); await waitIdle(pp); } },
     { name: 'How to win dialog', enter: howDlg, roots: '#howDlg' },
     { name: 'Store tab', enter: T('store'), roots: '#tab-store', wait: mode === 'server' ? 6000 : 2500,
       pre: async (pp, c) => { if (/data-amt/.test(c.sel)) await pp.evaluate((s) => { document.querySelector(s).closest('[data-lot]').querySelector('input').value = '7'; }, c.sel); } }, // so "1" has something to change
