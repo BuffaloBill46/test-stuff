@@ -801,4 +801,6 @@ window.__sq = { get armed() { return armed; }, throwAt: (x, z) => tryThrow(x, z)
   // tests: where the ring's outer wall lands on screen (-1..1 = inside the view), all the way round, at the ground and wall top
   ringFit: (r = 15.0) => { let x0 = 9, x1 = -9, y0 = 9, y1 = -9; for (let i = 0; i < 72; i++) for (const y of [0, 1]) { const a = (i / 72) * Math.PI * 2, p = new V3(Math.cos(a) * r, y, Math.sin(a) * r).project(camera); x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); } return { x0, x1, y0, y1 }; }, get room() { return room; }, get isHost() { return isHost; }, get sim() { return sim; }, get view() { return currentView; }, me, ctl, enterRoom, leaveRoom, startPractice, idleFor: (ms) => { lastInput = performance.now() - ms; },
   // tests: the plaza theme, and what's on the GPU / in the scene (a theme swap must not leave the old plaza behind)
+  // tests: the size a player is drawn at (Elf Hat: 0.5)
+  drawnScale: (id) => views.get(id)?.mesh.scale.x,
   get theme() { return theme; }, setTheme, gpu: () => ({ ...renderer.info.memory, kids: scene.children.length, fog: scene.fog && [scene.fog.color.getHex(), scene.fog.near, scene.fog.far] }) };

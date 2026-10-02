@@ -38,7 +38,7 @@ console.log('1. No game server: Start opens the load screen; nobody moves or thr
 { const { p, ctx, errors } = await open({ width: 1200, height: 800 }, false, false);
   const r = await rows(p), me = await myRow(p);
   check(r.length === await p.evaluate(() => window.__sq.sim.S.ents.length), `one row per player in the match (${r.length})`);
-  check(/LV 8/.test(me) && /Snowballs\s*Ice Ball · Sky Ball/.test(me) && /Gear\s*coming soon/.test(me), 'my row: level, special snowballs, gear: ' + me);
+  check(/LV 8/.test(me) && /Snowballs\s*Ice Ball · Sky Ball/.test(me) && /Gear\s*none/.test(me), 'my row: level, special snowballs, gear: ' + me);
   check(/Games\s*–/.test(me) && /Top 3\s*–/.test(me) && /Rank pts\s*–/.test(me), 'no server: the numbers are dashes');
   check(/once the game server is live/.test(await p.textContent('#panel')), 'and the screen says why');
   check(r.filter((x) => /elf bot/.test(x)).length === r.length - 1, 'the bots are listed as elf bots');
