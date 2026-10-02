@@ -21,7 +21,7 @@ fi
 cp "$SRC/online.html" "$OUT/index.html"
 cp "$SRC/admin.html" "$OUT/admin.html"   # the escrow controls page (not linked from the game)
 cp "$SRC/plinko.html" "$OUT/plinko.html" # Snowball Drop preview for Cody (not linked from the game)
-cp "$SRC"/{kit,plaza,sim,net,online,catalog,tabs,slots,slots3d,games,spin,spin3d,spinui,dropui,runui,credits,fair,house,playcredits,market,sfx,matchmaker,gameserver,wallet,pay,levels,lottery,lotteryui,admin,adminmsg,settings,plinko,plinko-page,plinkoboard,specials,gear,runpick,slowdown,themes,shopui,shoprules,refcore,human,ballfx}.js "$SRC/hat-logo.png" "$OUT/"
+cp "$SRC"/{kit,plaza,sim,net,online,catalog,tabs,slots,slots3d,games,spin,spin3d,spinui,dropui,runui,credits,fair,house,playcredits,market,sfx,matchmaker,gameserver,wallet,pay,levels,lottery,lotteryui,admin,adminmsg,settings,plinko,plinko-page,plinkoboard,specials,gear,runpick,slowdown,themes,shopui,shoprules,refcore,human,ballfx,ranked}.js "$SRC/hat-logo.png" "$OUT/"
 mkdir -p "$OUT/mockups"
 cp "$SRC"/{kit,plaza,themes,village,snowball,bethehat,sleigh,hatchase}.js "$OUT/mockups/"
 { printf '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>\n'
