@@ -332,3 +332,10 @@ For two days the game server's deploy waited on Cody typing `npx supabase login`
 connector could deploy all along: a one-line Edge Function importing the server from the public repo at a pinned commit (Deno
 fetches and bundles it; `deno check` on the one-liner proves the whole graph first). Cody: "why didn't you do that in the first
 place." When a step is blocked on a person, list the other routes first (connectors, a different host, a pinned remote import).
+
+## A serverless function must reach Postgres through the pooler (2026-10-02)
+The first burst test of the deployed game server failed ~1 in 7 requests: every copy of the Edge Function opened its own DIRECT
+database connections, and ~70 requests at once used up the free plan's slots ("remaining connection slots are reserved"). Worse,
+the speed limit fails open by design, so under that error it counted nothing. Fix: the transaction pooler (DB_POOLER_HOST; port
+6543, user postgres.<project>); only transaction-scoped locks work through it. Always burst-test a deployed server, and read
+the function logs, not just the status codes.
