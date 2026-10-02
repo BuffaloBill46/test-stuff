@@ -198,8 +198,9 @@ between two devices has never been tested from here. Cody and friends testing on
 1. **Email sign-in for real players: ONE STEP LEFT (corrected 2026-10-02: it was wrongly marked done).** Resend has the domain
    santahatgames.com VERIFIED (DNS added at GoDaddy by Claude; tracking off). Missing: a Resend API key, pasted as the password in
    Supabase → Auth → Emails → SMTP Settings (Claude fills the rest: smtp.resend.com, 465, user resend, sender Santa Hat Legends
-   <signin@santahatgames.com>), then Save. Cody's test email "worked" only because Supabase's built-in sender reaches the team's
-   own address; custom SMTP was found switched off, no key existed and Resend had sent nothing. The game-voiced templates
+   <signin@santahatgames.com>), then Save. Cody's test email (to cmcody85@gmail.com, not a Supabase team address) came from Supabase's
+   BUILT-IN sender: custom SMTP was found switched off, no key existed and Resend had sent nothing. The built-in sender is for
+   testing only (a few emails an hour for the whole project, a Supabase sender address, no custom design). The game-voiced templates
    (supabase/email/) can only be set once custom SMTP is on.
 2. **Try a real wallet on devnet (Phantom):** set Phantom to devnet, then open
    https://santahatgames.com/?server=https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games

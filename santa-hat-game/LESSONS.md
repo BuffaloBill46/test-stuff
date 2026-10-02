@@ -356,6 +356,7 @@ sent, only a confirmed on-chain failure is an error; every other problem (networ
 on, because the server verifies payments itself. And never write "nothing was charged" unless the code path makes it certain.
 
 ## "It worked for me" isn't proof for everyone (2026-10-02)
-Cody's sign-in email arrived, so email sign-in was marked done; it wasn't: custom SMTP had never been saved, and Supabase's
-built-in sender only reaches the project team's own addresses, which is exactly what Cody is. Check the setting itself (and
-the provider's send log) before marking a setup done; a test by the account owner can pass through a path real players never get.
+Cody's sign-in email arrived, so email sign-in was marked done; it wasn't: custom SMTP had never been saved, so it came from
+Supabase's built-in test sender (a few an hour, not for players). Then Claude explained it as 'team-only delivery' without
+checking; the team list showed Cody's address isn't on it. Twice the same mistake: check the setting itself, the provider's
+send log, and any premise used to explain a result, before stating it.
