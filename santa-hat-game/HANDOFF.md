@@ -171,6 +171,10 @@ between two devices has never been tested from here. Cody and friends testing on
   free tickets at 5" — read as 5 given; if he meant daily free 10→5, that's FREE_DAILY in ranked.js + 006's 10s.
 - Store: the two weekly lotteries side by side, Christmas full width under them. Special snowball pictures (Store, Avatar and the
   in-match SB buttons, which now show the picture instead of SB1/2/3) are drawn with the game's own tracer code (ballfx.js).
+- Cody's price sheet LIVE (023 + catalog.js, game server v19, Droplet e6e2300): Ice/Fire $1, Giant/Split $2, Sky $5, Rain $10;
+  Kevlar .50, Pumpkin 1, Santa 2, Toy Sack 2, Backpack .50, Elf Satchel 1, Elf Shoes 2, Elf Hat .50, Gift Box 1, in his order.
+  Heated Coat REMOVED (gear.js RETIRED: never worn, never a Present Box pick; its GEAR_KINDS slot kept). "Costs N snowballs".
+  The Play page's 3% tax note is gone (Games/Store/Lottery keep theirs).
 - Upright phones in a match: smaller info boxes, snowball box and scoreboard; zoom +/− side by side under the sound button.
 - Cody's own Phantom GbStAPcXZyUsMhsK9JT59wcA2Yoqa5VyKyGcguZZJbPm got $100 test SANTA + devnet SOL (tests/solana/devnet-gift.mjs);
   he tests with the ?server= link (the plain site is the demo: pulls there never ask the wallet).
