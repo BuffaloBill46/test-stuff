@@ -156,6 +156,35 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
+### >>> CODY'S LIST: things only Cody can do (newest first; Claude adds, Cody ticks) <<<
+1. **Email sign-in for real players:** make a free Resend account (resend.com) and, when you buy the game domain (santahat.gold in the
+   notes), add the few DNS records Resend gives you at your domain company (GoDaddy is fine). Then Claude connects it to Supabase
+   (Auth → Emails → SMTP). Until then: wallet sign-in works; email sign-in only reaches your own Supabase team address.
+2. **Try a real wallet on devnet (Phantom):** set Phantom to devnet, then open
+   https://buffalobill46.github.io/test-stuff/?server=https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games
+   and sign in with the wallet. Send Claude your Phantom devnet address and Claude will send it test SANTA + devnet SOL, so you can
+   buy a run, a lottery ticket, a special snowball, gear, a level and ranked tickets for real (devnet). (Claude can't create
+   accounts on the live project or sign in for you.)
+3. **Payouts on the live devnet server:** the payout worker needs the pools' private keys somewhere it runs. Claude won't paste
+   keys into dashboards. Pick one: (a) you paste the three devnet pool keys (files in C:\santa-devnet-keys) into Supabase → Edge
+   Functions → Secrets under the names Claude gives you, or (b) you give the Droplet the database connection string (Supabase →
+   Database → Connect) and Claude runs the worker there with the key files. Until then runs/lottery/shop purchases work, but winnings
+   are queued, not sent.
+4. **When the public site switches from demo to the real (devnet) server:** your call after #2. One line in the page.
+5. **Mainnet (real money, needs your OK each time):** paste your Helius RPC address into Supabase secrets as SOLANA_RPC_URL (it holds
+   your Helius key), real pool/treasury/lottery wallets, reset the devnet books.
+
+### Live services (2026-10-02)
+- **Game server deployed** (Supabase Edge Function `games`, verify_jwt off: it checks sign-ins itself). Pinned to a commit; to
+  redeploy: push the branch, then deploy the one-line `index.ts` with the new commit id (see the deploy in this session's notes:
+  `import 'https://raw.githubusercontent.com/BuffaloBill46/test-stuff/<commit>/santa-hat-game/supabase/functions/games/index.ts'`).
+  Settings (Secrets, all public addresses, each checked by its SHA-256): SOLANA_RPC_URL (public devnet), SOLANA_CLUSTER=devnet,
+  SANTA_MINT, SPIN/SLOTS_POOL_WALLET, LOTTERY_WALLET, TREASURY_WALLET, ADMIN_WALLETS (codyAdmin).
+- **Database:** 001–016 applied live (006 ranked tickets + 016 shop on 2026-10-02, hash-checked).
+- **Auth:** Solana wallet sign-in ON; Site URL + redirect = the live site (were localhost).
+- **Droplet** santa-hat-legends 147.182.219.161 (hardened; nothing running on it yet). Memory note "santa-droplet".
+- **Helius:** Developer plan confirmed (not wired: devnet uses the public RPC).
+
 *(Update this section at the end of every session.)*
 
 **Last updated:** 2026-10-01, main Claude on Cody's Windows machine, branch `claude/test-stuff-section-egujzy` (the cloud
@@ -236,9 +265,9 @@ branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from
   browser: pay → 5 plays → ONE payout sent, books = wallets (`tests/browser/devnet-pay-test.mjs`).
 - **Not done yet:** Edge Function deploy + its settings (waits on `npx supabase login` by Cody), a real-Phantom check in Cody's
   Chrome, the scheduled payout worker, skims on chain, reconcile on a schedule, publishing the specials, load screen and Games tab pages (012–014 are applied).
-- **Waiting on Cody:** `npx supabase login` typed in a real terminal (the CLI refuses non-interactive logins; Claude won't handle
-  account tokens). Decided: devnet wallets are Claude's to make and fund (labelled in `devnet.json`; the funder was topped up from
-  Cody's general devnet key); lottery payouts manual; real wallets at launch.
+- ~~Waiting on Cody: `npx supabase login`~~ NOT NEEDED (2026-10-02): the game server is deployed through the Supabase
+  connector instead (a one-line Edge Function that loads the code at a pinned commit of the public repo). Decided: devnet wallets are
+  Claude's to make and fund (labelled in `devnet.json`); lottery payouts manual; real wallets at launch.
 - **Next, in order:** (012–014 applied live 2026-10-01) browser suite, then publish the pages; deploy the Edge Function + settings once
   Cody has logged in, then a full devnet test through it → special gear → themes.
 
