@@ -74,6 +74,11 @@ for (const [w, h] of [[384, 740], [800, 300], [320, 620]]) {
     const hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
     return { inside: rr.right <= innerWidth && rr.bottom <= innerHeight, over: others.filter(([, o]) => hit(rr, o)).map(([n]) => n), minH: Math.min(...bs.map((b) => b.height)), scroll: document.documentElement.scrollWidth > innerWidth }; });
   check(r.inside && !r.over.length && !r.scroll && r.minH >= 32, `${w}×${h}: on screen, no overlaps (${r.over.join(', ') || 'none'}), tappable (${Math.round(r.minH)} px tall)`);
+  // the zoom buttons (upright phones: side by side under the sound button, Cody 2026-10-02) cover no info box or top-bar control
+  const z = await p.evaluate(() => { const zb = [...document.querySelectorAll('#zoom button')].map((b) => b.getBoundingClientRect()), hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    const els = [...document.querySelectorAll('#hud .stat, #gamebar button, #gamebar #roomchip')].filter((e) => e.offsetParent);
+    return { on: zb.every((b) => b.right <= innerWidth && b.bottom <= innerHeight && b.top >= 0), over: els.filter((e) => zb.some((b) => hit(b, e.getBoundingClientRect()))).map((e) => e.id || e.className || e.textContent.trim().slice(0, 12)) }; });
+  check(z.on && !z.over.length, `${w}×${h}: zoom buttons on screen, covering nothing (${z.over.join(', ') || 'none'})`);
   await p.screenshot({ path: `out/specials-hud-${w}x${h}.png` }); check(!errors.length, 'no page errors'); await ctx.close();
 }
 console.log(fails.length ? 'FAILED:\n - ' + fails.join('\n - ') : 'ALL CHECKS PASSED');
