@@ -1,6 +1,6 @@
 // The SERVER REFEREE's web door on the Droplet (rooms and rules: server/referee.js). Players' pages connect here with a
 // WebSocket (a live two-way line) instead of Supabase Realtime; Caddy in front gives it https (wss://) and passes the visitor's
-// address in x-forwarded-for. Settings (environment): PORT (default 8081), ORIGINS (extra allowed websites, comma-separated).
+// address in x-forwarded-for. Settings (environment): PORT (default 8081), HOST, ORIGINS (extra allowed websites, comma-separated).
 // Run: node referee.mjs        Health check: GET /health → { rooms, players }
 import http from 'node:http';
 import { WebSocketServer } from 'ws';
@@ -44,4 +44,5 @@ wss.on('connection', (ws, req) => {
 setInterval(() => { for (const ws of wss.clients) { if (!ws.alive) { ws.terminate(); continue; } ws.alive = false; ws.ping(); } }, 20000);
 let last = performance.now();
 setInterval(() => { const now = performance.now(), dt = Math.min((now - last) / 1000, 1 / 20); last = now; ref.tick(dt); }, TICK_MS);
-server.listen(PORT, () => console.log(`referee listening on ${PORT}`));
+// HOST: on the Droplet 127.0.0.1, so only Caddy (https) can reach it; tests leave it open on every address of this machine.
+server.listen(PORT, process.env.HOST || undefined, () => console.log(`referee listening on ${PORT}`));
