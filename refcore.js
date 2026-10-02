@@ -12,7 +12,8 @@ export const autoStartMs = (humans) => (humans >= 2 ? 15000 : 25000);
 // Auto match rooms carry their style (Cody, 2026-10-02): PFN1 / PTN1 normal play (plain snowballs, no special snowballs or
 // gear: the referee strips them), PFG1 / PTG1 special gear (everything a player owns counts). The older PF1–PF5 / PT1–PT5 count
 // as special gear.
-export const isPublic = (c) => /^P(?:[FT][NG]?[1-5]|R[1-9]\d?)$/.test(c);
+// Ranked rooms PR[N|G]1-99 have the same style letter (Cody 2026-10-02); PR1-99 with no letter is an older gear room.
+export const isPublic = (c) => /^P(?:[FT][NG]?[1-5]|R[NG]?[1-9]\d?)$/.test(c);
 export const styleOf = (c) => (isPublic(c) && c[2] === 'N' ? 'normal' : 'gear');
 
 // Bots look and sound like players so nobody can pick them out and farm them.
