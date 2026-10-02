@@ -63,3 +63,16 @@ console.log('OK: settings: version 0 = today exactly; 14 unsafe changes refused;
   assert.match(ci({ id: 'hat_crown', slot: 'hat', name: 'Crown', hat: 'crown', color: 0xffd060, level: 2 }).join(), /existing shape/);
   assert.match(ci({ id: 'pack_sack_blue', slot: 'pack', name: 'Blue Sack', pack: 'sack', level: 2 }).join(), /needs a colour/);
   console.log('OK: store editor: new hat/backpack colours allowed, new shapes need code'); }
+// Special snowballs and gear (Cody, 2026-10-01: "Add the special gear and snowballs. Don't remove the other stuff"): their prices
+// can be changed; a brand-new one is refused (what it does needs code); the looks keep working as before.
+{ const { checkItem: ci, check: chk, DEFAULT_SETTINGS: D, itemsWith } = await import('../mockups/settings.js');
+  assert.deepEqual(ci({ id: 'sb_ice', slot: 'sball', name: 'Ice Ball', price: 0.4 }), [], 'Ice Ball repriced');
+  assert.deepEqual(ci({ id: 'gear_pumpkin', slot: 'gear', name: 'Pumpkin Costume', price: 0.6 }), [], 'Pumpkin Costume repriced');
+  assert.match(ci({ id: 'sb_laser', slot: 'sball', name: 'Laser Ball', price: 1 }).join(), /needs code/, 'a new special snowball needs code');
+  assert.match(ci({ id: 'gear_cape', slot: 'gear', name: 'Cape', price: 1 }).join(), /needs code/, 'new gear needs code');
+  assert.deepEqual(ci({ id: 'shirt_mint', slot: 'shirt', name: 'Mint', color: 0x98e0c0, price: 0.3 }), [], 'looks still sell');
+  const s = structuredClone(D); s.store = { items: [{ id: 'sb_ice', slot: 'sball', name: 'Ice Ball', price: 0.4 }, { id: 'gear_shoes', slot: 'gear', name: 'Elf Shoes', price: 1.25 }] };
+  assert.ok(chk(s).ok, 'publishable: ' + chk(s).problems.join('; '));
+  const it = itemsWith(s); assert.equal(it.find((x) => x.id === 'sb_ice').price, 0.4); assert.equal(it.find((x) => x.id === 'gear_shoes').price, 1.25);
+  assert.equal(it.find((x) => x.id === 'gear_shoes').gear, 'shoes', 'repricing keeps what the gear does');
+  console.log('OK: store editor: special snowball and gear prices editable, new ones need code, looks unchanged'); }

@@ -46,7 +46,7 @@ const akey = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign',
 const adminSrv = createAdmin({ db, adminWallets: [aaddr], onSettings: () => server.settingsChanged() });
 const V1 = structuredClone(DEFAULT_SETTINGS); delete V1.version;
 V1.spin.main = { 0: 18, 1: 12, 2: 6, star: 4 }; V1.spin.bonus = { 3: 8, 4: 3, 5: 1 }; V1.big.jackpotOdds = 10000; V1.prices.spin100 = 2;
-V1.big.counts = { ...V1.big.counts, hat: 9, coal: 24 }; V1.store.items = [{ id: 'shirt_mint', slot: 'shirt', name: 'Mint', color: 0x98e0c0, price: 0.3 }];
+V1.big.counts = { ...V1.big.counts, hat: 9, coal: 24 }; V1.store.items = [{ id: 'shirt_mint', slot: 'shirt', name: 'Mint', color: 0x98e0c0, price: 0.3 }, { id: 'sb_ice', slot: 'sball', name: 'Ice Ball', price: 0.4 }]; // a look, and a special snowball repriced
 { const message = adminMessage({ action: 'set-settings', game: 'all', settings: V1, at: new Date().toISOString(), nonce: 'ab'.repeat(16) });
   const sig = [...new Uint8Array(await crypto.subtle.sign('Ed25519', akey.privateKey, new TextEncoder().encode(message)))].map((x) => x.toString(16).padStart(2, '0')).join('');
   const r = await adminSrv.run({ wallet: aaddr, message, signature: sig }); check(r.ok, 'publish v1: ' + r.error); }
@@ -102,6 +102,8 @@ check(await p.evaluate(() => window.__spin.SLICES && window.__spin.view.shownMul
 await p.evaluate(() => document.querySelector('#t-avatar').click()); await p.waitForTimeout(800);
 await p.evaluate(() => document.querySelector('[data-slot="shirt"]').click()); await p.waitForTimeout(500);
 check(/Mint/.test(await p.textContent('#avgrid')) && /\$0\.30/.test(await p.textContent('#avgrid')), 'the new Mint shirt is on the Avatar screen at $0.30');
+await p.evaluate(() => document.querySelector('#t-store').click()); await p.waitForFunction(() => document.querySelectorAll('#carousels .shopitem').length, null, { timeout: 30000 });
+check(await p.evaluate(() => [...document.querySelectorAll('#carousels .shopitem')].find((e) => /Ice Ball/.test(e.textContent))?.textContent.includes('$0.40')), 'the published Ice Ball price ($0.40) is in the Store');
 await p.evaluate(() => document.querySelector('#t-games').click()); await p.waitForTimeout(800);
 // A run of 5 pulls through the server, on settings v1: every play lands and re-checks on the new reels.
 await p.exposeFunction('testPay', (q) => payFor(q));
