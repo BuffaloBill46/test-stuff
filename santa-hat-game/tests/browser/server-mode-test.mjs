@@ -75,6 +75,10 @@ await p.goto('http://localhost:8787/online.html?net=local&server=' + encodeURICo
 await p.waitForFunction(() => window.__sq, null, { timeout: 60000 });
 await p.evaluate(() => document.querySelector('#t-games').click()); await p.waitForFunction(() => window.__slots, null, { timeout: 90000 });
 await p.waitForFunction(() => /Rudolph/.test(document.querySelector('#winList')?.textContent || ''), null, { timeout: 15000 }).catch(() => {});
+// The price + tax line comes from the server (its stand-in price $0.00085 is nothing like the real market's).
+await p.waitForFunction(() => /0\.000850/.test(document.querySelector('#liveMarket')?.textContent || ''), null, { timeout: 15000 }).catch(() => {});
+const mk = await p.evaluate(() => document.querySelector('#liveMarket')?.textContent || '');
+check(/\$0\.000850/.test(mk) && /tax 3%/.test(mk), 'the price/tax line should come from the server: ' + mk);
 const winText = (await p.textContent('#winList')).replace(/\s+/g, ' ');
 check(/Rudolph/.test(winText) && /\$5\.00/.test(winText) && /5×/.test(winText), `another player's win shows in the shared list: "${winText.slice(0, 120)}"`);
 check(!/wa11et/.test(winText), 'no wallet addresses on the page');

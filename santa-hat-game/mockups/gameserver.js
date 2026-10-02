@@ -21,7 +21,7 @@ export const settingsReady = SERVER ? (async () => {
 })() : Promise.resolve(null);
 // The actions anyone may call without signing in: must match the server's public ones (server/http.js; tests/public-actions.test.mjs).
 // (It once listed only three, so guests' lottery cards and draw re-checks never asked the server.)
-export const PUBLIC_ACTIONS = ['pools', 'settings', 'stats', 'lottery-tickets', 'lottery', 'winners'];
+export const PUBLIC_ACTIONS = ['pools', 'settings', 'stats', 'lottery-tickets', 'lottery', 'winners', 'market'];
 export async function call(action, body = {}) {
   const t = await token();
   if (!t && !PUBLIC_ACTIONS.includes(action)) return { error: 'sign in first' };

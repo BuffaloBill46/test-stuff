@@ -238,7 +238,9 @@ export async function initGames(opts = {}) {
 // Live SANTA price and the token's live tax (read-only lookups). Refreshed every minute while the page is open.
 async function showMarket() {
   const el = $('#liveMarket');
-  const [p, f] = await Promise.allSettled([livePrice(), liveFee()]);
+  // Server mode: the server's own reading first (the price quotes really use; free public lookups often fail on the live site).
+  const m = SERVER ? await call('market').catch(() => ({})) : {};
+  const [p, f] = await Promise.allSettled([m?.usd > 0 ? { usd: m.usd } : livePrice(), m?.fee ? m.fee : liveFee()]);
   const bits = [];
   if (p.status === 'fulfilled') { setPrice(p.value); bits.push(`1 SANTA = <b>$${p.value.usd.toPrecision(3)}</b> · $1 ≈ <b>${fmtSanta(santaFor(1, p.value))} SANTA</b>`); }
   if (f.status === 'fulfilled') {

@@ -227,7 +227,16 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     const v = Number.isInteger(version) && version >= 0 ? version : await settingsVersion(), c = await cfgFor(v);
     return { version: v, settings: c.settings };
   }
+  // Public: the SANTA price quotes use right now (the 10-minute median) and the token's tax, for the page's info line (the page's
+  // own lookups go through free public services that fail on the live site: TODO "live tax line"). Each half is left out when it
+  // can't be read, never guessed. The tax is kept a minute, so a busy page doesn't spend a network call per visitor.
+  let feeKept = { at: 0, fee: null };
+  async function market() {
+    const [p, f] = await Promise.allSettled([livePrice(), Date.now() - feeKept.at < 60_000 ? feeKept.fee : liveFee()]);
+    if (f.status === 'fulfilled' && f.value) feeKept = { at: Date.now(), fee: f.value };
+    return { ...(p.status === 'fulfilled' ? { usd: p.value.usd } : {}), ...(f.status === 'fulfilled' && f.value ? { fee: { bps: f.value.bps, max: f.value.max } } : {}) };
+  }
   // Called when Cody publishes new settings, so the very next play uses them (no 15-second wait).
   const settingsChanged = () => { latest = { at: 0, version: 0 }; };
-  return { quote, buy, settle, tidy, winners, pools, settings, settingsChanged };
+  return { quote, buy, settle, tidy, winners, pools, settings, market, settingsChanged };
 }
