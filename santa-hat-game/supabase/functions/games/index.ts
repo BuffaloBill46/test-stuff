@@ -6,6 +6,7 @@
 //   ADMIN_WALLETS                        Cody's admin wallet address(es), comma-separated (escrow admin controls)
 //   SANTA_MINT                           the token to accept (leave unset for real SANTA; the test token's address on devnet)
 //   LOTTERY_WALLET                       public address of the lottery wallet (until set, no lottery tickets are sold)
+//   TREASURY_WALLET                      public address of the treasury (until set, the shop sells nothing: Store items, levels, tickets)
 //   SOLANA_CLUSTER                       'devnet' or 'mainnet' (optional: read from SOLANA_RPC_URL otherwise)
 // Pool wallet KEYS are not used here (payouts are sent by a separate worker) and never go in the website.
 import postgres from 'npm:postgres@3.4.5';
@@ -17,6 +18,7 @@ import { makePrice } from '../../../server/price.js';
 import { makeLimiter, dbStore } from '../../../server/ratelimit.js';
 import { createLevels } from '../../../server/levels.js';
 import { createLottery } from '../../../server/lottery.js';
+import { createShop } from '../../../server/shop.js';
 import { livePrice, liveFee } from '../../../mockups/market.js';
 
 const env = (k: string) => Deno.env.get(k) ?? '';
@@ -59,6 +61,8 @@ Deno.serve(makeHandler({
   server,
   limiter,
   levels: createLevels({ db }), // progress + Auto match finishes (needs supabase/010_levels.sql)
+  // The shop (needs supabase/016_shop.sql and the TREASURY_WALLET setting; until set, nothing is sold).
+  shop: createShop({ db, chain, livePrice: makePrice({ db, livePrice }), liveFee: feeOfMint, treasury: env('TREASURY_WALLET') || null, ...mintOpt, cluster }),
   // The Santa Lottery (needs supabase/011_lottery.sql and the LOTTERY_WALLET setting; until set, no tickets are sold).
   lottery: createLottery({ db, chain: { ...chain, latestBlock }, livePrice: makePrice({ db, livePrice }), liveFee: feeOfMint, wallet: env('LOTTERY_WALLET') || null, ...mintOpt, cluster }),
   admin: createAdmin({ db, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), chain, poolWallets: { ...poolWallets, lottery: env('LOTTERY_WALLET') || null }, ...mintOpt }), // chain: to check Cody's deposits

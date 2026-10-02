@@ -10,6 +10,8 @@
 //   finish { match }           → the host reports a finished Auto match's places; top-3 players' finishes count toward levels
 //   lottery                    → public: every lottery's open draw and recent results (server/lottery.js; runs due draws)
 //   lottery-quote { lottery, n } → a 60-second price for n tickets      lottery-buy { quote, signature } → checks the payment, numbers the tickets
+//   shop-quote { kind: 'item' | 'level' | 'tickets', id?, n? } → a 60-second price      shop-buy { quote, signature } → checks it, grants it
+//   shop-owned → the items this player owns
 // Only signed-in players (a Supabase login token); only our own website may call it from a browser.
 // Speed limit (server/ratelimit.js): every request counts against its internet connection, every signed-in request against its
 // player too; over the limit → 429 "slow down, try again in N seconds".
@@ -77,6 +79,10 @@ export function makeHandler(deps) {
         case 'progress': if (!deps.levels) return reply(origin, 400, { error: 'unknown action' }); out = await deps.levels.progress(profile); break;
         case 'lottery-quote': if (!deps.lottery) return reply(origin, 400, { error: 'unknown action' }); out = await deps.lottery.quote(profile, String(body.lottery), Number(body.n)); break;
         case 'lottery-buy': if (!deps.lottery) return reply(origin, 400, { error: 'unknown action' }); out = await deps.lottery.buy(profile, String(body.quote), String(body.signature)); break;
+        // the shop (server/shop.js): Store items, a level, extra ranked tickets
+        case 'shop-quote': if (!deps.shop) return reply(origin, 400, { error: 'unknown action' }); out = await deps.shop.quote(profile, { kind: String(body.kind), id: body.id == null ? undefined : String(body.id), n: Number(body.n) }); break;
+        case 'shop-buy': if (!deps.shop) return reply(origin, 400, { error: 'unknown action' }); out = await deps.shop.buy(profile, String(body.quote), String(body.signature)); break;
+        case 'shop-owned': if (!deps.shop) return reply(origin, 400, { error: 'unknown action' }); out = await deps.shop.owned(profile); break;
         case 'finish': if (!deps.levels) return reply(origin, 400, { error: 'unknown action' }); out = await deps.levels.finish(profile, body.match); break;
         default: return reply(origin, 400, { error: 'unknown action' });
       }
