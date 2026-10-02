@@ -51,7 +51,9 @@ async function startRun(n) {
     if (out) { res.innerHTML = runSummary(out, 'spin', 'spins'); showResult(res); }
   } finally { busy = false; fast = false; setButtons(true); $('#runSpin').textContent = ''; }
 }
-function setButtons(on) { document.querySelectorAll('#spin [data-run], #spin .bets button').forEach((b) => { b.disabled = !on; }); $('#spin .skip').hidden = on; }
+function setButtons(on) { document.querySelectorAll('#spin [data-run], #spin .bets button').forEach((b) => { b.disabled = !on; }); $('#spin .skip').hidden = on; skipLabel($('#spin .skip')); }
+// Skip ahead is a toggle (Cody): pressed, fast and "Normal speed"; pressed again, back to normal.
+const skipLabel = (b) => { b.textContent = fast ? 'Normal speed' : 'Skip ahead'; b.setAttribute('aria-pressed', String(fast)); };
 // One spin of the run, animated: the wheel lands exactly on the segment the draw picked.
 async function showOne(p, i, n) {
   const res = $('#spin .res');
@@ -94,7 +96,7 @@ export function initSpin(opts) {
   wallet = opts.wallet; addWinner = opts.addWinner || addWinner; shownPool = st.pool;
   view = createWheel($('#spin canvas'));
   document.querySelectorAll('#spin [data-run]').forEach((b) => b.addEventListener('click', () => startRun(+b.dataset.run)));
-  $('#spin .skip').addEventListener('click', () => { fast = true; view.finishNow(); });
+  $('#spin .skip').addEventListener('click', (e) => { fast = !fast; if (fast) view.finishNow(); skipLabel(e.currentTarget); });
   $('#spin canvas').addEventListener('click', () => { if (busy) view.finishNow(); }); // tap the wheel: land this spin now
   document.querySelectorAll('#spin .bets button').forEach((b) => b.addEventListener('click', () => { if (!busy) setBet(+b.dataset.bet); }));
   $('#spinFs').addEventListener('click', toggleFull);
