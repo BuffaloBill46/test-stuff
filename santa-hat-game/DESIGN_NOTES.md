@@ -401,3 +401,10 @@ adds random waits won't look like clockwork; the speed limit and the game's math
 - Each room's host publishes a one-line summary every 3 seconds to a shared "games board" channel; the lobby lists these.
 - Watchers are capped at 4 per game, have no emotes, can't become host, and aren't kicked for being idle.
 - Temporary until the server exists: the host browser publishes the summary, so the list is only as honest as the host.
+
+## Stocking Stuffer: the next Games-tab game (Cody, 2026-10-02; NOT built yet)
+A mantel of 20 stockings (8 gifts, 12 lumps of coal, shuffled by the fair numbers). Each play opens stockings one by one, up
+to 8; the first coal ends it. Paid by gifts found before coal: 0 → 0, 1 → 0.5×, 2 → 1.75×, 3 → 4×, 4 → 8×, 5 → 16×, 6 → 40×,
+7 → 90×, all 8 → 250× (1 in 125,970). Pays back 60.6% (Cody's call, lower than the ~80% on other games). Pool coverage of the
+250× top prize: Cody said ignore for now (the safety rule needs a decision before real money). Full build brief: the copy block
+Claude gave Cody on 2026-10-02 (same content).
