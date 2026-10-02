@@ -200,7 +200,7 @@ between two devices has never been tested from here. Cody and friends testing on
    Projects, org-wide; remove in Supabase → Org → OAuth Apps) made the key "Supabase Integration" and set custom SMTP (checked after a
    reload: on, Santa Hat Legends <signin@santahatgames.com>, smtp.resend.com:465, key stored). Templates set and checked: Magic Link
    "Your Santa Hat Legends sign-in", Confirm sign up "Welcome to Santa Hat Legends" (supabase/email/). The page has the 8-digit code box
-   (published). NOT yet seen: a real email sent through Resend (Cody's next sign-in will show it in Resend → Emails).
+   (published). CONFIRMED: Cody signed in by email; Resend's log shows "Your Santa Hat Legends sign-in" to cmcody85@gmail.com, Delivered.
 2. **Try a real wallet on devnet (Phantom):** set Phantom to devnet, then open
    https://santahatgames.com/?server=https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games
    and sign in with the wallet. Send Claude your Phantom devnet address and Claude will send it test SANTA + devnet SOL, so you can
