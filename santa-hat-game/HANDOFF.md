@@ -157,6 +157,12 @@ between two devices has never been tested from here. Cody and friends testing on
 ## Where we are right now
 
 ### >>> CODY'S LIST: things only Cody can do (newest first; Claude adds, Cody ticks) <<<
+**Quick questions (just answer in chat):**
+- **Lottery, the one refund left:** tickets are final (done, shown on every card). A payment that only confirms AFTER the
+  Christmas draw already ran never becomes a ticket (no draw left); today that money goes back. Keep that? (Claude: yes.)
+- **Special snowballs in RANKED:** count them, or plain snowballs only in ranked so it can't be pay-to-win? One switch
+  (`rankedSpecials` in worker/referee.mjs); it's ON (they count) until you say.
+
 1. **Email sign-in for real players:** make a free Resend account (resend.com) and, when you buy the game domain (santahat.gold in the
    notes), add the few DNS records Resend gives you at your domain company (GoDaddy is fine). Then Claude connects it to Supabase
    (Auth → Emails → SMTP). Until then: wallet sign-in works; email sign-in only reaches your own Supabase team address.

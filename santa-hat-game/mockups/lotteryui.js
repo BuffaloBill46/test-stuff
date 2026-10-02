@@ -30,7 +30,8 @@ const addMine = (kind, n, drawsAt) => { try { const m = JSON.parse(localStorage.
 const info = (kind) => { const o = live?.open?.find((x) => x.lottery === kind), L = LOTTERIES[kind], mine = mineOf(kind), sold = o ? o.tickets : 0;
   const notice = !SERVER ? '🧪 Test version: tickets aren\'t on sale yet, so there\'s nothing to win this draw.'
     : o && o.sales === false ? 'Sales are closed: this draw is about to be drawn.'
-    : `Ticket sales close 5 minutes before the draw. 10% of every ticket is burned; the rest is the pot.`;
+    // Cody, 2026-10-02: tickets are final once bought (DESIGN_NOTES → Santa Lottery)
+    : `Ticket sales close 5 minutes before the draw. 10% of every ticket is burned; the rest is the pot. All tickets are final: no refunds.`;
   return { notice, rows: [['Ticket', money(L.ticket)], ['Prize pot', o ? santa(o.pot_raw) : '–'], ['Tickets sold', o ? sold.toLocaleString() : '–'],
     ['Winners', L.split.length === 1 ? '1 takes it all' : 'Top 3 · 60/25/15'], ['Yours', `${mine} of ${sold.toLocaleString()} · ${sold ? ((mine / sold) * 100).toFixed(1) : '0.0'}%`]] }; };
 // A ticket in each lottery's colour (daily red, weekly gold, Christmas green), like the icons in Cody's other game.

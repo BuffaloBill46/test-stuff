@@ -241,6 +241,9 @@ Costume looks like one), not just an icon.
   ticket list is public.
 - **Sales close 5 minutes before the draw** (no new quotes). A payment that confirms after its draw has already been drawn
   moves its tickets to the next draw of the same lottery; for the Christmas draw (no next one) it's refunded in full.
+- **Tickets are final (Cody, 2026-10-02): once bought, a ticket can't be refunded** (shown on every card). The only money
+  ever sent back is a payment that never became a ticket: one confirming after the Christmas draw ran (there's no draw left
+  to put it in). Claude's recommendation to keep that one; Cody to confirm (HANDOFF list).
 
 How the pool wallets are controlled (options; Claude's pick marked):
 - **A. A plain wallet whose key lives only on our server (pick, for the Spin and Slots pools).** The server pays winners
