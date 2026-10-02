@@ -229,12 +229,26 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 .pack button { margin-top: 8px; font-size: 13px; padding: 8px 10px; }
 .lottery h2 { margin: 0 0 6px; } .lottery > p { margin: 6px 0; }
 /* The five lotteries (lotteryui.js): a card each, in the site's plaque style; buttons at the 44 px tap size. */
-.lotgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin-top: 12px; }
-.lotcard { background: var(--plaque-hi); border: 2px solid var(--ink); padding: 10px 12px; display: grid; gap: 6px; }
-.lotcard header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; } .lotcard h3 { margin: 0; }
-.lotcard header em { font-style: normal; color: var(--lamp); font-weight: 700; } .lotcard p { margin: 0; }
-.lotbuy { display: flex; gap: 6px; flex-wrap: wrap; } .lotbuy button { min-width: 44px; min-height: 44px; } .lotbuy input { width: 76px; min-height: 44px; }
-.lotnote { min-height: 1.2em; font-size: 14px; }
+/* Lottery cards laid out and coloured like Cody's other game (2026-10-01): dark rounded cards two to a row, a ticket icon and
+   bold title, an amber notice, label/value rows, and a purple→blue→green "Buy tickets" pill. */
+.lotgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 165px), 1fr)); gap: 12px; margin-top: 12px; }
+.lotcard { background: #1b1c22; border: 2px solid #34353f; border-radius: 20px; padding: 14px; display: grid; gap: 10px; align-content: start; box-shadow: 0 0 22px rgba(130, 90, 255, .08); }
+.lotcard header { display: flex; align-items: center; gap: 10px; }
+.lotcard h3 { margin: 0; font: 800 18px/1.2 var(--body); color: #fff; text-shadow: none; }
+.lotico { width: 30px; height: 22px; flex: none; }
+.lotcard p { margin: 0; }
+.lotnotice { padding: 10px 12px; background: #241d10; border: 2px solid #5c4519; border-radius: 14px; color: #f0cf87; font-size: 14px; line-height: 1.4; }
+.lotrows { display: grid; gap: 8px; margin: 2px 0; }
+.lotrows div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.lotrows dt { color: #9a9ba8; font-size: 15px; } .lotrows dd { margin: 0; color: #fff; font: 800 15px/1.2 var(--body); text-align: right; font-variant-numeric: tabular-nums; }
+.lotrows dd b { font-weight: 800; }
+.lotwhen { color: #9a9ba8; font-size: 13px; }
+.lotbuy { display: flex; gap: 6px; }
+.lotbuy button, .lotbuy input { flex: 1 1 0; min-width: 0; min-height: 40px; border-radius: 999px; background: #26272f; border: 2px solid #3a3b46; color: #fff; font: 700 15px/1 var(--body); cursor: pointer; }
+.lotbuy input { flex: 1.3 1 0; text-align: center; padding: 0 6px; }
+.lotgo { width: 100%; min-height: 50px; border: 0; border-radius: 999px; background: linear-gradient(90deg, #b97cff, #4aa3ff 52%, #46d63a); color: #121225; font: 800 18px/1 var(--body); cursor: pointer; box-shadow: 0 6px 18px rgba(90, 120, 255, .25); }
+.lotgo:hover { filter: brightness(1.06); } .lotgo:active { transform: translateY(1px); }
+.lotnote { min-height: 1.2em; font-size: 14px; color: #d6ddf0; }
 .lotres { padding-left: 20px; } .lotres li { margin: 8px 0; } .lotres span { display: block; color: var(--dim); } .lotcheck { display: block; font-style: normal; font-size: 14px; margin-top: 4px; }
 p.taxnote { margin: 12px 0 0; line-height: 1.6; font-size: 16px; color: #e8ecf7; max-width: 56ch; text-shadow: 1px 1px 0 var(--ink), 0 0 6px var(--ink); }
 p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; font: 700 11px/1 var(--digits); color: var(--ink); background: var(--lamp); border: 2px solid var(--ink); padding: 5px 7px; text-transform: uppercase; }
@@ -387,6 +401,25 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
 @media (max-width: 820px) { .paytable li { grid-template-columns: auto minmax(0, 1fr) auto; } .paytable li > :last-child { display: none; } }
 @media (prefers-reduced-motion: reduce) { .machine.jackpot .jp, .machine .flash.show { animation: none; opacity: 1; transform: rotate(-4deg); } }
 .stamp { margin-left: auto; font: 700 13px/1 var(--digits); color: var(--hat); border: 3px solid var(--hat); padding: 8px 10px; transform: rotate(-4deg); text-transform: uppercase; }
+/* The Store's two sections (Cody, 2026-10-01): Special Snowballs and Special Gear, each item saying what it does, rules on top */
+.shop { margin: 0 0 18px; }
+.shophead h3 { margin: 0 0 6px; font: 800 26px/1.1 var(--display); color: var(--brim); }
+.shophead .rule { margin: 0 0 6px; font-size: 14px; line-height: 1.45; color: #d6ddf0; }
+.shophead .rule b, .avrule b { display: inline-block; margin-right: 6px; font: 700 10px/1 var(--digits); text-transform: uppercase; color: var(--ink); background: var(--lamp); border: 2px solid var(--ink); padding: 3px 6px; vertical-align: 1px; }
+.shopgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 8px; margin-top: 8px; }
+.shopitem { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; background: var(--plaque-hi); border: 2px solid var(--ink); border-radius: 3px; }
+.shopitem img, .shopitem .chip { width: 52px; height: 52px; border-radius: 3px; background-color: #141b36; display: block; }
+.shopitem .chip, .pick .chip { border: 2px solid var(--ink); box-shadow: inset 0 -8px 0 rgba(0,0,0,.25); }
+.shopitem b { display: block; font-size: 15px; color: var(--text); } .shopitem .uses { display: block; margin-top: 2px; font: 700 10px/1.2 var(--digits); text-transform: uppercase; color: var(--lamp); }
+.shopitem p { margin: 3px 0 2px; font-size: 13px; line-height: 1.35; color: #c7cfe6; }
+.shopitem button { padding: 8px 10px; font-size: 13px; }
+.avrule { grid-column: 1 / -1; margin: 2px 0 0; font-size: 13px; line-height: 1.45; color: #d6ddf0; }
+/* The Avatar screen's Special Snowballs and Special Gear tabs: one row per item (icon, name, what it does, price/status) */
+#avgrid.list { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+#avgrid.list .pick { grid-template-columns: 44px minmax(0, 1fr); column-gap: 10px; row-gap: 2px; align-items: center; padding: 6px 8px; font-size: 14px; }
+#avgrid.list .pick img, #avgrid.list .pick .chip { grid-row: 1 / span 3; width: 44px; height: 44px; aspect-ratio: auto; border-radius: 3px; display: block; }
+#avgrid.list .pick small:first-of-type { font: 400 13px/1.35 var(--body); text-transform: none; letter-spacing: 0; color: #c7cfe6; white-space: normal; }
+#avgrid.list .pick.locked small:first-of-type::before { content: none; }
 .carousel { margin: 0 0 16px; }
 .carousel h4 { margin: 0 0 8px; }
 .strip { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 10px; scroll-snap-type: x mandatory; }
@@ -482,7 +515,8 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 @media (max-width: 480px) { .game { grid-template-columns: minmax(0, 1fr) auto; } .game div:nth-child(2) { grid-column: 1 / -1; grid-row: 2; } }
 #acct { position: fixed; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 72px); width: min(440px, calc(100% - 32px)); max-height: calc(100% - 140px); overflow: auto; padding: 16px 18px 18px; }
 @media (max-width: 820px) {
-  .modes3, .cols3, .packs { grid-template-columns: minmax(0, 1fr); }
+  .modes3, .cols3 { grid-template-columns: minmax(0, 1fr); }
+  .packs { gap: 6px; } .pack { padding: 8px 8px; } .pack b { font-size: 30px; } .pack em { font-size: 16px; } .pack button { font-size: 11px; padding: 6px 4px; width: 100%; } /* one row of 3 on phones too (Cody) */
   .ranks-grid { grid-template-columns: minmax(0, 1fr); }
   .avatar-page { grid-template-columns: minmax(0, 1fr); }
   .avatar-panel { grid-column: 1; margin-top: 42vh; }
@@ -711,7 +745,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
     <section class="block plaque slotsbox fur" id="slots">
       <div class="slotshead">
         <div><h2>Slots</h2><div class="pool"><i>Total pool</i><b id="slotPool">$500.00</b></div></div>
-        <div class="demo"><span class="stamp">Demo</span><p>Play money only; payments open later.<br>Demo balance <b id="demoBal">$20.00</b> <button class="sec" id="demoReset">Reset</button></p></div>
+        <div class="demo"><span class="stamp">Demo</span><p>Play money only; payments open later.<br>Demo balance <b id="demoBal">$100.00</b> <button class="sec" id="demoReset">Reset</button></p></div>
       </div>
       <article class="machine big" data-m="big">
         <header><h3>Big Hat</h3><em>$1.00 a pull · 5×5 · 11 lines</em>
@@ -833,11 +867,11 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       </div>
     </section>
     <section class="block plaque lottery" id="lottery">
-      <h2>Santa Lottery</h2><p>Daily draws (10¢ and $1 tickets), weekly draws (10¢ and $1) and a $1 Christmas draw that closes December 23. Every ticket: 10% burned, the rest into the pot for the winners.</p><p class="taxnote"><b>3% SANTA tax</b> Prizes are paid in SANTA and arrive 3% lighter.</p>
+      <h2>Santa Lottery</h2><p>Weekly draws every Sunday (10¢ and $1 tickets) and a $1 Christmas draw that closes December 23. The top 3 tickets win: 60% · 25% · 15% of the pot. Every ticket: 10% burned, the rest into the pot for the winners.</p><p class="taxnote"><b>3% SANTA tax</b> Prizes are paid in SANTA and arrive 3% lighter.</p>
       <!-- the five lotteries and recent results: lotteryui.js -->
       <div class="lotgrid" id="lotGrid"></div><div id="lotResults"></div>
     </section>
-    <section class="block plaque"><h2>Items</h2><div id="carousels"><p class="dim">Wrapping presents…</p></div></section>
+    <section class="block plaque"><h2>Special items</h2><div id="carousels"><p class="dim">Wrapping presents…</p></div></section>
   </section>
 
   <section id="tab-avatar" class="page avatar-page" role="tabpanel" aria-labelledby="t-avatar" hidden>

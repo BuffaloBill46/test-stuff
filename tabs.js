@@ -1,5 +1,7 @@
 // Site tabs: Play / Store / Avatar / Ranks, wallet sign-in, avatar editor, leaderboard.
 import { THREE, character, lights, toon, part, build, hatGeo } from './kit.js';
+import { GEAR_SLOTS } from './catalog.js';
+import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS } from './gear.js';
 import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable } from './catalog.js';
 import { SPECIALS } from './specials.js';
 import { settingsReady } from './gameserver.js';
@@ -63,8 +65,22 @@ export function renderProgress(profile) {
 }
 // Put a special in a slot; if it was already in another slot it MOVES (the same special can't fill two slots; database 012).
 function withSpecial(a, slot, id) { for (const s of SB_SLOTS) if (s !== slot && a[s] === id && id !== 'sb_none') a[s] = 'sb_none'; a[slot] = id; return a; }
+// Put a gear in a slot: the same gear in the other slot MOVES; a gear boosting the same stat as the other slot's is refused
+// (Cody, 2026-10-01: "Can't stack same stat"; the database refuses it too). Returns false when refused (nothing changed).
+function withGear(a, slot, id) {
+  const other = GEAR_SLOTS.find((s) => s !== slot), it = BY_ID.get(id), o = BY_ID.get(a[other]);
+  if (id !== 'gear_none' && a[other] !== id && o?.gear && it?.gear && statOf(o.gear) && statOf(o.gear) === statOf(it.gear)) return false;
+  if (a[other] === id && id !== 'gear_none') a[other] = 'gear_none';
+  a[slot] = id; return true;
+}
+// What a gear boosts, in a word or two (for the Store and the Avatar grid)
+const STAT_NAMES = { hits: 'extra hits', held: 'snowballs held', refill: 'refill speed', speed: 'move speed', size: 'size' };
+const statName = (kind) => (kind === 'present' ? 'a random gear' : STAT_NAMES[statOf(kind)] || '');
 export function initTabs(app) {
-  const state = { tab: 'play', slot: 'shirt', sbSlot: 'sb1', draft: null, owned: new Set(), board: null };
+  const state = { tab: 'play', slot: 'shirt', sbSlot: 'sb1', gSlot: 'g1', draft: null, owned: new Set(), board: null };
+  // The Avatar editor's tabs: the look slots, then Special Snowballs and Special Gear. Special Gear REPLACES Backpacks (Cody,
+  // 2026-10-01: "it should also replace the backpack section"); a backpack already worn stays on (the pack slot is still saved).
+  const AV_TABS = [...SLOTS.filter((s) => s !== 'pack'), 'sball', 'gear'];
 
   // ---------- tabs
   function show(tab) {
@@ -222,15 +238,24 @@ export function initTabs(app) {
     if (storeDrawn && !force) return; storeDrawn = true;
     const box = $('#carousels'); box.innerHTML = '<p class="dim">Wrapping presents…</p>';
     requestAnimationFrame(() => {
-      box.innerHTML = [...SLOTS.filter((s) => s !== 'skin'), 'sball'].map((s) => `<div class="carousel"><h4>${SLOT_NAMES[s]}</h4><div class="strip">${
-        ITEMS.filter((i) => i.slot === s && i.id !== 'sb_none').map((i) => `<div class="item"><img alt="" src="${thumbnail(i)}"><b>${esc(i.name)}</b>${status(i)}<button data-try="${i.id}">Try on</button></div>`).join('')
-      }</div></div>`).join('');
+      // Cody, 2026-10-01: the Store sells only 1. Special Snowballs and 2. Special Gear, each saying what it does, with the rules
+      // (snowballs are kept forever; gear lasts 7 days). The look items (shirts, hats…) are still earned by level on the Avatar screen.
+      const sbs = ITEMS.filter((i) => i.slot === 'sball' && i.id !== 'sb_none'), gear = ITEMS.filter((i) => i.slot === 'gear' && i.id !== 'gear_none');
+      box.innerHTML = `<div class="shop"><div class="shophead"><h3>1. Special Snowballs</h3><p class="rule"><b>Yours forever</b> Buy one once and keep it. Put it in a special slot (SB1–SB3) on the Avatar screen; a throw uses that many snowballs from your counter.</p></div>
+        <div class="shopgrid">${sbs.map((i) => { const S = SPECIALS[i.special];
+          return `<div class="shopitem"><img alt="" src="${thumbnail(i)}"><div><b>${esc(i.name)}</b><span class="uses">${S.cost === 'all' ? 'uses all' : 'uses ' + S.cost}${S.minLevel ? ' · level ' + S.minLevel + '+' : ''}</span><p>${esc(S.note)}</p>${status(i)}</div><button class="sec" data-try="${i.id}">Try it</button></div>`; }).join('')}</div></div>
+        <div class="shop"><div class="shophead"><h3>2. Special Gear</h3><p class="rule"><b>Lasts ${WEAR_DAYS} days</b> The clock starts at your first match wearing it and keeps running; then it wears out. You can take it off and put it back on until then.</p>
+          <p class="rule"><b>No stacking</b> ${esc(NO_STACK_NOTE)} One gear slot, two from level 8.</p></div>
+        <div class="shopgrid">${gear.map((i) => { const G = GEAR[i.gear];
+          return `<div class="shopitem"><i class="chip" style="background:#${(i.color ?? 0x5a6688).toString(16).padStart(6, '0')}"></i><div><b>${esc(i.name)}</b><span class="uses">${G.minLevel ? 'level ' + G.minLevel + '+' : statName(i.gear)}</span><p>${esc(G.note)}</p>${status(i)}</div><button class="sec" data-try="${i.id}">Try it</button></div>`; }).join('')}</div></div>`;
     });
   }
   $('#carousels').addEventListener('click', (e) => {
     const b = e.target.closest('[data-try]'); if (!b) return;
     const it = BY_ID.get(b.dataset.try); state.slot = it.slot;
-    state.draft = { name: app.me.n, a: it.slot === 'sball' ? withSpecial({ ...app.me.a }, state.sbSlot, it.id) : { ...app.me.a, [it.slot]: it.id } };
+    const a = { ...app.me.a };
+    if (it.slot === 'sball') withSpecial(a, state.sbSlot, it.id); else if (it.slot === 'gear') { if (!withGear(a, state.gSlot, it.id)) withGear(a, state.gSlot === 'g1' ? 'g2' : 'g1', it.id); } else a[it.slot] = it.id;
+    state.draft = { name: app.me.n, a };
     show('avatar');
   });
 
@@ -239,17 +264,27 @@ export function initTabs(app) {
     const d = state.draft, lvl = app.profile ? app.profile.level : 1;
     $('#avwho').textContent = app.profile ? (app.profile.wallet ? `Bound to wallet ${short(app.profile.wallet)}` : 'Bound to your email account') : 'Guest · sign in to keep your look';
     const nm = $('#avname'); if (document.activeElement !== nm) nm.value = d.name;
-    $('#avslots').innerHTML = [...SLOTS, 'sball'].map((s) => `<button role="tab" data-slot="${s}" aria-selected="${s === state.slot}">${SLOT_NAMES[s]}</button>`).join('');
+    $('#avslots').innerHTML = AV_TABS.map((s) => `<button role="tab" data-slot="${s}" aria-selected="${s === state.slot}">${SLOT_NAMES[s]}</button>`).join('');
     const sb = state.slot === 'sball', open = levelInfo(lvl).sb, sbBox = $('#avsb'); sbBox.hidden = !sb;
     if (sb) { if (SB_SLOTS.indexOf(state.sbSlot) >= open) state.sbSlot = 'sb1';
       sbBox.innerHTML = SB_SLOTS.map((s, i) => { const it = BY_ID.get(d.a[s] || 'sb_none'), lockedAt = i < open ? 0 : Object.keys(LEVELS).find((L) => LEVELS[L].sb > i);
-        return `<button type="button" data-sbslot="${s}" aria-pressed="${state.sbSlot === s}" ${lockedAt ? 'disabled' : ''}><b>SB${i + 1}</b>${lockedAt ? 'Opens at level ' + lockedAt : esc(it.id === 'sb_none' ? 'Empty' : it.name)}</button>`; }).join(''); }
+        return `<button type="button" data-sbslot="${s}" aria-pressed="${state.sbSlot === s}" ${lockedAt ? 'disabled' : ''}><b>SB${i + 1}</b>${lockedAt ? 'Opens at level ' + lockedAt : esc(it.id === 'sb_none' ? 'Empty' : it.name)}</button>`; }).join('')
+        + '<p class="avrule"><b>Yours forever</b> Special snowballs never wear out.</p>'; }
+    // Special Gear: slots G1 (G2 from level 8), the same way, with the 7-day and no-stacking rules shown
+    const gr = state.slot === 'gear', gOpen = levelInfo(lvl).gear;
+    if (gr) { if (GEAR_SLOTS.indexOf(state.gSlot) >= gOpen) state.gSlot = 'g1'; sbBox.hidden = false;
+      sbBox.innerHTML = GEAR_SLOTS.map((s, i) => { const it = BY_ID.get(d.a[s] || 'gear_none'), lockedAt = i < gOpen ? 0 : Object.keys(LEVELS).find((L) => LEVELS[L].gear > i);
+        return `<button type="button" data-gslot="${s}" aria-pressed="${state.gSlot === s}" ${lockedAt ? 'disabled' : ''}><b>G${i + 1}</b>${lockedAt ? 'Opens at level ' + lockedAt : esc(it.id === 'gear_none' ? 'Empty' : it.name)}</button>`; }).join('')
+        + `<p class="avrule"><b>Lasts ${WEAR_DAYS} days</b> from your first match wearing it. <b>No stacking</b> ${esc(NO_STACK_NOTE)}</p>`; }
     $('#avgrid').innerHTML = ITEMS.filter((i) => i.slot === state.slot).map((i) => {
-      const ok = usable(i, lvl, state.owned), on = sb ? d.a[state.sbSlot] === i.id : d.a[i.slot] === i.id, S = SPECIALS[i.special];
-      if (sb) return `<button class="pick ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}" title="${S ? esc(S.note) : 'Leave this slot empty'}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${!ok ? '$' + i.price.toFixed(2) + ' in Store' : S ? (S.cost === 'all' ? 'uses all' : 'uses ' + S.cost) + (S.minLevel && lvl < S.minLevel ? ' · level ' + S.minLevel : '') : 'empty slot'}</small></button>`;
-      return `<button class="pick ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${ok ? 'Unlocked' : i.price != null ? '$' + i.price.toFixed(2) + ' in Store' : 'Level ' + i.level}</small></button>`;
+      const ok = usable(i, lvl, state.owned), on = sb ? d.a[state.sbSlot] === i.id : gr ? d.a[state.gSlot] === i.id : d.a[i.slot] === i.id, S = SPECIALS[i.special], G = GEAR[i.gear];
+      if (gr) return `<button class="pick wide ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}"><i class="chip" style="background:#${(i.color ?? 0x5a6688).toString(16).padStart(6, '0')}"></i>${esc(i.name)}<small>${G ? esc(G.note) : 'Leave this slot empty'}</small><small>${!ok ? '$' + i.price.toFixed(2) + ' in Store' : G?.minLevel && lvl < G.minLevel ? 'level ' + G.minLevel + '+' : G ? statName(i.gear) : ''}</small></button>`;
+      if (sb) return `<button class="pick wide ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${S ? esc(S.note) : 'Leave this slot empty'}</small><small>${!ok ? '$' + i.price.toFixed(2) + ' in Store' : S ? (S.cost === 'all' ? 'uses all' : 'uses ' + S.cost) + (S.minLevel && lvl < S.minLevel ? ' · level ' + S.minLevel : '') : 'empty slot'}</small></button>`;
+      // look items are bought here on the Avatar screen, not in the Store (Cody, 2026-10-01)
+      return `<button class="pick ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${ok ? 'Unlocked' : i.price != null ? '$' + i.price.toFixed(2) : 'Level ' + i.level}</small></button>`;
     }).join('');
-    const blocked = [...SLOTS, ...SB_SLOTS].map((s) => BY_ID.get(d.a[s] || 'sb_none')).filter((i) => !usable(i, lvl, state.owned));
+    $('#avgrid').classList.toggle('list', sb || gr); // special snowballs and gear: a list, so what each does can be read
+    const blocked = [...SLOTS, ...SB_SLOTS, ...GEAR_SLOTS].map((s) => BY_ID.get(d.a[s] || (GEAR_SLOTS.includes(s) ? 'gear_none' : 'sb_none'))).filter((i) => !usable(i, lvl, state.owned));
     const pl = progressLine(app.profile || { level: 1, xp: 0 });
     $('#avlevel').innerHTML = `Level ${pl.level}<div class="bar"><div style="width:${pl.max ? 100 : Math.round((pl.xp / pl.need) * 100)}%"></div></div>${app.profile ? pl.text : 'Sign in to keep your level.'}`;
     const save = $('#avsave');
@@ -266,8 +301,13 @@ export function initTabs(app) {
   $('#avtheme').addEventListener('click', (e) => { const b = e.target.closest('[data-theme]'); if (!b) return; app.setTheme(b.dataset.theme); renderThemes(); });
   $('#avslots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (b) { state.slot = b.dataset.slot; $('#avmsg').textContent = ''; renderAvatar(); } });
   $('#avgrid').addEventListener('click', (e) => { const b = e.target.closest('[data-pick]'); if (!b) return; const it = BY_ID.get(b.dataset.pick);
-    if (it.slot === 'sball') withSpecial(state.draft.a, state.sbSlot, it.id); else state.draft.a[it.slot] = it.id; $('#avmsg').textContent = ''; renderAvatar(); });
-  $('#avsb').addEventListener('click', (e) => { const b = e.target.closest('[data-sbslot]'); if (!b || b.disabled) return; state.sbSlot = b.dataset.sbslot; renderAvatar(); });
+    $('#avmsg').textContent = '';
+    if (it.slot === 'sball') withSpecial(state.draft.a, state.sbSlot, it.id);
+    else if (it.slot === 'gear') { if (!withGear(state.draft.a, state.gSlot, it.id)) { $('#avmsg').textContent = `Can't stack: ${NO_STACK_NOTE}`; return; } }
+    else state.draft.a[it.slot] = it.id;
+    renderAvatar(); });
+  $('#avsb').addEventListener('click', (e) => { const b = e.target.closest('[data-sbslot], [data-gslot]'); if (!b || b.disabled) return;
+    if (b.dataset.gslot) state.gSlot = b.dataset.gslot; else state.sbSlot = b.dataset.sbslot; renderAvatar(); });
   $('#avname').addEventListener('input', (e) => { state.draft.name = e.target.value; });
   $('#avsave').addEventListener('click', async () => {
     const d = state.draft, msg = $('#avmsg'), btn = $('#avsave');

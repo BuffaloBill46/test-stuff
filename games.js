@@ -17,7 +17,7 @@ import { topMult } from './spin.js';
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
 const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);
-const M = MACHINES.big, KEY = 'sh_slots_demo2', DEMO_START = 20, MAX_WINNERS = 30;
+const M = MACHINES.big, KEY = 'sh_slots_demo3', DEMO_START = 100, MAX_WINNERS = 30;
 const store = { get() { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } }, set(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {} } };
 
 // Game icons for the shared winners list (Slots now; the two Spin sizes when Spin is built).
