@@ -160,6 +160,26 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
+### Overnight 2026-10-02 (Claude, while Cody slept): what changed, in plain English
+- **Cheat-proof match referee is LIVE on the Droplet** (wss://147-182-219-161.sslip.io): every match runs on our server, pages
+  only send moves, so nobody can fake scores. Signed-in players play with their SAVED level and items (the database only
+  saves items they own); guests play plain. Auto match finishes are recorded by the server.
+- **Ranked is built on it:** sign in + 1 ticket, the server picks the room, 2 real players to start, rank points from the
+  Play-page rules, once per match; quitting mid-match still costs the −5. Tickets show in the top bar and the ranked lobby.
+- **Players only see the referee and ranked when the page uses it** (today only with `&ref=wss://147-182-219-161.sslip.io`
+  on unpublished code). Next step for that: make it the default + publish = Cody's call (with item 4 below).
+- **Payout worker installed on the Droplet**, waiting for item 3 (or the easier "make the worker its own login" option).
+- **Button audit (agent, reviewed):** 210/212 controls, 0 dead ends, all 8 purchases complete in server mode. Fixes landed;
+  REPORT in audits/2026-10-02-buttons/. While fixing: a real money bug (a network hiccup after a payment was SENT lost it)
+  is fixed in wallet.js.
+- **Played the LIVE site like a player** (real Chrome, real GPU, clicks/keys/touch, desktop + phone): 33/33 as a guest.
+  In server mode found and fixed: raw "sign in first" + "Demo" wording in the buy dialog. Test: tests/browser/live-player.mjs.
+- **Lottery: tickets are final, no refunds** (Cody), shown on every card.
+- **Live game server** now on Edge Function version 14 (price/tax + network, my tickets). Database: 017 (referee login) and
+  018 (ranked results) applied live.
+- **Not published:** everything above that changes the page (the public site still runs the previous build). Publishing is
+  one script (deploy-pages.sh) once Cody has looked.
+
 ### >>> CODY'S LIST: things only Cody can do (newest first; Claude adds, Cody ticks) <<<
 **Quick questions (just answer in chat):**
 - **Lottery, the one refund left:** tickets are final (done, shown on every card). A payment that only confirms AFTER the
