@@ -1,5 +1,5 @@
 // Phone controls (Cody, 2026-10-01): the floating joystick is the ONLY way to move; a tap anywhere else, the left side too,
-// throws there; pulling past the joystick's edge carries it along and it stays (remembered); ＋/− zoom (remembered).
+// throws there; the joystick is LOCKED in place (triple-tap and hold to move it; remembered); ＋/− zoom (remembered).
 // A real touch screen (Playwright touch events) on a practice match. Run: node controls-test.mjs
 import { createRequire } from 'module'; import { readFileSync, existsSync } from 'fs'; import { execSync } from 'child_process'; import path from 'path';
 const require = createRequire(import.meta.url);
@@ -51,13 +51,24 @@ await p.waitForTimeout(1500); const s1 = await me();
 check(Math.hypot(s1.x - s0.x, s1.z - s0.z) > 1, `the player moved (${s0.x.toFixed(1)},${s0.z.toFixed(1)} → ${s1.x.toFixed(1)},${s1.z.toFixed(1)})`);
 check(!(await threwSince(b1)), 'steering threw nothing');
 
-console.log('4. Pulled past its edge it follows the thumb, and stays where it was let go (remembered)');
+console.log('4. LOCKED: pulled past its edge it stays put (Cody 2026-10-02: "it slides around"); triple-tap and hold moves it')
 for (let i = 1; i <= 10; i++) { await touch('touchMove', [[j.x + 40 + i * 10, j.y - i * 12]]); await p.waitForTimeout(40); }
 await touch('touchEnd', []); await p.waitForTimeout(300);
-const moved = await joyBox();
-check(Math.hypot(moved.x - j.x, moved.y - j.y) > 60, `the joystick moved with the thumb (${Math.round(j.x)},${Math.round(j.y)} → ${Math.round(moved.x)},${Math.round(moved.y)})`);
+const stay = await joyBox();
+check(Math.hypot(stay.x - j.x, stay.y - j.y) < 3, `pulled past its edge, the joystick stayed put (${Math.round(j.x)},${Math.round(j.y)} → ${Math.round(stay.x)},${Math.round(stay.y)})`);
 const k = await p.evaluate(() => getComputedStyle(document.querySelector('#joy')).getPropertyValue('--jx').trim());
 check(k === '0px', 'the knob springs back to the centre on release');
+// two quick taps, then a third held: it lights up and follows the finger
+await tap(j.x, j.y); await p.waitForTimeout(90); await tap(j.x, j.y); await p.waitForTimeout(90);
+await touch('touchStart', [[j.x, j.y]]); await p.waitForTimeout(700);
+check(await p.evaluate(() => document.querySelector('#joy').classList.contains('moving')), 'triple-tap and hold picks it up (lit)');
+for (let i = 1; i <= 10; i++) { await touch('touchMove', [[j.x + i * 9, j.y - i * 14]]); await p.waitForTimeout(40); }
+await touch('touchEnd', []); await p.waitForTimeout(300);
+const moved = await joyBox();
+check(Math.hypot(moved.x - j.x, moved.y - j.y) > 100 && !(await p.evaluate(() => document.querySelector('#joy').classList.contains('moving'))), `it went where it was dragged and put down (${Math.round(j.x)},${Math.round(j.y)} → ${Math.round(moved.x)},${Math.round(moved.y)})`);
+// ordinary steering afterwards doesn't pick it up again
+await touch('touchStart', [[moved.x, moved.y]]); await p.waitForTimeout(700); await touch('touchMove', [[moved.x + 80, moved.y]]); await p.waitForTimeout(200); await touch('touchEnd', []); await p.waitForTimeout(200);
+const still = await joyBox(); check(Math.hypot(still.x - moved.x, still.y - moved.y) < 3, 'one long press is just steering: it stays locked');
 
 console.log('5. Zoom: ＋ comes closer, − goes further, remembered');
 const d0 = await camDist(); await p.evaluate(() => document.querySelector('#zoomIn').click()); await p.waitForTimeout(2500); const d1 = await camDist();

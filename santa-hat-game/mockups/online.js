@@ -18,12 +18,17 @@ const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
 const LOCAL = params.get('net') === 'local';
-// The referee server (server/referee.js on the Droplet): ?ref=wss://… runs every room there instead of in a player's page.
-// Opt-in until it also reports match finishes and checks loadouts (TODO "Cheat-proof referee server", phase 2).
-const REFEREE = /^wss:\/\/|^ws:\/\/localhost[:/]/.test(params.get('ref') || '') ? params.get('ref') : null;
+// The referee server (server/referee.js on the Droplet, wss://play.santahatgames.com) runs every room: matches can't be faked,
+// signed-in players play with their saved level and items, finishes and ranked points are recorded by the server. THE DEFAULT
+// since 2026-10-02 (Cody: "keep going down the list until we can launch"). ?ref=wss://… picks another (tests); ?ref=off and
+// ?net=local (this computer's test rooms) use the old page-run rooms.
+const REF_DEFAULT = 'wss://play.santahatgames.com', refParam = params.get('ref');
+const REFEREE = refParam === 'off' || LOCAL ? null : /^wss:\/\/|^ws:\/\/localhost[:/]/.test(refParam || '') ? refParam : REF_DEFAULT;
 // What a room's address keeps of this page's own address (so a reload or a shared link stays on the same network).
 // (button audit 2026-10-02: it used to drop ?server=, so a reload after a match fell back to the demo)
-const KEEP = (LOCAL ? '&net=local' : '') + (REFEREE ? '&ref=' + encodeURIComponent(REFEREE) : '') + (SERVER ? '&server=' + encodeURIComponent(SERVER) : '');
+// only a referee chosen in the address is passed on (the default needs nothing, so players' links stay short)
+const REF_KEEP = refParam ? '&ref=' + encodeURIComponent(refParam) : '';
+const KEEP = (LOCAL ? '&net=local' : '') + REF_KEEP + (SERVER ? '&server=' + encodeURIComponent(SERVER) : '');
 const REP_MIN_MS = 160, REP_MOVING_MS = 350, REP_IDLE_MS = 1000; // the referee stops extrapolating after 400 ms
 const EMOTES = ['Ho ho ho!', 'Nice throw!', 'Gimme the hat!', 'Oops!'];
 const TEAM_SHIRT = [0xcf3128, C.elf], TEAM_RING = [0xffbe5c, 0x7fe0a0], TEAM_NAME = ['Nice', 'Naughty'];
@@ -415,10 +420,12 @@ function syncViews(v) {
 
 // ---------- input
 const input = { keys: new Set() };
-// Floating joystick (Cody, 2026-10-01): on touch screens it sits on screen during a match and is the ONLY way to move; any
-// other tap, anywhere (the left side too), throws there. Pull past its edge and it follows your thumb; it stays where you
-// let go (remembered), which is how players move it. ox/oy: its centre on screen.
-const joy = { x: 0, y: 0, id: null, ox: 0, oy: 0 };
+// Joystick (Cody, 2026-10-01): on touch screens it sits on screen during a match and is the ONLY way to move; any other tap,
+// anywhere (the left side too), throws there. LOCKED in place (Cody, 2026-10-02: "it slides around when I play"): pulling past
+// its edge only pushes the knob to full speed. To move it: TRIPLE-TAP AND HOLD it (3 touches within JOY_TAPS_MS, the third held
+// JOY_HOLD_MS): it lights up and follows the finger; let go and it stays there (remembered). ox/oy: its centre on screen.
+const joy = { x: 0, y: 0, id: null, ox: 0, oy: 0, taps: [], moving: false, holdTimer: 0 };
+const JOY_TAPS_MS = 700, JOY_HOLD_MS = 350;
 const JOY_MAX = 42, JOY_GRAB = 72; // knob travel; how near its centre a touch must start to steer
 const touchUI = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
 function joyHome() { // remembered as a share of the screen, so it survives turning the phone
@@ -451,24 +458,32 @@ const groundAt = (cx, cy) => { ray.setFromCamera({ x: (cx / W) * 2 - 1, y: -(cy 
 canvas.addEventListener('pointerdown', (e) => {
   if (!inRoom()) return;
   if (e.pointerType === 'touch' && !$('#joy').hidden && joy.id === null && Math.hypot(e.clientX - joy.ox, e.clientY - joy.oy) <= JOY_GRAB) {
-    joy.id = e.pointerId; $('#joy').classList.add('on'); steer(e.clientX, e.clientY); return;
+    joy.id = e.pointerId; $('#joy').classList.add('on');
+    // triple-tap and hold: the third touch inside the time window, still held a moment later, picks the joystick up
+    const now = performance.now(); joy.taps = [...joy.taps.filter((t) => now - t < JOY_TAPS_MS), now];
+    clearTimeout(joy.holdTimer);
+    if (joy.taps.length >= 3) { joy.taps = []; const id = e.pointerId; joy.holdTimer = setTimeout(() => { if (joy.id === id) startMoving(); }, JOY_HOLD_MS); }
+    steer(e.clientX, e.clientY); return;
   }
   const p = groundAt(e.clientX, e.clientY); if (p) tryThrow(p.x, p.z);
 });
+function startMoving() { joy.moving = true; joy.x = joy.y = 0; const j = $('#joy'); j.classList.add('moving'); j.style.setProperty('--jx', '0px'); j.style.setProperty('--jy', '0px'); }
 function steer(cx, cy) {
-  let x = cx - joy.ox, y = cy - joy.oy; const l = Math.hypot(x, y);
-  if (l > JOY_MAX) { // pulled past the edge: the joystick follows the thumb
-    joy.ox = Math.min(W - 60, Math.max(60, cx - (x / l) * JOY_MAX)); joy.oy = Math.min(H - 60, Math.max(110, cy - (y / l) * JOY_MAX));
-    x = cx - joy.ox; y = cy - joy.oy; const l2 = Math.hypot(x, y); if (l2 > JOY_MAX) { x *= JOY_MAX / l2; y *= JOY_MAX / l2; }
+  if (joy.moving) { // picked up (triple-tap and hold): the whole joystick follows the finger
+    joy.ox = Math.min(W - 60, Math.max(60, cx)); joy.oy = Math.min(H - 60, Math.max(110, cy));
+    const j = $('#joy'); j.style.left = joy.ox + 'px'; j.style.top = joy.oy + 'px'; return;
   }
+  let x = cx - joy.ox, y = cy - joy.oy; const l = Math.hypot(x, y);
+  if (l > JOY_MAX) { x *= JOY_MAX / l; y *= JOY_MAX / l; } // locked: past the edge is just full speed
   joy.x = x / JOY_MAX; joy.y = y / JOY_MAX; const j = $('#joy');
   j.style.left = joy.ox + 'px'; j.style.top = joy.oy + 'px'; j.style.setProperty('--jx', x + 'px'); j.style.setProperty('--jy', y + 'px');
 }
 addEventListener('pointermove', (e) => { if (e.pointerId === joy.id) steer(e.clientX, e.clientY); });
 const endJoy = (e) => {
   if (e.pointerId !== joy.id) return;
-  joy.id = null; joy.x = joy.y = 0; const j = $('#joy'); j.classList.remove('on'); j.style.setProperty('--jx', '0px'); j.style.setProperty('--jy', '0px');
-  store.set('sh_joy', JSON.stringify({ fx: joy.ox / W, fy: joy.oy / H })); // it stays where it was let go
+  clearTimeout(joy.holdTimer);
+  joy.id = null; joy.x = joy.y = 0; const j = $('#joy'); j.classList.remove('on', 'moving'); j.style.setProperty('--jx', '0px'); j.style.setProperty('--jy', '0px');
+  if (joy.moving) { joy.moving = false; store.set('sh_joy', JSON.stringify({ fx: joy.ox / W, fy: joy.oy / H })); } // moved: it stays there
 };
 canvas.addEventListener('wheel', (e) => { if (inRoom()) setZoom(zoom * (e.deltaY > 0 ? 1.1 : 1 / 1.1)); }, { passive: true });
 $('#zoomIn').addEventListener('click', () => setZoom(zoom / 1.15));
@@ -505,7 +520,7 @@ function renderChrome() {
     card = `<div class="eyebrow">${v.rk ? 'Ranked' : 'Auto match'} · ${v.mode === 'team' ? 'TEAM' : 'FFA'}${me.w ? ' · watching' : ''}</div><h2>${v.wait ? 'Looking for another real player…' : v.cd ? `Starting in ${Math.ceil(v.cd)}` : 'Finding players…'}</h2>
       <ul class="roster">${roster}</ul><p class="dim">${v.rk ? 'Ranked needs 2 real players. Leave before it starts and your ticket comes back. ' : 'More players can still join. '}Bots fill any empty spots when it starts.</p>`;
   } else if (v.phase === 'lobby') {
-    const share = practice ? '' : `<p class="share">Friends join with code <b>${esc(roomCode)}</b> or this link:<br><span class="link">${esc(location.origin + location.pathname + '?room=' + roomCode + (REFEREE ? '&ref=' + encodeURIComponent(REFEREE) : ''))}</span></p>`;
+    const share = practice ? '' : `<p class="share">Friends join with code <b>${esc(roomCode)}</b> or this link:<br><span class="link">${esc(location.origin + location.pathname + '?room=' + roomCode + REF_KEEP)}</span></p>`;
     const roster = humans.map((e) => `<li>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}${v.mode === 'team' ? ` <u class="t${e.team}">${TEAM_NAME[e.team]}</u>` : ''}</li>`).join('');
     const bots = v.ents.length - humans.length;
     card = `<div class="eyebrow">Warm-up · run around, throw, grab the hat</div><h2>Snowball Square</h2>${share}

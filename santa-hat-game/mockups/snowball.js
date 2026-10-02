@@ -8,7 +8,7 @@ const ROUND = 90, BALL_G = 7, BALL_SPEED = 18, HAT_G = 16, HEAD_Y = 2.05;
 const intro = `<div class="eyebrow">Mockup A · Arena</div>
 <h2>Snowball Square</h2>
 <p>Grab the hat from the pedestal and keep it on your head. Every second you wear it earns Nice points. The Naughty elves pelt you to knock it loose. When it pops off, it flies up, and whoever gets a head under it catches it.</p>
-<ul><li>90-second rounds, so there's always time for one more</li><li>Catching a flying hat on your head is the big moment: +50</li><li>Snow piles refill your snowballs; standing still gets you hit</li></ul>
+<ul><li>60-second rounds, so there's always time for one more</li><li>Catching a flying hat on your head is the big moment: +50</li><li>Snow piles refill your snowballs; standing still gets you hit</li></ul>
 <div class="keys"><kbd>WASD</kbd> move · <kbd>Click</kbd> throw at cursor · <kbd>Space</kbd> auto-aim · Phone: drag left side, tap right side</div>
 <button class="go">Play round</button>`;
 

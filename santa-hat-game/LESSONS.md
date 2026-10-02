@@ -360,3 +360,10 @@ Cody's sign-in email arrived, so email sign-in was marked done; it wasn't: custo
 Supabase's built-in test sender (a few an hour, not for players). Then Claude explained it as 'team-only delivery' without
 checking; the team list showed Cody's address isn't on it. Twice the same mistake: check the setting itself, the provider's
 send log, and any premise used to explain a result, before stating it.
+
+## The same two slips, again (2026-10-02): write them down where they bite
+1. A "// was 90" note added mid-line in sim.js's settings swallowed BREAK_TIME, END_TIME, INTRO_TIME, COUNT_TIME, MAX_HUMANS
+   and MIN_BODIES (the 2026-10-01 lesson, repeated). node --check can't see it (still valid code); the rule tests caught it at
+   once. Rule: a comment goes on ITS OWN LINE above, never inside a line of settings; run the rule tests after any sim.js edit.
+2. `pkill -f <name>` inside `bash -lc "... <name> ..."` kills that very shell (its command line matches). Twice now. Rule: never
+   pkill by a pattern your own command contains; stop a background task with TaskStop, or match on a PID.

@@ -136,6 +136,7 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 #emotes button { font: 700 14px/1 var(--body); color: var(--ink); background: var(--brim); border: 2px solid var(--ink); border-radius: 3px; padding: 7px 9px; box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
 #joy { position: fixed; z-index: 4; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; border: 2px solid rgba(245,241,232,.5); background: rgba(12,15,26,.25); pointer-events: none; opacity: .7; }
 #joy.on { opacity: 1; border-color: rgba(245,241,232,.85); }
+#joy.moving { opacity: 1; border-color: #ffbe5c; box-shadow: 0 0 0 6px rgba(255,190,92,.28), 0 0 24px rgba(255,190,92,.45); } /* picked up: triple-tap and hold */
 /* Zoom (Cody 2026-10-01): right edge, halfway down, clear of the emotes and the top bar. */
 #zoom { position: fixed; z-index: 4; right: 12px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; }
 #zoom button { width: 44px; height: 44px; font: 800 24px/1 var(--body); color: var(--ink); background: var(--brim); border: 2px solid var(--ink); border-radius: 3px; box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
@@ -702,11 +703,11 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       <div class="cols3">
         <div><h4>Controls</h4>
           <p><b>Computer:</b> WASD or arrows to move, click to throw where you point, Space to auto-aim, 1–4 for emotes.</p>
-          <p><b>Phone:</b> drag on the left side to move, tap on the right side to throw.</p></div>
+          <p><b>Phone:</b> move with the joystick, tap anywhere else to throw there. To move the joystick, triple-tap it and hold, then drag it where you like.</p></div>
         <div><h4>Game types</h4>
           <p><b>Free-for-all:</b> everyone chases whoever wears the hat.</p>
           <p><b>Nice vs Naughty:</b> two teams; team points add up.</p>
-          <p>A match is 3 rounds of 90 seconds. Most points wins.</p></div>
+          <p>A match is 3 rounds of 60 seconds. Most points wins.</p></div>
         <div><h4>Scoring</h4>
           <table class="scores"><tbody>
             <tr><td>Wearing the hat</td><td>10 / sec</td></tr>
