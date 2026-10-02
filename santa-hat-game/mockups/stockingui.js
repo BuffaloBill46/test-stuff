@@ -20,7 +20,7 @@ const amt = (v) => (v < 1 ? `${+(v * 100).toFixed(1)}¢` : money(v + 1e-9)); // 
 const MAX_HISTORY = 16, TAX = 0.97;
 let board = null, bet = 0.1, addWinner = () => {}, pool = () => 0, onPool = () => {}, opening = false, fast = false;
 const history = [], test = { run: undefined }; // tests only: the next run's turns, one number each (gifts found, 0–8)
-const live = { current: null, shown: 0, turns: 0 }; // tests: the turn being shown (decided before its first stocking) and how far
+const live = { current: null, shown: 0, started: 0, turns: 0, log: [] }; // tests: the turn being shown (decided before its first stocking), how far, what each said
 
 function render() {
   $('#stockPool').textContent = money(pool());
@@ -74,7 +74,7 @@ async function startRun(n) {
 // One turn, already decided (r: the stockings Santa opens, in order, and what each holds): show it stocking by stocking.
 async function showTurn(r, p) {
   const res = $('#stocking .res'), card = $('#stocking .stockcard');
-  live.current = { found: r.found, opened: [...r.opened], mult: r.mult }; live.shown = 0;
+  live.current = { found: r.found, opened: [...r.opened], mult: r.mult }; live.shown = 0; live.started++;
   card.classList.remove('won', 'jackpot'); board.reset(); ladder(0);
   res.textContent = `Santa's opening stockings… result locked (${short(p.proof.commit)}).`;
   let found = 0;
@@ -107,6 +107,7 @@ function landed(r, p) {
   else if (k === 1) res.innerHTML = `<span class="dim">1 gift, then coal: ${mult(r.mult)} back (${money(r.pay)}). Less than the ${cents(r.bet)} turn.</span>`;
   else res.textContent = 'Coal first. No win this time.';
   if (r.ahead) addWinner(r.bet >= 1 ? 'stock100' : 'stock10', r.pay, r.bet, `${k} gifts · ${mult(r.mult)}`);
+  live.log.push({ found: k, text: res.textContent, celebrated: card.classList.contains('won') || card.classList.contains('jackpot'), stamp: card.classList.contains('won') || card.classList.contains('jackpot') ? $('#stocking .flash').textContent : '' });
   render();
 }
 

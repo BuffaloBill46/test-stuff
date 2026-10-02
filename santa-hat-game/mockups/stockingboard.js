@@ -26,8 +26,10 @@ export function createStockings(cv) {
   function fit() {
     const dpr = Math.min(3, devicePixelRatio || 1), w = cv.clientWidth || 300;
     cv.width = Math.round(w * dpr); cv.height = Math.round(w * ASPECT * dpr); bg = null;
+    // resizing clears a canvas: paint one still frame now, so the mantel never sits blank while the draw loop is idle
+    if (!raf) draw(performance.now(), 0);
   }
-  new ResizeObserver(fit).observe(cv); fit();
+  new ResizeObserver(() => fit()).observe(cv);
 
   // ---- the still parts, painted once per size into an offscreen canvas ----
   function paintStill() {
@@ -167,7 +169,8 @@ export function createStockings(cv) {
   function open(s, gift) {
     return new Promise((done) => { st[s].jig = clock; st[s].pop = -1; st[s].gift = gift; pending.push({ s, gift, done }); wake(); });
   }
-  function reset() { for (const S of st) { S.jig = -1; S.pop = -1; S.gift = null; } fx = []; wake(); }
+  function reset() { for (const S of st) { S.jig = -1; S.pop = -1; S.gift = null; } fx = []; wake(); if (!raf) draw(performance.now(), 0); }
+  fit();
   return { open, reset, setActive: (on) => { visible = on; wake(); }, hurry: () => { speed = 6; }, normal: () => { speed = 1; },
     get opened() { return st.map((S) => (S.pop >= 0 ? (S.gift ? 'gift' : 'coal') : null)); } };
 }
