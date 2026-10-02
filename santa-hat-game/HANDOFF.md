@@ -202,8 +202,8 @@ between two devices has never been tested from here. Cody and friends testing on
 - **Pools stay plain wallets for launch (Cody, 2026-10-02).** On-chain pool programs were weighed: mainnet deploy deposit ~1 SOL
   per 200 KB (refundable; tools reserve ~2× → 2–4 SOL), plus an audit ($5k–30k+) before real money. Not built.
 - At launch also open SANTA accounts for the lottery wallet and treasury (~0.0016 SOL each) so players never pay that rent.
-- **Stocking Stuffer** (Cody's brief, new Games-tab game): being built by an agent in a worktree; Claude reviews, tests and lands
-  it. Exact payback from the table: 60.519% (brief said 60.6%). Pool-coverage at $1 (250× = $250) needs Cody's call before money.
+- **Stocking Stuffer: LIVE (2026-10-02)** (Cody's brief; built by an agent, reviewed and verified by Claude, landed 445d0a9;
+  025 applied; game server v21; published). Plays from the Drop pool. Exact payback from the table: 60.519% (brief said 60.6%). Pool-coverage at $1 (250× = $250) needs Cody's call before money.
 - Known test-browser limit: controls-test's 768×1024 step crashes the slow WSL browser (before this session's changes too).
 
 ### Overnight 2026-10-02 (Claude, while Cody slept): what changed, in plain English
