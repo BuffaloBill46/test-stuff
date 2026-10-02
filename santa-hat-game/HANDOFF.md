@@ -189,6 +189,18 @@ branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from
   moves/throws in either; every player's level, games, top-3 %, rank points, special snowballs; gear says "coming soon". Numbers
   need `supabase/013_match_stats.sql` + the deployed server (dashes until then). Tests: `tests/match-intro.test.mjs`,
   `tests/browser/match-intro-test.mjs`. Browser tests that start matches skip the 10 s (they set the timer to 0).
+- **Games tab changes BUILT, NOT published** (Cody, 2026-10-01): any run of 1–100 from a ▼ number ▲ box under each game's
+  buttons (`mockups/runpick.js`; rules/server say 1–100; **`supabase/014_run_sizes.sql` must be applied before the deployed
+  server sells a run over 10**); a "This run 7 / 25 · won $3.40" counter between each game and its buttons; bigger Big Hat
+  reels; "Top Line JackPot" + one "Jackpot odds (Top Line or Pool) about 1 in 7,665" row; Drop shows only "1 in 14.2 to hit a
+  5× or 10×"; **price locked per run** (every play of a run converts at its quote's price; note at the top of the Games
+  page); settles wait out the server's speed limit (`mockups/slowdown.js`). Tests: `tests/browser/runpick-test.mjs`,
+  `tests/slowdown.test.mjs`, the locked-price block in `tests/db/server.test.mjs`.
+- **Player Progress:** "or win 5 matches top 3 or better 2 / 5" under Buy level (`tests/browser/progress-or-test.mjs`). Not published.
+- **Guests reach the server's public actions** (lottery cards, draw re-checks, load-screen stats were silently skipped for
+  guests): `PUBLIC_ACTIONS` in gameserver.js, `tests/public-actions.test.mjs` keeps it equal to server/http.js.
+- **controls-test.mjs takes ~16 minutes** in the WSL test browser (the zoom section waits for the camera); give it no time
+  limit (a 590/900 s limit killed it and looked like a crash).
 - **Decided, NOT built:** special gear (items, effects, Special Gear tab, shows on the character, 7-day timer), plaza themes
   picked on the Avatar screen (Halloween first).
 - **Old browser tests fixed:** mp.mjs, idle.mjs. `live.mjs` is still stale (see the test list).
@@ -202,11 +214,11 @@ branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from
   server's network; waits for finalized; a paid-but-unconfirmed run is retried on the next visit). Proven on real devnet in a
   browser: pay → 5 plays → ONE payout sent, books = wallets (`tests/browser/devnet-pay-test.mjs`).
 - **Not done yet:** Edge Function deploy + its settings (waits on `npx supabase login` by Cody), a real-Phantom check in Cody's
-  Chrome, the scheduled payout worker, skims on chain, reconcile on a schedule, applying 012/013 live (then publish the specials + load screen pages).
+  Chrome, the scheduled payout worker, skims on chain, reconcile on a schedule, applying 012/013/014 live (then publish the specials, load screen and Games tab pages).
 - **Waiting on Cody:** `npx supabase login` typed in a real terminal (the CLI refuses non-interactive logins; Claude won't handle
   account tokens). Decided: devnet wallets are Claude's to make and fund (labelled in `devnet.json`; the funder was topped up from
   Cody's general devnet key); lottery payouts manual; real wallets at launch.
-- **Next, in order:** apply 012 + 013 live (hash-checked), advisors, browser suite, publish; deploy the Edge Function + settings once
+- **Next, in order:** apply 012 + 013 + 014 live (hash-checked), advisors, browser suite, publish; deploy the Edge Function + settings once
   Cody has logged in, then a full devnet test through it → special gear → themes.
 
 **Built and live (all demo, no real money):**
