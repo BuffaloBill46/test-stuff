@@ -58,8 +58,9 @@ assert.deepEqual(gearIn({ g1: item('bag'), g2: item('shoes') }, 8), ['bag', 'sho
     assert.ok(!other.includes(pick), 'never the gear in the other slot'); seen[lv].add(pick);
     assert.deepEqual(resolvePresent(['present', ...other], lv, seeded(s)), got, 'same seed, same gear');
   }
-  assert.ok(!seen[1].has('santa'), 'never Santa Costume below level 3'); assert.equal(seen[1].size, 8, 'level 1: all 8 others come up');
-  assert.ok(seen[3].has('santa') && seen[3].size === 9, 'level 3+: Santa Costume can come up'); assert.ok(!seen[8].has('bag'), 'level 8 with a Santa Bag: never a 2nd bag'); }
+  assert.ok(!seen[1].has('santa'), 'never Santa Costume below level 3'); assert.equal(seen[1].size, 7, 'level 1: all 7 others come up');
+  assert.ok(!Object.values(seen).some((s) => s.has('heated')), 'never the retired Heated Coat (Cody 2026-10-02)');
+  assert.ok(seen[3].has('santa') && seen[3].size === 8, 'level 3+: Santa Costume can come up (8: all but the retired Heated Coat)'); assert.ok(!seen[8].has('bag'), 'level 8 with a Santa Bag: never a 2nd bag'); }
 
 // ---------- 4. On the referee
 // Players a, b, c (bots parked far away); `gear` and `lv` say what each wears and their level.
@@ -142,7 +143,7 @@ for (const [gear, top] of [[[], K.HUMAN_SPEED * 1.05], [['shoes'], K.HUMAN_SPEED
   for (let s = 1; s <= 300; s++) { const a = match({ gear: { b: ['present'] }, seed: s }), b = match({ gear: { b: ['present'] }, seed: s });
     const g = a.P('b').gear; assert.equal(g.length, 1); assert.notEqual(g[0], 'present'); assert.notEqual(g[0], 'santa', 'level 1: never Santa');
     assert.deepEqual(b.P('b').gear, g, 'same seed, same gear'); picks.add(g[0]); }
-  assert.equal(picks.size, 8, 'every gear level 1 allows comes up'); }
+  assert.equal(picks.size, 7, 'every gear level 1 allows comes up'); assert.ok(!picks.has('heated'), 'never the retired Heated Coat'); }
 { const m = match({ gear: { b: ['present'] } }); const first = m.P('b').gear[0]; let changed = false;
   for (let i = 0; i < 20 && !changed; i++) { m.sim.startMatch('ffa'); changed = m.P('b').gear[0] !== first; } assert.ok(changed, 'each match rolls again'); }
 { const sim = createSim(seeded(3), { levelOf: () => 10, gearOf: () => ['santa', 'bag'] }); sim.syncRoster(['a']); sim.startMatch('ffa'); const bots = sim.S.ents.filter((e) => e.bot);

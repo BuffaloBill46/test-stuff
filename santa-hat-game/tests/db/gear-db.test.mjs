@@ -8,13 +8,15 @@ import { readFileSync } from 'node:fs';
 import { makeDb } from './setup.mjs';
 import { ITEMS } from '../../mockups/catalog.js';
 
-const db = await makeDb(['001_profiles.sql', '002_items_seed.sql', '003_email_profiles.sql', '004_linked_logins.sql', '008_hats_backpacks.sql', '010_levels.sql', '012_special_snowballs.sql']);
+const db = await makeDb(['001_profiles.sql', '002_items_seed.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '006_ranked_tickets.sql', '008_hats_backpacks.sql', '010_levels.sql', '012_special_snowballs.sql']);
 const mk = async (name, wallet) => { const id = (await db.query('insert into auth.users default values returning id'))[0].id;
   await db.query(`insert into public.profiles (id, wallet, name, avatar) values ($1, $2, $3, $4)`, [id, wallet.padEnd(44, '1'), name, JSON.stringify({ pack: 'pack_sack' })]);
   await db.query(`insert into public.logins (user_id, profile_id, kind) values ($1, $1, 'wallet')`, [id]); return id; };
 const uid = await mk('Jo', 'JQwa11etA'), other = await mk('Al', 'AQwa11etB');
 for (const it of ['pack_sack', 'pack_gift']) await db.query('insert into public.inventory (profile_id, item_id) values ($1, $2)', [uid, it]); // bought before 015
 await db.pg.exec(readFileSync(new URL('../../supabase/015_special_gear.sql', import.meta.url), 'utf8'));
+// then the shop (016) and Cody's price sheet (023: new prices, the Heated Coat removed), as live
+for (const f of ['016_shop.sql', '023_item_prices.sql']) await db.pg.exec(readFileSync(new URL('../../supabase/' + f, import.meta.url), 'utf8'));
 
 // 1. The item rows are catalog.js's, exactly.
 const rows = await db.query(`select id, name, unlock_level, price_usd::float8 as price from public.items where slot = 'gear' order by id`);

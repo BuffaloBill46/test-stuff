@@ -67,14 +67,14 @@ export const ITEMS = [
   { id: 'hat_earmuffs', slot: 'hat', name: 'Earmuffs', hat: 'earmuffs', color: 0xd76aa0, price: 0.25 },
   { id: 'hat_antlers', slot: 'hat', name: 'Reindeer Antlers', hat: 'antlers', color: 0x8a5a33, price: 0.50 },
   { id: 'hat_tophat', slot: 'hat', name: 'Snowman Top Hat', hat: 'tophat', color: 0x2a2a35, price: 0.25 },
-  // Special snowballs (2026-10-01).
+  // Special snowballs (2026-10-01). Prices and order (= their spot on the Store and Avatar pages): Cody's sheet, 2026-10-02.
   { id: 'sb_none', slot: 'sball', name: 'Empty slot', level: 1 },
-  { id: 'sb_ice', slot: 'sball', name: 'Ice Ball', special: 'ice', color: 0xbfeaff, price: 0.50 },
-  { id: 'sb_split', slot: 'sball', name: 'Split Ball', special: 'split', color: 0xcf3128, price: 0.75 },
-  { id: 'sb_giant', slot: 'sball', name: 'Giant Ball', special: 'giant', color: 0xf5f1e8, price: 0.75 },
-  { id: 'sb_fire', slot: 'sball', name: 'Fire Ball', special: 'fire', color: 0xff7a3a, price: 0.50 },
-  { id: 'sb_sky', slot: 'sball', name: 'Sky Ball', special: 'sky', color: 0x9fd8ff, price: 1.00 },
-  { id: 'sb_rain', slot: 'sball', name: 'Snowball Rain', special: 'rain', color: 0xdbe8ff, price: 2.00 },
+  { id: 'sb_ice', slot: 'sball', name: 'Ice Ball', special: 'ice', color: 0xbfeaff, price: 1.00 },
+  { id: 'sb_fire', slot: 'sball', name: 'Fire Ball', special: 'fire', color: 0xff7a3a, price: 1.00 },
+  { id: 'sb_giant', slot: 'sball', name: 'Giant Ball', special: 'giant', color: 0xf5f1e8, price: 2.00 },
+  { id: 'sb_split', slot: 'sball', name: 'Split Ball', special: 'split', color: 0xcf3128, price: 2.00 },
+  { id: 'sb_sky', slot: 'sball', name: 'Sky Ball', special: 'sky', color: 0x9fd8ff, price: 5.00 },
+  { id: 'sb_rain', slot: 'sball', name: 'Snowball Rain', special: 'rain', color: 0xdbe8ff, price: 10.00 },
 
   // Backpacks (2026-10-01).
   { id: 'pack_none', slot: 'pack', name: 'No backpack', pack: 'none', level: 1 },
@@ -87,17 +87,19 @@ export const ITEMS = [
   // above, which stay: they were bought as forever looks and the character still draws them (pack slot). 015 gives every
   // backpack owner the matching gear too. Gear is drawn on the character (kit.js GEAR_LOOKS; matches draw the referee's e.gear).
   // Santa Costume's level 3 is a WEAR rule (gear.js minLevel), not an unlock level, so it still has a price.
+  // Prices and order (= their spot on the Store and Avatar pages): Cody's sheet, 2026-10-02. The Heated Coat is REMOVED from
+  // the game (same sheet; nobody owned one): not sold, not wearable. Its gear kind stays in gear.js GEAR_KINDS on purpose
+  // (that list's order is the matches' gear code; taking it out would shift every other gear).
   { id: 'gear_none', slot: 'gear', name: 'Empty slot', level: 1 },
-  { id: 'gear_pumpkin', slot: 'gear', name: 'Pumpkin Costume', gear: 'pumpkin', color: 0xe8812c, price: 0.50 },
   { id: 'gear_kevlar', slot: 'gear', name: 'I.C.E. Kevlar Vest', gear: 'kevlar', color: 0x9fd8ff, price: 0.50 },
-  { id: 'gear_heated', slot: 'gear', name: 'Heated Coat', gear: 'heated', color: 0xcf3128, price: 0.50 },
-  { id: 'gear_santa', slot: 'gear', name: 'Santa Costume', gear: 'santa', color: 0xcf3128, price: 1.00 },
-  { id: 'gear_gift', slot: 'gear', name: 'Gift Box', gear: 'present', color: 0x7a4fa3, price: 0.50 },
-  { id: 'gear_sack', slot: 'gear', name: 'Toy Sack', gear: 'bag', color: 0xcf3128, price: 0.75 },
-  { id: 'gear_satchel', slot: 'gear', name: 'Elf Satchel', gear: 'satchel', color: 0x3f9a66, price: 0.50 },
-  { id: 'gear_shoes', slot: 'gear', name: 'Elf Shoes', gear: 'shoes', color: 0x3f9a66, price: 0.75 },
-  { id: 'gear_elfhat', slot: 'gear', name: 'Elf Hat', gear: 'elfhat', color: 0x3f9a66, price: 0.50 },
+  { id: 'gear_pumpkin', slot: 'gear', name: 'Pumpkin Costume', gear: 'pumpkin', color: 0xe8812c, price: 1.00 },
+  { id: 'gear_santa', slot: 'gear', name: 'Santa Costume', gear: 'santa', color: 0xcf3128, price: 2.00 },
+  { id: 'gear_sack', slot: 'gear', name: 'Toy Sack', gear: 'bag', color: 0xcf3128, price: 2.00 },
   { id: 'gear_backpack', slot: 'gear', name: 'Backpack', gear: 'backpack', color: 0x5a3b24, price: 0.50 },
+  { id: 'gear_satchel', slot: 'gear', name: 'Elf Satchel', gear: 'satchel', color: 0x3f9a66, price: 1.00 },
+  { id: 'gear_shoes', slot: 'gear', name: 'Elf Shoes', gear: 'shoes', color: 0x3f9a66, price: 2.00 },
+  { id: 'gear_elfhat', slot: 'gear', name: 'Elf Hat', gear: 'elfhat', color: 0x3f9a66, price: 0.50 },
+  { id: 'gear_gift', slot: 'gear', name: 'Gift Box', gear: 'present', color: 0x7a4fa3, price: 1.00 },
 ];
 
 export const BY_ID = new Map(ITEMS.map((i) => [i.id, i]));

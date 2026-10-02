@@ -35,7 +35,10 @@ const statTaken = (kinds, kind) => !!statOf(kind) && (kinds || []).some((k) => k
 export const WEAR_DAYS = 7; // the clock starts at the first match wearing it (015_special_gear.sql keeps it)
 
 // Can a player of this level wear this gear? (Santa Costume: level 3+.)
-export const gearAllowed = (kind, level) => !!GEAR[kind] && (level || 1) >= (GEAR[kind].minLevel || 1);
+// Retired gear (Cody 2026-10-02: Heated Coat removed from the game): kept in GEAR/GEAR_KINDS so the gear code doesn't shift,
+// but never worn and never what a Present Box becomes.
+export const RETIRED = new Set(['heated']);
+export const gearAllowed = (kind, level) => !!GEAR[kind] && !RETIRED.has(kind) && (level || 1) >= (GEAR[kind].minLevel || 1);
 
 // Present Box: each one in the list becomes one random gear the level allows, never a Present Box itself and never one already
 // worn (two slots hold two DIFFERENT gear, so a Present Box can't double a gear up either). `rand` is the referee's, so a

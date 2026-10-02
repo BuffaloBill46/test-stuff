@@ -10,7 +10,7 @@ import { splitPayment, MINT } from '../../mockups/market.js';
 import { SHOP_BURN_BPS, TICKET_PACKS } from '../../mockups/shoprules.js';
 
 const db = await makeDb(['001_profiles.sql', '002_items_seed.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '006_ranked_tickets.sql', '008_hats_backpacks.sql', '009_lock_my_plays.sql', '010_levels.sql', '011_lottery.sql', '012_special_snowballs.sql']);
-for (const f of ['015_special_gear.sql', '016_shop.sql', '022_ticket_cap.sql']) await db.pg.exec(readFileSync(new URL(`../../supabase/${f}`, import.meta.url), 'utf8'));
+for (const f of ['015_special_gear.sql', '016_shop.sql', '022_ticket_cap.sql', '023_item_prices.sql']) await db.pg.exec(readFileSync(new URL(`../../supabase/${f}`, import.meta.url), 'utf8'));
 const PRICE = 0.00085, FEE = { bps: 300, max: 1e15 }, TREASURY = 'TReASURYwa11et'.padEnd(44, '1').replace(/[0OIl]/g, '9');
 let wn = 0; const W = () => { const c = 'ABCDEFGHJK'[wn++]; return (c + 'Swa11et').padEnd(43, '1') + c; };
 const mk = async (name, level = 1) => { const id = (await db.query('insert into auth.users default values returning id'))[0].id, w = W();
@@ -30,8 +30,8 @@ const buy = async (p, what, opts) => { const q = await shop.quote(p.id, what); a
 
 // 1. Items: a special snowball, a gear, a look. The quote is the catalog price at the live price, paid 50% burned / 50% treasury.
 { const { q, r } = await buy(A, { kind: 'item', id: 'sb_ice' });
-  assert.deepEqual([q.usd, q.burnBps, q.pool, q.payer], [0.5, 5000, TREASURY, A.w], 'Ice Ball: $0.50, half burned, to the treasury, from my wallet');
-  assert.equal(q.santaRaw, Math.round(0.5 / PRICE * 1e6)); assert.ok(r.ok && r.item === 'sb_ice', JSON.stringify(r)); assert.ok(await owns(A, 'sb_ice'), 'owned');
+  assert.deepEqual([q.usd, q.burnBps, q.pool, q.payer], [1, 5000, TREASURY, A.w], 'Ice Ball: $1.00 (Cody sheet 2026-10-02), half burned, to the treasury, from my wallet');
+  assert.equal(q.santaRaw, Math.round(1 / PRICE * 1e6)); assert.ok(r.ok && r.item === 'sb_ice', JSON.stringify(r)); assert.ok(await owns(A, 'sb_ice'), 'owned');
   assert.ok((await buy(A, { kind: 'item', id: 'gear_pumpkin' })).r.ok && await owns(A, 'gear_pumpkin'), 'a gear');
   const look = (await db.query(`select id from public.items where price_usd is not null and slot = 'shirt' limit 1`))[0];
   if (look) assert.ok((await buy(A, { kind: 'item', id: look.id })).r.ok && await owns(A, look.id), 'a look (bought on the Avatar screen)'); }

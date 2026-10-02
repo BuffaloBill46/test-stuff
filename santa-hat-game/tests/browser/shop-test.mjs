@@ -75,7 +75,7 @@ console.log('1. Store: Buy a special snowball and a gear (server mode, real shop
   await p.click(itemNote('gear_shoes'));
   check(await waitItem(p, 'gear_shoes', /Bought/) && await owns('gear_shoes'), 'Elf Shoes bought and owned');
   const q = (await db.query(`select usd, used_by from public.shop_quotes where item_id = 'gear_shoes'`))[0];
-  check(+q.usd === 0.75 && !!q.used_by, `charged the catalog price ($${q.usd}) once`);
+  check(+q.usd === 2 && !!q.used_by, `charged the catalog price ($${q.usd}) once`);
 
   console.log('2. A cancelled payment charges nothing');
   await p.evaluate(() => { window.__cancelNext = true; });
