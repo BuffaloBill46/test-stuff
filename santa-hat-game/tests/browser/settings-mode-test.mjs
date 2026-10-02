@@ -51,7 +51,10 @@ V1.big.counts = { ...V1.big.counts, hat: 9, coal: 24 }; V1.store.items = [{ id: 
   const sig = [...new Uint8Array(await crypto.subtle.sign('Ed25519', akey.privateKey, new TextEncoder().encode(message)))].map((x) => x.toString(16).padStart(2, '0')).join('');
   const r = await adminSrv.run({ wallet: aaddr, message, signature: sig }); check(r.ok, 'publish v1: ' + r.error); }
 const M1 = build(V1).machine;
-const handle = makeHandler({ limiter: makeLimiter({ store: memoryStore() }), server, profileFor: async (t) => (t === 'test-token' ? me : null) }); // the real speed limit and numbers: a player clicking through must never be slowed
+// The real server always has a lottery (supabase/functions/games/index.ts); without one the page's public "lottery" request got
+// 400 "unknown action". This payment test needs no real draws (lottery-test.mjs covers them), so: none open.
+const noDraws = { draws: async () => ({ open: [], recent: [] }), tickets: async () => ({ error: 'no such draw' }) };
+const handle = makeHandler({ lottery: noDraws, limiter: makeLimiter({ store: memoryStore() }), server, profileFor: async (t) => (t === 'test-token' ? me : null) }); // the real speed limit and numbers: a player clicking through must never be slowed
 // One local address serves the page AND the game server (like the real site + Edge Function, both https in real life).
 const web = http.createServer(async (req, res) => {
   if (req.method === 'GET') { const pth = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]).replace(/^\//, '') || 'online.html');
@@ -88,7 +91,11 @@ check(!/wa11et/.test(winText), 'no wallet addresses on the page');
 // The page draws the published settings: prices, the wheel's odds, the Big Hat's jackpot odds, the new store item.
 check(/\$2/.test(await p.textContent('#spin .chip100')) && /win up to \$10/.test(await p.textContent('#spin .chip100')), 'the big spin shows $2 (win up to $10): ' + await p.textContent('#spin .chip100'));
 check(/0×nowin·18of40onthewheel45\.0%/.test((await p.textContent('#oddsList')).replace(/\s+/g, '')), 'the odds legend shows the new wheel: ' + (await p.textContent('#oddsList')).slice(0, 80));
-check(/1 in 10,000/.test(await p.textContent('#slots .facts')), 'the Big Hat facts show 1 in 10,000: ' + await p.textContent('#slots .facts'));
+// Cody's one jackpot-odds row: the chance a pull hits the Top Line JackPot OR the Pool jackpot, from the PUBLISHED machine
+// (v1 has more Santa Hats on the reels and a 1 in 10,000 Pool jackpot), worked out here from the published numbers.
+{ const { stats } = await import('../../mockups/slots.js'), M = build(V1).machine, st = stats(M);
+  const want = Math.round(1 / (1 - (1 - st.topPerLine * st.lines) * (1 - M.poolJackpotOdds))).toLocaleString('en-US');
+  check((await p.textContent('#slots .facts')).includes(`Jackpot odds (Top Line or Pool)about 1 in ${want}`) && want !== '7,665', `the Big Hat facts show the published odds (about 1 in ${want}, not the default 7,665): ` + await p.textContent('#slots .facts')); }
 check(await p.evaluate(() => window.__spin.SLICES && window.__spin.view.shownMult !== undefined), 'wheel ready');
 await p.evaluate(() => document.querySelector('#t-store').click()); await p.waitForTimeout(1500);
 check(/Mint/.test(await p.textContent('#carousels')) && /\$0\.30/.test(await p.textContent('#carousels')), 'the new Mint shirt is in the store at $0.30');

@@ -41,7 +41,10 @@ function payFor(q) {
 // The busiest 10-second window the real page produced (per player and per connection), to prove the limit is really counting.
 const busiest = { player: 0, ip: 0 }, mem = memoryStore();
 const watched = { hit: async (key, w, t) => { const n = await mem.hit(key, w, t), k = key.split(':')[0]; busiest[k] = Math.max(busiest[k], n); return n; } };
-const handle = makeHandler({ limiter: makeLimiter({ store: watched }), server, profileFor: async (t) => (t === 'test-token' ? me : null) }); // the real speed limit and numbers: a player clicking through must never be slowed
+// The real server always has a lottery (supabase/functions/games/index.ts); without one the page's public "lottery" request got
+// 400 "unknown action". This payment test needs no real draws (lottery-test.mjs covers them), so: none open.
+const noDraws = { draws: async () => ({ open: [], recent: [] }), tickets: async () => ({ error: 'no such draw' }) };
+const handle = makeHandler({ lottery: noDraws, limiter: makeLimiter({ store: watched }), server, profileFor: async (t) => (t === 'test-token' ? me : null) }); // the real speed limit and numbers: a player clicking through must never be slowed
 // One local address serves the page AND the game server (like the real site + Edge Function, both https in real life).
 const web = http.createServer(async (req, res) => {
   if (req.method === 'GET') { const pth = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]).replace(/^\//, '') || 'online.html');

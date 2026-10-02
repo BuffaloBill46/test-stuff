@@ -36,7 +36,10 @@ const chain = { async getTransaction(sig) { // what the Edge Function does (supa
   return (await r.json()).result ?? null; } };
 const PRICE = cfg.priceUsdAtSetup, feeOf = () => liveFee(mint, [cfg.rpc]);
 const server = createGameServer({ db, chain, livePrice: async () => ({ usd: PRICE }), liveFee: feeOf, poolWallets: { spin: pool.address, slots: pool.address }, mint, cluster: 'devnet' });
-const handle = makeHandler({ limiter: makeLimiter({ store: memoryStore() }), server, profileFor: async (t) => (t === 'test-token' ? me : null) });
+// The real server always has a lottery (supabase/functions/games/index.ts); without one the page's public "lottery" request got
+// 400 "unknown action". This payment test needs no real draws (lottery-test.mjs covers them), so: none open.
+const noDraws = { draws: async () => ({ open: [], recent: [] }), tickets: async () => ({ error: 'no such draw' }) };
+const handle = makeHandler({ lottery: noDraws, limiter: makeLimiter({ store: memoryStore() }), server, profileFor: async (t) => (t === 'test-token' ? me : null) });
 const web = http.createServer(async (req, res) => {
   if (req.method === 'GET') { const pth = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]).replace(/^\//, '') || 'online.html');
     if (!pth.startsWith(ROOT) || !existsSync(pth)) { res.writeHead(404); return res.end(); }
