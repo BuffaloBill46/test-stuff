@@ -221,7 +221,14 @@ function remoteAccounts() {
     async signInEmail(email) {
       const { error } = await c.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true } });
       if (error) throw new Error(error.message);
-      return null; // finishes when they tap the link in their email and land back here
+      return null; // finishes when they tap the link in their email and land back here (or type its code: verifyEmailCode)
+    },
+    // The 8-digit code from the same email (Cody, 2026-10-02): a phone's mail app opens links in its own browser, which signs the
+    // player in THERE, not where they play; typing the code signs them in right here instead.
+    async verifyEmailCode(email, code) {
+      const { error } = await c.auth.verifyOtp({ email, token: code, type: 'email' });
+      if (error) throw new Error(/expired|invalid/i.test(error.message) ? 'That code is wrong or has expired. Ask for a new email.' : error.message);
+      return true;
     },
     profile: () => rpc('ensure_profile'),
     save: (name, avatar) => rpc('save_profile', { p_name: name, p_avatar: avatar }),
@@ -254,6 +261,7 @@ function localAccounts(rules) {
     async session() { return me ? { user: { id: me } } : null; },
     async signIn() { setMe('wallet:' + (window.__testWallet || 'LocaLWa11et' + Math.random().toString(36).slice(2, 10).replace(/[0lIO]/g, 'x') + 'zzzzzzzzzzzzzz')); return true; },
     async signInEmail(email) { setMe('email:' + email.toLowerCase()); return true; },
+    async verifyEmailCode(email) { setMe('email:' + email.toLowerCase()); return true; }, // this computer's stand-in: any code works
     async profile() {
       if (!me) throw new Error('Sign in first');
       const db = get(); const l = db.logins[me];
