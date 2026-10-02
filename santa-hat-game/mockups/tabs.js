@@ -227,10 +227,25 @@ export function initTabs(app) {
     try {
       const now = await app.accounts.signInEmail(email);
       if (now) { await afterAuth(); if (!$('#acctMsg').textContent.startsWith('Linked') && !$('#acctMsg').textContent.startsWith("Couldn't")) $('#acct').hidden = true; }
-      else acctMsg(`Sent. Open the link in the email to ${email} on this device to finish signing in.`);
+      else { acctMsg(`Sent to ${email}. Tap the button in the email, or type the code from it here.`); $('#codeRow').hidden = false; $('#emailCode').value = ''; $('#emailCode').focus(); }
     } catch (e) { acctMsg(`Couldn't send the email: ${e.message}`); }
     finally { btn.disabled = false; }
   });
+
+  // The 8-digit code from the sign-in email (Supabase Auth: MAILER_OTP_LENGTH 8, valid 1 hour; works from any device: the email can be read on a phone, the game played on a PC)
+  async function signInWithCode() {
+    const email = $('#email').value.trim(), code = $('#emailCode').value.replace(/\D/g, ''), btn = $('#codeBtn');
+    if (!/^\d{6,10}$/.test(code)) { acctMsg('Type the code from the email (8 digits).'); return; }
+    btn.disabled = true; acctMsg('Signing in…');
+    try {
+      await app.accounts.verifyEmailCode(email, code);
+      $('#codeRow').hidden = true; await afterAuth();
+      if (!$('#acctMsg').textContent.startsWith('Linked') && !$('#acctMsg').textContent.startsWith("Couldn't")) $('#acct').hidden = true;
+    } catch (e) { acctMsg(e.message); }
+    finally { btn.disabled = false; }
+  }
+  $('#codeBtn').addEventListener('click', signInWithCode);
+  $('#emailCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); signInWithCode(); } });
 
   // Arriving from a "link a wallet/email" link: remember the code until the player signs in here.
   const incoming = new URLSearchParams(location.search).get('link');
