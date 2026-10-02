@@ -29,7 +29,7 @@ export const GEAR_KINDS = ['pumpkin', 'kevlar', 'heated', 'santa', 'present', 'b
 // NO STACKING (Cody, 2026-10-01: "Can't stack same stat"): two gear can't boost the same stat. Each gear has one stat (above);
 // Present Box has none until it turns into a gear, then it has that gear's. Enforced in gearIn (the match), resolvePresent (its
 // pick), effectsOf (defensive) and the database save (015 save_profile); the Special Gear tab shows NO_STACK_NOTE.
-export const NO_STACK_NOTE = "Two gear can't boost the same stat (like Santa Bag + Backpack, or two +1 hit gear).";
+export const NO_STACK_NOTE = "Two gear can't boost the same stat (like Toy Sack + Backpack, or two +1 hit gear).";
 export const statOf = (kind) => GEAR[kind]?.stat || null;
 const statTaken = (kinds, kind) => !!statOf(kind) && (kinds || []).some((k) => k !== kind && statOf(k) === statOf(kind));
 export const WEAR_DAYS = 7; // the clock starts at the first match wearing it (015_special_gear.sql keeps it)
