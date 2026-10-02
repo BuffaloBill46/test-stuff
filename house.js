@@ -12,12 +12,14 @@ import { KINDS, buyRun, credit, payRun } from './credits.js';
 import { spin, STAR, DEFAULT_WHEEL } from './spin.js';
 import { pull, MACHINES } from './slots.js';
 import { play as dropPlay, outcome as dropOutcome, BOARD as DROP_BOARD } from './plinko.js';
+import { play as stockPlay, outcome as stockOutcome, DEFAULT_PAYS as STOCK_PAYS } from './stocking.js';
 import * as fair from './fair.js';
 import { randFrom } from './fair.js';
 
-export const NUMS = 17; // numbers drawn per play (Slots uses 6: the jackpot draw + 5 reel stops; Spin 1, or 2 on a bonus star;
-                         // Snowball Drop board 2: 17 = the present + one per row of pegs; board 1 used 8). The numbers come
-                         // out in a fixed order, so asking for more never changes the first ones: old plays re-check the same.
+export const NUMS = 38; // numbers drawn per play (Slots uses 6: the jackpot draw + 5 reel stops; Spin 1, or 2 on a bonus star;
+                         // Snowball Drop board 2: 17 = the present + one per row of pegs; board 1 used 8; Stocking Stuffer 38 =
+                         // two shuffles of 20, 19 numbers each). The numbers come out in a fixed order, so asking for more
+                         // never changes the first ones: old plays re-check the same (it was 17 before Stocking Stuffer).
 
 // `f` swaps the fair functions (tests only, to make them fail).
 export function createHouse(ledger, pools, f = fair) {
@@ -57,7 +59,7 @@ export function createHouse(ledger, pools, f = fair) {
       const nums = await f.numbers(t.secret, playerSeed, t.playNo, NUMS);
       steps.push('drawn');
       const rand = randFrom(nums);
-      r = t.kind === 'drop' ? dropPlay(pools.spin, t.bet, rand, forced) : K.game === 'spin' ? spin(pools.spin, t.bet, rand, forced) : pull(pools.slots, t.kind, rand, forced);
+      r = t.kind === 'drop' ? dropPlay(pools.spin, t.bet, rand, forced) : t.kind === 'stocking' ? stockPlay(pools.spin, t.bet, rand, forced) : K.game === 'spin' ? spin(pools.spin, t.bet, rand, forced) : pull(pools.slots, t.kind, rand, forced);
     } catch (e) { return refuse(e.message); }
     if (r.paused) { // the pool can't take it: the price comes back (the entry already reached the pool, so it pays it)
       pools[K.game].pool -= t.bet; return refuse(null, r.stopped);
@@ -77,6 +79,9 @@ export function outcomeFrom(kind, nums, cfg = null) {
   // Snowball Drop, on the board the drop was played on (cfg.board from the proof; none = board 1, the 8-row 50/50 board):
   // board 2: the first number picks the present from the published table, the next 16 draw the path to it (plinko.js)
   if (kind === 'drop') return dropOutcome(nums, cfg?.board ?? 1);
+  // Stocking Stuffer: 19 numbers shuffle the gifts and coal into the stockings, 19 more the order they're opened (stocking.js),
+  // paid on the pay table the play ran on (cfg.stocking from its settings version; without it, Cody's built-in table)
+  if (kind === 'stocking') return stockOutcome(nums, cfg?.stocking?.pays || STOCK_PAYS);
   if (K.game === 'spin') { // the first number picks the main segment; on a star, the second picks the bonus segment
     const W = cfg?.wheel || DEFAULT_WHEEL, slice = Math.floor(nums[0] * W.main.length);
     if (W.main[slice] !== STAR) return { slice, mult: W.main[slice] };

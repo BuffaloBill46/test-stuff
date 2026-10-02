@@ -7,6 +7,8 @@ import { MAIN, BONUS, MAIN_SLICES, BONUS_SLICES, MAIN_COUNTS, BONUS_COUNTS, SPIN
 import { ITEMS, SLOTS, BY_ID } from './catalog.js';
 import { MAX_MULT as DROP_TOP, BETS as DROP_BETS } from './plinko.js'; // Snowball Drop shares the Spin pool (Cody, 2026-09-30)
 import { KINDS, SIZES } from './credits.js';
+// Stocking Stuffer plays from the same pool too (Cody, 2026-10-02); its pay table (× the turn price, by gifts 0–8) is editable
+import { DEFAULT_PAYS as STOCK_PAYS, PAYS as STOCK_LIVE, BETS as STOCK_BETS, GIFTS as STOCK_GIFTS, payback as stockPaybackOf, realWin as stockWinOf, topMult as stockTopOf } from './stocking.js';
 
 const big = MACHINES.big;
 // The built-in items, captured before applyToGame() can change the shared ones.
@@ -18,14 +20,17 @@ export const DEFAULT_SETTINGS = Object.freeze({
   spin: { main: { ...MAIN_COUNTS }, bonus: { ...BONUS_COUNTS } },  // how many of the 40 main / 12 bonus segments show each result
   big: { counts: { ...big.counts }, pays: structuredClone(big.pays), hatBonus: big.hatBonus, jackpotPct: big.jackpotPct, jackpotOdds: 1 / big.poolJackpotOdds },
   store: { items: [] },                                                   // additions / changes on top of catalog.js
+  stocking: { pays: [...STOCK_PAYS] },                                    // Stocking Stuffer: × the turn price for 0–8 gifts
 });
+// Settings published before Stocking Stuffer existed have no `stocking`: their plays (and re-checks) use Cody's built-in table.
+export const stockPays = (s) => s.stocking?.pays || [...STOCK_PAYS];
 
 // The machine and wheel the rules use, from a settings record.
 export function build(s) {
   const m = { ...big, bet: s.prices.big, counts: s.big.counts, pays: s.big.pays, hatBonus: s.big.hatBonus, jackpotPct: s.big.jackpotPct, poolJackpotOdds: 1 / s.big.jackpotOdds };
   m.strips = Array.from({ length: m.reels }, (_, i) => spreadStrip(m.counts, 1000 * m.reels + 17 * i + 3));
   m.stripLen = m.strips[0].length; m.lineBet = m.bet / m.lines.length;
-  return { machine: m, wheel: wheelFrom(s.spin), prices: s.prices };
+  return { machine: m, wheel: wheelFrom(s.spin), prices: s.prices, stocking: { pays: stockPays(s) } };
 }
 // Same spreading as slots.js (so version 0 gives the identical strips): deterministic shuffle, no symbol twice in a row.
 // Symbols go in the game's fixed symbol order, NOT the order the counts happen to be listed in: the database stores settings
@@ -64,6 +69,10 @@ export function check(s, rules = { spin: SPIN_RULES, slots: POOL_RULES }) {
   if (!num(s.big?.jackpotPct) || s.big.jackpotPct < LIMITS.jackpotPct[0] || s.big.jackpotPct > LIMITS.jackpotPct[1]) p.push('pool jackpot must be 1%–50% of the pool');
   if (!num(s.big?.jackpotOdds) || s.big.jackpotOdds < LIMITS.jackpotOdds[0] || s.big.jackpotOdds > LIMITS.jackpotOdds[1]) p.push('pool jackpot odds must be 1 in 1,000 to 1 in 10,000,000');
   for (const it of s.store?.items || []) p.push(...checkItem(it));
+  // Stocking Stuffer's pay table: 9 prizes (0 to 8 gifts), each 0–1000×, and finding more gifts never pays less
+  const sp = stockPays(s);
+  if (!Array.isArray(sp) || sp.length !== STOCK_GIFTS + 1 || sp.some((x) => !num(x) || x < 0 || x > 1000)) p.push(`Stocking Stuffer needs ${STOCK_GIFTS + 1} prizes (0 to ${STOCK_GIFTS} gifts), each 0–1000×`);
+  else if (sp.some((x, k) => k > 0 && x < sp[k - 1])) p.push('Stocking Stuffer: more gifts must never pay less than fewer gifts');
   if (p.length) return { ok: false, problems: p };
   const { machine: m, wheel } = build(s), st = stats(m);
   const spinPayback = spinPaybackOf(wheel), spinWin = Object.entries(spinOdds(wheel)).reduce((a, [x, q]) => a + (x >= 2 ? q : 0), 0);
@@ -75,6 +84,10 @@ export function check(s, rules = { spin: SPIN_RULES, slots: POOL_RULES }) {
   if (rules.spin.topOffTo < maxMult * s.prices.spin100) p.push(`the Spin top-off ($${rules.spin.topOffTo}) must cover the top prize ($${maxMult * s.prices.spin100})`);
   const dropTop = DROP_TOP * Math.max(...DROP_BETS); // Snowball Drop pays from the same pool
   if (rules.spin.topOffTo < dropTop) p.push(`the Spin top-off ($${rules.spin.topOffTo}) must cover Snowball Drop's top prize ($${dropTop}): they share the pool`);
+  // Stocking Stuffer: the same payback limits as the other games, and the shared pool's top-off must cover its top prize
+  const stockPayback = stockPaybackOf(sp), stockTop = stockTopOf(sp) * Math.max(...STOCK_BETS);
+  if (stockPayback < LIMITS.payback[0] || stockPayback > LIMITS.payback[1]) p.push(`Stocking Stuffer would pay back ${(stockPayback * 100).toFixed(1)}% (allowed ${LIMITS.payback.map((x) => x * 100 + '%').join('–')})`);
+  if (rules.spin.topOffTo < stockTop) p.push(`the Drop pool top-off ($${rules.spin.topOffTo}) must cover Stocking Stuffer's top prize ($${stockTop}): they share the pool`);
   // real-win rate for Big Hat: simulated (lines interact), 20,000 pulls on a throwaway pool
   let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647); let ahead = 0; const pool = { pool: 1e9, prepaid: true };
   for (let i = 0; i < 20000; i++) if (pull(pool, m, rnd).ahead) ahead++;
@@ -82,6 +95,7 @@ export function check(s, rules = { spin: SPIN_RULES, slots: POOL_RULES }) {
     spin: { payback: spinPayback, realWin: spinWin, top: maxMult, stars: s.spin.main.star || 0 },
     big: { payback: st.payback, realWin: ahead / 20000, topPrize: topFixed, top100: st.each['hat:5'] ? 1 / (st.each['hat:5'] * st.lines) : null, jackpot: `${Math.round(s.big.jackpotPct * 100)}% of the pool, 1 in ${Math.round(s.big.jackpotOdds).toLocaleString()}` },
     prices: s.prices,
+    stocking: { payback: stockPayback, realWin: stockWinOf(sp), top: stockTopOf(sp) },
   };
   return p.length ? { ok: false, problems: p, report } : { ok: true, problems: [], report };
 }
@@ -127,6 +141,7 @@ export function applyToGame(s) {
   MAIN.splice(0, MAIN.length, ...b.wheel.main); BONUS.splice(0, BONUS.length, ...b.wheel.bonus);
   for (const k of Object.keys(KINDS)) if (s.prices[k]) KINDS[k].bet = s.prices[k];
   SIZES.spin.splice(0, SIZES.spin.length, s.prices.spin10, s.prices.spin100); // the Spin balance plays these two sizes
+  STOCK_LIVE.splice(0, STOCK_LIVE.length, ...b.stocking.pays); // Stocking Stuffer's pay table as published
   const items = itemsWith(s); ITEMS.splice(0, ITEMS.length, ...items); BY_ID.clear(); for (const i of items) BY_ID.set(i.id, i);
   return b;
 }

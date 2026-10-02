@@ -182,14 +182,19 @@ async function cfgForProof(p) {
 async function recheck() {
   const p = shown; if (!p) return;
   const c = await check(p, await cfgForProof(p)), K = KINDS[p.kind];
-  let what;
-  if (p.kind === 'drop') what = c.outcome.board === 1 ? `the bounces ${c.outcome.path.map((x) => (x ? 'R' : 'L')).join(' ')} (one per row of pegs), present ${c.outcome.bin + 1} of 9: a ${c.outcome.mult}× result`
+  let what, map = '';
+  if (p.kind === 'stocking') { // the two shuffles: where the coal was, and the order Santa opened (stockings 1–10 top row, 11–20 bottom)
+    const o = c.outcome, n = (s) => s + 1;
+    what = `coal in stockings ${o.coal.map(n).join(', ')}; Santa opened ${o.opened.map(n).join(', ')} (${o.opened.map((s) => (o.gifts[s] ? 'gift' : 'coal')).join(', ')}): ${o.found} gift${o.found === 1 ? '' : 's'} before ${o.found === 8 ? 'he ran out of gifts' : 'the coal'}, a ${o.mult}× result`;
+    map = `<span class="stockmap" aria-label="Where the gifts (gold) and coal (black) were; opened stockings are outlined and numbered in the order opened">${o.gifts.map((g, s) => { const at = o.opened.indexOf(s);
+      return `<span class="${g ? 'g' : 'c'}${at >= 0 ? ' o' : ''}">${at >= 0 ? `<small>${at + 1}</small>` : ''}${n(s)}</span>`; }).join('')}</span>`;
+  } else if (p.kind === 'drop') what = c.outcome.board === 1 ? `the bounces ${c.outcome.path.map((x) => (x ? 'R' : 'L')).join(' ')} (one per row of pegs), present ${c.outcome.bin + 1} of 9: a ${c.outcome.mult}× result`
     : `present ${c.outcome.bin + 1} of 17 from the published odds table (a ${c.outcome.mult}× result), reached by the bounces ${c.outcome.path.map((x) => (x ? 'R' : 'L')).join(' ')}`;
   else if (K.game === 'spin') what = c.outcome.bonusSlice !== undefined ? `main-wheel segment ${c.outcome.slice + 1} of 40 (a gold star), then bonus-wheel segment ${c.outcome.bonusSlice + 1} of 12: a ${c.outcome.mult}× result`
     : `main-wheel segment ${c.outcome.slice + 1} of 40, a ${c.outcome.mult}× result`;
   else if (c.outcome.jackpot) what = 'the pool jackpot (all 25 squares Santa Hats)';
   else what = `reel stops ${c.outcome.stops.join(', ')} (one per reel, each 0–75)`;
   $('#proofOut').innerHTML = c.matches
-    ? `<b class="ok">Matches.</b> The revealed secret gives the fingerprint you were shown before the play, and with your number it gives ${what}. That's what you got.`
+    ? `<b class="ok">Matches.</b> The revealed secret gives the fingerprint you were shown before the play, and with your number it gives ${what}. That's what you got.${map}`
     : '<b class="bad">Doesn\'t match.</b> The secret doesn\'t give the fingerprint shown before the play.';
 }
