@@ -58,6 +58,9 @@ console.log('1. A computer: three SB buttons; arming Ice Ball (button) throws on
   const after = await myEnt(p), drops = await p.evaluate(() => window.__sq.sim.S.drops.length);
   check(after.ammo === 0 && drops >= 30, `Rain: the whole counter used (${after.ammo} left), ${drops} snowballs over the ring`);
   await p.waitForTimeout(1500); await p.screenshot({ path: 'out/specials-rain.png' });
+  // the gold "untouchable" ring after grabbing the hat: the page must read the referee's immune flag (it never did until 2026-10-01)
+  await p.evaluate(() => { const s = window.__sq; s.sim.S.ents.find((x) => x.peer === s.me.id).immune = 2; });
+  check(await p.waitForFunction(() => { const s = window.__sq; return s.view.ents.find((x) => x.peer === s.me.id)?.immune === true; }, null, { timeout: 10000 }).then(() => true, () => false), 'untouchable after the hat: my screen knows (the gold ring)');
   check(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : '')); await ctx.close(); }
 
 console.log('2. Phones (upright and sideways): the 3 buttons fit, nothing overlaps, they can be tapped');

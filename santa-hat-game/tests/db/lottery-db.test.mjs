@@ -28,7 +28,13 @@ const chain = { getTransaction: async (s) => txs.get(s) ?? null, latestBlock: as
 const EVERY = 6000, CLOSE = 1500, onceAt = { at: null };
 const schedule = { nextDraw: (kind, t) => (kind === 'christmas' ? (onceAt.at && t < onceAt.at ? onceAt.at : null) : (Math.floor(t / EVERY) + 1) * EVERY),
   salesFor: (kind, t) => { const at = schedule.nextDraw(kind, t); if (at === null) return { open: false, why: 'this lottery has been drawn' }; return at - t <= CLOSE ? { open: false, at, why: 'sales are closed' } : { open: true, at }; } };
-const lot = createLottery({ db, chain, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, wallet: LOTTERY, mint: MINT, schedule });
+// paused: [] keeps testing the daily lotteries' rules (one winner) although they're switched off for now (Cody, 2026-10-01)
+const lot = createLottery({ db, chain, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, wallet: LOTTERY, mint: MINT, schedule, paused: [] });
+{ // ...and by default (the real server) a switched-off lottery sells nothing and opens no draws
+  const live = createLottery({ db, chain, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, wallet: LOTTERY, mint: MINT, schedule });
+  assert.match((await live.quote('00000000-0000-0000-0000-000000000000', 'daily-10', 1)).error, /switched off/, 'Daily 10¢ is switched off');
+  const open = (await live.draws()).open.map((o) => o.lottery);
+  assert.ok(!open.some((k) => k.startsWith('daily')) && open.includes('weekly-10') && open.includes('weekly-100'), 'no daily draws open, the weekly ones are: ' + open); }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const waitOpenWindow = async () => { for (;;) { const t = Date.now(), at = schedule.nextDraw('daily-10', t); if (at - t > CLOSE + 2500) return; await sleep(200); } };
 async function buyTickets(p, kind, n) { const q = await lot.quote(p.id, kind, n); assert.ok(q.id, JSON.stringify(q)); const { sig, arrives } = pay(p.w, q.santaRaw); const r = await lot.buy(p.id, q.id, sig); assert.ok(r.ok, JSON.stringify(r)); return { q, sig, arrives, r }; }

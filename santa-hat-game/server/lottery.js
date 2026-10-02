@@ -7,7 +7,7 @@
 // fingerprint is published; at the draw the numbers come from that secret + a Solana blockhash from AFTER sales closed + the
 // public ticket list; then the secret is revealed so anyone can re-run mockups/lottery.js drawWinners and get the same winners.
 // Payouts: lottery_settings.payout_mode 'auto' → the payout worker sends them; 'manual' → they wait for Cody (admin screen).
-import { LOTTERIES, nextDraw, salesFor, splitPot, drawWinners, BURN_BPS } from '../mockups/lottery.js';
+import { LOTTERIES, LIVE_LOTTERIES, nextDraw, salesFor, splitPot, drawWinners, BURN_BPS } from '../mockups/lottery.js';
 import * as fair from '../mockups/fair.js';
 import { MINT, QUOTE_SECONDS, CUSHION } from '../mockups/market.js';
 import { verifyPayment } from './verify.js';
@@ -17,7 +17,9 @@ export const LOTTERY_QUOTES_PER_HOUR = 30;
 
 // chain: { getTransaction(sig), latestBlock() → { blockhash, slot } (finalized) }. wallet: the lottery wallet's PUBLIC address.
 // schedule: the real one (midnight UTC etc.); tests pass { nextDraw, salesFor } with draws seconds apart, against the real database.
-export function createLottery({ db, chain, livePrice, liveFee, wallet, mint = MINT, cluster = 'mainnet', now = () => Date.now(), f = fair, schedule = { nextDraw, salesFor } }) {
+// paused: lotteries that sell nothing and open no new draws (default: the ones switched off in lottery.js; tests can pass [] to
+// keep testing a switched-off lottery's rules). Draws already open still finish as normal.
+export function createLottery({ db, chain, livePrice, liveFee, wallet, mint = MINT, cluster = 'mainnet', now = () => Date.now(), f = fair, schedule = { nextDraw, salesFor }, paused = Object.keys(LOTTERIES).filter((k) => !LIVE_LOTTERIES.includes(k)) }) {
   const row = async (q, p) => (await db.query(q, p))[0];
   const walletOf = async (profile) => (await row('select wallet from public.profiles where id = $1', [profile]))?.wallet;
 
@@ -36,6 +38,7 @@ export function createLottery({ db, chain, livePrice, liveFee, wallet, mint = MI
 
   async function quote(profile, kind, n) {
     const L = LOTTERIES[kind]; if (!L) return { error: 'unknown lottery' };
+    if (paused.includes(kind)) return { error: 'that lottery is switched off for now' };
     if (!Number.isInteger(n) || n < 1 || n > 10000) return { error: 'buy between 1 and 10,000 tickets at a time' };
     if (!wallet) return { error: 'the lottery is not open yet' };
     const payer = await walletOf(profile);
@@ -103,7 +106,7 @@ export function createLottery({ db, chain, livePrice, liveFee, wallet, mint = MI
   async function draws() {
     await runDraws();
     const t = now(), open = [];
-    for (const kind of Object.keys(LOTTERIES)) { const d = await drawFor(kind, t); if (d) open.push({ lottery: kind, name: LOTTERIES[kind].name, ticket: LOTTERIES[kind].ticket,
+    for (const kind of Object.keys(LOTTERIES).filter((k) => !paused.includes(k))) { const d = await drawFor(kind, t); if (d) open.push({ lottery: kind, name: LOTTERIES[kind].name, ticket: LOTTERIES[kind].ticket,
       split: LOTTERIES[kind].split, drawsAt: new Date(d.draws_at).getTime(), pot_raw: +d.pot_raw, tickets: d.tickets, commit: d.commit, sales: schedule.salesFor(kind, t) }); }
     const recent = await db.query(`select id, kind, draws_at, secret, commit, blockhash, block_slot, pot_raw, tickets from public.lottery_draws where status = 'drawn' and tickets > 0 order by draws_at desc limit 10`); // empty draws aren't news
     const wins = await db.query(`select p.draw_id, p.place, pr.name, p.amount_raw, left(p.to_wallet, 4) || '…' || right(p.to_wallet, 4) as wallet_short from public.lottery_payouts p join public.profiles pr on pr.id = p.profile_id where p.place > 0 and p.draw_id = any($1::bigint[]) order by p.place`, [recent.map((r) => r.id)]);

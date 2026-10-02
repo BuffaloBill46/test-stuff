@@ -52,9 +52,10 @@ async function page(qs, viewport = { width: 1100, height: 900 }) {
 console.log('1. Without a game server (today\'s site): the lotteries show, buying says sales open soon');
 { const { p, errors } = await page('');
   const cards = await p.evaluate(() => [...document.querySelectorAll('.lotcard h3')].map((h) => h.textContent));
-  check(cards.join() === 'Daily 10¢,Daily $1,Weekly 10¢,Weekly $1,Christmas', `five lotteries: ${cards.join(', ')}`);
-  const target = +(await p.getAttribute('.lotcard[data-lot="daily-10"] [data-left]', 'data-left')), midnight = (Math.floor(Date.now() / 86400000) + 1) * 86400000;
-  check(target === midnight, `Daily counts down to the next 00:00 UTC (${new Date(target).toISOString()})`);
+  // the daily lotteries are switched off for now (Cody, 2026-10-01): not on the page at all
+  check(cards.join() === 'Weekly 10¢,Weekly $1,Christmas' && !(await p.$('.lotcard[data-lot^="daily"]')) && !/Daily/.test(await p.textContent('#lottery')), `three lotteries, no daily: ${cards.join(', ')}`);
+  const target = +(await p.getAttribute('.lotcard[data-lot="weekly-10"] [data-left]', 'data-left')), d = new Date(target);
+  check(d.getUTCDay() === 0 && d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && target > Date.now() && target - Date.now() <= 7 * 86400000, `Weekly counts down to the next Sunday 00:00 UTC (${d.toISOString()})`);
   await p.fill('.lotcard[data-lot="weekly-10"] input', '37'); await p.evaluate(() => window.__lottery.render());
   check(await p.inputValue('.lotcard[data-lot="weekly-10"] input') === '37', 'a number being typed survives a refresh');
   await p.evaluate(() => { document.querySelector('.lotcard [data-amt="5"]').click(); document.querySelector('.lotcard [data-buy="custom"]').click(); }); await p.waitForTimeout(400);

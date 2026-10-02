@@ -6,13 +6,17 @@
 //   Each ticket is one equal chance; a wallet wins at most one place; places nobody can fill go to 1st.
 //   The draw: sha256(secret | blockhash after sales close | the ticket list) → numbers → winning tickets (fair.js style).
 export const LOTTERIES = {
-  'daily-10': { name: 'Daily 10¢', ticket: 0.1, every: 'day', split: [100] },
-  'daily-100': { name: 'Daily $1', ticket: 1, every: 'day', split: [100] },
+  // off: switched off for now (Cody, 2026-10-01: "Let's drop the daily lotto for now. Just keep the weekly and xmas"): not shown,
+  // not sold, no new draws. Kept, so turning one back on is deleting `off: true`.
+  'daily-10': { name: 'Daily 10¢', ticket: 0.1, every: 'day', split: [100], off: true },
+  'daily-100': { name: 'Daily $1', ticket: 1, every: 'day', split: [100], off: true },
   'weekly-10': { name: 'Weekly 10¢', ticket: 0.1, every: 'week', split: [60, 25, 15] },
   'weekly-100': { name: 'Weekly $1', ticket: 1, every: 'week', split: [60, 25, 15] },
   christmas: { name: 'Christmas', ticket: 1, every: 'once', at: Date.UTC(2026, 11, 24), split: [60, 25, 15] },
 };
 export const SALES_CLOSE_MS = 5 * 60 * 1000, BURN_BPS = 1000;
+// The lotteries that are running (not switched off).
+export const LIVE_LOTTERIES = Object.keys(LOTTERIES).filter((k) => !LOTTERIES[k].off);
 const DAY = 86_400_000;
 
 // The next draw time (ms, UTC) strictly after `now` for this lottery, or null when there's none (Christmas, after it ran).

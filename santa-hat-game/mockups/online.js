@@ -96,6 +96,8 @@ function decode(s) {
   return {
     seq: n(s.s), phase: PHASES[s.ph] || 'lobby', mode: s.md ? 'team' : 'ffa', round: n(s.rd), time: n(s.tm), ts: [n(s.ts?.[0]), n(s.ts?.[1])],
     ents: (Array.isArray(s.E) ? s.E : []).map((r) => ({ id: n(r[0]), peer: typeof r[1] === 'string' ? r[1] : null, bot: !!r[2], team: n(r[3]), x: n(r[4]), z: n(r[5]), vx: n(r[6]), vz: n(r[7]), face: n(r[8]), stun: !!r[9], ammo: n(r[10]), score: n(r[11]), thr: !!r[12], ep: n(r[13]),
+      // untouchable for 2 s after grabbing the hat (E[14]): the gold ring. It was never read before, so the ring never showed.
+      immune: !!r[14],
       // special gear, as the REFEREE resolved it (a Present Box already turned into its pick) and extra hits left; none = []
       gear: gearOfMask(r[15]), xh: n(r[16]) })),
     hat: { st: ['ped', 'head', 'air', 'ground'][H[0]] || 'ped', x: n(H[1]), y: n(H[2], K.PED_TOP), z: n(H[3]), vx: n(H[4]), vy: n(H[5]), vz: n(H[6]), holder: n(H[7], -1), lx: n(H[8]), lz: n(H[9]) },

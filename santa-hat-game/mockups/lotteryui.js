@@ -3,7 +3,7 @@
 // Buying uses the same one-payment wallet step as the games (wallet.js: 10% burned, the rest to the lottery wallet). Recent
 // results can be re-checked in this browser: the draw is re-run from public data alone (mockups/lottery.js drawWinners).
 // Without the game server (today's site) buying says so plainly: nothing is sold and nothing is drawn here.
-import { LOTTERIES, nextDraw, salesFor, drawWinners } from './lottery.js';
+import { LOTTERIES, LIVE_LOTTERIES, nextDraw, salesFor, drawWinners } from './lottery.js';
 import { SERVER, call, walletReady } from './gameserver.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -54,7 +54,7 @@ function card(kind) {
 // The cards are built ONCE; later updates only change their changing parts (countdown, pot, tickets), so a buy message or a
 // number being typed is never wiped by the 30-second refresh. A card is rebuilt only when its draw time moves on.
 function render() {
-  const kinds = Object.keys(LOTTERIES).filter((k) => nextDraw(k, Date.now()) !== null), grid = $('#lotGrid');
+  const kinds = LIVE_LOTTERIES.filter((k) => nextDraw(k, Date.now()) !== null), grid = $('#lotGrid'); // switched-off ones aren't shown
   for (const c of [...grid.children]) if (!kinds.includes(c.dataset.lot)) c.remove();
   for (const k of kinds) {
     let c = grid.querySelector(`[data-lot="${k}"]`); const at = String(nextDraw(k, Date.now()));

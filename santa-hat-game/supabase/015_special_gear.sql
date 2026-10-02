@@ -1,4 +1,4 @@
--- NOT APPLIED YET. Special gear (Cody, 2026-10-01; mockups/gear.js, catalog.js; DESIGN_NOTES → "Levels, special snowballs and
+-- APPLIED live 2026-10-01 (all 5 function bodies hash-checked against this file). Special gear (Cody, 2026-10-01; mockups/gear.js, catalog.js; DESIGN_NOTES → "Levels, special snowballs and
 -- special gear"). Items of slot 'gear' go in the avatar's gear slots g1, g2 (g2 opens at level 8: levels.js). Gear WEARS OUT: a
 -- 7-day clock starts at the first match wearing it and never stops (gear_wear below). Without this file, save_profile (012)
 -- copies only the look and special snowball slots and would SILENTLY DROP a player's gear on save, so it ships with the page
@@ -24,7 +24,8 @@ insert into public.items (id, slot, name, unlock_level, price_usd) values
 on conflict (id) do update set slot = excluded.slot, name = excluded.name, unlock_level = excluded.unlock_level, price_usd = excluded.price_usd;
 
 -- Cody: existing items become gear and keep their names (Toy Sack = Santa Bag, Gift Box = Present Box, Elf Satchel). The
--- backpacks were bought as looks that last forever and the character still draws them, so they STAY (owned, worn, sold);
+-- backpacks were bought as looks that last forever and the character still draws them, so they STAY owned and worn (no longer
+-- sold: Special Gear replaced the Backpacks section, Cody 2026-10-01);
 -- every owner ALSO gets the matching gear. Nobody is moved: putting it in a gear slot for them would start its 7-day clock at
 -- their next match without them choosing to. (Unlike 012's Ice Ball, nothing is deleted here.)
 insert into public.inventory (profile_id, item_id)
@@ -141,7 +142,8 @@ begin
       if s = 'g2' and lvl < 8 then raise exception 'The second gear slot opens at level 8'; end if;
       if a ->> s = 'gear_santa' and lvl < 3 then raise exception 'The Santa Costume is worn from level 3'; end if;
       if (a ->> s) = any (seen) then raise exception 'The same gear can''t fill two slots'; end if;
-      if public.gear_stat(a ->> s) = any (stats) then raise exception 'Two gear can''t boost the same stat'; end if; -- no stacking (Cody)
+      -- no stacking (Cody)
+      if public.gear_stat(a ->> s) = any (stats) then raise exception 'Two gear can''t boost the same stat'; end if;
       if public.gear_worn_out(pid, a ->> s) then a := a || jsonb_build_object(s, 'gear_none'); end if;
       if public.gear_stat(a ->> s) is not null then stats := stats || public.gear_stat(a ->> s); end if;
     end if;
