@@ -1,4 +1,4 @@
--- NOT APPLIED YET. Ranked tickets (rules on the Play page and in TODO): 10 free a day; 1 ticket per ranked match, spent when
+-- APPLIED live 2026-10-02 (function bodies hash-checked against this file). Ranked tickets (rules on the Play page and in TODO): 10 free a day; 1 ticket per ranked match, spent when
 -- the match STARTS; leave before it starts and it costs nothing; up to 10 extra tickets can be bought per 24 hours.
 -- Joining a lobby HOLDS a ticket (so nobody can join 20 lobbies on 10 tickets); the match starting SPENDS it; leaving
 -- before the start RELEASES it. "A day" = 24 hours from when the free tickets were last reset (Claude's pick).

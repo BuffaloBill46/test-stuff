@@ -1,4 +1,4 @@
--- NOT APPLIED YET. The shop (Cody, 2026-10-02: "make sure every button has a complete start to end path ... check all items that
+-- APPLIED live 2026-10-02 (function bodies hash-checked against this file). The shop (Cody, 2026-10-02: "make sure every button has a complete start to end path ... check all items that
 -- can be purchased"): Store items (special snowballs, special gear, looks on the Avatar screen), buying a level (2–5), and extra
 -- ranked tickets, paid in SANTA in ONE transaction from the player's wallet: 50% burned, 50% to the treasury (DESIGN_NOTES →
 -- Economy). Same steps as a game run or a lottery ticket: a 60-second quote → the wallet pays → the server checks the payment on
