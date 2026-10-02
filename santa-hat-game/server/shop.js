@@ -71,5 +71,10 @@ export function createShop({ db, chain, livePrice, liveFee, treasury, mint = MIN
   }
   // What this player owns (the Store marks it; the Avatar screen unlocks it)
   async function owned(profile) { return { items: (await db.query('select item_id from public.inventory where profile_id = $1', [profile])).map((r) => r.item_id) }; }
-  return { quote, buy, owned };
+  // My ranked tickets (supabase/006 ticket_status): free left today, bought extras, held right now, when the free ones refill.
+  async function tickets(profile) {
+    const r = (await db.query('select * from public.ticket_status($1)', [profile]))[0];
+    return r ? { free: +r.free_left, extra: +r.extra, held: +r.held, resetsAt: new Date(r.resets_at).getTime() } : { error: 'no profile yet' };
+  }
+  return { quote, buy, owned, tickets };
 }

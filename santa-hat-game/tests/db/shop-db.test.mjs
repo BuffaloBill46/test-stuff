@@ -61,6 +61,9 @@ assert.match((await shop.quote(A.id, { kind: 'item', id: 'shirt_red' })).error, 
 // 4. Ranked tickets: packs of 1/5/10 at 10¢/45¢/90¢, at most 10 extra a day.
 { const { q, r } = await buy(A, { kind: 'tickets', n: 5 }); assert.deepEqual([q.usd, r.tickets], [TICKET_PACKS[5], 5], JSON.stringify(r));
   assert.match((await shop.quote(A.id, { kind: 'tickets', n: 10 })).error, /5 left/, '10 more would pass the daily 10');
+  // the ranked lobby's ticket line ('tickets'): 10 free today + the 5 bought, nothing held, refill time ahead
+  const tx = await shop.tickets(A.id);
+  assert.deepEqual([tx.free, tx.extra, tx.held], [10, 5, 0], JSON.stringify(tx)); assert.ok(tx.resetsAt > Date.now(), 'the free ones refill later');
   assert.match((await shop.quote(A.id, { kind: 'tickets', n: 3 })).error, /1, 5 or 10/);
   assert.ok((await buy(A, { kind: 'tickets', n: 5 })).r.ok, 'up to 10 a day'); }
 

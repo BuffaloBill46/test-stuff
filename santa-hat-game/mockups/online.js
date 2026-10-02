@@ -790,6 +790,18 @@ function publishSummary() {
     leader: top && v.phase !== 'lobby' ? nameOf(top) : '', lscore: top ? top.score : 0 }).catch(() => {});
 }
 
+// The ranked lobby's ticket line (game server 'tickets'): free ones left today, bought ones, when the free ones refill.
+async function showTickets(ranked) {
+  const el = $('#tixLine'); el.hidden = true;
+  if (!ranked || !SERVER) return;
+  const r = await call('tickets').catch(() => null);
+  if (lobbyKind !== 'ranked') return; // the player switched lobbies meanwhile
+  if (r?.error === 'sign in first') { el.textContent = 'Sign in to play ranked.'; el.hidden = false; return; }
+  if (!r || r.error || !Number.isFinite(r.free)) return;
+  const h = Math.max(0, Math.ceil((r.resetsAt - Date.now()) / 3600000));
+  el.textContent = `Ranked tickets: ${r.free} free today${r.extra ? ` + ${r.extra} bought` : ''}${r.free < 10 ? ` · free ones refill in ${h} h` : ''}`;
+  el.hidden = false;
+}
 // ---------- lobbies: Unranked (FFA / TEAM) and FFA RANKED, each with a live games list and Watch now
 let stopBoard = null;
 function openLobby(kind) {
@@ -799,6 +811,7 @@ function openLobby(kind) {
   $('#lobbyModes').hidden = ranked; $('#tourney').hidden = !ranked;
   document.querySelectorAll('#home .unr').forEach((el) => { el.hidden = ranked; });
   // ranked opens with the referee server (it holds the ticket and picks the room); without it, still 'opening soon'
+  showTickets(ranked);
   $('#quick').disabled = ranked && !REFEREE; $('#quick').textContent = ranked ? (REFEREE ? 'Auto match · 1 ticket' : 'Auto match · opening soon') : 'Auto match';
   document.querySelectorAll('[data-lmode]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.lmode === lobbyMode)));
   $('#home').hidden = false; status('');
