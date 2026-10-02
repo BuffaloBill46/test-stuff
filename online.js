@@ -1,14 +1,16 @@
 // Santa Hat Legends (the Snowball Square game): lobby, rooms, referee hand-off, smoothing, HUD.
 import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo } from './kit.js';
 import { buildPlaza, makeHat, shadowBlob } from './plaza.js';
-import { createSim, K, PHASES, constrain } from './sim.js';
+import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js';
 import { openRoom, accounts, findWallet, gamesBoard } from './net.js';
-import { SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules } from './catalog.js';
+import { SLOTS, SB_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js';
 import { initTabs, avatarCharacter, renderProgress } from './tabs.js';
 import { levelInfo, clampLevel } from './levels.js';
 import { SERVER, call } from './gameserver.js';
+import { SPECIALS, cantThrow } from './specials.js';
 import { initLottery } from './lotteryui.js';
 import { play as sfx, initSoundButtons } from './sfx.js';
+import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js';
 
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
@@ -47,8 +49,18 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPrefere
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 400);
-const plaza = buildPlaza(scene);
+// The plaza theme is this player's own view (themes.js): the referee, the network and every other player never see it.
+let theme = savedTheme(), plaza = buildPlaza(scene, { theme });
 const snow = new Snow(1400, [60, 24, 60]); scene.add(snow.points);
+snow.points.geometry.setDrawRange(0, themeOf(theme).snowfall); // Halloween: a few stray flakes of the 1400
+function setTheme(id) { // from the Avatar screen; swaps the plaza in place, mid-match too
+  if (!THEMES[id]) return;
+  saveTheme(id);
+  if (id === theme) return;
+  plaza.dispose(); theme = id; plaza = buildPlaza(scene, { theme });
+  snow.points.geometry.setDrawRange(0, themeOf(theme).snowfall);
+  fog0 = null; // the new plaza's own fog; the match camera re-reads it and pulls it back with the zoom
+}
 const burst = new Burst(320); scene.add(burst.mesh);
 const ballGeo = build([part(new THREE.IcosahedronGeometry(0.17, 0), C.brim, { jit: 0.02 })]);
 const hatMesh = makeHat(0.88); scene.add(hatMesh);
@@ -84,9 +96,10 @@ function decode(s) {
     seq: n(s.s), phase: PHASES[s.ph] || 'lobby', mode: s.md ? 'team' : 'ffa', round: n(s.rd), time: n(s.tm), ts: [n(s.ts?.[0]), n(s.ts?.[1])],
     ents: (Array.isArray(s.E) ? s.E : []).map((r) => ({ id: n(r[0]), peer: typeof r[1] === 'string' ? r[1] : null, bot: !!r[2], team: n(r[3]), x: n(r[4]), z: n(r[5]), vx: n(r[6]), vz: n(r[7]), face: n(r[8]), stun: !!r[9], ammo: n(r[10]), score: n(r[11]), thr: !!r[12], ep: n(r[13]) })),
     hat: { st: ['ped', 'head', 'air', 'ground'][H[0]] || 'ped', x: n(H[1]), y: n(H[2], K.PED_TOP), z: n(H[3]), vx: n(H[4]), vy: n(H[5]), vz: n(H[6]), holder: n(H[7], -1), lx: n(H[8]), lz: n(H[9]) },
-    balls: (Array.isArray(s.B) ? s.B : []).map((b) => ({ id: n(b[0]), x: n(b[1]), y: n(b[2]), z: n(b[3]), vx: n(b[4]), vy: n(b[5]), vz: n(b[6]), owner: n(b[7]) })),
+    balls: (Array.isArray(s.B) ? s.B : []).map((b) => ({ id: n(b[0]), x: n(b[1]), y: n(b[2]), z: n(b[3]), vx: n(b[4]), vy: n(b[5]), vz: n(b[6]), owner: n(b[7]), kind: KIND_OF[n(b[9])] || '', r: n(b[10], 1) || 1 })),
+    drops: (Array.isArray(s.D) ? s.D : []).map((p) => ({ x: n(p[0]), z: n(p[1]), t: n(p[2]), owner: n(p[3]), kind: DROP_OF[n(p[4])] || 'rain' })),
     ev: Array.isArray(s.V) ? s.V : [], res: Array.isArray(s.R) ? { team: s.R[0], top: s.R[1], mvp: s.R[2] } : null,
-    cd: n(s.cd), pub: !!s.pub,
+    cd: n(s.cd), pub: !!s.pub, mid: typeof s.mid === 'string' ? s.mid : '',
   };
 }
 
@@ -95,7 +108,7 @@ const nameOf = (e) => (e.bot ? BOT_NAMES[botHash(e.id) % BOT_NAMES.length] : (e.
 
 // ---------- referee hand-off
 function becomeHost() {
-  isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)), startOf }); // each player's snowball rules (Ice Ball etc.) and starting snowballs (level)
+  isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)), startOf, specialsOf, levelOf }); // snowball rules, starting snowballs (level), special snowballs
   if (lastRaw) sim.load(lastRaw);
   room?.setHost(true);
   sim.S.ev.forEach((v) => { lastEv = Math.max(lastEv, v[0]); });
@@ -159,7 +172,7 @@ async function enterRoom(code, quick, opts = {}) {
 
 function startPractice() {
   if (!profile) { me.n = cleanName($('#name')?.value) || me.n; store.set('sq_name', me.n); }
-  practice = true; room = null; roomCode = ''; isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)), startOf }); me.j = Date.now(); me.w = false; ctl.ep = -1; snaps = []; lastEv = 0;
+  practice = true; room = null; roomCode = ''; isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)), startOf, specialsOf, levelOf }); me.j = Date.now(); me.w = false; ctl.ep = -1; snaps = []; lastEv = 0;
   roomMode = null; autoStart = false; sim.S.mode = lobbyMode; closeLobby(); renderChrome();
 }
 
@@ -221,15 +234,23 @@ function controls(dt, v) {
 function tryThrow(tx, tz) {
   const v = currentView, e = myEnt(v);
   if (!e || e.stun || ctl.cool > 0 || e.ammo <= 0 || !(v.phase === 'lobby' || v.phase === 'play')) return;
+  if (armed && cantThrow(armed, { ammo: e.ammo, max: startOf(e), level: me.l || 1 })) armed = ''; // not enough snowballs any more: a plain throw
+  ctl.sp = armed; armed = ''; ui.lastHud = '';
   ctl.t++; ctl.ax = tx; ctl.az = tz; ctl.cool = K.HUMAN_COOL; ctl.throwT = 1; ctl.dirty = true; sfx('throw');
   const dx = tx - ctl.x, dz = tz - ctl.z, l = Math.hypot(dx, dz) || 1; ctl.face = Math.atan2(dx, dz);
-  if (!isHost) { // show my own snowball instantly; the referee's copy of it is hidden on my screen
+  if (!isHost && !ctl.sp) { // show my own plain snowball instantly; the referee's copy of it is hidden on my screen (specials: the referee's)
     const dist = Math.max(1.5, l), tt = dist / K.BALL_SPEED, mesh = toon(ballGeo, 0.02); mesh.material = ballMat(BY_ID.get(me.a.snow).color); scene.add(mesh);
     localBalls.push({ mesh, x: ctl.x + (dx / l) * 0.45, y: 1.6, z: ctl.z + (dz / l) * 0.45, vx: (dx / l) * K.BALL_SPEED, vy: (1.15 - 1.6) / tt + 0.5 * K.BALL_G * tt, vz: (dz / l) * K.BALL_SPEED, life: 2 });
   }
 }
 
-function report() { return { q: ++ctl.q, ep: ctl.ep, x: +ctl.x.toFixed(2), z: +ctl.z.toFixed(2), vx: +ctl.vx.toFixed(2), vz: +ctl.vz.toFixed(2), f: +ctl.face.toFixed(2), t: ctl.t, ax: +ctl.ax.toFixed(2), az: +ctl.az.toFixed(2) }; }
+function report() { return { q: ++ctl.q, ep: ctl.ep, x: +ctl.x.toFixed(2), z: +ctl.z.toFixed(2), vx: +ctl.vx.toFixed(2), vz: +ctl.vz.toFixed(2), f: +ctl.face.toFixed(2), t: ctl.t, ax: +ctl.ax.toFixed(2), az: +ctl.az.toFixed(2), sp: ctl.sp || '' }; }
+// SB1–SB3 (Cody: buttons under the snowball counter; keys Q, E, R on a computer): arms a special for the next throw.
+let armed = '';
+function arm(i) {
+  const kind = mySlots().find((x) => x.n === i + 1)?.kind; if (!kind) return; // i: 0 = SB1 (key Q), 1 = SB2 (E), 2 = SB3 (R)
+  armed = armed === kind ? '' : kind; ui.lastHud = '';
+}
 
 // ---------- what to draw this frame
 let currentView = null;
@@ -300,6 +321,11 @@ function levelOf(e) {
   return clampLevel(room?.peers().find((q) => q.id === e.peer)?.l);
 }
 const startOf = (e) => levelInfo(levelOf(e)).start;
+// The special snowballs a player brings: what's in their slots that their level opens (catalog.js specialsIn). Bots: none.
+const specialsOf = (e) => (e.bot ? [] : specialsIn(avatarOf(e), levelOf(e), levelInfo(levelOf(e)).sb));
+const mySpecials = () => specialsIn(me.a, me.l || 1, levelInfo(me.l || 1).sb);
+// My slots as the Avatar screen numbers them: [{ n: 1..3, kind }] for each open slot holding a special I can use (SB2 stays SB2).
+const mySlots = () => { const lvl = me.l || 1, ok = new Set(mySpecials()); return SB_SLOTS.slice(0, levelInfo(lvl).sb).map((s, i) => ({ n: i + 1, kind: BY_ID.get(cleanAvatar(me.a)[s])?.special })).filter((x) => x.kind && ok.has(x.kind)); };
 // Levels: when an Auto match ends, the host reports every finishing place (bots and guests as empty places) to the game
 // server, which counts top-3 finishes for players with accounts, once per match (the match id travels with handovers).
 // Only in server mode, and only from a signed-in host (the server checks the host played in it). Practice/private: nothing.
@@ -314,6 +340,33 @@ async function reportFinish(v) {
     const mine = r?.counted?.find((c) => c.you);
     if (mine && profile) { profile.level = mine.level; profile.xp = mine.xp; me.l = mine.level; renderProgress(profile); }
   } catch { /* the next match counts; nothing is lost but this one finish */ }
+}
+// The match load screen (Cody, 2026-10-01): each player's level, games played, top-3 %, rank points, special snowballs and
+// special gear. The numbers come from the game server's public 'stats' action, once per match; without the server (or for a
+// guest) they show as a dash. Level and loadout come from each player's presence (what their own browser announces).
+const statsOf = new Map(); let statsFor = '';
+const infoOf = (e) => (e.peer === me.id ? { a: me.a, l: me.l, pid: me.pid } : room?.peers().find((q) => q.id === e.peer) || {});
+function loadStats(v) {
+  if (!SERVER || !v.mid || statsFor === v.mid) return; statsFor = v.mid;
+  const ids = v.ents.filter((e) => !e.bot).map((e) => infoOf(e).pid).filter(Boolean);
+  if (ids.length) call('stats', { profiles: ids }).then((r) => { for (const p of r?.players || []) statsOf.set(p.id, p); }).catch(() => { statsFor = ''; });
+}
+function lineupRow(e, v) {
+  const team = v.mode === 'team' ? ` <u class="t${e.team}">${TEAM_NAME[e.team]}</u>` : '';
+  if (e.bot) return `<li class="bot"><span class="who">${esc(nameOf(e))} <i>elf bot</i>${team}</span></li>`;
+  const p = infoOf(e), st = p.pid ? statsOf.get(p.pid) : null, lvl = clampLevel(st?.level ?? p.l), dash = (x) => (st ? x : '–');
+  const sbs = specialsIn(p.a || {}, lvl, levelInfo(lvl).sb).map((k) => SPECIALS[k].name);
+  return `<li class="${e.peer === me.id ? 'me' : ''}"><span class="who">${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}${team}</span><b class="lv">LV ${lvl}</b>
+    <dl><div><dt>Games</dt><dd>${dash(st?.games)}</dd></div><div><dt>Top 3</dt><dd>${dash(st?.top3Pct + '%')}</dd></div><div><dt>Rank pts</dt><dd>${dash(st?.rankPoints)}</dd></div></dl>
+    <p class="kit"><span>Snowballs</span>${sbs.length ? sbs.map(esc).join(' · ') : 'plain only'}</p><p class="kit"><span>Gear</span>coming soon</p></li>`;
+}
+// The SB buttons under the counter: one per open slot with a special in it (name and how many snowballs it uses). A button is
+// off when it can't be thrown now (not enough snowballs; Rain: a full counter and level 5). Pressed = armed for the next throw.
+function sbRow(m) {
+  const list = mySlots(); if (!list.length) return '';
+  const level = me.l || 1, max = startOf(m);
+  return `<div class="sbrow">${list.map(({ n, kind: k }) => { const S = SPECIALS[k], why = cantThrow(k, { ammo: m.ammo, max, level });
+    return `<button type="button" data-sb="${n - 1}" aria-pressed="${armed === k}" ${why ? 'disabled' : ''} title="${S.note}${why ? ' (' + why + ')' : ''}"><b>SB${n}</b> ${S.name} <small>${S.cost === 'all' ? 'all' : S.cost}</small></button>`; }).join('')}</div>`;
 }
 function avatarOf(e) {
   if (e.bot) return botAvatar(e.id);
@@ -372,6 +425,8 @@ addEventListener('keydown', (e) => {
   const n = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(e.code); if (n >= 0) sendEmote(n);
 });
 addEventListener('keyup', (e) => input.keys.delete(e.code));
+addEventListener('keydown', (e) => { if (e.target instanceof HTMLInputElement || e.repeat) return; const i = ['KeyQ', 'KeyE', 'KeyR'].indexOf(e.code); if (i >= 0 && inRoom()) arm(i); });
+document.querySelector('#hud').addEventListener('pointerdown', (e) => { const b = e.target.closest('[data-sb]'); if (!b) return; e.stopPropagation(); arm(+b.dataset.sb); });
 addEventListener('blur', () => input.keys.clear());
 const ray = new THREE.Raycaster(), ground = new THREE.Plane(new V3(0, 1, 0), 0);
 const groundAt = (cx, cy) => { ray.setFromCamera({ x: (cx / W) * 2 - 1, y: -(cy / H) * 2 + 1 }, camera); return ray.ray.intersectPlane(ground, new V3()); };
@@ -403,7 +458,7 @@ $('#zoomOut').addEventListener('click', () => setZoom(zoom * 1.15));
 addEventListener('pointerup', endJoy); addEventListener('pointercancel', endJoy);
 
 // ---------- chrome: home, lobby, HUD, board
-const ui = { lastHud: '', lastBoard: '', lastCard: '' };
+const ui = { lastHud: '', lastBoard: '', lastCard: '', lastCount: 0 };
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 function renderChrome() {
@@ -419,6 +474,8 @@ function renderChrome() {
     $('#roomchip').innerHTML = practice ? '<i>Practice</i><b>vs bots</b>'
       : `<i>${me.w ? 'Watching' : autoStart ? 'Auto match' : 'Room'}</i><b>${esc(autoStart ? (roomMode === 'team' ? 'TEAM' : 'FFA') : roomCode)}</b><span>${idleLeft ? `<em class="idle">Still there? Leaving in ${idleLeft}s</em>` : `${count} playing${watchers ? ` · ${watchers} watching` : ''}${isHost ? ' · you referee' : ''}`}</span>`;
   }
+  const cnt = inRoom() && v && v.phase === 'count' ? Math.max(1, Math.ceil(v.time)) : 0;
+  if (cnt !== ui.lastCount) { ui.lastCount = cnt; const c = $('#count'); c.hidden = !cnt; if (cnt) { c.textContent = cnt; c.classList.remove('show'); void c.offsetWidth; c.classList.add('show'); sfx('tick'); } }
   // Out of a match: clear the scoreboard too (it used to linger after Leave, showing over the Avatar tab on Cody's phone).
   if (!inRoom() || !v) { if (ui.lastCard) { $('#panel').hidden = true; ui.lastCard = ''; } setHud(''); ui.lastBoard = ''; $('#board').hidden = true; return; }
   const m = myEnt(v);
@@ -437,6 +494,10 @@ function renderChrome() {
       <ul class="roster">${roster}</ul><p class="dim">${bots ? `${bots} elf bot${bots > 1 ? 's' : ''} fill empty spots.` : ''} Up to 8 players.</p>
       ${isHost && !me.w ? `<div class="modes" role="radiogroup" aria-label="Match mode"><button data-mode="ffa" aria-checked="${v.mode === 'ffa'}" role="radio">Everyone vs the hat</button><button data-mode="team" aria-checked="${v.mode === 'team'}" role="radio">Nice vs Naughty</button></div>
       <button class="go" id="start">Start match</button>` : `<p class="wait">Mode: <b>${v.mode === 'team' ? 'Nice vs Naughty' : 'Everyone vs the hat'}</b>. Waiting for the referee to start…</p>`}`;
+  } else if (v.phase === 'intro') {
+    loadStats(v);
+    card = `<div class="eyebrow">${practice ? 'Practice' : autoStart ? 'Auto match' : 'Room'} · ${v.mode === 'team' ? 'Nice vs Naughty' : 'Everyone vs the hat'}</div><h2>Starting in ${Math.ceil(v.time + K.COUNT_TIME)}</h2>
+      <ul class="lineup">${[...v.ents].sort((a, b) => (b.peer === me.id) - (a.peer === me.id) || a.bot - b.bot).map((e) => lineupRow(e, v)).join('')}</ul>${SERVER ? '' : '<p class="dim">Games played, top-3 % and rank points show once the game server is live.</p>'}`;
   } else if (v.phase === 'end' && v.res) {
     reportFinish(v); // levels: once per Auto match, from the host (server mode)
     const sorted = [...v.ents].sort((a, b) => b.score - a.score);
@@ -449,16 +510,17 @@ function renderChrome() {
       <p class="dim">Back to the lobby in ${Math.ceil(v.time)}s</p>`;
   }
   if (card !== ui.lastCard) {
-    ui.lastCard = card; const p = $('#panel'); p.hidden = !card; p.innerHTML = card;
+    ui.lastCard = card; const p = $('#panel'); p.hidden = !card; p.innerHTML = card; p.classList.toggle('intro', v.phase === 'intro');
     p.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { if (isHost && sim) { sim.S.mode = b.dataset.mode; sim.syncRoster(sim.S.ents.filter((e) => !e.bot).map((e) => e.peer)); } }));
-    p.querySelector('#start')?.addEventListener('click', () => { if (isHost && sim) sim.startMatch(sim.S.mode); });
+    p.querySelector('#start')?.addEventListener('click', () => { if (isHost && sim) sim.introMatch(sim.S.mode); });
   }
   // HUD
   if (v.phase === 'play' || v.phase === 'break') {
+    if (armed && !mySpecials().includes(armed)) armed = '';
     setHud(`<div class="stat plaque"><i>Round</i><b>${v.round}/${K.ROUNDS}</b></div>
       <div class="stat plaque ${v.time < 10 && v.phase === 'play' ? 'warn' : ''}"><i>${v.phase === 'break' ? 'Next round' : 'Time'}</i><b>${Math.ceil(v.time)}</b></div>
       ${m ? `<div class="stat plaque nice"><i>You</i><b>${m.score}</b></div>` : ''}
-      ${m ? `<div class="stat plaque"><i>Snowballs</i><div class="pips">${Array.from({ length: startOf(m) }, (_, i) => `<u class="${i < m.ammo ? '' : 'off'}"></u>`).join('')}</div></div>` : ''}`);
+      ${m ? `<div class="stat plaque"><i>Snowballs</i><div class="pips">${Array.from({ length: startOf(m) }, (_, i) => `<u class="${i < m.ammo ? '' : 'off'}"></u>`).join('')}</div>${sbRow(m)}</div>` : ''}`);
   } else setHud('');
   // scoreboard
   let board = '';
@@ -495,7 +557,8 @@ function draw(v, dt, t) {
     animate(w.mesh, dt, e.stun ? 0 : w.speed, isMe ? ctl.throwT : e.thr ? 0.8 : 0);
     w.mesh.position.set(x, 0, z); w.mesh.rotation.y = face; w.mesh.rotation.z = e.stun ? Math.sin(t * 28) * 0.18 : 0;
     w.ring.position.set(x, 0.05, z);
-    w.ring.material.color.set(isMe ? C.lantern : v.mode === 'team' ? TEAM_RING[e.team] : 0xdfe6f5);
+    w.ring.material.color.set(e.immune ? 0xffd060 : isMe ? C.lantern : v.mode === 'team' ? TEAM_RING[e.team] : 0xdfe6f5); // gold = untouchable (just got the hat)
+    w.ring.material.opacity = e.immune ? 0.6 + Math.sin(t * 14) * 0.35 : 0.8;
     w.ring.scale.setScalar(isMe ? 1.15 : 0.9);
     const p = toScreen(tmp.set(x, 2.85, z), camera, W, H), b = bubbles.get(e.peer || 'b' + e.id);
     const say = b && b.until > performance.now() ? b.text : '';
@@ -521,14 +584,24 @@ function draw(v, dt, t) {
   hatGlow.position.set(hx, hy + 0.5, hz); hatGlow.material.opacity = 0.22 + Math.sin(t * 4) * 0.08;
   // snowballs: the referee's (extrapolated), except my own, which I drew instantly
   const a = Math.min(v.age || 0, 1);
-  drawBalls.forEach((m) => { m.visible = false; });
-  let n = 0;
+  drawBalls.forEach((m) => { m.visible = false; }); drawTrail.forEach((m) => { m.visible = false; }); drawDrops.forEach((m) => { m.visible = false; }); drawMarks.forEach((m) => { m.visible = false; });
+  let n = 0, nt = 0, nd = 0;
+  // Sky Ball / Snowball Rain: each falling snowball comes down from above onto a marked spot (so it can be dodged)
+  for (const p of v.drops || []) { const tl = p.t - a; if (tl < 0 || tl > 1.6) continue;
+    if (!drawDrops[nd]) { drawDrops[nd] = toon(ballGeo, 0.02); scene.add(drawDrops[nd]); drawMarks[nd] = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.6, depthWrite: false })); drawMarks[nd].position.y = 0.06; scene.add(drawMarks[nd]); }
+    const dm = drawDrops[nd], mk = drawMarks[nd++]; dm.material = ballMat(p.kind === 'sky' ? 0x9fd8ff : 0xf5f1e8); dm.visible = true; dm.position.set(p.x, 0.2 + tl * 9, p.z);
+    mk.visible = true; mk.position.x = p.x; mk.position.z = p.z; mk.scale.setScalar(0.5 + (1.6 - tl) * 0.3); }
   for (const b of v.balls) {
-    if (!isHost && mine && b.owner === mine.id) continue;
+    if (!isHost && mine && b.owner === mine.id && !b.kind) continue;
     const y = b.y + b.vy * a - 0.5 * K.BALL_G * a * a; if (y < 0.05) continue;
     if (!drawBalls[n]) { drawBalls[n] = toon(ballGeo, 0.02); scene.add(drawBalls[n]); }
-    const m = drawBalls[n++]; m.material = ballMat(snowColor(v.ents.find((q) => q.id === b.owner)));
-    m.visible = true; m.position.set(b.x + b.vx * a, y, b.z + b.vz * a);
+    const m = drawBalls[n++], px = b.x + b.vx * a, pz = b.z + b.vz * a;
+    m.material = ballMat(BALL_COLOR[b.kind]?.(b) ?? snowColor(v.ents.find((q) => q.id === b.owner)));
+    m.visible = true; m.position.set(px, y, pz); m.scale.setScalar(b.r || 1);
+    if (b.kind === 'fire') for (let k = 1; k <= 3; k++) { // a short fire tail behind it
+      if (!drawTrail[nt]) { drawTrail[nt] = toon(ballGeo, 0); scene.add(drawTrail[nt]); }
+      const f = drawTrail[nt++], back = 0.022 * k; f.material = ballMat([0xffb347, 0xff7a3a, 0xcf3128][k - 1]); f.visible = true; f.scale.setScalar(1 - k * 0.22);
+      f.position.set(px - b.vx * back, y - (b.vy - K.BALL_G * a) * back, pz - b.vz * back); }
   }
   for (let i = localBalls.length - 1; i >= 0; i--) {
     const b = localBalls[i]; b.vy -= K.BALL_G * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt; b.life -= dt;
@@ -566,7 +639,9 @@ function draw(v, dt, t) {
     camera.position.copy(camPos); camera.lookAt(0, 1, 0);
   }
 }
-const drawBalls = [];
+const drawBalls = [], drawTrail = [], drawDrops = [], drawMarks = [];
+// How each special snowball looks (specials.js `look`): icy, fire-orange, the split's three colours; giant keeps the thrower's colour.
+const BALL_COLOR = { ice: () => 0xbfeaff, fire: () => 0xff7a3a, split: () => 0xcf3128, piece: (b) => [0xcf3128, 0x3f9a66, 0xf5f1e8][b.id % 3] };
 
 // ---------- main loop
 let last = performance.now(), T = 0, chromeAt = 0;
@@ -585,7 +660,7 @@ function frame() {
       if (autoStart && sim.S.phase === 'lobby') {
         const humans = sim.S.ents.filter((e) => !e.bot).length, want = humans >= 2 ? 15000 : 25000;
         if (cdEnd === null || cdEnd - now > want) cdEnd = now + want;
-        if (now >= cdEnd) { sim.startMatch(sim.S.mode); cdEnd = null; }
+        if (now >= cdEnd) { sim.introMatch(sim.S.mode); cdEnd = null; }
       } else cdEnd = null;
       if (ctl.ep >= 0) sim.setReport(me.id, report());
       sim.step(dt);
@@ -647,7 +722,7 @@ function renderGames(list = lastGames) {
   const label = ranked ? 'ranked' : lobbyMode === 'team' ? 'TEAM' : 'FFA';
   $('#gamesList').innerHTML = games.length ? games.map((g) => {
     const full = (Number(g.watchers) || 0) >= MAX_WATCHERS;
-    const state = g.phase === 'lobby' ? 'Starting soon' : g.phase === 'end' ? 'Final scores' : `Round ${Number(g.round) || 1}/3 · ${Number(g.time) || 0}s`;
+    const state = g.phase === 'lobby' || g.phase === 'intro' || g.phase === 'count' ? 'Starting soon' : g.phase === 'end' ? 'Final scores' : `Round ${Number(g.round) || 1}/3 · ${Number(g.time) || 0}s`;
     return `<div class="game"><div><b>${g.mode === 'team' ? 'TEAM' : 'FFA'}</b><span>${Number(g.humans) || 0}/8 players${g.watchers ? ` · ${Number(g.watchers)} watching` : ''}</span></div>
       <div><span>${esc(state)}</span>${g.leader ? `<span>Leader: ${esc(String(g.leader).slice(0, 14))} · ${Number(g.lscore) || 0}</span>` : ''}</div>
       <button class="sec" data-watch="${esc(cleanCode(g.code))}" ${full ? 'disabled' : ''}>${full ? 'Watchers full' : 'Watch now'}</button></div>`;
@@ -677,13 +752,14 @@ function setPreview(a) {
   previewHat.position.set(0, K.HEAD_Y, 0); previewHat.rotation.y = Math.PI / 2; preview.add(previewHat);
 }
 setPreview(me.a);
-const acct = accounts({ local: LOCAL, rules: { SLOTS, BY_ID, usable, DEFAULT_AVATAR } });
+const acct = accounts({ local: LOCAL, rules: { SLOTS, SB_SLOTS, BY_ID, usable, DEFAULT_AVATAR } });
 const app = {
   me, accounts: acct,
   hasWallet: () => LOCAL || !!findWallet(),
   get profile() { return profile; }, set profile(p) { profile = p; },
   setIdentity(name, a) { me.n = cleanName(name) || me.n; me.a = cleanAvatar(a); me.l = clampLevel(profile?.level); me.pid = profile?.id || null; $('#name').value = me.n; $('#name').readOnly = !!profile; setPreview(me.a); },
   preview: (a) => setPreview(a),
+  get theme() { return theme; }, setTheme,
   onTab: (tab) => {
     ui.lastBoard = '';
     if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
@@ -696,6 +772,8 @@ initLottery(); // the Store's Santa Lottery (lotteryui.js)
 $('#loading')?.remove();
 frame();
 
-window.__sq = { camDist: () => camera.position.distanceTo(camTarget), setZoom, get zoom() { return zoom; },
+window.__sq = { get armed() { return armed; }, throwAt: (x, z) => tryThrow(x, z), drawn: () => ({ drops: drawDrops.filter((m) => m.visible).length }), camDist: () => camera.position.distanceTo(camTarget), setZoom, get zoom() { return zoom; },
   // tests: where the ring's outer wall lands on screen (-1..1 = inside the view), all the way round, at the ground and wall top
-  ringFit: (r = 15.0) => { let x0 = 9, x1 = -9, y0 = 9, y1 = -9; for (let i = 0; i < 72; i++) for (const y of [0, 1]) { const a = (i / 72) * Math.PI * 2, p = new V3(Math.cos(a) * r, y, Math.sin(a) * r).project(camera); x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); } return { x0, x1, y0, y1 }; }, get room() { return room; }, get isHost() { return isHost; }, get sim() { return sim; }, get view() { return currentView; }, me, ctl, enterRoom, leaveRoom, startPractice, idleFor: (ms) => { lastInput = performance.now() - ms; } };
+  ringFit: (r = 15.0) => { let x0 = 9, x1 = -9, y0 = 9, y1 = -9; for (let i = 0; i < 72; i++) for (const y of [0, 1]) { const a = (i / 72) * Math.PI * 2, p = new V3(Math.cos(a) * r, y, Math.sin(a) * r).project(camera); x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); } return { x0, x1, y0, y1 }; }, get room() { return room; }, get isHost() { return isHost; }, get sim() { return sim; }, get view() { return currentView; }, me, ctl, enterRoom, leaveRoom, startPractice, idleFor: (ms) => { lastInput = performance.now() - ms; },
+  // tests: the plaza theme, and what's on the GPU / in the scene (a theme swap must not leave the old plaza behind)
+  get theme() { return theme; }, setTheme, gpu: () => ({ ...renderer.info.memory, kids: scene.children.length, fog: scene.fog && [scene.fog.color.getHex(), scene.fog.near, scene.fog.far] }) };

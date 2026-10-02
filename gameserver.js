@@ -19,9 +19,12 @@ export const settingsReady = SERVER ? (async () => {
   try { const r = await call('settings'); if (r?.settings) { const { applyToGame } = await import('./settings.js'); applyToGame(r.settings); return r; } } catch {}
   return null;
 })() : Promise.resolve(null);
+// The actions anyone may call without signing in: must match the server's public ones (server/http.js; tests/public-actions.test.mjs).
+// (It once listed only three, so guests' lottery cards and draw re-checks never asked the server.)
+export const PUBLIC_ACTIONS = ['pools', 'settings', 'stats', 'lottery-tickets', 'lottery', 'winners'];
 export async function call(action, body = {}) {
   const t = await token();
-  if (!t && !['winners', 'settings', 'pools'].includes(action)) return { error: 'sign in first' }; // public ones
+  if (!t && !PUBLIC_ACTIONS.includes(action)) return { error: 'sign in first' };
   const r = await fetch(SERVER, { method: 'POST', headers: { 'content-type': 'application/json', ...(t ? { authorization: 'Bearer ' + t } : {}) }, body: JSON.stringify({ action, ...body }) });
   try { return await r.json(); } catch { return { error: `the game server answered ${r.status}` }; }
 }

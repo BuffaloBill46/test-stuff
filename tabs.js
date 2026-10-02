@@ -1,8 +1,10 @@
 // Site tabs: Play / Store / Avatar / Ranks, wallet sign-in, avatar editor, leaderboard.
 import { THREE, character, lights, toon, part, build, hatGeo } from './kit.js';
-import { ITEMS, BY_ID, SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable } from './catalog.js';
+import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable } from './catalog.js';
+import { SPECIALS } from './specials.js';
 import { settingsReady } from './gameserver.js';
-import { levelInfo, progressLine, buyPrice } from './levels.js';
+import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js';
+import { THEMES, THEME_IDS } from './themes.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -17,8 +19,8 @@ function thumbnail(item) {
   if (!thumbR) { thumbR = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); thumbR.setSize(160, 160, false); }
   const scene = new THREE.Scene(); lights(scene, { hemi: 1.7, moonI: 1.6 });
   const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
-  if (item.slot === 'snow') {
-    const ball = new THREE.Mesh(build([part(new THREE.IcosahedronGeometry(0.5, 1), item.color, { jit: 0.04 })]), new THREE.MeshToonMaterial({ vertexColors: true }));
+  if (item.slot === 'snow' || item.slot === 'sball') { // special snowballs: a ball in their own colour (an empty slot: faint grey)
+    const ball = new THREE.Mesh(build([part(new THREE.IcosahedronGeometry(0.5, 1), item.color ?? 0x5a6688, { jit: 0.04 })]), new THREE.MeshToonMaterial({ vertexColors: true, transparent: item.id === 'sb_none', opacity: item.id === 'sb_none' ? 0.35 : 1 }));
     scene.add(ball); cam.position.set(0.4, 0.5, 2.4); cam.lookAt(0, 0, 0);
   } else {
     const a = { ...DEFAULT_AVATAR, [item.slot]: item.id };
@@ -55,9 +57,14 @@ export function renderProgress(profile) {
   const buy = el.querySelector('#pgBuy');
   buy.hidden = price === null; // levels above 5 are earned, not bought
   if (price !== null) buy.textContent = `Buy level ${pl.level + 1} · $${price.toFixed(2)} · payments open soon`;
+  // the free way to the same level, with the count so far (Auto match top-3 finishes; guests: sign in to count them)
+  const or = el.querySelector('#pgOr'); or.hidden = price === null;
+  if (price !== null) { or.firstChild.textContent = `or win ${pl.need} matches top 3 or better `; el.querySelector('#pgOrN').textContent = `${pl.xp} / ${pl.need}`; }
 }
+// Put a special in a slot; if it was already in another slot it MOVES (the same special can't fill two slots; database 012).
+function withSpecial(a, slot, id) { for (const s of SB_SLOTS) if (s !== slot && a[s] === id && id !== 'sb_none') a[s] = 'sb_none'; a[slot] = id; return a; }
 export function initTabs(app) {
-  const state = { tab: 'play', slot: 'shirt', draft: null, owned: new Set(), board: null };
+  const state = { tab: 'play', slot: 'shirt', sbSlot: 'sb1', draft: null, owned: new Set(), board: null };
 
   // ---------- tabs
   function show(tab) {
@@ -215,15 +222,15 @@ export function initTabs(app) {
     if (storeDrawn && !force) return; storeDrawn = true;
     const box = $('#carousels'); box.innerHTML = '<p class="dim">Wrapping presents…</p>';
     requestAnimationFrame(() => {
-      box.innerHTML = SLOTS.filter((s) => s !== 'skin').map((s) => `<div class="carousel"><h4>${SLOT_NAMES[s]}</h4><div class="strip">${
-        ITEMS.filter((i) => i.slot === s).map((i) => `<div class="item"><img alt="" src="${thumbnail(i)}"><b>${esc(i.name)}</b>${status(i)}<button data-try="${i.id}">Try on</button></div>`).join('')
+      box.innerHTML = [...SLOTS.filter((s) => s !== 'skin'), 'sball'].map((s) => `<div class="carousel"><h4>${SLOT_NAMES[s]}</h4><div class="strip">${
+        ITEMS.filter((i) => i.slot === s && i.id !== 'sb_none').map((i) => `<div class="item"><img alt="" src="${thumbnail(i)}"><b>${esc(i.name)}</b>${status(i)}<button data-try="${i.id}">Try on</button></div>`).join('')
       }</div></div>`).join('');
     });
   }
   $('#carousels').addEventListener('click', (e) => {
     const b = e.target.closest('[data-try]'); if (!b) return;
     const it = BY_ID.get(b.dataset.try); state.slot = it.slot;
-    state.draft = { name: app.me.n, a: { ...app.me.a, [it.slot]: it.id } };
+    state.draft = { name: app.me.n, a: it.slot === 'sball' ? withSpecial({ ...app.me.a }, state.sbSlot, it.id) : { ...app.me.a, [it.slot]: it.id } };
     show('avatar');
   });
 
@@ -232,22 +239,35 @@ export function initTabs(app) {
     const d = state.draft, lvl = app.profile ? app.profile.level : 1;
     $('#avwho').textContent = app.profile ? (app.profile.wallet ? `Bound to wallet ${short(app.profile.wallet)}` : 'Bound to your email account') : 'Guest · sign in to keep your look';
     const nm = $('#avname'); if (document.activeElement !== nm) nm.value = d.name;
-    $('#avslots').innerHTML = SLOTS.map((s) => `<button role="tab" data-slot="${s}" aria-selected="${s === state.slot}">${SLOT_NAMES[s]}</button>`).join('');
+    $('#avslots').innerHTML = [...SLOTS, 'sball'].map((s) => `<button role="tab" data-slot="${s}" aria-selected="${s === state.slot}">${SLOT_NAMES[s]}</button>`).join('');
+    const sb = state.slot === 'sball', open = levelInfo(lvl).sb, sbBox = $('#avsb'); sbBox.hidden = !sb;
+    if (sb) { if (SB_SLOTS.indexOf(state.sbSlot) >= open) state.sbSlot = 'sb1';
+      sbBox.innerHTML = SB_SLOTS.map((s, i) => { const it = BY_ID.get(d.a[s] || 'sb_none'), lockedAt = i < open ? 0 : Object.keys(LEVELS).find((L) => LEVELS[L].sb > i);
+        return `<button type="button" data-sbslot="${s}" aria-pressed="${state.sbSlot === s}" ${lockedAt ? 'disabled' : ''}><b>SB${i + 1}</b>${lockedAt ? 'Opens at level ' + lockedAt : esc(it.id === 'sb_none' ? 'Empty' : it.name)}</button>`; }).join(''); }
     $('#avgrid').innerHTML = ITEMS.filter((i) => i.slot === state.slot).map((i) => {
-      const ok = usable(i, lvl, state.owned);
-      return `<button class="pick ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${d.a[i.slot] === i.id}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${ok ? 'Unlocked' : i.price != null ? '$' + i.price.toFixed(2) + ' in Store' : 'Level ' + i.level}</small></button>`;
+      const ok = usable(i, lvl, state.owned), on = sb ? d.a[state.sbSlot] === i.id : d.a[i.slot] === i.id, S = SPECIALS[i.special];
+      if (sb) return `<button class="pick ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}" title="${S ? esc(S.note) : 'Leave this slot empty'}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${!ok ? '$' + i.price.toFixed(2) + ' in Store' : S ? (S.cost === 'all' ? 'uses all' : 'uses ' + S.cost) + (S.minLevel && lvl < S.minLevel ? ' · level ' + S.minLevel : '') : 'empty slot'}</small></button>`;
+      return `<button class="pick ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${ok ? 'Unlocked' : i.price != null ? '$' + i.price.toFixed(2) + ' in Store' : 'Level ' + i.level}</small></button>`;
     }).join('');
-    const blocked = SLOTS.map((s) => BY_ID.get(d.a[s])).filter((i) => !usable(i, lvl, state.owned));
+    const blocked = [...SLOTS, ...SB_SLOTS].map((s) => BY_ID.get(d.a[s] || 'sb_none')).filter((i) => !usable(i, lvl, state.owned));
     const pl = progressLine(app.profile || { level: 1, xp: 0 });
     $('#avlevel').innerHTML = `Level ${pl.level}<div class="bar"><div style="width:${pl.max ? 100 : Math.round((pl.xp / pl.need) * 100)}%"></div></div>${app.profile ? pl.text : 'Sign in to keep your level.'}`;
     const save = $('#avsave');
     save.disabled = blocked.length > 0;
     save.textContent = app.profile ? 'Save look' : 'Save on this device';
     if (blocked.length) $('#avmsg').textContent = `Previewing: ${blocked.map((i) => i.name).join(', ')} isn't unlocked yet.`;
+    renderThemes();
     app.preview(d.a);
   }
+  // Plaza theme: applies straight away (no Save needed) and only on this player's screen.
+  function renderThemes() {
+    $('#avtheme').innerHTML = THEME_IDS.map((id) => `<button type="button" data-theme="${id}" aria-pressed="${id === app.theme}"><i style="background: linear-gradient(${THEMES[id].sky.join(', ')})"></i>${esc(THEMES[id].name)}</button>`).join('');
+  }
+  $('#avtheme').addEventListener('click', (e) => { const b = e.target.closest('[data-theme]'); if (!b) return; app.setTheme(b.dataset.theme); renderThemes(); });
   $('#avslots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (b) { state.slot = b.dataset.slot; $('#avmsg').textContent = ''; renderAvatar(); } });
-  $('#avgrid').addEventListener('click', (e) => { const b = e.target.closest('[data-pick]'); if (!b) return; const it = BY_ID.get(b.dataset.pick); state.draft.a[it.slot] = it.id; $('#avmsg').textContent = ''; renderAvatar(); });
+  $('#avgrid').addEventListener('click', (e) => { const b = e.target.closest('[data-pick]'); if (!b) return; const it = BY_ID.get(b.dataset.pick);
+    if (it.slot === 'sball') withSpecial(state.draft.a, state.sbSlot, it.id); else state.draft.a[it.slot] = it.id; $('#avmsg').textContent = ''; renderAvatar(); });
+  $('#avsb').addEventListener('click', (e) => { const b = e.target.closest('[data-sbslot]'); if (!b || b.disabled) return; state.sbSlot = b.dataset.sbslot; renderAvatar(); });
   $('#avname').addEventListener('input', (e) => { state.draft.name = e.target.value; });
   $('#avsave').addEventListener('click', async () => {
     const d = state.draft, msg = $('#avmsg'), btn = $('#avsave');

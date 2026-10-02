@@ -11,6 +11,7 @@ import { FEE } from './slots.js';
 import { play as sfx } from './sfx.js';
 import { SERVER, call, settingsReady } from './gameserver.js';
 import { KINDS, SIZES } from './credits.js';
+import { initRunPick, priceLabel } from './runpick.js';
 import { topMult } from './spin.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -44,12 +45,15 @@ function render() {
   renderWinners();
 }
 
+// The chance one pull hits a jackpot: a Top Line (5 Santa Hats on any of the lines; topPerLine × lines, rare enough that two at
+// once can be ignored) or the Pool jackpot (its own draw), either or both.
+export const jackpotChance = (s) => 1 - (1 - s.topPerLine * s.lines) * (1 - M.poolJackpotOdds);
 function facts() {
   const s = stats(M);
   $('#slots .machine .facts').innerHTML = [
-    ['Pays back', `${(s.payback * 100).toFixed(1)}% on average, plus the pool jackpot`], // about 80% with the jackpot (tests/slots.test.mjs simulates it)
-    ['Top line prize (5 Santa Hats)', `about 1 in ${Math.round(1 / (s.topPerLine * s.lines)).toLocaleString()}`],
-    ['Pool jackpot', `1 in ${Math.round(1 / M.poolJackpotOdds).toLocaleString()}`],
+    // One jackpot line (Cody, 2026-10-01: payback and the two separate odds rows removed): the chance a pull hits EITHER the
+    // Top Line JackPot (5 Santa Hats on a line) or the Pool jackpot, from the live odds. Payback is still in PAYTABLE.md / tests.
+    ['Jackpot odds (Top Line or Pool)', `about 1 in ${Math.round(1 / jackpotChance(s)).toLocaleString()}`],
     ['Every Santa Hat on the grid', `+${Math.round(M.hatBonus * M.bet * 100)}¢`],
   ].map(([k, v]) => `<li><span>${k}</span><b>${v}</b></li>`).join('');
 }
@@ -82,7 +86,7 @@ const EXAMPLES = [
   { title: 'Diagonals count too', note: 'A diagonal from the first reel, stepping down a row each reel: 4 Reindeer.', place: [[0, 1, 'reindeer'], [1, 2, 'reindeer'], [2, 3, 'reindeer'], [3, 4, 'reindeer']] },
   { title: 'Two lines at once', note: 'Every winning line on a pull adds up.', place: [[0, 1, 'bell'], [1, 1, 'bell'], [2, 1, 'bell'], [0, 3, 'pine'], [1, 3, 'pine'], [2, 3, 'pine'], [3, 3, 'pine']] },
   { title: 'Hat bonus', note: 'No line, but every Santa Hat on the grid still pays a little.', place: [[1, 0, 'hat'], [3, 4, 'hat'], [4, 2, 'hat']] },
-  { title: 'Top line prize: 100×', note: '5 Santa Hats in a row on a line, plus their hat bonus.', place: [0, 1, 2, 3, 4].map((r) => [r, 2, 'hat']), coal: true },
+  { title: 'Top Line JackPot: 100×', note: '5 Santa Hats in a row on a line, plus their hat bonus.', place: [0, 1, 2, 3, 4].map((r) => [r, 2, 'hat']), coal: true },
   { title: 'Pool jackpot', note: 'All 25 squares Santa Hats. Its own rare draw (1 in 25,000).', jackpot: true },
 ];
 function exampleGrid(ex) {
@@ -148,7 +152,7 @@ async function startRun(n) {
     if (out) { res.innerHTML = runSummary(out, 'pull', 'pulls'); showResult(res); }
   } finally { busy = false; fast = false; setButtons(true); $('#runBig').textContent = ''; }
 }
-function setButtons(on) { document.querySelectorAll('#slots [data-run]').forEach((b) => { b.disabled = !on; }); $('#slots .skip').hidden = on; }
+function setButtons(on) { document.querySelectorAll('#slots [data-run], #slots .runpick input, #slots .runpick [data-step]').forEach((b) => { b.disabled = !on; }); $('#slots .skip').hidden = on; }
 async function showPull(p, i, n) {
   const card = $('#slots .machine'), res = $('#slots .machine .res');
   $('#runBig').innerHTML = `Pull <b>${i + 1}</b> of <b>${n}</b>`;
@@ -193,6 +197,7 @@ export async function initGames(opts = {}) {
   if (SERVER && (await settingsReady)) labelsFromSettings();
   view = createMachine($('#slots .machine canvas'));
   document.querySelectorAll('#slots [data-run]').forEach((b) => b.addEventListener('click', () => startRun(+b.dataset.run)));
+  initRunPick($('#slots .runpick'), { verb: 'Pull', priceOf: (n) => priceLabel(M.bet * n) });
   $('#slots .skip').addEventListener('click', () => { fast = true; view.slam(); });
   $('#slots .machine canvas').addEventListener('click', () => { if (busy) view.slam(); }); // tap the machine: stop the reels now
   $('#fsBtn').addEventListener('click', toggleFull);
@@ -250,7 +255,7 @@ function labelsFromSettings() {
     const b = $('#spin .' + cls), bet = SIZES.spin[i]; b.dataset.bet = bet; $('b', b).textContent = c(bet); $('small', b).textContent = `win up to ${c(bet * top)}`;
   }
   $('#slots .machine header em').textContent = `${money(M.bet)} a pull · 5×5 · 11 lines`;
-  document.querySelectorAll('#slots [data-run]').forEach((x) => { $('small', x).textContent = c(M.bet * +x.dataset.run); }); // each button's price
+  document.querySelectorAll('#slots [data-run]').forEach((x) => { $('small', x).textContent = priceLabel(M.bet * +x.dataset.run); }); // each button's price (incl. the custom one)
   document.querySelectorAll('.hatc').forEach((e) => { e.textContent = c(M.hatBonus * M.bet); }); // the per-hat bonus as published
   $('#spin .wheelcard header em').textContent = `${c(SIZES.spin[0])} or ${c(SIZES.spin[1])} a spin · up to ${top}×`;
 }

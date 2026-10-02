@@ -10,6 +10,7 @@ import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js';
 import { FEE } from './slots.js';
 import { play as sfx } from './sfx.js';
 import { SERVER, call, walletReady } from './gameserver.js';
+import { withSlowDown } from './slowdown.js';
 export const serverMode = !!SERVER; // ?server=<address>: plays come from the game server
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -20,6 +21,13 @@ const POOL_NAME = { spin: 'Spin', slots: 'Slots' };
 let ledger = newLedger(), house, wallet, onChange = () => {}, last = {}, price = null; // last proof per game
 const busy = {}; // a run in progress, per game
 
+// ---- the run counter between each game and its buy buttons (Cody, 2026-10-01: "a small counter next to each game that keeps
+// track and auto resets after each run", then "between the game and buy buttons"). Plays done of the run and what they have won so far (before
+// SANTA's 3% token tax). It stays up after the run so the result can be read, and starts again at 0 with the next run.
+function runCounter(kind, done, n, won) {
+  const el = $(`[data-runcount="${kind}"]`); if (!el) return;
+  $('b', el).textContent = `${done} / ${n}`; $('span', el).textContent = `won ${money(won)}`;
+}
 export function refresh() {
   for (const k of Object.keys(KINDS)) { const b = $(`[data-proof="${k}"]`); if (b) b.hidden = !last[k]; }
 }
@@ -47,7 +55,7 @@ function confirmRun(kind, bet, n) {
   $('#buyTitle').textContent = `Play ${n} ${n === 1 ? K.one : K.many}`;
   $('#buyWhat').textContent = `${n} × ${cents(bet)} = ${money(cost)}`;
   $('#buyPool').textContent = POOL_NAME[K.game];
-  $('#buySanta').innerHTML = price ? `≈ <b>${fmtSanta(santaFor(cost, price))} SANTA</b> at today's price. The real checkout locks the price for ${QUOTE_SECONDS} seconds.` : '';
+  $('#buySanta').innerHTML = price ? `≈ <b>${fmtSanta(santaFor(cost, price))} SANTA</b> at today's price. The real checkout locks the price for ${QUOTE_SECONDS} seconds, and this run's winnings are paid in SANTA at that same price.` : '';
   $('#buyNote').textContent = poor ? `Not enough demo money (${money(wallet.get())}). Tap Reset above the Slots.` : '';
   $('#buyGo').textContent = `Pay ${money(cost)} & play`; $('#buyGo').disabled = poor;
   const d = $('#buyDlg'); if (d.showModal) d.showModal(); else d.setAttribute('open', '');
@@ -130,14 +138,16 @@ export async function playRun(kind, bet, n, onPlay, forced = []) {
     }
     if (!b) return null;
     closeBuy(true); onChange();
+    runCounter(kind, 0, n, 0); // a new run: the counter starts again
     const results = []; let won = 0, sent = b.sent ?? null, held = !!b.held;
     for (const [i, p] of b.plays.entries()) {
       let s;
-      try { s = serverMode ? await call('settle', { ticket: p.ticket, seed: newSeed(16) }) : await house.settle(p.ticket, newSeed(16), forced[i]); }
+      try { s = serverMode ? await withSlowDown(() => call('settle', { ticket: p.ticket, seed: newSeed(16) })) : await house.settle(p.ticket, newSeed(16), forced[i]); }
       catch (e) { s = { failed: true, why: 'the game server can\'t be reached' }; }
       if (s.r && s.proof && s.proof.commit !== p.commit) s = { failed: true, why: 'the server changed its locked fingerprint' }; // never trust, check
       if (s.proof) last[kind] = s.proof;
       if (s.r) won += s.r.pay;
+      runCounter(kind, i + 1, n, won);
       if (s.sent !== undefined) { sent = s.sent; held = !!s.held; }
       results.push(s); refresh(); onChange();
       await onPlay(s, i, n);

@@ -218,13 +218,15 @@ export function createMachine(canvas) {
   const halo = glow(C.lantern, winW * 1.15, 0.1); halo.position.set(0, winY, front + 0.2); scene.add(halo);
   const burst = new Burst(220); scene.add(burst.mesh);
 
-  // --- camera: fit the whole hat
-  const box = new G.Box3().setFromObject(cabinet).union(new G.Box3().setFromObject(tip)), ctr = box.getCenter(new V3()), size = box.getSize(new V3());
+  // --- camera: the reels fill most of the screen, with a little of the hat around them (Cody, 2026-10-01: "make the slot game
+  // bigger its hard to see"; it used to fit the whole hat, which left the 5×5 grid about half the canvas wide)
+  const AROUND = 1.4; // how much shows around the reel window (1 = the reels only)
+  const ctr = new V3(0, winY, front);
   function resize() {
     const w = canvas.clientWidth || 300, h = canvas.clientHeight || 300;
     renderer.setSize(w, h, false); cam.aspect = w / h;
-    const tan = Math.tan((cam.fov * Math.PI) / 360), dist = Math.max(size.y / 2 / tan, size.x / 2 / tan / cam.aspect) * 1.04 + K.rBase;
-    cam.position.set(ctr.x, ctr.y + 0.4, dist); cam.lookAt(ctr.x, ctr.y, 0); cam.updateProjectionMatrix();
+    const tan = Math.tan((cam.fov * Math.PI) / 360), dist = Math.max((winH * AROUND) / 2 / tan, (winW * AROUND) / 2 / tan / cam.aspect);
+    cam.position.set(ctr.x, ctr.y + 0.2, front + dist); cam.lookAt(ctr.x, ctr.y, front); cam.updateProjectionMatrix();
   }
   new ResizeObserver(resize).observe(canvas); resize();
 
