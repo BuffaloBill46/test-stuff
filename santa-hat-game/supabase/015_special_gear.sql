@@ -85,6 +85,16 @@ begin
 end $$;
 revoke execute on function public.record_gear_worn(uuid, text[]), public.gear_worn_out(uuid, text), public.take_off_worn_gear() from public, anon, authenticated;
 
+-- NO STACKING (Cody, 2026-10-01: "Can't stack same stat"): each gear item boosts one stat (mockups/gear.js `stat`; the Gift
+-- Box / Present Box has none of its own). save_profile refuses two gear with the same stat. tests/db/gear-db.test.mjs checks this
+-- list matches gear.js.
+create function public.gear_stat(p_item text) returns text
+language sql immutable set search_path = '' as $$
+  select case p_item when 'gear_pumpkin' then 'hits' when 'gear_kevlar' then 'hits' when 'gear_heated' then 'hits' when 'gear_santa' then 'hits'
+    when 'gear_sack' then 'held' when 'gear_backpack' then 'held' when 'gear_satchel' then 'refill' when 'gear_shoes' then 'speed'
+    when 'gear_elfhat' then 'size' else null end
+$$;
+
 -- Same rules as 012's version, plus the gear slots: each holds an owned gear item (or 'gear_none'), the same gear can't fill
 -- both, the 2nd slot only from level 8, the Santa Costume only from level 3 (gear.js). WORN-OUT gear is taken off (the slot
 -- saves as empty) instead of refusing the save: it wore out on its own, so refusing would block every other change (name,
@@ -99,6 +109,7 @@ declare
   a jsonb;
   clean jsonb := '{}'::jsonb;
   seen text[] := '{}';
+  stats text[] := '{}';
   lvl int;
   prof public.profiles;
 begin
@@ -130,7 +141,9 @@ begin
       if s = 'g2' and lvl < 8 then raise exception 'The second gear slot opens at level 8'; end if;
       if a ->> s = 'gear_santa' and lvl < 3 then raise exception 'The Santa Costume is worn from level 3'; end if;
       if (a ->> s) = any (seen) then raise exception 'The same gear can''t fill two slots'; end if;
+      if public.gear_stat(a ->> s) = any (stats) then raise exception 'Two gear can''t boost the same stat'; end if; -- no stacking (Cody)
       if public.gear_worn_out(pid, a ->> s) then a := a || jsonb_build_object(s, 'gear_none'); end if;
+      if public.gear_stat(a ->> s) is not null then stats := stats || public.gear_stat(a ->> s); end if;
     end if;
     seen := seen || (a ->> s);
     clean := clean || jsonb_build_object(s, a ->> s);

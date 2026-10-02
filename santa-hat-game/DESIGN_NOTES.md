@@ -175,6 +175,10 @@ names (Cody: "use the names from already made items").
 | Elf Hat | half-size player, but snowballs do 2× their effect on you (stun twice as long; an extra hit counts double) |
 | Backpack | +25% snowballs held (round up) |
 - Extra hits come back after each stun, all game.
+- **RULE: no stacking the same stat (Cody, 2026-10-01: "Can't stack same stat").** Each gear boosts one stat: extra hits
+  (Pumpkin, Kevlar Vest, Heated Coat, Santa Costume), snowballs held (Santa Bag, Backpack), refill (Elf Satchel), speed (Elf
+  Shoes), size (Elf Hat). Two gear with the same stat can't be worn together: the save refuses it (015), the match counts only
+  the first, and a Present Box never turns into a stat already worn. The Special Gear tab shows the rule (gear.js NO_STACK_NOTE).
 - Every item follows level rules (Present Box never picks the Santa Costume below level 3; no Snowball Rain before level 5).
 - Prices: Claude sets base prices for now; Cody will change them.
 

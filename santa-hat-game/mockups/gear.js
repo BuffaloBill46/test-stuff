@@ -13,19 +13,25 @@
 import { BY_ID, GEAR_SLOTS, cleanAvatar } from './catalog.js';
 import { levelInfo } from './levels.js';
 export const GEAR = {
-  pumpkin: { name: 'Pumpkin Costume', hits: 1, note: '+1 hit (2 snowballs to knock you down)' },
-  kevlar: { name: 'I.C.E. Kevlar Vest', hits: 1, note: '+1 hit' },
-  heated: { name: 'Heated Coat', hits: 1, note: '+1 hit' },
-  santa: { name: 'Santa Costume', hits: 2, minLevel: 3, note: '+2 hits (level 3+)' },
+  pumpkin: { name: 'Pumpkin Costume', stat: 'hits', hits: 1, note: '+1 hit (2 snowballs to knock you down)' },
+  kevlar: { name: 'I.C.E. Kevlar Vest', stat: 'hits', hits: 1, note: '+1 hit' },
+  heated: { name: 'Heated Coat', stat: 'hits', hits: 1, note: '+1 hit' },
+  santa: { name: 'Santa Costume', stat: 'hits', hits: 2, minLevel: 3, note: '+2 hits (level 3+)' },
   present: { name: 'Present Box', present: true, note: 'Becomes one random gear at the start of each match' },
-  bag: { name: 'Santa Bag', held: 0.5, note: '+50% snowballs held' },
-  satchel: { name: 'Elf Satchel', refill: 0.25, note: 'Snowballs come back 25% faster' },
-  shoes: { name: 'Elf Shoes', speed: 0.25, note: '+25% move speed' },
-  elfhat: { name: 'Elf Hat', size: 0.5, hitMult: 2, note: 'Half size, but snowballs do 2× on you (stun twice as long; a hit takes 2 extra hits)' },
-  backpack: { name: 'Backpack', held: 0.25, note: '+25% snowballs held' },
+  bag: { name: 'Santa Bag', stat: 'held', held: 0.5, note: '+50% snowballs held' },
+  satchel: { name: 'Elf Satchel', stat: 'refill', refill: 0.25, note: 'Snowballs come back 25% faster' },
+  shoes: { name: 'Elf Shoes', stat: 'speed', speed: 0.25, note: '+25% move speed' },
+  elfhat: { name: 'Elf Hat', stat: 'size', size: 0.5, hitMult: 2, note: 'Half size, but snowballs do 2× on you (stun twice as long; a hit takes 2 extra hits)' },
+  backpack: { name: 'Backpack', stat: 'held', held: 0.25, note: '+25% snowballs held' },
 };
 // Fixed order: a player's gear travels in match snapshots as a bitmask of these (gearMask), so NEVER reorder; add at the end.
 export const GEAR_KINDS = ['pumpkin', 'kevlar', 'heated', 'santa', 'present', 'bag', 'satchel', 'shoes', 'elfhat', 'backpack'];
+// NO STACKING (Cody, 2026-10-01: "Can't stack same stat"): two gear can't boost the same stat. Each gear has one stat (above);
+// Present Box has none until it turns into a gear, then it has that gear's. Enforced in gearIn (the match), resolvePresent (its
+// pick), effectsOf (defensive) and the database save (015 save_profile); the Special Gear tab shows NO_STACK_NOTE.
+export const NO_STACK_NOTE = "Two gear can't boost the same stat (like Santa Bag + Backpack, or two +1 hit gear).";
+export const statOf = (kind) => GEAR[kind]?.stat || null;
+const statTaken = (kinds, kind) => !!statOf(kind) && (kinds || []).some((k) => k !== kind && statOf(k) === statOf(kind));
 export const WEAR_DAYS = 7; // the clock starts at the first match wearing it (015_special_gear.sql keeps it)
 
 // Can a player of this level wear this gear? (Santa Costume: level 3+.)
@@ -35,20 +41,22 @@ export const gearAllowed = (kind, level) => !!GEAR[kind] && (level || 1) >= (GEA
 // worn (two slots hold two DIFFERENT gear, so a Present Box can't double a gear up either). `rand` is the referee's, so a
 // seeded match picks the same gear every time. Resolved ONCE at match start; the result travels in snapshots (gearMask).
 export function resolvePresent(kinds, level, rand = Math.random) {
-  const out = (kinds || []).filter((k) => k !== 'present' && gearAllowed(k, level));
+  const out = []; // what the player wears, minus anything their level doesn't allow and a second gear of a stat (no stacking)
+  for (const k of kinds || []) if (k !== 'present' && gearAllowed(k, level) && !out.includes(k) && !statTaken(out, k)) out.push(k);
   for (const k of kinds || []) if (k === 'present') {
-    const pick = GEAR_KINDS.filter((g) => g !== 'present' && gearAllowed(g, level) && !out.includes(g));
+    const pick = GEAR_KINDS.filter((g) => g !== 'present' && gearAllowed(g, level) && !out.includes(g) && !statTaken(out, g)); // no stacking
     if (pick.length) out.push(pick[Math.min(pick.length - 1, Math.floor(rand() * pick.length))]);
   }
   return out;
 }
 
-// What a list of (resolved) gear does, combined. Two DIFFERENT gear stack by ADDING: Santa Bag + Backpack = +75% held,
-// Pumpkin + Santa Costume = +3 hits, Elf Shoes alone +25%. OPEN QUESTION for Cody: should two gear stack at all, and by
-// adding? (Claude's pick for now; only levels 8–10 have 2 slots.) Elf Hat's size and 2× don't come from anything else.
+// What a list of (resolved) gear does, combined. Cody: gear can't stack the same stat, so only gear with DIFFERENT stats combine
+// (Santa Bag + Elf Shoes: +50% held and +25% speed); a second gear of a stat already counted adds nothing (it can't get here
+// through gearIn or the save anyway).
 export function effectsOf(kinds) {
   const fx = { extraHits: 0, heldMult: 1, refillMult: 1, speedMult: 1, size: 1, hitMult: 1 };
-  for (const k of new Set(kinds || [])) { const G = GEAR[k]; if (!G) continue;
+  const seen = new Set();
+  for (const k of new Set(kinds || [])) { const G = GEAR[k]; if (!G || (G.stat && seen.has(G.stat))) continue; if (G.stat) seen.add(G.stat); // no stacking
     fx.extraHits += G.hits || 0; fx.heldMult += G.held || 0; fx.refillMult += G.refill || 0; fx.speedMult += G.speed || 0;
     if (G.size) fx.size *= G.size; if (G.hitMult) fx.hitMult *= G.hitMult; }
   return fx;
@@ -63,7 +71,7 @@ export const heldWith = (start, fx) => Math.ceil(start * (fx?.heldMult || 1) - 1
 // database's job: save_profile takes it off, so a saved avatar never holds it (015_special_gear.sql).
 export function gearIn(avatar, level) {
   const c = cleanAvatar(avatar), out = [];
-  for (const s of GEAR_SLOTS.slice(0, levelInfo(level).gear)) { const k = BY_ID.get(c[s])?.gear; if (k && gearAllowed(k, level) && !out.includes(k)) out.push(k); }
+  for (const s of GEAR_SLOTS.slice(0, levelInfo(level).gear)) { const k = BY_ID.get(c[s])?.gear; if (k && gearAllowed(k, level) && !out.includes(k) && !statTaken(out, k)) out.push(k); } // no stacking
   return out;
 }
 

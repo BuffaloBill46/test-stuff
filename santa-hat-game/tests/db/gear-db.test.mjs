@@ -43,6 +43,14 @@ assert.deepEqual(g(await save({ ...base, g1: 'gear_none', g2: 'gear_none' })), [
 await db.query('update public.profiles set level = 8 where id = $1', [uid]);
 assert.deepEqual(g(await save({ ...base, g1: 'gear_sack', g2: 'gear_gift' })), ['gear_sack', 'gear_gift'], 'level 8: two gear');
 assert.match((await save({ ...base, g1: 'gear_sack', g2: 'gear_sack' })).refused, /two slots/, 'the same gear can\'t fill two slots');
+// NO STACKING (Cody, 2026-10-01: "Can't stack same stat"): two gear with the same stat are refused; different stats save
+await db.query(`insert into public.inventory (profile_id, item_id) values ($1, 'gear_backpack'), ($1, 'gear_shoes') on conflict do nothing`, [uid]);
+assert.match((await save({ ...base, g1: 'gear_sack', g2: 'gear_backpack' })).refused, /same stat/, 'Toy Sack (Santa Bag) + Backpack: both "held", refused');
+assert.deepEqual(g(await save({ ...base, g1: 'gear_sack', g2: 'gear_shoes' })), ['gear_sack', 'gear_shoes'], 'Toy Sack + Elf Shoes (held + speed) save');
+{ const { GEAR } = await import('../../mockups/gear.js');
+  for (const it of ITEMS.filter((i) => i.slot === 'gear')) {
+    const sql = (await db.query('select public.gear_stat($1) as s', [it.id]))[0].s;
+    assert.equal(sql, it.gear ? GEAR[it.gear].stat ?? null : null, `${it.id}: the database's stat matches gear.js`); } }
 await db.query(`insert into public.inventory (profile_id, item_id) values ($1, 'gear_santa')`, [uid]);
 await db.query('update public.profiles set level = 2 where id = $1', [uid]);
 assert.match((await save({ ...base, g1: 'gear_santa' })).refused, /level 3/, 'Santa Costume below level 3 is refused');

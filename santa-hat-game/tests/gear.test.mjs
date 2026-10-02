@@ -3,7 +3,7 @@
 // Run: node tests/gear.test.mjs
 import assert from 'node:assert/strict';
 import { createSim, K } from '../mockups/sim.js';
-import { GEAR, GEAR_KINDS, effectsOf, heldWith, resolvePresent, gearIn, gearAllowed, gearMask, gearOfMask } from '../mockups/gear.js';
+import { GEAR, GEAR_KINDS, effectsOf, heldWith, resolvePresent, gearIn, gearAllowed, gearMask, gearOfMask, statOf, NO_STACK_NOTE } from '../mockups/gear.js';
 import { cleanAvatar, ITEMS, GEAR_SLOTS } from '../mockups/catalog.js';
 import { levelInfo } from '../mockups/levels.js';
 
@@ -18,11 +18,16 @@ assert.equal(fx('bag').heldMult, 1.5, 'Santa Bag: +50% held'); assert.equal(fx('
 assert.equal(fx('satchel').refillMult, 1.25, 'Elf Satchel: 25% faster'); assert.equal(fx('shoes').speedMult, 1.25, 'Elf Shoes: +25% speed');
 assert.deepEqual([fx('elfhat').size, fx('elfhat').hitMult], [0.5, 2], 'Elf Hat: half size, 2× effect');
 assert.deepEqual(fx(), { extraHits: 0, heldMult: 1, refillMult: 1, speedMult: 1, size: 1, hitMult: 1 }, 'no gear: nothing changes');
-// stacking: two DIFFERENT gear add (open question for Cody; Claude's pick)
-assert.equal(fx('bag', 'backpack').heldMult, 1.75, 'Santa Bag + Backpack = +75%'); assert.equal(fx('pumpkin', 'santa').extraHits, 3, 'Pumpkin + Santa = +3 hits');
+// NO STACKING (Cody, 2026-10-01: "Can't stack same stat"): a second gear of a stat already counted adds nothing; different stats combine
+assert.equal(fx('bag', 'backpack').heldMult, 1.5, 'Santa Bag + Backpack: only the Santa Bag counts'); assert.equal(fx('pumpkin', 'santa').extraHits, 1, 'Pumpkin + Santa: only the Pumpkin counts');
+{ const f = fx('bag', 'shoes'); assert.ok(f.heldMult === 1.5 && f.speedMult === 1.25, 'different stats combine: +50% held and +25% speed'); }
+for (const [a, b, same] of [['bag', 'backpack', true], ['pumpkin', 'kevlar', true], ['heated', 'santa', true], ['bag', 'shoes', false], ['elfhat', 'pumpkin', false], ['satchel', 'shoes', false]])
+  assert.equal(statOf(a) === statOf(b), same, `${a} + ${b} ${same ? 'share' : "don't share"} a stat`);
+assert.ok(GEAR_KINDS.every((k) => k === 'present' ? statOf(k) === null : !!statOf(k)), 'every gear has one stat; Present Box takes its pick\'s');
+assert.ok(/same stat/.test(NO_STACK_NOTE), 'the note the Special Gear tab shows');
 assert.equal(fx('bag', 'bag').heldMult, 1.5, 'the same gear twice counts once');
 // round UP (Cody), with no float noise on whole numbers
-assert.deepEqual([heldWith(5, fx('bag')), heldWith(5, fx('backpack')), heldWith(8, fx('backpack')), heldWith(4, fx('bag', 'backpack')), heldWith(12, fx('bag', 'backpack')), heldWith(7, fx())], [8, 7, 10, 7, 21, 7]);
+assert.deepEqual([heldWith(5, fx('bag')), heldWith(5, fx('backpack')), heldWith(8, fx('backpack')), heldWith(4, fx('bag', 'backpack')), heldWith(12, fx('bag', 'backpack')), heldWith(7, fx())], [8, 7, 10, 6, 18, 7]);
 // level rules: Santa Costume from level 3
 assert.equal(gearAllowed('santa', 2), false); assert.equal(gearAllowed('santa', 3), true); assert.equal(gearAllowed('nope', 10), false);
 // the snapshot code goes both ways, and the order is fixed (a reorder would swap players' gear mid-match)
@@ -41,13 +46,15 @@ const two = { g1: item('pumpkin'), g2: item('shoes') };
 assert.deepEqual(gearIn(two, 7), ['pumpkin'], 'levels 1–7: one gear slot'); assert.deepEqual(gearIn(two, 8), ['pumpkin', 'shoes'], 'level 8: two');
 assert.deepEqual(gearIn({ g1: item('santa') }, 2), [], 'Santa Costume below level 3: not worn'); assert.deepEqual(gearIn({ g1: item('santa') }, 3), ['santa']);
 assert.deepEqual(gearIn({ g1: item('present') }, 1), ['present'], 'Present Box is resolved by the referee, not here');
+assert.deepEqual(gearIn({ g1: item('bag'), g2: item('backpack') }, 8), ['bag'], 'no stacking: a second gear of the same stat is left out');
+assert.deepEqual(gearIn({ g1: item('bag'), g2: item('shoes') }, 8), ['bag', 'shoes'], 'different stats: both');
 
 // ---------- 3. Present Box: one random OTHER gear the level allows, never itself, never Santa below 3, never a doubled gear
 { const seen = { 1: new Set(), 3: new Set(), 8: new Set() };
   for (let s = 1; s <= 3000; s++) for (const lv of [1, 3, 8]) {
     const other = lv === 8 ? ['bag'] : [], got = resolvePresent(['present', ...other], lv, seeded(s));
     assert.equal(got.length, 1 + other.length, 'exactly one gear in its place'); const pick = got.find((k) => !other.includes(k));
-    assert.ok(pick && pick !== 'present', 'never a Present Box'); assert.ok(gearAllowed(pick, lv), `level ${lv} allows ${pick}`);
+    assert.ok(pick && pick !== 'present', 'never a Present Box'); assert.ok(!other.length || statOf(pick) !== statOf(other[0]), `no stacking: never ${pick} next to ${other[0]}`); assert.ok(gearAllowed(pick, lv), `level ${lv} allows ${pick}`);
     assert.ok(!other.includes(pick), 'never the gear in the other slot'); seen[lv].add(pick);
     assert.deepEqual(resolvePresent(['present', ...other], lv, seeded(s)), got, 'same seed, same gear');
   }
@@ -105,7 +112,8 @@ for (const d of [3, 6, 10]) { const m = match({ gear: { b: ['elfhat'] } }); m.pu
 
 // Snowballs held: the level's count × (1 + bonus), rounded up; refills to that; bots stay at 4.
 { const m = match({ gear: { b: ['bag'], c: ['bag', 'backpack'] }, lv: { c: 8 } });
-  assert.deepEqual([m.P('a').max, m.P('b').max, m.P('c').max], [5, 8, 18], 'level 1: 5; + Santa Bag: 8; level 8 + Bag + Backpack: 18 (10 × 1.75)');
+  assert.deepEqual([m.P('a').max, m.P('b').max, m.P('c').max], [5, 8, 15], 'level 1: 5; + Santa Bag: 8; level 8 + Bag + Backpack: 15 (no stacking: only the Bag, 10 × 1.5)');
+  assert.deepEqual(m.P('c').gear, ['bag'], 'the referee leaves the second same-stat gear off');
   assert.equal(m.P('b').ammo, 8, 'starts full');
   m.put('b', 0, 0); m.P('b').ammo = 5; m.run(10); assert.equal(m.P('b').ammo, 8, 'refills up to the bigger count'); }
 // Snowball Rain needs a FULL counter, and a Santa Bag makes the counter bigger (so it uses all of the bigger counter).
@@ -157,4 +165,4 @@ for (const [gear, top] of [[[], K.HUMAN_SPEED * 1.05], [['shoes'], K.HUMAN_SPEED
   // size: only gear wearers carry 2 more numbers
   const rows = snap.E; assert.ok(rows.filter((r) => r.length > 15).length === 2 && rows.every((r) => r.length === 15 || r.length === 17));
 }
-console.log('OK: special gear: +1/+2 hits (2 or 3 snowballs to knock down, +5/−1 on every hit, hat stays until knocked down, all back after each stun and each round), Elf Hat (2× stun, a hit takes 2, half size but aimed throws hit), Santa Bag/Backpack (round up, refill to it, Rain uses it all), Elf Satchel 25% faster, Elf Shoes 25% faster, Santa Costume level 3+, two gear add, Present Box never itself/Santa below 3/a doubled gear, same seed same pick, bots none, all through a host handover (exact round trip)');
+console.log('OK: special gear: +1/+2 hits (2 or 3 snowballs to knock down, +5/−1 on every hit, hat stays until knocked down, all back after each stun and each round), Elf Hat (2× stun, a hit takes 2, half size but aimed throws hit), Santa Bag/Backpack (round up, refill to it, Rain uses it all), Elf Satchel 25% faster, Elf Shoes 25% faster, Santa Costume level 3+, no stacking (two gear of the same stat: only the first counts; different stats combine), Present Box never itself/Santa below 3/a doubled gear, same seed same pick, bots none, all through a host handover (exact round trip)');
