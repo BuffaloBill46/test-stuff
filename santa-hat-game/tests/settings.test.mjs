@@ -76,3 +76,24 @@ console.log('OK: settings: version 0 = today exactly; 14 unsafe changes refused;
   const it = itemsWith(s); assert.equal(it.find((x) => x.id === 'sb_ice').price, 0.4); assert.equal(it.find((x) => x.id === 'gear_shoes').price, 1.25);
   assert.equal(it.find((x) => x.id === 'gear_shoes').gear, 'shoes', 'repricing keeps what the gear does');
   console.log('OK: store editor: special snowball and gear prices editable, new ones need code, looks unchanged'); }
+// Stocking Stuffer's pay table (Cody, 2026-10-02): editable on the admin screen with guard rails; old settings keep his table.
+{ const { DEFAULT_SETTINGS: D, check: chk, build: bld, applyToGame, stockPays } = await import('../mockups/settings.js');
+  const { PAYS, DEFAULT_PAYS, payback: pb, play } = await import('../mockups/stocking.js');
+  const T = () => structuredClone(D), no = (label, f, why) => { const s = T(); f(s); const r = chk(s); assert.equal(r.ok, false, label); assert.match(r.problems.join('; '), why, label); };
+  assert.deepEqual(D.stocking.pays, [0, 0.5, 1.75, 4, 8, 16, 40, 90, 250], 'version 0 = Cody\'s table');
+  const r0 = chk(T()); assert.ok(r0.ok); assert.ok(Math.abs(r0.report.stocking.payback - 0.60519171) < 1e-8 && r0.report.stocking.top === 250, 'the preview shows 60.5% and 250×');
+  no('payback over 98%', (s) => { s.stocking.pays = [0, 1, 3, 6, 12, 24, 60, 135, 250]; }, /Stocking Stuffer would pay back 10\d\.\d%/);
+  no('payback under 50%', (s) => { s.stocking.pays = [0, 0.2, 1, 4, 8, 16, 40, 90, 250]; }, /Stocking Stuffer would pay back 4\d\.\d%/);
+  no('more gifts paying less', (s) => { s.stocking.pays = [0, 0.5, 1.75, 4, 3, 16, 40, 90, 250]; }, /never pay less/);
+  no('missing a prize', (s) => { s.stocking.pays = [0, 0.5, 1.75, 4, 8, 16, 40, 90]; }, /needs 9 prizes/);
+  no('not a number', (s) => { s.stocking.pays = [0, 0.5, '1.75', 4, 8, 16, 40, 90, 250]; }, /needs 9 prizes/);
+  no('a top prize the shared pool\'s top-off can\'t cover', (s) => { s.stocking.pays = [0, 0.5, 1.75, 4, 8, 16, 40, 90, 400]; }, /must cover Stocking Stuffer's top prize \(\$400\)/);
+  // an allowed change does what it says: a bigger 3-gift prize raises the payback by exactly its extra × its chance
+  const s = T(); s.stocking.pays[3] = 5; const r = chk(s); assert.ok(r.ok, r.problems.join('; '));
+  assert.ok(Math.abs(r.report.stocking.payback - (pb(DEFAULT_PAYS) + 1 * 2113413120 / 60949324800)) < 1e-12, '3 gifts at 5× adds exactly 1 × P(3 gifts)');
+  assert.equal(play({ pool: 1000, prepaid: true }, 1, Math.random, 3, bld(s).stocking.pays).pay, 5, 'a turn on those settings pays 5×');
+  // settings published BEFORE Stocking Stuffer (no `stocking` key) build and re-check on Cody's table
+  const old = T(); delete old.stocking; assert.deepEqual(bld(old).stocking.pays, [...DEFAULT_PAYS]); assert.deepEqual(stockPays(old), [...DEFAULT_PAYS]); assert.ok(chk(old).ok);
+  // the page in server mode swaps the published table in place, then back
+  applyToGame(s); assert.equal(PAYS[3], 5, 'applyToGame: the page plays the published table'); applyToGame(T()); assert.deepEqual(PAYS, [...DEFAULT_PAYS]);
+  console.log(`OK: Stocking Stuffer pay table: editable, 6 unsafe tables refused (payback outside 50%–98%, decreasing, short, bad number, top prize over the top-off), old settings keep Cody's table`); }
