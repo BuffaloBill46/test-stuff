@@ -7,6 +7,7 @@
 //   and its publishable key, the public one already in the website).
 // Run: node referee.mjs        Health check: GET /health → { rooms, players }
 import http from 'node:http';
+import { existsSync } from 'node:fs';
 import { WebSocketServer } from 'ws';
 import { createReferee } from '../server/referee.js';
 import { ALLOWED_ORIGINS } from '../server/http.js';
@@ -48,7 +49,9 @@ if (process.env.DATABASE_URL) {
   };
   console.log('referee: sign-ins checked, finishes recorded');
 } else console.log('referee: no DATABASE_URL: phase-1 rooms (the page word is used, nothing recorded)');
-const ref = createReferee({ identify, finish, ranked, rankedSpecials });
+// Ranked paused while this file exists (Cody, 2026-10-02): touch it to pause, delete it to reopen; no restart needed.
+const PAUSE_FILE = process.env.RANKED_PAUSE_FILE || '/etc/santa/ranked-paused';
+const ref = createReferee({ identify, finish, ranked, rankedSpecials, rankedPaused: () => existsSync(PAUSE_FILE) });
 const perAddress = new Map();
 const server = http.createServer((req, res) => {
   if (req.url === '/health') {

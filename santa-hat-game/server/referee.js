@@ -44,7 +44,9 @@ export function guestLook(a) {
 // ranked: { hold(pid, rid) → 'free'|'extra'|'already'|'none', start(rid), release(pid, rid), result(mid, pid, change) → points,
 //   cleanup(prefix) } (supabase/006 + 018). Without it (or without identify) ranked stays closed. rankedSpecials: whether
 //   special snowballs count in ranked (Cody's open question; on = as they're sold today).
-export function createReferee({ now = () => Date.now(), rand = Math.random, identify = null, finish = null, ranked = null, rankedSpecials = true, log = console } = {}) {
+export const RANKED_PAUSED = 'Ranked is paused right now. Try Unranked.';
+// rankedPaused() → true while Cody has ranked paused (worker/referee.mjs: the file /etc/santa/ranked-paused exists).
+export function createReferee({ now = () => Date.now(), rand = Math.random, identify = null, finish = null, ranked = null, rankedSpecials = true, rankedPaused = () => false, log = console } = {}) {
   const rooms = new Map(); // code → room
   let rankedSeq = 0;
   // A restart: tickets still held for rooms of an earlier run come back (those rooms are gone).
@@ -109,6 +111,8 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
     async function findRanked(m) {
       if (room || joining) return err('already in a room');
       if (!ranked || !identify) return err('Ranked opens soon.');
+      // Cody can pause ranked (2026-10-02: no testers in ranked): new searches are refused; games already running finish
+      if (rankedPaused()) return err(RANKED_PAUSED);
       const p = m.me || {};
       if (!isId(p.id)) return err('bad player id');
       if (typeof m.token !== 'string' || !m.token) return err('Ranked needs you signed in.');

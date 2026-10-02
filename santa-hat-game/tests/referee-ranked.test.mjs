@@ -4,7 +4,7 @@
 // entered by code (watching is fine), and a restart gives back held tickets. The ticket store here follows the rules of
 // supabase/006 + 018, which tests/db/ranked-db.test.mjs checks on real Postgres. Run: node referee-ranked.test.mjs
 import assert from 'node:assert/strict';
-import { createReferee, NO_TICKETS } from '../server/referee.js';
+import { createReferee, NO_TICKETS, RANKED_PAUSED } from '../server/referee.js';
 import { PHASES, K } from '../mockups/sim.js';
 import { settleRanked } from '../mockups/ranked.js';
 
@@ -98,4 +98,12 @@ assert.equal(roomOf('anne0009').conns.get('anne0009').me.a.sb1, 'sb_none', 'norm
 conn2().say({ t: 'ranked', token: 'cat', styles: ['normal', 'gear'], me: me('catt0009') }); await settle();
 assert.equal(roomOf('catt0009'), roomOf('anne0009'), 'both ticked: either style, closest rank points first (Ann 0 vs Ben 500; Cat 20)');
 const l2 = conn2(); l2.say({ t: 'board' }); assert.deepEqual(l2.got.at(-1).games.map((x) => x.style).sort(), ['gear', 'normal'], "the games list shows each ranked room's style");
-console.log('OK: ranked on the referee: Normal / Special gear choice (paired by style, normal strips specials), sign-in + tickets, the server picks the room, 2 real players to start, tickets spent at the start and back if you leave before, ranked.js points once (quitters −5), levels too, room closes after, code-join refused, watching ok, restart cleanup');
+// --- Cody's pause (2026-10-02): while paused, searches are refused and no ticket is held; unpaused, ranked works again
+let paused = true;
+const ref3 = createReferee({ now: () => t, identify: async (tok) => people[tok] || null, ranked, rankedPaused: () => paused });
+const c3 = { got: [], send: (x) => c3.got.push(JSON.parse(x)) }, h3 = ref3.connect(c3), before = tickets.get(P(3));
+h3.message(JSON.stringify({ t: 'ranked', token: 'cat', me: me('catt0010') })); await settle();
+assert.equal(c3.got.at(-1).why, RANKED_PAUSED, 'paused: told so'); assert.equal(ref3.rooms.size, 0, 'paused: no room made'); assert.equal(tickets.get(P(3)), before, 'paused: no ticket held');
+paused = false; h3.message(JSON.stringify({ t: 'ranked', token: 'cat', me: me('catt0010') })); await settle();
+assert.equal(ref3.rooms.size, 1, 'unpaused: ranked works again, no restart');
+console.log('OK: ranked on the referee: pause switch, Normal / Special gear choice (paired by style, normal strips specials), sign-in + tickets, the server picks the room, 2 real players to start, tickets spent at the start and back if you leave before, ranked.js points once (quitters −5), levels too, room closes after, code-join refused, watching ok, restart cleanup');
