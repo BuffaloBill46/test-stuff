@@ -160,6 +160,28 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
+### Afternoon 2026-10-02 (Cody playtesting on his phone): all LIVE unless noted
+- **RANKED IS PAUSED** (Cody: no testers in ranked). Switch = the file `/etc/santa/ranked-paused` on the Droplet: delete it to
+  reopen (no restart), `touch` it to pause. Searches answer "Ranked is paused right now. Try Unranked."
+- Ranked has the same Normal play / Special gear ticks as Auto match (rooms PRN#/PRG#; normal strips specials and gear on the
+  server). Answers item A: specials count in Special-gear ranked rooms.
+- Ranked tickets: "N / 25" on Player Progress, under the ranked lobby's title, and the top-bar chip (read from the game server
+  on the demo site too). 25 = 10 free a day + at most 10 BOUGHT held (022, applied live; the shop refuses before paying) + 5
+  GIVEN by Cody (giveaways NOT built; give them their own cap of 5 when they are). Cody's words: "bought tickets maxed at 10 +
+  free tickets at 5" — read as 5 given; if he meant daily free 10→5, that's FREE_DAILY in ranked.js + 006's 10s.
+- Store: the two weekly lotteries side by side, Christmas full width under them. Special snowball pictures (Store, Avatar and the
+  in-match SB buttons, which now show the picture instead of SB1/2/3) are drawn with the game's own tracer code (ballfx.js).
+- Upright phones in a match: smaller info boxes, snowball box and scoreboard; zoom +/− side by side under the sound button.
+- Cody's own Phantom GbStAPcXZyUsMhsK9JT59wcA2Yoqa5VyKyGcguZZJbPm got $100 test SANTA + devnet SOL (tests/solana/devnet-gift.mjs);
+  he tests with the ?server= link (the plain site is the demo: pulls there never ask the wallet).
+- Game server v18 (pinned 1183af2); match server on the Droplet at 1286c1d+ (same referee code).
+- **NEXT (Cody asked): "Claim rewards" button** on the admin screen: GP (HTmQz7My6MehV7bjhJ6jde8nDND1yvsz68d24LP7YgUQ) and GLDX
+  (Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re), reward tokens sent to SANTA holders, land in the Drop/Slots pool wallets; the
+  button moves every NON-SANTA token from those two pools to the TREASURY (fixed address, never typed in; SANTA never touched).
+  Design: signed admin action → a job row → the payout worker (holds the pool keys) sends. Test on devnet with a fake token.
+  At launch also open SANTA accounts for the lottery wallet and treasury (~0.0016 SOL each) so players never pay that rent.
+- Known test-browser limit: controls-test's 768×1024 step crashes the slow WSL browser (before this session's changes too).
+
 ### Overnight 2026-10-02 (Claude, while Cody slept): what changed, in plain English
 - **Cheat-proof match referee is LIVE on the Droplet** (wss://147-182-219-161.sslip.io): every match runs on our server, pages
   only send moves, so nobody can fake scores. Signed-in players play with their SAVED level and items (the database only
@@ -188,8 +210,7 @@ between two devices has never been tested from here. Cody and friends testing on
 ### >>> CODY'S LIST: everything left before launch that only Cody can do (updated 2026-10-02; Claude adds, Cody ticks) <<<
 Everything else on the launch path is built, tested and live. In the order to do them:
 
-**A. One quick answer (reply in chat):** should SPECIAL SNOWBALLS count in RANKED, or plain snowballs only there so ranked can't
-   be pay-to-win? (One switch, `rankedSpecials` in worker/referee.mjs; ON = they count, until you say.)
+**A. ~~Specials in ranked?~~ Answered (2026-10-02):** players choose Normal play or Special gear (or both) for ranked too.
 
 **B. Telegram alerts (about 3 minutes; built and live, waiting for the bot):**
    1. In Telegram, message **@BotFather**: send `/newbot`, name it `Santa Hat Alerts`, pick a username ending in `bot`.
@@ -199,7 +220,7 @@ Everything else on the launch path is built, tested and live. In the order to do
    What you'll get: a payout frozen by the safety cap, a send that failed 5 times, winnings stuck over 10 minutes, a top-off
    waiting for your deposit, an emergency stop, the match server down, books not matching a pool wallet, a strong bot signal.
 
-**C. "Are you human?" at sign-in (about 5 minutes; built, switched off until it has keys):**
+**C. "Are you human?" at sign-in: SKIPPED for now (Cody 2026-10-02: "I'll add it if I need to").** Built and off; when wanted:
    1. Sign in to Cloudflare (or make a free account) in Chrome → **Turnstile** → Add widget: name `Santa Hat Legends`, hostnames
       `santahatgames.com` and `www.santahatgames.com`, mode **Managed**. Tell Claude when it's made.
    2. Claude reads the widget's SITE key (public) and publishes it in the page. Then, ONLY after Claude says the page is live:
@@ -223,6 +244,7 @@ Everything else on the launch path is built, tested and live. In the order to do
 **F. Your other project "Green Life Game" is using most of the free game-server calls** (found 2026-10-02): the Supabase account
    has 500,000 a month; it was at 155,000 after 4 days (Santa Hat itself: about 200 a day). If the account runs out, Supabase
    pauses BOTH games. Have that game's Claude look at what's calling it so often, or upgrade the Supabase plan.
+   (Cody 2026-10-02: he'll upgrade to Pro if needed. E waits for the real-money launch.)
 
 Done from this list (2026-10-02): email sign-in through Resend (from signin@santahatgames.com, Santa Hat design, 8-digit code box;
 confirmed delivered), the payout worker live with its own limited login, 5 funded devnet test players, the Christmas late-payment
