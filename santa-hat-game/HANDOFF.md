@@ -137,6 +137,10 @@ node tabs-test.mjs               # tabs, store, avatar editor, sign-in sheet
 node link-test.mjs               # email + wallet account linking (local stand-in)
 node mp.mjs                      # multiplayer room: join, host handover
 node idle.mjs                    # 3-minute idle and hidden-tab kicks
+# A REAL PLAYER on the LIVE site (real Chrome on Windows = real GPU; guest; desktop, then phone with touch): a full practice
+# match, Auto match, Games, Store/lottery, Avatar, Ranks, Sign in. Needs playwright on Windows (PW=<folder>); SITE=… for local code.
+# 2026-10-02: 33/33 desktop and phone on the live site; tonight's code 33/33 with no console errors.
+(cd tests/browser && PW=<folder with node_modules/playwright> node live-player.mjs [phone])
 node live.mjs                    # STALE (found 2026-10-01): written before the lobby redesign; it stops at "Waiting for the referee" (it blocks Supabase). Until it's updated, click through the live site in a real browser instead
 node spin-test.mjs               # RETIRED with Spin (Cody, 2026-10-01): the Spin card is hidden, so this no longer runs; kept with Spin's code
 node devnet-pay-test.mjs         # REAL devnet: the page's wallet step buys a Snowball Drop run, server checks the real payment, payout sent (needs tests/solana/devnet-setup.mjs)
