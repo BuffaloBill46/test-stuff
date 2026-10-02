@@ -21,6 +21,14 @@
     "player": "Test player: buys runs, tickets and levels in the tests",
     "codyAdmin": "Stand-in for Cody's admin wallet (signs pause/settings/lottery-paid on devnet); his Phantom replaces it at launch",
     "admin": "Test-token authority: makes the test SANTA (not used by the game)",
-    "funder": "Pays devnet setup fees (devnet SOL only)"
+    "funder": "Pays devnet setup fees (devnet SOL only)",
+    "testPlayers": "Fake players for testing (devnet only): SOL for fees from the funder, test SANTA; keys in <SANTA_KEYS>/players/"
+  },
+  "testPlayers": {
+    "testPlayer1": "4HyhUNz7VqE7gPwoR3pQUDdjApMqfVA5FD37ErhFuemq",
+    "testPlayer2": "BWj95nAfrpj1PTTAnKcrHf8RLwKJYewuPxZ8NB1r9fMk",
+    "testPlayer3": "7h4hmd2eHDZUb8QRQBzJvMThh1j7o9nfpWetKcYZPM65",
+    "testPlayer4": "13MowRsXG4b9Bm8RsrMNqX69mMLD2JvTx1XFrJnXdnvR",
+    "testPlayer5": "54qkjU7Z6F5VTSL85H6ovFa5xsHvURGt93dvMMTDZ1g1"
   }
 }
