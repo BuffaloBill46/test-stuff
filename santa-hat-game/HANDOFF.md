@@ -160,6 +160,19 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
+### Stocking Stuffer (2026-10-02, built by a helper Claude on a worktree branch; NOT published, 025 NOT applied anywhere)
+- New Games-tab game (Cody's brief): 20 stockings, 8 gifts, first coal ends the turn; pays 0 · 0.5× · 1.75× · 4× · 8× · 16× ·
+  40× · 90× · 250×; **exact payback 60.519%**. Full notes: DESIGN_NOTES → "Stocking Stuffer". Files: `mockups/stocking.js`
+  (rules), `stockingboard.js` (the mantel), `stockingui.js` (the card); server kind `stocking` in `server/games.js`;
+  `supabase/025_stocking.sql` (widens the quotes/runs kind checks; idempotent); admin pay-table editor; deploy list updated.
+- **For Cody before real money:** (1) 60.5% payback vs ~80% everywhere else; (2) $1 turns are refused while the Drop pool is
+  $100–$250 (250× = $250): 10¢ only, its own pool, or a bigger pool/top-off. Pool rules untouched.
+- To go live: apply 025 (confirm the two constraint names first, query in the file), redeploy the game server at the new
+  commit, publish the page. Tests: `node tests/stocking.test.mjs`, `(cd tests/db && node stocking-db.test.mjs)` (and
+  `REALPG=1` in WSL), `(cd tests/browser && node stocking-test.mjs)` in WSL.
+- Found while checking: `deno check supabase/functions/games/index.ts` FAILS on the starting commit 279fddd too (TS2322 at
+  index.ts:90, the Telegram `chatId: env(...) || null`); not caused by this work, not fixed here.
+
 ### Afternoon 2026-10-02 (Cody playtesting on his phone): all LIVE unless noted
 - **RANKED IS PAUSED** (Cody: no testers in ranked). Switch = the file `/etc/santa/ranked-paused` on the Droplet: delete it to
   reopen (no restart), `touch` it to pause. Searches answer "Ranked is paused right now. Try Unranked."

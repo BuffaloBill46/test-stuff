@@ -367,3 +367,19 @@ send log, and any premise used to explain a result, before stating it.
    once. Rule: a comment goes on ITS OWN LINE above, never inside a line of settings; run the rule tests after any sim.js edit.
 2. `pkill -f <name>` inside `bash -lc "... <name> ..."` kills that very shell (its command line matches). Twice now. Rule: never
    pkill by a pattern your own command contains; stop a background task with TaskStop, or match on a PID.
+
+## A canvas that only draws while "active" can sit blank at rest (2026-10-02, Stocking Stuffer)
+The new mantel board drew only while visible or animating (to spare phones). Every test of PLAYING passed, but the screenshot at
+rest showed an empty box: resizing a canvas (any layout shift) clears it, and the idle loop never painted it again. Opening a
+stocking woke the loop, so it looked fine once played. Rule: a board that rests must paint a still frame whenever it is resized
+or reset; and a browser test samples the canvas pixels at rest (stocking-test.mjs; it fails on the old code).
+
+## Half-cent prizes and a cents column (2026-10-02)
+1.75 × 10¢ = 17.5¢. `plays.pay` is numeric(12,2), so it stores 18¢; the SANTA sent (pay_raw) is the exact 17.5¢. The public
+winners list read the cents column and said "+80%" for a +75% win. Anything shown to players reads the exact prize (multiplier ×
+price); the cents column is for books at a glance only.
+
+## A test counter that resets late reads the previous turn (2026-10-02)
+The "decided before it was shown" check waited for "4 turns done and 1 stocking shown", but the shown-counter still held turn 4's
+value until turn 5 reset it, so it read turn 4's board. Wait on a counter that changes at the START of the thing you mean
+(`live.started`), not on one that is reset somewhere inside it.
