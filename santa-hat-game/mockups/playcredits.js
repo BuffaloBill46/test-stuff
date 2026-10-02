@@ -9,7 +9,7 @@ import { newSeed } from './fair.js';
 import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js';
 import { FEE } from './slots.js';
 import { play as sfx } from './sfx.js';
-import { SERVER, call, walletReady, payError } from './gameserver.js';
+import { SERVER, call, walletReady, payError, forPlayer } from './gameserver.js';
 import { withSlowDown } from './slowdown.js';
 export const serverMode = !!SERVER; // ?server=<address>: plays come from the game server
 
@@ -32,6 +32,8 @@ export function refresh() {
   for (const k of Object.keys(KINDS)) { const b = $(`[data-proof="${k}"]`); if (b) b.hidden = !last[k]; }
 }
 export function initCredits(opts) {
+  // Server mode: no demo balance here (live-site test 2026-10-02: the buy dialog and the Drop/Spin cards still said "Demo")
+  if (serverMode) { $('#buyDemo')?.setAttribute('hidden', ''); document.querySelectorAll('.slotshead .demo').forEach((d) => { d.hidden = true; }); }
   wallet = opts.wallet; onChange = opts.onChange || onChange;
   opts.pools.spin.prepaid = true; opts.pools.slots.prepaid = true; // entries reach the pool at purchase
   house = createHouse(ledger, opts.pools);
@@ -70,7 +72,7 @@ async function payOnServer(kind, bet, n) {
   const q = await call('quote', { kind, n, bet });
   if (q.busy) { note.textContent = 'Your last run is still finishing. Try again in a moment.'; $('#buyGo').disabled = false; return null; }
   if (q.refused) { note.textContent = q.stopped ? 'This game is paused right now. Nothing was charged.' : 'The prize pool is refilling. Try again soon; nothing was charged.'; $('#buyGo').disabled = false; return null; }
-  if (q.error) { note.textContent = q.error; $('#buyGo').disabled = false; return null; }
+  if (q.error) { note.textContent = forPlayer(q.error, () => $('#buyDlg').close()); $('#buyGo').disabled = false; return null; }
   await walletReady;
   if (typeof window.santaPay !== 'function') { note.textContent = 'Wallet payments aren\'t connected yet.'; $('#buyGo').disabled = false; return null; }
   let signature; try { note.textContent = 'Approve the payment in your wallet…'; signature = await window.santaPay(q); }

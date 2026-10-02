@@ -32,6 +32,14 @@ export function payError(e) {
   if (/dynamically imported module|importing a module/i.test(m)) return "Couldn't load the wallet step. Check your connection and try again. Nothing was charged.";
   return 'Not paid: ' + (m || 'the wallet said no');
 }
+// The server's "sign in first" as a player should meet it (live-site test, 2026-10-02: a guest pressing Pay saw the raw words
+// in small red letters): a clear line, then the sign-in sheet opens (after any open dialog closes, so it isn't hidden).
+// Returns the text to show, or the server's own message for any other error.
+export function forPlayer(err, closeDialog) {
+  if (err !== 'sign in first') return err;
+  setTimeout(() => { try { closeDialog?.(); } catch {} document.querySelector('#signin')?.click(); }, 900);
+  return 'Sign in first: buying needs your account and its wallet. Opening sign-in…';
+}
 export async function call(action, body = {}) {
   const t = await token();
   if (!t && !PUBLIC_ACTIONS.includes(action)) return { error: 'sign in first' };
