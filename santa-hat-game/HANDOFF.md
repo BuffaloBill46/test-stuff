@@ -185,35 +185,49 @@ between two devices has never been tested from here. Cody and friends testing on
 - **Not published:** everything above that changes the page (the public site still runs the previous build). Publishing is
   one script (deploy-pages.sh) once Cody has looked.
 
-### >>> CODY'S LIST: things only Cody can do (newest first; Claude adds, Cody ticks) <<<
-**Quick questions (just answer in chat):**
-- ~~Lottery, the one refund left~~ **DECIDED (Cody, 2026-10-02): refund it.** A payment that confirms after the Christmas
-  draw ran never becomes a ticket, so it is refunded in full (what the code already does).
-- **Special snowballs in RANKED:** count them, or plain snowballs only in ranked so it can't be pay-to-win? One switch
-  (`rankedSpecials` in worker/referee.mjs); it's ON (they count) until you say.
+### >>> CODY'S LIST: everything left before launch that only Cody can do (updated 2026-10-02; Claude adds, Cody ticks) <<<
+Everything else on the launch path is built, tested and live. In the order to do them:
 
-0. **Your other project "Green Life Game" is using most of the free game-server calls** (found 2026-10-02): the Supabase account
+**A. One quick answer (reply in chat):** should SPECIAL SNOWBALLS count in RANKED, or plain snowballs only there so ranked can't
+   be pay-to-win? (One switch, `rankedSpecials` in worker/referee.mjs; ON = they count, until you say.)
+
+**B. Telegram alerts (about 3 minutes; built and live, waiting for the bot):**
+   1. In Telegram, message **@BotFather**: send `/newbot`, name it `Santa Hat Alerts`, pick a username ending in `bot`.
+   2. BotFather replies with a TOKEN. In Supabase → the project → Edge Functions → **Secrets** → Add: name `TELEGRAM_BOT_TOKEN`,
+      value = that token. Save. (Secrets are yours to paste; Claude never types tokens.)
+   3. In Telegram, open your new bot and press **Start**. Within 5 minutes alerts are on (the server finds your chat itself).
+   What you'll get: a payout frozen by the safety cap, a send that failed 5 times, winnings stuck over 10 minutes, a top-off
+   waiting for your deposit, an emergency stop, the match server down, books not matching a pool wallet, a strong bot signal.
+
+**C. "Are you human?" at sign-in (about 5 minutes; built, switched off until it has keys):**
+   1. Sign in to Cloudflare (or make a free account) in Chrome → **Turnstile** → Add widget: name `Santa Hat Legends`, hostnames
+      `santahatgames.com` and `www.santahatgames.com`, mode **Managed**. Tell Claude when it's made.
+   2. Claude reads the widget's SITE key (public) and publishes it in the page. Then, ONLY after Claude says the page is live:
+      Supabase → Authentication → **Attack Protection** → Enable CAPTCHA protection → provider **Turnstile** → paste the SECRET key
+      → Save. (In that order: the other way round nobody could sign in.)
+
+**D. Play once on the test network (about 10 minutes):** set Phantom to devnet, import a test player (Settings → Add / Connect
+   wallet → Import private key → the contents of `C:\santa-devnet-keys\players\testPlayer1.phantom.txt`), open
+   https://santahatgames.com/?server=https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games , sign in with the wallet and buy
+   a Big Hat pull or a Snowball Drop. A win should arrive in that wallet by itself within a minute. Tell Claude how it went.
+
+**E. Real money (each step needs your OK; Claude walks you through):**
+   1. Say "switch the site to the server": the public site stops being a demo (one line in the page).
+   2. Real wallets: Claude makes new mainnet pool / lottery / treasury wallets ON THE DROPLET (keys never leave it) and gives you
+      their addresses. You fund them: Drop pool $300 of SANTA, Slots pool $500 of SANTA, a little SOL (about 0.05) in each for fees.
+   3. Your Phantom's public address as the admin wallet (for the admin screen's signed actions).
+   4. Your Helius address (it contains your Helius key) pasted into Supabase → Edge Functions → Secrets as `SOLANA_RPC_URL`.
+   5. Claude then resets the test books, points everything at mainnet (no test token), and runs the full checks again.
+   Recommended before real money: a lawyer's look at the paid games (RESEARCH.md → "Other things that would help").
+
+**F. Your other project "Green Life Game" is using most of the free game-server calls** (found 2026-10-02): the Supabase account
    has 500,000 a month; it was at 155,000 after 4 days (Santa Hat itself: about 200 a day). If the account runs out, Supabase
-   pauses BOTH games (requests answer 402). Have that game's Claude look at what's calling it so often, or upgrade the plan.
-1. ~~Email sign-in for real players~~ **SET UP 2026-10-02 (Claude, with Cody's OK for each permission):** Resend domain santahatgames.com
-   verified (DNS at GoDaddy; tracking off); Resend's official Supabase integration (Cody approved its Supabase permission: Auth +
-   Projects, org-wide; remove in Supabase → Org → OAuth Apps) made the key "Supabase Integration" and set custom SMTP (checked after a
-   reload: on, Santa Hat Legends <signin@santahatgames.com>, smtp.resend.com:465, key stored). Templates set and checked: Magic Link
-   "Your Santa Hat Legends sign-in", Confirm sign up "Welcome to Santa Hat Legends" (supabase/email/). The page has the 8-digit code box
-   (published). CONFIRMED: Cody signed in by email; Resend's log shows "Your Santa Hat Legends sign-in" to cmcody85@gmail.com, Delivered.
-2. **Try a real wallet on devnet (Phantom):** set Phantom to devnet, then open
-   https://santahatgames.com/?server=https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games
-   and sign in with the wallet. Send Claude your Phantom devnet address and Claude will send it test SANTA + devnet SOL, so you can
-   buy a run, a lottery ticket, a special snowball, gear, a level and ranked tickets for real (devnet). (Claude can't create
-   accounts on the live project or sign in for you.)
-3. ~~Payouts on the live devnet server~~ **DONE 2026-10-02 (no paste needed):** the payout worker has its own least-privilege
-   login santa_worker (supabase/020: can only mark payouts sending/sent; can't change amounts or wallets, add/delete payouts or read
-   anything else; password made on the Droplet, only its SCRAM hash left it). Running as service santa-worker with the four devnet
-   keys in /etc/santa/keys (chmod 600, user santa); a trial pass connected and found nothing queued. Test-network wins are now sent
-   automatically. At mainnet: the real wallets' keys replace these, with Cody's OK.
-4. **When the public site switches from demo to the real (devnet) server:** your call after #2. One line in the page.
-5. **Mainnet (real money, needs your OK each time):** paste your Helius RPC address into Supabase secrets as SOLANA_RPC_URL (it holds
-   your Helius key), real pool/treasury/lottery wallets, reset the devnet books.
+   pauses BOTH games. Have that game's Claude look at what's calling it so often, or upgrade the Supabase plan.
+
+Done from this list (2026-10-02): email sign-in through Resend (from signin@santahatgames.com, Santa Hat design, 8-digit code box;
+confirmed delivered), the payout worker live with its own limited login, 5 funded devnet test players, the Christmas late-payment
+refund (decided: refunded), the domain santahatgames.com (site + play. match server + email), Auto match choices, 60-second rounds,
+the locked joystick.
 
 ### Live services (2026-10-02)
 - **Game server deployed** (Supabase Edge Function `games`, verify_jwt off: it checks sign-ins itself). Pinned to a commit; to
