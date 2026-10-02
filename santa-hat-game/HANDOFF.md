@@ -195,13 +195,12 @@ between two devices has never been tested from here. Cody and friends testing on
 0. **Your other project "Green Life Game" is using most of the free game-server calls** (found 2026-10-02): the Supabase account
    has 500,000 a month; it was at 155,000 after 4 days (Santa Hat itself: about 200 a day). If the account runs out, Supabase
    pauses BOTH games (requests answer 402). Have that game's Claude look at what's calling it so often, or upgrade the plan.
-1. **Email sign-in for real players: ONE STEP LEFT (corrected 2026-10-02: it was wrongly marked done).** Resend has the domain
-   santahatgames.com VERIFIED (DNS added at GoDaddy by Claude; tracking off). Missing: a Resend API key, pasted as the password in
-   Supabase → Auth → Emails → SMTP Settings (Claude fills the rest: smtp.resend.com, 465, user resend, sender Santa Hat Legends
-   <signin@santahatgames.com>), then Save. Cody's test email (to cmcody85@gmail.com, not a Supabase team address) came from Supabase's
-   BUILT-IN sender: custom SMTP was found switched off, no key existed and Resend had sent nothing. The built-in sender is for
-   testing only (a few emails an hour for the whole project, a Supabase sender address, no custom design). The game-voiced templates
-   (supabase/email/) can only be set once custom SMTP is on.
+1. ~~Email sign-in for real players~~ **SET UP 2026-10-02 (Claude, with Cody's OK for each permission):** Resend domain santahatgames.com
+   verified (DNS at GoDaddy; tracking off); Resend's official Supabase integration (Cody approved its Supabase permission: Auth +
+   Projects, org-wide; remove in Supabase → Org → OAuth Apps) made the key "Supabase Integration" and set custom SMTP (checked after a
+   reload: on, Santa Hat Legends <signin@santahatgames.com>, smtp.resend.com:465, key stored). Templates set and checked: Magic Link
+   "Your Santa Hat Legends sign-in", Confirm sign up "Welcome to Santa Hat Legends" (supabase/email/). The page has the 8-digit code box
+   (published). NOT yet seen: a real email sent through Resend (Cody's next sign-in will show it in Resend → Emails).
 2. **Try a real wallet on devnet (Phantom):** set Phantom to devnet, then open
    https://santahatgames.com/?server=https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games
    and sign in with the wallet. Send Claude your Phantom devnet address and Claude will send it test SANTA + devnet SOL, so you can
