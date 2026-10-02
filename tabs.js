@@ -320,7 +320,8 @@ export function initTabs(app) {
     save.textContent = app.profile ? 'Save look' : 'Save on this device';
     if (blocked.length) $('#avmsg').textContent = `Previewing: ${blocked.map((i) => i.name).join(', ')} isn't unlocked yet.`;
     // buy what's being previewed, right here (looks are bought on the Avatar screen; Cody)
-    const sale = blocked.find((i) => forSale(i)), ab = $('#avbuy'); ab.hidden = !sale;
+    // the item just tapped first (button audit 2026-10-02: it offered the first locked item in the outfit, maybe not the one tapped)
+    const sale = blocked.find((i) => i.id === state.lastPick && forSale(i)) || blocked.find((i) => forSale(i)), ab = $('#avbuy'); ab.hidden = !sale;
     if (sale) { ab.dataset.item = sale.id; ab.textContent = `Buy ${sale.name} · $${sale.price.toFixed(2)}`; }
     renderThemes();
     app.preview(d.a);
@@ -331,7 +332,7 @@ export function initTabs(app) {
   }
   $('#avtheme').addEventListener('click', (e) => { const b = e.target.closest('[data-theme]'); if (!b) return; app.setTheme(b.dataset.theme); renderThemes(); });
   $('#avslots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (b) { state.slot = b.dataset.slot; $('#avmsg').textContent = ''; renderAvatar(); } });
-  $('#avgrid').addEventListener('click', (e) => { const b = e.target.closest('[data-pick]'); if (!b) return; const it = BY_ID.get(b.dataset.pick);
+  $('#avgrid').addEventListener('click', (e) => { const b = e.target.closest('[data-pick]'); if (!b) return; const it = BY_ID.get(b.dataset.pick); state.lastPick = b.dataset.pick;
     $('#avmsg').textContent = '';
     if (it.slot === 'sball') withSpecial(state.draft.a, state.sbSlot, it.id);
     else if (it.slot === 'gear') { if (!withGear(state.draft.a, state.gSlot, it.id)) { $('#avmsg').textContent = `Can't stack: ${NO_STACK_NOTE}`; return; } }
@@ -378,13 +379,17 @@ export function initTabs(app) {
          <p class="dim">Match history and podiums start counting when ranked opens.</p>`
       : `<div class="eyebrow">You</div><h2>Not signed in</h2><p>Sign in with a wallet or email to get a rank, keep your look, and appear on the leaderboard.</p><button class="go" id="rankSign">Sign in</button>`;
     $('#rankSign')?.addEventListener('click', () => $('#signin').click());
-    const lb = $('#lb');
+    document.querySelectorAll('.lbtabs [data-lb]').forEach((b) => { b.onclick = () => { state.lb = b.dataset.lb; renderRanks(); }; });
+    const lb = $('#lb'), which = state.lb || 'all';
+    document.querySelectorAll('.lbtabs [data-lb]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lb === which)));
+    // Today = since this player's own midnight; This week = the last 7 days (points GAINED in ranked matches then)
+    const since = which === 'today' ? new Date(new Date().setHours(0, 0, 0, 0)) : which === 'week' ? new Date(Date.now() - 7 * 864e5) : null;
     try {
-      const rows = await app.accounts.leaderboard();
+      const rows = await app.accounts.leaderboard(since);
       lb.innerHTML = rows.length
-        ? `<table class="lb"><thead><tr><th>#</th><th>Player</th><th>Level</th><th style="text-align:right">Points</th></tr></thead><tbody>${
+        ? `<table class="lb"><thead><tr><th>#</th><th>Player</th><th>Level</th><th style="text-align:right">${since ? (which === 'today' ? 'Points today' : 'Points this week') : 'Points'}</th></tr></thead><tbody>${
             rows.map((r, i) => `<tr class="${p && r.wallet === p.wallet ? 'me' : ''}"><td class="n">${i + 1}</td><td>${esc(r.name)}<small>${esc(short(r.wallet))}</small></td><td>${r.level}</td><td class="p">${r.rank_points}</td></tr>`).join('')}</tbody></table>`
-        : '<p class="dim">No players yet. Sign in to be first on the board.</p>';
+        : since ? `<p class="dim">No ranked matches ${which === 'today' ? 'today' : 'this week'} yet. Play ranked to be first on this board.</p>` : '<p class="dim">No players yet. Sign in to be first on the board.</p>';
     } catch (e) { lb.innerHTML = `<p class="dim">Couldn't load the leaderboard right now. ${esc(e.message)}</p>`; }
   }
 

@@ -43,9 +43,11 @@ export function odds(w = DEFAULT_WHEEL) {
 export const payback = (w = DEFAULT_WHEEL) => Object.entries(odds(w)).reduce((a, [m, p]) => a + m * p, 0);
 export const starChance = (w = DEFAULT_WHEEL) => w.main.filter((m) => m === STAR).length / w.main.length;
 
-// Spin pool rules (all adjustable, like the Slots POOL_RULES). Cody: $25 to the treasury when the pool reaches $175.
-// Top-off mirrors the Slots safety net: below $10 the treasury tops it back to the $50 start, so the wheel can't lock.
-export const SPIN_RULES = { start: 50, skimAt: 175, skim: 25, topOffBelow: 10, topOffTo: 50, paused: false };
+// Spin pool rules (all adjustable, like the Slots POOL_RULES). Snowball Drop plays from this pool (Spin itself is retired).
+// Cody, 2026-10-02 (Drop board 2, top prize 100×): the pool starts at $300 (he said $300–500; the low end, his money) and
+// $25 goes to the treasury when it reaches $1,025. Below $100 (a $1 drop's 100× prize) the treasury tops it back to $300,
+// so both drop sizes always play the same board. (Was: start $50, skim at $175, top-off below $10 to $50.)
+export const SPIN_RULES = { start: 300, skimAt: 1025, skim: 25, topOffBelow: 100, topOffTo: 300, paused: false };
 
 // One spin. `rand` gives uniform numbers in [0,1) (server-seeded in the real version): the first picks the main segment;
 // on a star, the second picks the bonus segment. forced (tests only): a main segment, or [main, bonus].

@@ -21,7 +21,25 @@ export const settingsReady = SERVER ? (async () => {
 })() : Promise.resolve(null);
 // The actions anyone may call without signing in: must match the server's public ones (server/http.js; tests/public-actions.test.mjs).
 // (It once listed only three, so guests' lottery cards and draw re-checks never asked the server.)
-export const PUBLIC_ACTIONS = ['pools', 'settings', 'stats', 'lottery-tickets', 'lottery', 'winners'];
+export const PUBLIC_ACTIONS = ['pools', 'settings', 'stats', 'lottery-tickets', 'lottery', 'winners', 'market'];
+// What a player reads when a payment didn't happen (button audit 2026-10-02: a failed wallet-library download showed
+// "Failed to fetch dynamically imported module: https://cdn…"). Says "nothing was charged" only where that's certain: the
+// player cancelled, or the wallet step never loaded (wallet.js never throws once a payment is sent, except for a payment the
+// network rejected, whose own message says no SANTA was taken).
+export function payError(e) {
+  const m = String(e?.message || '');
+  if (/reject|cancel|denied/i.test(m)) return 'Payment cancelled. Nothing was charged.';
+  if (/dynamically imported module|importing a module/i.test(m)) return "Couldn't load the wallet step. Check your connection and try again. Nothing was charged.";
+  return 'Not paid: ' + (m || 'the wallet said no');
+}
+// The server's "sign in first" as a player should meet it (live-site test, 2026-10-02: a guest pressing Pay saw the raw words
+// in small red letters): a clear line, then the sign-in sheet opens (after any open dialog closes, so it isn't hidden).
+// Returns the text to show, or the server's own message for any other error.
+export function forPlayer(err, closeDialog) {
+  if (err !== 'sign in first') return err;
+  setTimeout(() => { try { closeDialog?.(); } catch {} document.querySelector('#signin')?.click(); }, 900);
+  return 'Sign in first: buying needs your account and its wallet. Opening sign-in…';
+}
 export async function call(action, body = {}) {
   const t = await token();
   if (!t && !PUBLIC_ACTIONS.includes(action)) return { error: 'sign in first' };

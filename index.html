@@ -610,7 +610,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 @media (max-width: 420px) { .runbtns .go { min-width: 0; padding: 8px 4px 12px; } .runbtns .go b { font-size: 19px; } }
 .runstat { font-size: 14px; color: #d6ddf0; } .runstat b { font: 700 16px/1 var(--digits); color: var(--lamp); }
 /* Snowball Drop: the board is taller than wide (500 × 560), so it doesn't use the wheel's square canvas. */
-.dropcard canvas { aspect-ratio: 500 / 560; max-width: 520px; margin: 4px auto; }
+.dropcard canvas { aspect-ratio: 680 / 680; max-width: 600px; margin: 4px auto; } /* board 2: 17 presents */
 /* Touch screens: every control at least 44 px tall so thumbs hit it (the tab bar and small buttons were 26–36 px). */
 @media (pointer: coarse), (max-width: 820px) {
   #nav .tabs button, .signin, .sec, .slots button, .lbtabs button, .paytable summary { min-height: 44px; }
@@ -814,7 +814,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       <p>One payment in SANTA. 10% is burned and the rest goes into the <b id="buyPool">Slots</b> prize pool right away. Your plays
         start straight away, and when the last one is done everything you won is sent to your wallet automatically. Nothing is kept on an account.</p>
       <p class="buysanta" id="buySanta"></p>
-      <p class="dim">Demo: paid from your demo balance. Winnings arrive 3% lighter (SANTA's token tax).</p>
+      <p class="dim" id="buyDemo">Demo: paid from your demo balance. Winnings arrive 3% lighter (SANTA's token tax).</p>
       <p class="warnline" id="buyNote" aria-live="polite"></p>
       <div class="buyacts"><button class="sec" id="buyCancel" type="button">Cancel</button><button class="go" id="buyGo" type="button">Pay $1.00 &amp; play</button></div>
     </dialog>
@@ -897,7 +897,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
     <div class="ranks-grid">
       <section class="block plaque" id="mycard"></section>
       <section class="block plaque">
-        <div class="lbtabs"><button aria-pressed="true">All time</button><button disabled title="Arrives with ranked">Today</button><button disabled title="Arrives with ranked">This week</button><button disabled title="Arrives with ranked">Events</button></div>
+        <div class="lbtabs"><button data-lb="all" aria-pressed="true">All time</button><button data-lb="today" aria-pressed="false">Today</button><button data-lb="week" aria-pressed="false">This week</button><button disabled title="Coming soon">Events</button></div>
         <div id="lb"><p class="dim">Loading…</p></div>
       </section>
     </div>
@@ -935,6 +935,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
   <input id="name" type="text" maxlength="14" autocomplete="off" spellcheck="false">
   <div class="actions">
     <button class="go" id="quick">Auto match</button>
+    <p class="dim" id="tixLine" aria-live="polite" hidden></p>
     <button class="sec" id="tourney" disabled hidden>Tournament · Coming soon</button>
     <div class="row unr"><input id="code" type="text" maxlength="6" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code"><button class="sec" id="joinBtn">Join room</button></div>
     <div class="row unr"><button class="sec" id="create">Create private room</button><button class="sec" id="practice">Practice vs bots</button></div>
