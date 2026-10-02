@@ -179,11 +179,18 @@ between two devices has never been tested from here. Cody and friends testing on
 - Cody's own Phantom GbStAPcXZyUsMhsK9JT59wcA2Yoqa5VyKyGcguZZJbPm got $100 test SANTA + devnet SOL (tests/solana/devnet-gift.mjs);
   he tests with the ?server= link (the plain site is the demo: pulls there never ask the wallet).
 - Game server v18 (pinned 1183af2); match server on the Droplet at 1286c1d+ (same referee code).
-- **NEXT (Cody asked): "Claim rewards" button** on the admin screen: GP (HTmQz7My6MehV7bjhJ6jde8nDND1yvsz68d24LP7YgUQ) and GLDX
-  (Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re), reward tokens sent to SANTA holders, land in the Drop/Slots pool wallets; the
-  button moves every NON-SANTA token from those two pools to the TREASURY (fixed address, never typed in; SANTA never touched).
-  Design: signed admin action → a job row → the payout worker (holds the pool keys) sends. Test on devnet with a fake token.
-  At launch also open SANTA accounts for the lottery wallet and treasury (~0.0016 SOL each) so players never pay that rent.
+- **Claim rewards: LIVE (024, game server v20, Droplet 1132900).** Admin screen "Claim rewards → Treasury": every NON-SANTA
+  token (GP HTmQz7My6MehV7bjhJ6jde8nDND1yvsz68d24LP7YgUQ, GLDX Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re, any other) in the
+  Drop/Slots/Lottery pools → treasury, by the worker (server/rewards.js; reward_sweeps through payouts.js). The database refuses
+  SANTA, non-pool sources, sweeps without an open signed claim; no destination column. Proven on the LIVE devnet system
+  (tests/solana/rewards-live.devnet.mjs) and end to end (rewards.devnet.mjs). Droplet worker.env got LOTTERY_POOL_WALLET; at
+  mainnet set it (and SPIN/SLOTS) to the new wallets. GLDX ("Gold xStock") has issuer controls (transfer hook unset today,
+  pausable, permanent delegate): if the issuer turns them on, its sweep fails safely and shows "failed".
+- **Pools stay plain wallets for launch (Cody, 2026-10-02).** On-chain pool programs were weighed: mainnet deploy deposit ~1 SOL
+  per 200 KB (refundable; tools reserve ~2× → 2–4 SOL), plus an audit ($5k–30k+) before real money. Not built.
+- At launch also open SANTA accounts for the lottery wallet and treasury (~0.0016 SOL each) so players never pay that rent.
+- **Stocking Stuffer** (Cody's brief, new Games-tab game): being built by an agent in a worktree; Claude reviews, tests and lands
+  it. Exact payback from the table: 60.519% (brief said 60.6%). Pool-coverage at $1 (250× = $250) needs Cody's call before money.
 - Known test-browser limit: controls-test's 768×1024 step crashes the slow WSL browser (before this session's changes too).
 
 ### Overnight 2026-10-02 (Claude, while Cody slept): what changed, in plain English
