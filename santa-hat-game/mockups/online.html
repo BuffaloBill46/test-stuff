@@ -633,6 +633,38 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 .runstat { font-size: 14px; color: #d6ddf0; } .runstat b { font: 700 16px/1 var(--digits); color: var(--lamp); }
 /* Snowball Drop: the board is taller than wide (500 × 560), so it doesn't use the wheel's square canvas. */
 .dropcard canvas { aspect-ratio: 680 / 680; max-width: 600px; margin: 4px auto; } /* board 2: 17 presents */
+/* Stocking Stuffer (Cody's brief, 2026-10-02): the mantel board, and the row of 8 gift slots under it, which is also the pay
+   table (slot k = the k-th gift found; its label = what stopping there pays; the step reached is lit) */
+.stockcard canvas { aspect-ratio: 680 / 600; max-width: 600px; margin: 4px auto; cursor: default; }
+.stockdesc { margin: 8px 0 0; font-size: 15px; line-height: 1.35; color: #d6ddf0; }
+.giftrow { list-style: none; margin: 6px 0 4px; padding: 0; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; }
+.giftrow li { position: relative; display: grid; justify-items: center; gap: 4px; padding: 6px 1px 5px; background: var(--ink); border: 2px solid #3a4570; border-radius: 3px; }
+.giftrow i { width: 22px; height: 18px; border: 2px dashed #3a4570; border-radius: 2px; }
+.giftrow b { font: 700 11px/1 var(--digits); color: var(--dim); white-space: nowrap; }
+.giftrow li.win b { color: var(--frost); }
+.giftrow li.got i { border: 2px solid var(--ink); background: linear-gradient(90deg, transparent 41%, var(--hat) 41% 59%, transparent 59%), linear-gradient(transparent 38%, var(--hat) 38% 58%, transparent 58%), #ffc94a; }
+.giftrow li.now { border-color: var(--lamp); box-shadow: 0 0 0 2px rgba(255,190,92,.28); } .giftrow li.now b { color: var(--lamp); }
+.giftrow li.end:not(.win) { border-color: #6f7ba8; box-shadow: none; } .giftrow li.end:not(.win) b { color: #d6ddf0; }
+.giftrow .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+#stockHistory li { display: inline-flex; gap: 4px; align-items: center; justify-content: center; background: #151a30; color: #6f7ba8; }
+#stockHistory li i { width: 9px; height: 8px; border: 1px solid var(--ink); background: linear-gradient(90deg, transparent 38%, var(--hat) 38% 62%, transparent 62%), #ffc94a; }
+#stockHistory .g1 { background: #2e3a6e; color: #b9cdf2; } #stockHistory .g2 { background: #6f8fd0; color: var(--ink); }
+#stockHistory .g3, #stockHistory .g4 { background: #c98a1b; color: var(--ink); } #stockHistory .g5 { background: var(--lamp); color: #7a1414; }
+.stockhow .body > p { margin: 8px 0 0; line-height: 1.4; color: #d6ddf0; } .stockhow .body > p b { color: var(--lamp); }
+.stockhow .pays td:first-child { display: table-cell; } .stockhow tr.win td { color: var(--lamp); } .stockhow .pays td .dim { font: 400 12px/1.2 var(--body); }
+.stockhow .howrules { margin-top: 8px; }
+@media (max-width: 600px) { #stocking.block { padding: 12px 8px 14px; } .stockhow .pays th, .stockhow .pays td { padding: 3px 4px; font-size: 12px; } }
+@media (min-width: 821px) { /* the board on the left; the description, sizes, gift slots, buttons, how-to and history on the right */
+  .stockcard { grid-template-rows: auto auto auto auto auto auto 1fr; }
+  .stockcard .screen { grid-row: 1 / span 7; }
+  .stockcard .stockdesc { grid-column: 2; grid-row: 2; } .stockcard .bets { grid-row: 3; } .stockcard .giftrow { grid-column: 2; grid-row: 4; margin-top: 12px; }
+  .stockcard .pullrow { grid-row: 5; align-self: start; margin: 10px 0 0; } .stockcard .stockhow { grid-column: 2; grid-row: 6; } .stockcard .history { grid-column: 2; grid-row: 7; }
+}
+/* "Check this result" for a turn: where the gifts and the coal were, and the order Santa opened them */
+.stockmap { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; margin: 10px 0 4px; max-width: 420px; }
+.stockmap span { position: relative; aspect-ratio: 1; display: grid; place-items: center; font: 700 11px/1 var(--digits); border: 2px solid var(--ink); border-radius: 2px; }
+.stockmap .g { background: #ffc94a; color: var(--ink); } .stockmap .c { background: #1d1d24; color: #9aa6c7; }
+.stockmap .o { outline: 2px solid var(--lamp); outline-offset: 1px; } .stockmap small { position: absolute; top: 1px; left: 2px; font-size: 8px; opacity: .8; }
 /* Touch screens: every control at least 44 px tall so thumbs hit it (the tab bar and small buttons were 26–36 px). */
 @media (pointer: coarse), (max-width: 820px) {
   #nav .tabs button, .signin, .sec, .slots button, .lbtabs button, .paytable summary { min-height: 44px; }
@@ -828,6 +860,29 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
           <div class="credrow"><span class="cred runstat" id="runDrop"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="drop" hidden>Check last result</button></div></div>
         <p class="dropodds" id="dropOdds"></p>
         <div class="history"><h4>Your last drops</h4><ol id="dropHistory"></ol></div>
+      </article>
+    </section>
+    <!-- Stocking Stuffer (Cody's brief, 2026-10-02): plays from the Drop pool, like Snowball Drop. Logic: stockingui.js -->
+    <section class="block plaque slotsbox fur" id="stocking">
+      <div class="slotshead">
+        <div><h2>Stocking Stuffer</h2><div class="pool"><i>Drop pool</i><b id="stockPool">$300.00</b></div></div>
+        <div class="demo"><span class="stamp">Demo</span><p>Same demo balance as Slots.<br>Plays from the Drop pool.</p></div>
+      </div>
+      <article class="machine wheelcard stockcard">
+        <header><h3>The Mantel</h3><em>10¢ or $1 a turn · up to 250×</em></header>
+        <p class="stockdesc">8 stockings hide a gift, 12 hide coal. Santa opens them until the first coal: the more gifts before it, the bigger the prize. Winnings arrive 3% lighter (SANTA's token tax).</p>
+        <div class="bets" role="radiogroup" aria-label="Turn size">
+          <button role="radio" aria-checked="true" data-sbet="0.1"><b>10¢</b><small>win up to $25</small></button>
+          <button role="radio" aria-checked="false" data-sbet="1"><b>$1</b><small>win up to $250</small></button>
+        </div>
+        <div class="screen"><canvas aria-label="Stocking Stuffer: 20 stockings on a fireplace mantel"></canvas><div class="flash" aria-hidden="true"></div></div>
+        <ol class="giftrow" id="stockLadder" aria-label="Gifts found this turn, and what stopping at each one pays"></ol>
+        <div class="pullrow"><div class="runcount" data-runcount="stocking" aria-live="polite"><i>This run</i><b>–</b><span>won $0.00</span></div><div class="runbtns" role="group" aria-label="Buy and play"><button class="go stockbtn" data-run="1"><b>Play 1</b><small>10¢</small></button><button class="go" data-run="5"><b>Play 5</b><small>50¢</small></button><button class="go" data-run="10"><b>Play 10</b><small>$1</small></button></div>
+          <div class="runpick" role="group" aria-label="Or pick how many turns"><span class="lbl">Or pick</span><span class="stepper"><button type="button" class="sec" data-step="-1" aria-label="One less">▼</button><input type="number" inputmode="numeric" min="1" max="100" step="1" value="20" aria-label="How many turns, 1 to 100"><button type="button" class="sec" data-step="1" aria-label="One more">▲</button></span><button class="go" data-run="20"><b>Play 20</b><small>$2</small></button></div>
+          <output class="res" aria-live="polite">Pick 10¢ or $1, then 1, 5, 10, or up to 100 turns: they play straight away, and anything you win is sent to your wallet at the end.</output>
+          <div class="credrow"><span class="cred runstat" id="runStock"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="stocking" hidden>Check last result</button></div></div>
+        <details class="paytable stockhow" id="stockHow"><summary>How to win · pay table &amp; odds</summary><div class="body"></div></details>
+        <div class="history"><h4>Your last turns <span class="dim">(gifts found)</span></h4><ol id="stockHistory"></ol></div>
       </article>
     </section>
     <dialog id="buyDlg" class="plaque howdlg buydlg" aria-labelledby="buyTitle">

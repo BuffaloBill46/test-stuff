@@ -28,7 +28,7 @@ async function load() {
       <p class="dim">Skim $${R.skim} at $${R.skimAt} · top off below $${R.topOffBelow} to $${R.topOffTo}${p.game === 'slots' ? ` · jackpot ${Math.round(R.jackpotPct * 100)}%` : ''}</p>
       <div class="row"><button type="button" class="${R.paused ? '' : 'stop'}" data-act="${R.paused ? 'resume' : 'pause'}" data-game="${esc(p.game)}">${R.paused ? 'Resume' : 'Stop (emergency)'}</button></div></article>`; }).join('');
   // Frozen run payouts: who, how much, which game, and a Release button (wallet-signed, like every action here).
-  const held = state.held || [], NAMES = { spin: 'Spin', drop: 'Snowball Drop', big: 'Big Hat' }, $usd = (v) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  const held = state.held || [], NAMES = { spin: 'Spin', drop: 'Snowball Drop', big: 'Big Hat', stocking: 'Stocking Stuffer' }, $usd = (v) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
   $('#frozenBox').classList.toggle('alert', held.length > 0);
   $('#frozen').innerHTML = held.length ? `<table><tr><th>Player</th><th>Wallet</th><th>Run</th><th>Amount</th><th>Frozen</th><th></th></tr>${held.map((h) => `<tr><td>${esc(h.name || 'player')}</td><td><code>${esc(h.wallet)}</code></td><td>${esc(NAMES[h.kind] || h.kind)} · ${h.n} × ${$usd(h.bet)}</td><td><b>${$usd(h.usd)}</b><br><span class="dim">${(h.santaRaw / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })} SANTA</span></td><td>${esc(new Date(h.at).toLocaleString())}</td><td><button type="button" data-release="${h.id}" data-game="${esc(h.game)}">Release</button></td></tr>`).join('')}</table>` : 'None frozen.';
   const STATUS = { needs_approval: 'waiting for your deposit', queued: 'queued', sending: 'sending', failed: 'failed (will retry)' };
@@ -119,6 +119,7 @@ const PRICE_LABEL = { spin10: 'Small spin', spin100: 'Big spin', big: 'Big Hat p
 const numInput = (k, v, step = 'any') => `<input type="number" step="${step}" data-gs="${k}" value="${v}">`;
 async function loadSettings() {
   const r = await post({ action: 'settings' }); gs = r.settings || structuredClone(DEFAULT_SETTINGS); added = [];
+  gs.stocking ||= structuredClone(DEFAULT_SETTINGS.stocking); // settings published before Stocking Stuffer: start from Cody's table
   $('#gsVer').textContent = `· version ${r.version ?? 0}`;
   $('#gsPrices').innerHTML = Object.entries(gs.prices).map(([k, v]) => `<label>${PRICE_LABEL[k] || k}${numInput('prices.' + k, v)}</label>`).join('');
   const segLabel = (m) => (m === 'star' ? '★ gold star (to the bonus wheel)' : `${m}× ${m === '0' ? '(no win)' : m === '1' ? '(money back)' : ''}`);
@@ -129,6 +130,7 @@ async function loadSettings() {
   $('#gsCounts').innerHTML = SYMBOLS.map((x) => `<label>${x.name}${numInput('counts.' + x.id, gs.big.counts[x.id], 1)}</label>`).join('');
   $('#gsPays').innerHTML = `<div class="pays"><b class="dim">Line prize</b><b class="dim">3 in a row</b><b class="dim">4</b><b class="dim">5</b>${
     SYMBOLS.filter((x) => x.id !== 'coal').map((x) => `<span>${x.name}</span>${[3, 4, 5].map((n) => numInput(`pays.${x.id}.${n}`, gs.big.pays[x.id]?.[n] ?? '')).join('')}`).join('')}</div>`;
+  $('#gsStock').innerHTML = gs.stocking.pays.map((x, k) => `<label>${k} gift${k === 1 ? '' : 's'}${k === 0 ? ' (coal first)' : k === 8 ? ' (all 8)' : ''}${numInput('stock.' + k, x)}</label>`).join('');
   renderItems();
   $('#gsNew').innerHTML = `<label>Id (e.g. shirt_mint)<input data-new="id"></label><label>Name<input data-new="name"></label>
     <label>Slot<select data-new="slot">${['shirt', 'pants', 'snow'].map((x) => `<option>${x}</option>`).join('')}</select></label><label>Colour<input type="color" data-new="color" value="#98e0c0"></label>
@@ -151,6 +153,7 @@ function gather() {
   for (const k of ['jackpotPct', 'jackpotOdds', 'hatBonus']) s.big[k] = Number(v('big.' + k));
   for (const x of SYMBOLS) s.big.counts[x.id] = Number(v('counts.' + x.id));
   s.big.pays = {}; for (const x of SYMBOLS) for (const n of [3, 4, 5]) { const raw = v(`pays.${x.id}.${n}`); if (raw !== undefined && raw !== '') (s.big.pays[x.id] ||= {})[n] = Number(raw); }
+  s.stocking = { pays: s.stocking.pays.map((_, k) => Number(v('stock.' + k))) };
   // store: an entry for every item whose price/level differs from the built-in catalog, plus the new ones
   const byId = Object.fromEntries(ITEMS.map((x) => [x.id, x])), out = [];
   for (const tr of document.querySelectorAll('#gsItems tr[data-item]')) {
@@ -172,7 +175,8 @@ function preview() {
     const rules = Object.fromEntries((state?.pools || []).map((p) => [p.game, { ...DEFAULTS[p.game], ...p.rules }]));
     const c = check({ ...s, version: 0 }, { spin: rules.spin || SPIN_RULES, slots: rules.slots || POOL_RULES }), r = c.report;
     $('#gsPreview').innerHTML = (r ? `<p>Spin pays back <b>${(r.spin.payback * 100).toFixed(1)}%</b>; a real win (2× or more) <b>1 in ${(1 / r.spin.realWin).toFixed(1)}</b> spins; top prize ${r.spin.top}×.</p>
-      <p>Big Hat pays back <b>${(r.big.payback * 100).toFixed(1)}%</b>; a win over the pull price about <b>1 in ${(1 / r.big.realWin).toFixed(1)}</b> pulls; top line prize <b>$${r.big.topPrize.toFixed(2)}</b>${r.big.top100 ? ` (about 1 in ${Math.round(r.big.top100).toLocaleString()})` : ''}; jackpot ${esc(r.big.jackpot)}.</p>` : '')
+      <p>Big Hat pays back <b>${(r.big.payback * 100).toFixed(1)}%</b>; a win over the pull price about <b>1 in ${(1 / r.big.realWin).toFixed(1)}</b> pulls; top line prize <b>$${r.big.topPrize.toFixed(2)}</b>${r.big.top100 ? ` (about 1 in ${Math.round(r.big.top100).toLocaleString()})` : ''}; jackpot ${esc(r.big.jackpot)}.</p>
+      <p>Stocking Stuffer pays back <b>${(r.stocking.payback * 100).toFixed(1)}%</b>; a real win (more back than the turn cost) <b>1 in ${(1 / r.stocking.realWin).toFixed(1)}</b> turns; top prize ${r.stocking.top}× ($${r.stocking.top} on a $1 turn).</p>` : '')
       + (c.ok ? '<p class="dim">These settings are safe to publish.</p>' : `<p class="bad">Can't publish yet:</p><ul class="bad">${c.problems.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`);
     $('#gsSave').disabled = !c.ok;
   }, 250);

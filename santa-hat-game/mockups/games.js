@@ -4,6 +4,7 @@ import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount } f
 import { createMachine, symbolImages } from './slots3d.js';
 import { initSpin, showSpin, resetSpin, spinState, refreshSpin, showResult } from './spinui.js';
 import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js';
+import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js';
 import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js';
 import { runSummary } from './runui.js';
 import { livePrice, liveFee, santaFor, fmtSanta } from './market.js';
@@ -27,7 +28,8 @@ const ICONS = {
   spin100: '<svg viewBox="0 0 24 24" aria-label="Spin $1"><circle cx="12" cy="12" r="9" fill="#cf3128" stroke="#ffd95c" stroke-width="2"/><path d="M12 3v18M3 12h18M6 6l12 12M18 6L6 18" stroke="#ffd95c"/></svg>',
 };
 ICONS.drop10 = ICONS.drop100 = '<svg viewBox="0 0 24 24" aria-label="Snowball Drop"><circle cx="12" cy="12" r="8" fill="#f5f1e8" stroke="#0c0f1a" stroke-width="2"/><path d="M8 10l3 2 4-3" stroke="#c9d6ee" stroke-width="2" fill="none"/></svg>';
-const GAME_NAMES = { slots: 'Slots', spin10: 'Spin 10¢', spin100: 'Spin $1', drop10: 'Snowball Drop 10¢', drop100: 'Snowball Drop $1' };
+ICONS.stock10 = ICONS.stock100 = '<svg viewBox="0 0 24 24" aria-label="Stocking Stuffer"><path d="M8 4h8v9l4 2.5c1.5 1 1 4-1 4.5H11c-2 0-3-1.5-3-3.5z" fill="#cf3128" stroke="#0c0f1a" stroke-width="1.6"/><rect x="6.5" y="2.5" width="11" height="4.5" rx="1" fill="#f5f1e8" stroke="#0c0f1a" stroke-width="1.6"/></svg>';
+const GAME_NAMES = { slots: 'Slots', spin10: 'Spin 10¢', spin100: 'Spin $1', drop10: 'Snowball Drop 10¢', drop100: 'Snowball Drop $1', stock10: 'Stocking Stuffer 10¢', stock100: 'Stocking Stuffer $1' };
 
 let inited = false, view = null, busy = false, nameOf = () => 'You';
 const saved = store.get();
@@ -124,7 +126,7 @@ function renderWinners() {
     return `<li class="${w.big ? 'big' : ''}">${ICONS[w.game] || ''}<span class="who">${esc(w.name)}<small>${GAME_NAMES[w.game] || w.game} · ${when}${w.note ? ' · ' + esc(w.note) : ''}</small></span><b>${money(w.amount)}</b><span class="gain">+${Math.round(w.gainPct).toLocaleString()}%</span></li>`;
   }).join('');
 }
-// Shared by every Santa Hat game: `game` is 'slots', 'spin10', 'spin100', 'drop10' or 'drop100'.
+// Shared by every Santa Hat game: `game` is 'slots', 'spin10', 'spin100', 'drop10', 'drop100', 'stock10' or 'stock100'.
 // Server mode: the list is everyone's recent wins, from the server.
 async function loadWinners() {
   if (!SERVER) return;
@@ -215,7 +217,7 @@ export async function initGames(opts = {}) {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#slots .machine').classList.remove('max'); });
   $('#demoReset').addEventListener('click', () => {
     if (busy) return;
-    Object.assign(state, { pool: POOL_RULES.start, bal: DEMO_START, treasury: 0 }); shownPool = state.pool; store.set(state); render(); resetSpin(); resetDrop(); resetCredits();
+    Object.assign(state, { pool: POOL_RULES.start, bal: DEMO_START, treasury: 0 }); shownPool = state.pool; store.set(state); render(); resetSpin(); resetDrop(); resetStocking(); resetCredits();
     $('#slots .machine .res').textContent = 'Pull the pom-pom, or tap the machine. Tap again to stop the reels early.';
   });
   paytable(); facts(); render();
@@ -224,9 +226,11 @@ export async function initGames(opts = {}) {
   initSpin({ wallet, addWinner });
   // Snowball Drop plays from the Spin pool (Cody): its readout is the Spin pool's, and a drop updates both cards.
   const sp = spinState();
-  initDrop({ wallet, addWinner, pool: () => sp.pool, onPool: (usd) => { if (usd !== undefined) sp.pool = usd; refreshSpin(); refreshDrop(); } });
+  initDrop({ wallet, addWinner, pool: () => sp.pool, onPool: (usd) => { if (usd !== undefined) sp.pool = usd; refreshSpin(); refreshDrop(); refreshStocking(); } });
+  // Stocking Stuffer plays from that same pool too (Cody, 2026-10-02)
+  initStocking({ addWinner, pool: () => sp.pool, onPool: (usd) => { if (usd !== undefined) sp.pool = usd; refreshSpin(); refreshDrop(); refreshStocking(); } });
   // Runs: buying moves the entry money into that game's pool straight away, so the pool readouts update on purchase.
-  initCredits({ wallet, pools: { slots: state, spin: spinState() }, onChange: () => { shownPool = state.pool; store.set(state); render(); refreshSpin(); refreshDrop(); } });
+  initCredits({ wallet, pools: { slots: state, spin: spinState() }, onChange: () => { shownPool = state.pool; store.set(state); render(); refreshSpin(); refreshDrop(); refreshStocking(); } });
   refreshCredits();
   // A payment from an earlier visit the server never received (closed tab, dropped network): hand it over and play it now.
   if (SERVER) resumePaid().then((r) => { if (r) { console.info('finished a paid run from an earlier visit', r.run); refreshCredits(); } }).catch(() => {});
@@ -269,5 +273,5 @@ function labelsFromSettings() {
 export async function showGames(on, opts) {
   if (on) await initGames(opts);
   // Spin is removed from the page (Cody, 2026-10-01): its wheel is never drawn; its pool lives on as the Drop pool.
-  view?.setActive(on); showSpin(false); showDrop(on);
+  view?.setActive(on); showSpin(false); showDrop(on); showStocking(on);
 }

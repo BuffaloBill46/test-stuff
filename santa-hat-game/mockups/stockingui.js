@@ -1,0 +1,135 @@
+// Stocking Stuffer on the Games tab (Cody's brief, 2026-10-02): size chips, Play 1 / 5 / 10 (a run that plays straight away,
+// like every game here), the Drop pool readout (it shares that pool), the row of 8 gift slots that is also the pay table, the
+// "How to win" panel and your last turns. Every turn runs in the house's order (paid → secret locked → drawn → revealed;
+// playcredits.js / house.js): the WHOLE turn is decided before the first stocking jiggles; the board only shows it.
+// Celebrations follow the money (LESSONS: no losses dressed as wins): 3+ gifts celebrate; 2 gifts (1.75×) a light touch;
+// 1 gift (0.5×) is a loss and is said plainly. Winners absorb SANTA's 3% tax, and the messages say so.
+import { PAYS, WAYS, TOTAL, GIFTS, STOCKINGS, ROW, payback, realWin, topMult } from './stocking.js';
+import { createStockings } from './stockingboard.js';
+import { playRun, short } from './playcredits.js';
+import { runSummary } from './runui.js';
+import { initRunPick, priceLabel } from './runpick.js';
+import { showResult } from './spinui.js';
+import { play as sfx } from './sfx.js';
+
+const $ = (s, el = document) => el.querySelector(s);
+const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);
+const cents = (v) => (v < 1 ? Math.round(v * 100) + '¢' : '$' + (Number.isInteger(v) ? v : v.toFixed(2)));
+const mult = (m) => `${+m.toFixed(2)}×`;
+const amt = (v) => (v < 1 ? `${+(v * 100).toFixed(1)}¢` : money(v + 1e-9)); // exact prizes in the table: 1.75 × 10¢ = 17.5¢
+const MAX_HISTORY = 16, TAX = 0.97;
+let board = null, bet = 0.1, addWinner = () => {}, pool = () => 0, onPool = () => {}, opening = false, fast = false;
+const history = [], test = { run: undefined }; // tests only: the next run's turns, one number each (gifts found, 0–8)
+const live = { current: null, shown: 0, turns: 0 }; // tests: the turn being shown (decided before its first stocking) and how far
+
+function render() {
+  $('#stockPool').textContent = money(pool());
+  $('#stockHistory').innerHTML = history.length ? history.map((k) => `<li class="g${Math.min(k, 5)}" title="${k} gift${k === 1 ? '' : 's'}: ${mult(PAYS[k])}">${k}<i aria-hidden="true"></i></li>`).join('')
+    : '<li class="empty">No turns yet.</li>';
+}
+// The 8 gift slots: slot k fills with the k-th gift found; under each, what stopping there pays. The step reached is lit.
+function ladder(found, done = false) {
+  $('#stockLadder').innerHTML = Array.from({ length: GIFTS }, (_, i) => { const k = i + 1;
+    return `<li class="${k <= found ? 'got' : ''}${k === found ? ' now' : ''}${done && k === found ? ' end' : ''}${PAYS[k] > 1 ? ' win' : ''}"><i aria-hidden="true"></i><b>${mult(PAYS[k])}</b><span class="sr">${k} gift${k === 1 ? '' : 's'}: ${mult(PAYS[k])}</span></li>`; }).join('');
+}
+// "How to win": everything from the rules (the payback is computed from the pay table, never typed in)
+function howTo() {
+  const pb = (payback() * 100).toFixed(1), rows = PAYS.map((p, k) => `<tr class="${p > 1 ? 'win' : ''}"><td>${k === 0 ? 'Coal first' : k === GIFTS ? 'All 8' : k}</td><td>${p ? mult(p) : '—'}${p > 0 && p < 1 ? ' <span class="dim">(less back than it cost)</span>' : ''}</td><td>${p ? amt(p * 0.1) : '—'}</td><td>${p ? amt(p) : '—'}</td><td>1 in ${(TOTAL / WAYS[k]).toLocaleString('en-US', { maximumFractionDigits: TOTAL / WAYS[k] < 100 ? 1 : 0 })}</td></tr>`).join('');
+  $('#stockHow .body').innerHTML = `<ol class="howrules">
+      <li><b>${STOCKINGS} stockings</b> hang on the mantel: <b>${GIFTS} hide a gift</b>, the other ${STOCKINGS - GIFTS} hide a lump of coal (the Naughty List).</li>
+      <li>Santa opens them <b>one at a time, up to ${GIFTS}</b>. <b>The first coal ends the turn.</b> Nothing to choose.</li>
+      <li>You're paid by <b>how many gifts he found before the coal</b>. Each of the ${GIFTS} slots under the mantel shows what stopping there pays.</li>
+      <li>1 gift pays back half the turn: less than it cost, so it isn't a win. <b>2 gifts or more</b> pay more than the turn (1 in ${(1 / realWin()).toFixed(1)} turns).</li></ol>
+    <table class="pays"><thead><tr><th>Gifts before the coal</th><th>Pays</th><th>10¢ turn</th><th>$1 turn</th><th>Chance</th></tr></thead><tbody>${rows}</tbody></table>
+    <p>Pays back <b>${pb}%</b> of what's played, on average (worked out exactly from the table above: each prize × its chance).</p>
+    <p><b>3% SANTA tax:</b> winnings are paid in SANTA and arrive 3% lighter. The token does that, not this game; winners absorb it.</p>
+    <p class="dim"><b>Check it yourself:</b> after a turn, tap <b>Check last result</b>. Your turn's 38 fair numbers come from the revealed secret (see that panel).
+      The first 19 shuffle the ${GIFTS} gifts and ${STOCKINGS - GIFTS} coals into stockings 1–${STOCKINGS} (top row 1–${ROW} left to right, bottom row ${ROW + 1}–${STOCKINGS}):
+      for place ${STOCKINGS} down to 2, swap it with place ⌊number × place⌋ + 1, one number per swap (a Fisher–Yates shuffle). The next 19 shuffle the
+      ${STOCKINGS} stockings the same way into the order Santa opens them. The panel re-runs both and shows where every lump of coal was.</p>`;
+}
+function stamp(text) { const fl = $('#stocking .flash'); fl.textContent = text; fl.classList.remove('show'); void fl.offsetWidth; fl.classList.add('show'); }
+function setBet(b) {
+  bet = b; document.querySelectorAll('#stocking .bets button').forEach((x) => x.setAttribute('aria-checked', String(+x.dataset.sbet === b)));
+  document.querySelectorAll('#stocking [data-run]').forEach((x) => { $('small', x).textContent = priceLabel(b * +x.dataset.run); }); // incl. the custom one
+}
+const wait = (ms) => new Promise((x) => setTimeout(x, ms));
+
+// A run of n turns at the chosen size: pay once, then the turns play one after another; winnings are sent at the end.
+async function startRun(n) {
+  if (opening) return;
+  opening = true; fast = false; setButtons(false);
+  const res = $('#stocking .res'), forced = test.run || [];
+  test.run = undefined;
+  try {
+    const out = await playRun('stocking', bet, n, async (p, i) => {
+      $('#runStock').innerHTML = `Turn <b>${i + 1}</b> of <b>${n}</b>`;
+      if (!p.r) { res.textContent = p.refunded ? `Turn ${i + 1} couldn't play (${p.stopped ? 'Stocking Stuffer is paused' : p.why || 'the pool is refilling'}): its price comes back with your winnings.` : `Couldn't play (${p.why}).`; return; }
+      await showTurn(p.r, p);
+      if (i < n - 1) await wait(fast ? 60 : 700); // a breath between turns
+    }, forced);
+    if (out) { res.innerHTML = runSummary(out, 'turn', 'turns'); showResult(res); }
+  } finally { opening = false; fast = false; board.normal(); setButtons(true); $('#runStock').textContent = ''; }
+}
+// One turn, already decided (r: the stockings Santa opens, in order, and what each holds): show it stocking by stocking.
+async function showTurn(r, p) {
+  const res = $('#stocking .res'), card = $('#stocking .stockcard');
+  live.current = { found: r.found, opened: [...r.opened], mult: r.mult }; live.shown = 0;
+  card.classList.remove('won', 'jackpot'); board.reset(); ladder(0);
+  res.textContent = `Santa's opening stockings… result locked (${short(p.proof.commit)}).`;
+  let found = 0;
+  for (const s of r.opened) {
+    sfx('jiggle');
+    const gift = r.gifts[s];
+    await board.open(s, gift);
+    live.shown++;
+    if (gift) { found++; sfx('gift'); ladder(found); res.innerHTML = `<span><b>${found} gift${found === 1 ? '' : 's'}…</b> ${found < GIFTS ? 'next stocking' : ''}</span>`; }
+    else sfx('coal');
+    await wait(fast ? 40 : 260);
+  }
+  ladder(r.found, true);
+  landed(r, p);
+}
+function setButtons(on) { document.querySelectorAll('#stocking [data-run], #stocking .bets button, #stocking .runpick input, #stocking .runpick [data-step]').forEach((b) => { b.disabled = !on; }); $('#stocking .skip').hidden = on; skipLabel($('#stocking .skip')); }
+// Skip ahead is a toggle (Cody): pressed, the run goes fast and the button says "Normal speed"; pressed again, back to normal.
+const skipLabel = (b) => { b.textContent = fast ? 'Normal speed' : 'Skip ahead'; b.setAttribute('aria-pressed', String(fast)); };
+function landed(r, p) {
+  const res = $('#stocking .res'), card = $('#stocking .stockcard'), k = r.found, after = (v) => ` <span class="dim">(${money(v * TAX)} after SANTA's 3% tax)</span>`;
+  onPool(p.poolUsd);
+  history.unshift(k); history.length = Math.min(history.length, MAX_HISTORY);
+  live.turns++;
+  if (k >= 3) { // a real win: celebrate (bigger for 5+ gifts)
+    const big = k >= 5;
+    sfx(k === GIFTS ? 'jackpot' : big ? 'bigWin' : 'smallWin'); card.classList.add(big ? 'jackpot' : 'won');
+    stamp(k === GIFTS ? `ALL 8! ${mult(r.mult)}` : `${mult(r.mult)} WIN`);
+    res.innerHTML = `<span><b>${k} gifts! ${mult(r.mult)} win:</b> ${money(r.pay)}${after(r.pay)}</span>`;
+  } else if (k === 2) res.innerHTML = `<span><b>2 gifts: ${mult(r.mult)} back</b> ${money(r.pay)}${after(r.pay)}</span>`; // a light touch: no stamp
+  else if (k === 1) res.innerHTML = `<span class="dim">1 gift, then coal: ${mult(r.mult)} back (${money(r.pay)}). Less than the ${cents(r.bet)} turn.</span>`;
+  else res.textContent = 'Coal first. No win this time.';
+  if (r.ahead) addWinner(r.bet >= 1 ? 'stock100' : 'stock10', r.pay, r.bet, `${k} gifts · ${mult(r.mult)}`);
+  render();
+}
+
+let inited = false;
+export function initStocking(opts) {
+  if (inited) return; inited = true;
+  addWinner = opts.addWinner || addWinner; pool = opts.pool; onPool = opts.onPool || onPool;
+  board = createStockings($('#stocking canvas'));
+  document.querySelectorAll('#stocking [data-run]').forEach((b) => b.addEventListener('click', () => startRun(+b.dataset.run)));
+  initRunPick($('#stocking .runpick'), { verb: 'Play', priceOf: (n) => priceLabel(bet * n) });
+  $('#stocking .skip').addEventListener('click', (e) => { fast = !fast; if (fast) board.hurry(); else board.normal(); skipLabel(e.currentTarget); });
+  document.querySelectorAll('#stocking .bets button').forEach((b) => b.addEventListener('click', () => setBet(+b.dataset.sbet)));
+  // the size chips and header from the pay table as published (server mode applies it before this runs)
+  document.querySelectorAll('#stocking .bets button').forEach((b) => { $('small', b).textContent = `win up to ${cents(+b.dataset.sbet * topMult())}`; });
+  $('#stocking header em').textContent = `10¢ or $1 a turn · up to ${topMult()}×`;
+  setBet(0.1); ladder(0); howTo(); render();
+  window.__stocking = { test, live, history, board, get opening() { return opening; }, get bet() { return bet; }, get fast() { return fast; } };
+}
+export function showStocking(on) {
+  if (!board) return;
+  if (on && !showStocking.io && 'IntersectionObserver' in window) { showStocking.io = new IntersectionObserver(([e]) => { showStocking.seen = e.isIntersecting; board.setActive(showStocking.tab && showStocking.seen); }); showStocking.io.observe($('#stocking canvas')); }
+  showStocking.tab = on; if (!('IntersectionObserver' in window)) showStocking.seen = true;
+  board.setActive(on && !!showStocking.seen);
+}
+export function refreshStocking() { if (inited) render(); }
+export function resetStocking() { history.length = 0; refreshStocking(); }
