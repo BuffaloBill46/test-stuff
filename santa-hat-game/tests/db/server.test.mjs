@@ -18,7 +18,7 @@ await pg.exec(`
   create table auth.identities (id uuid primary key default gen_random_uuid(), provider_id text, user_id uuid references auth.users, identity_data jsonb,
     provider text, last_sign_in_at timestamptz, created_at timestamptz default now(), updated_at timestamptz default now(), email text);
   create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.uid', true), '')::uuid $$;`);
-for (const f of ['001_profiles.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql']) await pg.exec(readFileSync(new URL(`../../supabase/${f}`, import.meta.url), 'utf8'));
+for (const f of ['001_profiles.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '014_run_sizes.sql']) await pg.exec(readFileSync(new URL(`../../supabase/${f}`, import.meta.url), 'utf8'));
 const db = { query: async (q, p) => (await pg.query(q, p)).rows, tx: (fn) => pg.transaction((t) => fn({ query: async (q, p) => (await t.query(q, p)).rows })) };
 const one = async (q, p) => (await db.query(q, p))[0];
 
@@ -127,6 +127,32 @@ for (const bet of [0.1, 1]) {
   assert.equal(x.q.santaRaw, Math.round(1 / PRICE * 1e6), 'a $1 spin now costs twice the SANTA');
   const [ss] = await settleAll(me, x);
   assert.ok(Math.abs(ss.payRaw - Math.round(ss.r.pay / PRICE * 1e6)) <= 1, 'prizes paid at the new price');
+}
+
+// THE RUN'S LOCKED PRICE (Cody, 2026-10-01): a run's winnings are converted at the price locked when it was bought, even if
+// SANTA's live price moves while it plays. Invariant: every play of the run records the quote's price; its SANTA = its dollars at
+// that price; the run's one payout = the sum of its plays' SANTA, at that same price.
+{
+  const lockedAt = PRICE, x = await buyRun(me, PLAYER, 'drop', 30, 0.1); // 10¢ drops: a lucky run can't drain the shared pool the later tests use
+  assert.equal(+x.q.price, lockedAt);
+  const out = [];
+  for (const [i, p] of x.plays.entries()) {
+    if (i === 10) PRICE = lockedAt * 3;   // the live price triples a third of the way through the run…
+    if (i === 20) PRICE = lockedAt / 4;   // …then falls to a quarter
+    out.push(await server.settle(me, p.ticket, newSeed(16)));
+  }
+  const plays = await db.query('select pay, pay_raw, price_usd from public.plays where run_id = $1 order by play_no', [x.run]);
+  assert.equal(plays.length, 30);
+  for (const pl of plays) {
+    assert.equal(+pl.price_usd, lockedAt, 'every play is converted at the run\'s locked price');
+    assert.ok(Math.abs(+pl.pay_raw - +pl.pay / lockedAt * 1e6) <= 1 + 0.005 / lockedAt * 1e6, `its SANTA = its dollars at the locked price (${pl.pay} → ${pl.pay_raw})`);
+  }
+  const won = plays.reduce((a, pl) => a + +pl.pay_raw, 0), po = await payoutOf(x.run);
+  if (won) { assert.equal(+po.amount_raw, won, 'the payout is exactly the sum of the plays\' SANTA'); assert.equal(+po.price_usd, lockedAt, 'at the locked price'); }
+  else assert.equal(po, undefined);
+  assert.ok(out.every((s) => s.price === undefined || s.price === lockedAt), 'the page is told the locked price too');
+  PRICE = lockedAt;
+  console.log(`locked price: a 30-drop run settled while the live price went ×3 then ÷4; all 30 plays and the payout (${won} raw) at the price it was bought at`);
 }
 
 // Someone else can't settle my play. A stopped pool: no new quote (so no payment is taken), and plays already bought are

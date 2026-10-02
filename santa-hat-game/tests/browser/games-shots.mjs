@@ -17,6 +17,7 @@ for (const vp of [{ width: 1280, height: 800 }, { width: 1920, height: 1080 }, {
   const p = await ctx.newPage();
   await p.goto('http://localhost/online.html?net=local'); await p.waitForFunction(() => window.__sq, null, { timeout: 90000 }); await p.waitForTimeout(1000);
   await p.evaluate(() => document.querySelector('#t-games').click()); await p.waitForFunction(() => window.__drop && window.__slots, null, { timeout: 90000 }); await p.waitForTimeout(1500);
+  await p.screenshot({ path: `${OUT}/${vp.width}-top.png` }); // the notes at the top of the Games page
   for (const sel of ['#slots .machine', '#drop']) {
     await p.evaluate((s) => document.querySelector(s).scrollIntoView({ block: 'start' }), sel); await p.waitForTimeout(800);
     const r = await p.evaluate((s) => { const c = document.querySelector(s + ' canvas').getBoundingClientRect(), b = document.querySelector(s + ' [data-run="1"]').getBoundingClientRect(); return { canvas: Math.round(c.width) + '×' + Math.round(c.height), buttonsBottom: Math.round(b.bottom), screenH: innerHeight }; }, sel);

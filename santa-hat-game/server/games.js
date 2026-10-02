@@ -150,8 +150,8 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
       if (p.state === 'spent') {
         const x = await row(`select pl.bet, pl.run_id, q.price_usd from public.plays pl join public.runs r on r.id = pl.run_id join public.payments pa on pa.signature = r.signature
           join public.quotes q on q.id = pa.quote_id where pl.id = $1`, [p.id]);
-        let price = +x.price_usd; try { price = (await livePrice()).usd; } catch {}
-        await refundPlay(db, p.id, +x.bet, price); await finishRun(db, x.run_id, await walletOf(profile)); done.push({ id: p.id, refunded: true });
+        // refunded at the run's locked price (see settle), then the run is finished and paid
+        await refundPlay(db, p.id, +x.bet, +x.price_usd); await finishRun(db, x.run_id, await walletOf(profile)); done.push({ id: p.id, refunded: true });
       }
       else done.push({ id: p.id, ...(await settle(profile, String(p.id), f.newSeed(16))) });
     }
@@ -163,25 +163,30 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     if (!/^[0-9a-f]{8,64}$/.test(playerSeed || '')) return { error: 'bad player number' };
     if (!isTicket(ticket)) return { error: 'no open play with that ticket' };
     const wallet = await walletOf(profile);
-    let price = null; try { price = (await livePrice()).usd; } catch {}
     return db.tx(async (t) => {
       const one = async (q, p) => (await t.query(q, p))[0];
       const pl = await one(`select * from public.plays where id = $1 and profile_id = $2 and state = 'open' for update`, [ticket, profile]);
       if (!pl) return { error: 'no open play with that ticket' };
+      // THE RUN'S LOCKED PRICE (Cody, 2026-10-01: "the Santa price is locked at start of each run and that is what the payout price
+      // is converted with"): every play of a run turns dollars into SANTA at the price its quote locked, the price the player paid
+      // at, never the live price at the moment the play settles. So a run's winnings, refunds, skims and top-offs all use one
+      // price however long the run takes. (Prizes that are a share of the pool, like the Pool jackpot, pay the same SANTA at any
+      // price.) It also means a play never fails because the live price feed is down.
+      const price = await quotePrice(t, pl.run_id);
       // after the result: if this was the run's last play, its ONE payout is queued (sent automatically, Cody)
       const withRun = async (o) => { const sent = await finishRun(t, pl.run_id, wallet); return sent === null ? o : { ...o, runDone: true, ...sentOf(sent) }; };
       const K = KINDS[pl.kind];
       const p = await one('select * from public.pools where game = $1 for update', [K.game]);    // lock the pool: plays settle one at a time
       let r, state;
       try {
-        if (!price) throw new Error('no live SANTA price right now');
+        if (!(price > 0)) throw new Error('this run has no locked price');
         state = poolState(p, price);
         const rand = fair.randFrom(await f.numbers(pl.secret, playerSeed, +pl.play_no, NUMS));  // 4. the player's number goes in
         const cfg = await cfgFor(+pl.settings_version), bet = +pl.bet;                         // the play's own settings and price
         r = pl.kind === 'drop' ? dropPlay(state, bet, rand) : K.game === 'spin' ? spin(state, bet, rand, undefined, cfg.wheel) : pull(state, { ...cfg.machine, bet }, rand);
-      } catch (e) { const q = await quotePrice(t, pl.run_id); await refundPlay(t, pl.id, +pl.bet, price || q); return withRun({ failed: true, why: e.message, refunded: +pl.bet }); }
+      } catch (e) { await refundPlay(t, pl.id, +pl.bet, price); return withRun({ failed: true, why: e.message, refunded: +pl.bet }); }
       if (r.paused) { await refundPlay(t, pl.id, +pl.bet, price); return withRun({ refused: true, stopped: !!r.stopped, refunded: +pl.bet }); }
-      // Every movement in exact SANTA at this play's price; the pool changes by exactly these amounts.
+      // Every movement in exact SANTA at the run's locked price; the pool changes by exactly these amounts.
       const skimRaw = toRaw(r.skim || 0, price), topRaw = toRaw(r.topOff || 0, price);
       const payRaw = Math.min(toRaw(r.pay, price), +p.santa_raw + topRaw - skimRaw); // never more than the pool holds
       const poolDelta = topRaw - skimRaw - payRaw, treasuryDelta = Math.round(skimRaw * (1 - FEE)) - Math.round(topRaw / (1 - FEE));

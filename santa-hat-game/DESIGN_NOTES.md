@@ -305,9 +305,13 @@ sends" (no claim button). How it works:
   going, or type) and its own Play button; at most 100 plays per run ("Maybe set a max of 100 spins per run"). Database
   `014_run_sizes.sql`, `credits.js` MAX_RUN, the server all say 1–100. Each play is still checked against the pool as it is
   made; a refused play is refunded in the run's one transfer, so a big run can't overdraw a pool.
-- **Running total (Cody, 2026-10-01):** a "This visit" table at the top of the Games tab: per game and in total, plays,
-  spent (refunded plays come off), won (before the 3% token tax) and net. Kept for the browser tab (a reload keeps it); Reset
-  clears it. Nothing is stored on the server for it.
+- **Run counter (Cody, 2026-10-01; replaced a "This visit" table he didn't like):** a small strip between each game and its
+  buy buttons: "This run 7 / 25 · won $3.40". It counts the current run and starts again at 0 with the next one.
+- **Price locked per run (Cody, 2026-10-01):** "the Santa price is locked at start of each run and that is what the payout
+  price is converted with." Every play of a run converts dollars to SANTA at its quote's price (the price the player paid at),
+  never the live price when the play settles: winnings, refunds, skims, top-offs. The run's one payout = the sum of its plays'
+  SANTA. Pool-share prizes (the Pool jackpot) pay the same SANTA at any price. A note at the top of the Games page says so.
+  (server/games.js settle; tests/db/server.test.mjs moves the live price ×3 and ÷4 mid-run.)
 - The server makes the run's plays (and locks each secret) only after the payment is confirmed. The plays settle one after
   another; the run's LAST play queues ONE payout of everything the run won, plus the price of any play the pool refused
   (emergency stop or refilling). Nothing waits on the player, so nothing is left behind if they close the tab: the server

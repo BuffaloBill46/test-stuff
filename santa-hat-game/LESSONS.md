@@ -304,3 +304,8 @@ The page skipped the server for signed-out players unless the action was on its 
 pools). The server had since made lottery, lottery-tickets and stats public too, so a guest's lottery cards and draw
 re-checks silently never asked; both halves looked right on their own. The list is now one export (PUBLIC_ACTIONS) and
 `tests/public-actions.test.mjs` fails if it differs from the actions server/http.js answers before its sign-in check.
+
+## A trailing comment can swallow the rest of a one-line statement (2026-10-01)
+Adding `// at the run's locked price` to the end of a refund call in server/games.js commented out the `finishRun(...)` that
+followed on the SAME line: a stuck run would have been refunded but never paid. Only the stuck-run test caught it. In this
+codebase several statements share a line; put a new comment on its own line above, never at the end of an existing one.

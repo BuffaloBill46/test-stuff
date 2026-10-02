@@ -55,7 +55,7 @@ function confirmRun(kind, bet, n) {
   $('#buyTitle').textContent = `Play ${n} ${n === 1 ? K.one : K.many}`;
   $('#buyWhat').textContent = `${n} × ${cents(bet)} = ${money(cost)}`;
   $('#buyPool').textContent = POOL_NAME[K.game];
-  $('#buySanta').innerHTML = price ? `≈ <b>${fmtSanta(santaFor(cost, price))} SANTA</b> at today's price. The real checkout locks the price for ${QUOTE_SECONDS} seconds.` : '';
+  $('#buySanta').innerHTML = price ? `≈ <b>${fmtSanta(santaFor(cost, price))} SANTA</b> at today's price. The real checkout locks the price for ${QUOTE_SECONDS} seconds, and this run's winnings are paid in SANTA at that same price.` : '';
   $('#buyNote').textContent = poor ? `Not enough demo money (${money(wallet.get())}). Tap Reset above the Slots.` : '';
   $('#buyGo').textContent = `Pay ${money(cost)} & play`; $('#buyGo').disabled = poor;
   const d = $('#buyDlg'); if (d.showModal) d.showModal(); else d.setAttribute('open', '');
