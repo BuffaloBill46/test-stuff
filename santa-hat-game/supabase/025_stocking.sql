@@ -1,4 +1,4 @@
--- NOT APPLIED YET. Stocking Stuffer (Cody's brief, 2026-10-02): a new single-player game, kind 'stocking', played in runs like
+-- APPLIED live 2026-10-02 (constraint names confirmed on live first; Claude, after reviewing the agent's build). Stocking Stuffer (Cody's brief, 2026-10-02): a new single-player game, kind 'stocking', played in runs like
 -- Snowball Drop and paid into the same Drop pool (the 'spin' pool row). Rules: mockups/stocking.js; server: server/games.js.
 -- 005 only allows the kinds 'spin', 'big' and 'drop' on quotes and runs, so a Stocking Stuffer quote would be refused by the
 -- database itself. This widens those two checks to add 'stocking'; nothing else changes:
