@@ -336,7 +336,7 @@ async function skipRow(ctx, scope) { // Skip ahead is only on screen during a ru
 }
 async function traceRun(ctx, game) {
   const { p, mode, st } = ctx, scope = game === 'big' ? '#slots' : '#drop', sel = `${scope} [data-run="1"]`, res = `${scope} .res`;
-  const item = game === 'big' ? 'Games: Big Hat, Pull 1' : 'Games: Snowball Drop, Drop 1 (10¢)', steps = [], add = (step, ok, ev) => steps.push({ step, ok, ev });
+  const item = game === 'big' ? 'Games: Big Hat, Pull 1' : 'Games: Snowball Drop, Drop 1 (at the size last picked)', steps = [], add = (step, ok, ev) => steps.push({ step, ok, ev });
   await reset(p); await gotoTab(p, 'games');
   add('price shown', true, `button "${clean(await p.textContent(sel))}"`);
   await p.click(sel); await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
