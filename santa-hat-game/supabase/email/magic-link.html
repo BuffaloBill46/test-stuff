@@ -1,0 +1,28 @@
+<!-- Supabase Auth → Emails → Templates → "Magic Link" (returning players). Subject: Your Santa Hat Legends sign-in
+     Cody, 2026-10-02: "make it look like Santa hat". The game's palette (navy, Santa red, gold, cream) and logo; the button signs
+     in on the device that opens it; the code (8 digits, Supabase MAILER_OTP_LENGTH) works on any device: typed into the sign-in
+     box. Both last 1 hour (MAILER_OTP_EXP 3600) and work once. Email-safe: tables and inline styles, web-safe fonts. -->
+<div style="margin:0;padding:24px 12px;background:#0f1530;font-family:Arial,Helvetica,sans-serif">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;margin:0 auto;background:#16204a;border:3px solid #0c0f1a;border-radius:14px">
+    <tr><td style="padding:28px 28px 6px;text-align:center">
+      <img src="https://santahatgames.com/hat-logo.png" width="76" alt="" style="display:block;margin:0 auto 10px;border:0">
+      <div style="font-family:Georgia,'Times New Roman',serif;font-size:30px;font-weight:bold;color:#cf3128;line-height:1">Santa Hat</div>
+      <div style="font-size:12px;letter-spacing:7px;color:#ffbe5c;font-weight:bold;margin-top:6px">LEGENDS</div>
+    </td></tr>
+    <tr><td style="padding:18px 28px 6px;color:#f5f1e8;font-size:17px;line-height:1.5;text-align:center">
+      Ho ho ho! Tap the button to sign in and get back to the plaza.
+    </td></tr>
+    <tr><td style="padding:14px 28px 22px;text-align:center">
+      <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#cf3128;color:#f5f1e8;font-weight:bold;font-size:18px;text-decoration:none;padding:14px 30px;border-radius:9px;border:2px solid #0c0f1a">Sign in to Santa Hat Legends</a>
+    </td></tr>
+    <tr><td style="padding:0 28px 22px;text-align:center;color:#b9cdf2;font-size:14px;line-height:1.5">
+      <div>Reading this on another device? Type this code in the game's sign-in box instead:</div>
+      <div style="margin-top:12px"><span style="display:inline-block;background:#0f1530;border:2px solid #26305a;border-radius:9px;padding:10px 18px;font-family:'Courier New',Courier,monospace;font-size:30px;font-weight:bold;letter-spacing:6px;color:#ffbe5c">{{ .Token }}</span></div>
+    </td></tr>
+    <tr><td style="padding:16px 28px 24px;border-top:1px solid #26305a;text-align:center;color:#8a93b3;font-size:12px;line-height:1.6">
+      The button and the code work once and expire in 1 hour.<br>
+      Didn't ask to sign in? Just ignore this email: nothing happens without it.<br>
+      <a href="https://santahatgames.com" style="color:#8a93b3">santahatgames.com</a>
+    </td></tr>
+  </table>
+</div>
