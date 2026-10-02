@@ -4,8 +4,10 @@
 // frozen, an impossible amount is); $1 turns are refused up front while the Drop pool is between $100 and $250 (the open
 // question for Cody); a published pay table is used by new turns and by their re-checks. Without 025 the database refuses
 // the new kind; 025 can be run twice.
+// REALPG=1: the same steps on a throwaway REAL Postgres server (realpg.mjs; in WSL on Windows), else PGlite.
 import assert from 'node:assert/strict';
-import { makeDb, FILES } from './setup.mjs';
+import { makeDb as makePglite, FILES } from './setup.mjs';
+import { startPostgres, makeRealDb } from './realpg.mjs';
 import { createGameServer, maxPerPlay } from '../../server/games.js';
 import { check } from '../../mockups/house.js';
 import { newSeed } from '../../mockups/fair.js';
@@ -25,6 +27,13 @@ function pay(sig, { from = PLAYER, to, total, at = Date.now() }) {
 }
 const mkServer = (db) => createGameServer({ db, chain: { getTransaction: async (s) => txs.get(s) ?? null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: POOLS });
 const raw = (usd) => Math.round(usd / PRICE * 1e6);
+const REAL = process.env.REALPG === '1', servers = [];
+async function makeDb(files) {
+  if (!REAL) return makePglite(files);
+  const srv = await startPostgres(); if (!srv) { console.log('SKIP: no Postgres installed here (REALPG=1 needs Linux Postgres)'); process.exit(0); }
+  servers.push(srv); const db = await makeRealDb(srv, { files }); db.pg = { exec: (sql) => db.query(sql) }; return db;
+}
+console.log(REAL ? 'on a REAL Postgres server' : 'on PGlite');
 
 // 0. Without 025 the database itself refuses the new kind (so 025 is really needed), and 025 is safe to run twice.
 { const db = await makeDb(FILES); const me = await db.player(PLAYER);
@@ -127,4 +136,5 @@ assert.ok(w.filter((x) => / 1\.75×/.test(x.note) && x.game === 'stock10').every
 const bad = await db.query(`select r.id from public.runs r left join public.payouts po on po.run_id = r.id
   where r.paid_at is not null and coalesce(po.amount_raw, 0) <> (select coalesce(sum(pay_raw), 0) from public.plays where run_id = r.id)`);
 assert.equal(bad.length, 0);
-console.log(`OK: Stocking Stuffer on real Postgres: quote → pay → buy → settle (10¢ and $1 runs), every turn re-checked, Drop pool exact, ONE payout per run; cap 250× ($250 win queued, $600 held); $1 refused at a $200 pool, sold at $99 (top-off) ; published pay table used and re-checked; winners list ${w.length} stocking wins`);
+for (const s of servers) await s.stop();
+console.log(`OK: Stocking Stuffer on ${REAL ? 'a REAL Postgres server' : 'real Postgres (PGlite)'}: quote → pay → buy → settle (10¢ and $1 runs), every turn re-checked, Drop pool exact, ONE payout per run; cap 250× ($250 win queued, $600 held); $1 refused at a $200 pool, sold at $99 (top-off) ; published pay table used and re-checked; winners list ${w.length} stocking wins`);
