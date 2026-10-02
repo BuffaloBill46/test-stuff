@@ -339,3 +339,11 @@ database connections, and ~70 requests at once used up the free plan's slots ("r
 the speed limit fails open by design, so under that error it counted nothing. Fix: the transaction pooler (DB_POOLER_HOST; port
 6543, user postgres.<project>); only transaction-scoped locks work through it. Always burst-test a deployed server, and read
 the function logs, not just the status codes.
+
+## Playwright request interception breaks WebSockets (2026-10-02)
+With Playwright 1.63, ANY `context.route(...)` (even one whose filter skips the WebSocket's address, and even with a
+`routeWebSocket` pass-through) made every page WebSocket fail (close 1006), while the same page with no routes connected
+fine. Found by a 3-way experiment, after two blind retries that changed nothing: test the smallest difference first.
+Tests that need a real WebSocket (the referee server) serve the game's files from a plain local web server instead
+(`tests/browser/referee-server-test.mjs`), and wait with `waitUntil: 'domcontentloaded'` (fonts from the internet can hold
+the 'load' event for over a minute when 3 test browsers start at once).

@@ -12,31 +12,19 @@ import { gearIn, effectsOf, heldWith, gearOfMask, statOf } from './gear.js';
 import { initLottery } from './lotteryui.js';
 import { play as sfx, initSoundButtons } from './sfx.js';
 import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js';
+import { snapMs, autoStartMs, isPublic, botAvatar, botName, refereeOpts } from './refcore.js';
 
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
 const LOCAL = params.get('net') === 'local';
-// Free-plan budget is 100 messages/second and every receiver counts, so fuller rooms send snapshots less often.
-const snapMs = (humans) => (humans <= 4 ? 125 : humans <= 6 ? 170 : 220);
+// The referee server (server/referee.js on the Droplet): ?ref=wss://… runs every room there instead of in a player's page.
+// Opt-in until it also reports match finishes and checks loadouts (TODO "Cheat-proof referee server", phase 2).
+const REFEREE = /^wss:\/\/|^ws:\/\/localhost[:/]/.test(params.get('ref') || '') ? params.get('ref') : null;
+// What a room's address keeps of this page's own address (so a reload or a shared link stays on the same network).
+const KEEP = (LOCAL ? '&net=local' : '') + (REFEREE ? '&ref=' + encodeURIComponent(REFEREE) : '');
 const REP_MIN_MS = 160, REP_MOVING_MS = 350, REP_IDLE_MS = 1000; // the referee stops extrapolating after 400 ms
 const EMOTES = ['Ho ho ho!', 'Nice throw!', 'Gimme the hat!', 'Oops!'];
-// Bots look and sound like players so nobody can pick them out and farm them.
-const BOT_NAMES = ['frostbyte', 'Kaylee_x', 'mikey2012', 'NoScopeNate', 'ghostpepper', 'jollyroger7', 'TannerB', 'lil_snowcone',
-  'Ricky.D', 'sn0wday', 'Brooke_22', 'pinecone_pete', 'Icicle', 'BigTay', 'zoe.plays', 'Marcus_77', 'hat_hunter', 'tobiasz',
-  'coco.bean', 'SleighDrip', 'justjess', 'DannyDoes', 'yeti_mode', 'Bexxie', 'owen_s', 'crumbsy', 'LunaLux', 'Mr_Mittens',
-  'jayjay41', 'nikki.k', 'Frosty_Fin', 'ThatGuyAl', 'kringle', 'Wiggs', 'ellie_b', 'soup_dog', 'TreyTheGreat', 'maple_mo',
-  'Gus_G', 'aurora.b', 'Sam_Plays', 'dustin_t', 'mochi', 'Rae', 'krispy_k', 'BenjiBoo', 'noodle_arms', 'Quinn.Z'];
-const botHash = (id) => { let h = (id * 2654435761) >>> 0; h ^= h >>> 15; return Math.imul(h, 2246822519) >>> 0; };
-const botAvatars = new Map();
-function botAvatar(id) {
-  if (!botAvatars.has(id)) {
-    let h = botHash(id + 7); const a = {};
-    for (const s of SLOTS) { const opts = [...BY_ID.values()].filter((i) => i.slot === s && !(s === 'face' && i.face === 'beard')); a[s] = opts[h % opts.length].id; h = Math.imul(h ^ (h >>> 13), 1103515245) >>> 0; }
-    botAvatars.set(id, a);
-  }
-  return botAvatars.get(id);
-}
 const TEAM_SHIRT = [0xcf3128, C.elf], TEAM_RING = [0xffbe5c, 0x7fe0a0], TEAM_NAME = ['Nice', 'Naughty'];
 
 const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
@@ -84,8 +72,8 @@ let room = null, roomCode = '', practice = false, isHost = false, sim = null, jo
 let lastRaw = null, curHost = null, snaps = [], lastEv = 0, lastSnapSent = 0, lastSnapAt = 0;
 // Auto match rooms have a fixed mode and start on their own; private rooms are started by their referee.
 let roomMode = null, autoStart = false, cdEnd = null, boardAt = 0, lobbyKind = 'unranked', lobbyMode = 'ffa';
-const MAX_WATCHERS = 4, isPublic = (c) => /^P[FT][1-5]$/.test(c);
-const board = gamesBoard({ local: LOCAL });
+const MAX_WATCHERS = 4;
+const board = gamesBoard({ local: LOCAL, referee: REFEREE });
 let bg = createSim(); bg.syncRoster([]); // attract-mode plaza behind the home screen
 const names = new Map(); // peer id -> display name
 const ctl = { x: 0, z: 9, vx: 0, vz: 0, face: Math.PI, ep: -1, q: 0, t: 0, ax: 0, az: 0, cool: 0, throwT: 0, lastSent: 0, wasStun: false, dirty: true };
@@ -111,7 +99,7 @@ function decode(s) {
 }
 
 const inRoom = () => !!room || practice;
-const nameOf = (e) => (e.bot ? BOT_NAMES[botHash(e.id) % BOT_NAMES.length] : (e.peer === me.id ? me.n : names.get(e.peer)) || 'Player');
+const nameOf = (e) => (e.bot ? botName(e.id) :(e.peer === me.id ? me.n : names.get(e.peer)) || 'Player');
 
 // ---------- referee hand-off
 function becomeHost() {
@@ -120,6 +108,8 @@ function becomeHost() {
   room?.setHost(true);
   sim.S.ev.forEach((v) => { lastEv = Math.max(lastEv, v[0]); });
 }
+// Who may pick the mode and press Start: the page's own referee, or (referee server) the room's owner.
+const canRun = () => isHost || (room?.kind === 'server' && room.owner() === me.id);
 function stepDown() { isHost = false; sim = null; room?.setHost(false); board.unpublish(); }
 const better = (a, b) => a.j < b.j || (a.j === b.j && a.id < b.id);
 
@@ -139,7 +129,7 @@ function onSnap(s) {
 }
 
 function election(now) {
-  if (!room || isHost || me.w || now - joinedAt < 2000 || now - lastSnapAt < 2500) return;
+  if (!room || room.kind === 'server' || isHost || me.w || now - joinedAt < 2000 || now - lastSnapAt < 2500) return;
   const ps = room.peers().filter((p) => !p.w); if (!ps.some((p) => p.id === me.id)) ps.push(me);
   ps.sort((a, b) => (better(a, b) ? -1 : 1));
   if (ps[0].id === me.id) becomeHost();
@@ -155,8 +145,11 @@ async function enterRoom(code, quick, opts = {}) {
     const c = quick ? 'P' + (mode === 'team' ? 'T' : 'F') + (attempt + 1) : code;
     me.j = Date.now();
     let r;
-    try { r = await openRoom(c.toLowerCase(), me, { local: LOCAL }); }
-    catch (e) { status("Couldn't reach the game server. Check your connection, or try Practice."); return; }
+    try { r = await openRoom(c.toLowerCase(), me, { local: LOCAL, referee: REFEREE }); }
+    catch (e) {
+      if (quick && /full/.test(e.why || '')) continue; // the referee server said this public room is full: try the next one
+      status(e.why || "Couldn't reach the game server. Check your connection, or try Practice."); return;
+    }
     await new Promise((res) => setTimeout(res, 1200));
     const players = r.peers().filter((p) => !p.w).length, watchers = r.peers().filter((p) => p.w && p.id !== me.id).length;
     if (me.w && watchers >= MAX_WATCHERS) { r.leave(); status(`That game already has ${MAX_WATCHERS} watchers. Try another.`); return; }
@@ -170,9 +163,10 @@ async function enterRoom(code, quick, opts = {}) {
   room.on('rep', (id, r) => { if (isHost && sim) sim.setReport(id, r); });
   room.on('emote', (e) => { if (e && typeof e.p === 'string') showEmote(e.p, Number(e.e)); });
   room.on('peers', (ps) => ps.forEach((p) => names.set(p.id, cleanName(p.n) || 'Player')));
+  room.on('gone', () => { leaveRoom(); status('Lost the connection to the game server. Try again.'); }); // referee server only
   room.peers().forEach((p) => names.set(p.id, cleanName(p.n) || 'Player'));
   joinedAt = performance.now(); lastSnapAt = 0; snaps = []; curHost = null; lastRaw = null; isHost = false; sim = null; ctl.ep = -1;
-  try { history.replaceState(null, '', '?room=' + roomCode + (LOCAL ? '&net=local' : '')); } catch {}
+  try { history.replaceState(null, '', '?room=' + roomCode + KEEP); } catch {}
   $('#home').hidden = true; status('');
   renderChrome();
 }
@@ -188,7 +182,7 @@ function leaveRoom(reason) {
   if (isHost) board.unpublish();
   room?.leave(); room = null; practice = false; isHost = false; sim = null; snaps = []; lastRaw = null; curHost = null; me.w = false; roomMode = null; autoStart = false;
   bg = createSim(); bg.syncRoster([]);
-  try { history.replaceState(null, '', location.pathname + (LOCAL ? '?net=local' : '')); } catch {}
+  try { history.replaceState(null, '', location.pathname + (KEEP ? '?' + KEEP.slice(1) : '')); } catch {}
   if (reason === 'idle' || reason === 'hidden') openLobby(lobbyKind); ui.lastBoard = ''; renderChrome();
   if ((reason === 'idle' || reason === 'hidden') && was) {
     $('#code').value = was; $('#joinBtn').textContent = 'Join room ' + was;
@@ -323,18 +317,14 @@ function sendEmote(i) {
 // ---------- entity meshes
 // A player's level (their profile's, announced with their look; guests 1). Until the referee runs on our server, this is what
 // each player's browser says (the same trust as today's unranked matches; server/levels.js).
-function levelOf(e) {
-  if (e.bot) return 1;
-  if (e.peer === me.id) return me.l || 1;
-  return clampLevel(room?.peers().find((q) => q.id === e.peer)?.l);
-}
-const startOf = (e) => levelInfo(levelOf(e)).start;
-// The special snowballs a player brings: what's in their slots that their level opens (catalog.js specialsIn). Bots: none.
-const specialsOf = (e) => (e.bot ? [] : specialsIn(avatarOf(e), levelOf(e), levelInfo(levelOf(e)).sb));
+// The lookups come from refcore.js, the same ones the server referee uses: level, starting snowballs, the special snowballs a
+// player brings (what's in their slots that their level opens; bots none), and gear (below).
+const REF = refereeOpts((e) => (e.peer === me.id ? me : room?.peers().find((q) => q.id === e.peer)));
+const { levelOf, startOf, specialsOf } = REF;
 const mySpecials = () => specialsIn(me.a, me.l || 1, levelInfo(me.l || 1).sb);
 // The special gear a player brings (gear.js gearIn: the gear slots their level opens, worn by level rules, no stacking). The
 // referee reads it once at match start (a Present Box is turned into its pick then). Bots: none (Cody: bots stay normal).
-const gearOf = (e) => (e.bot ? [] : gearIn(avatarOf(e), levelOf(e)));
+const { gearOf } = REF;
 // What a player's gear does, read from the REFEREE's snapshot (e.gear), never guessed from an avatar: a Present Box's pick is
 // only known there. maxOf: the snowball counter's size (Santa Bag/Toy Sack +50%, Backpack +25%, rounded up), as sim.js holds it.
 const fxOf = (e) => effectsOf(e?.gear);
@@ -391,12 +381,7 @@ function sbRow(m) {
   return `<div class="sbrow">${list.map(({ n, kind: k }) => { const S = SPECIALS[k], why = cantThrow(k, { ammo: m.ammo, max, level });
     return `<button type="button" data-sb="${n - 1}" aria-pressed="${armed === k}" ${why ? 'disabled' : ''} title="${S.note}${why ? ' (' + why + ')' : ''}"><b>SB${n}</b> ${S.name} <small>${S.cost === 'all' ? 'all' : S.cost}</small></button>`; }).join('')}</div>`;
 }
-function avatarOf(e) {
-  if (e.bot) return botAvatar(e.id);
-  if (e.peer === me.id) return me.a;
-  const p = room?.peers().find((q) => q.id === e.peer);
-  return cleanAvatar(p && p.a);
-}
+const { avatarOf } = REF;
 const ballMats = new Map();
 function ballMat(color) { let m = ballMats.get(color); if (!m) { m = TOON.clone(); m.color = new THREE.Color(color); ballMats.set(color, m); } return m; }
 const snowColor = (ent) => (!ent ? 0xf5f1e8 : BY_ID.get(avatarOf(ent).snow).color);
@@ -511,12 +496,12 @@ function renderChrome() {
     card = `<div class="eyebrow">Auto match · ${v.mode === 'team' ? 'TEAM' : 'FFA'}${me.w ? ' · watching' : ''}</div><h2>${v.cd ? `Starting in ${Math.ceil(v.cd)}` : 'Finding players…'}</h2>
       <ul class="roster">${roster}</ul><p class="dim">More players can still join. Bots fill any empty spots when it starts.</p>`;
   } else if (v.phase === 'lobby') {
-    const share = practice ? '' : `<p class="share">Friends join with code <b>${esc(roomCode)}</b> or this link:<br><span class="link">${esc(location.origin + location.pathname + '?room=' + roomCode)}</span></p>`;
+    const share = practice ? '' : `<p class="share">Friends join with code <b>${esc(roomCode)}</b> or this link:<br><span class="link">${esc(location.origin + location.pathname + '?room=' + roomCode + (REFEREE ? '&ref=' + encodeURIComponent(REFEREE) : ''))}</span></p>`;
     const roster = humans.map((e) => `<li>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}${v.mode === 'team' ? ` <u class="t${e.team}">${TEAM_NAME[e.team]}</u>` : ''}</li>`).join('');
     const bots = v.ents.length - humans.length;
     card = `<div class="eyebrow">Warm-up · run around, throw, grab the hat</div><h2>Snowball Square</h2>${share}
       <ul class="roster">${roster}</ul><p class="dim">${bots ? `${bots} elf bot${bots > 1 ? 's' : ''} fill empty spots.` : ''} Up to 8 players.</p>
-      ${isHost && !me.w ? `<div class="modes" role="radiogroup" aria-label="Match mode"><button data-mode="ffa" aria-checked="${v.mode === 'ffa'}" role="radio">Everyone vs the hat</button><button data-mode="team" aria-checked="${v.mode === 'team'}" role="radio">Nice vs Naughty</button></div>
+      ${canRun() && !me.w ? `<div class="modes" role="radiogroup" aria-label="Match mode"><button data-mode="ffa" aria-checked="${v.mode === 'ffa'}" role="radio">Everyone vs the hat</button><button data-mode="team" aria-checked="${v.mode === 'team'}" role="radio">Nice vs Naughty</button></div>
       <button class="go" id="start">Start match</button>` : `<p class="wait">Mode: <b>${v.mode === 'team' ? 'Nice vs Naughty' : 'Everyone vs the hat'}</b>. Waiting for the referee to start…</p>`}`;
   } else if (v.phase === 'intro') {
     loadStats(v);
@@ -535,8 +520,8 @@ function renderChrome() {
   }
   if (card !== ui.lastCard) {
     ui.lastCard = card; const p = $('#panel'); p.hidden = !card; p.innerHTML = card; p.classList.toggle('intro', v.phase === 'intro');
-    p.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { if (isHost && sim) { sim.S.mode = b.dataset.mode; sim.syncRoster(sim.S.ents.filter((e) => !e.bot).map((e) => e.peer)); } }));
-    p.querySelector('#start')?.addEventListener('click', () => { if (isHost && sim) sim.introMatch(sim.S.mode); });
+    p.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { if (room?.kind === 'server') room.mode(b.dataset.mode); else if (isHost && sim) { sim.S.mode = b.dataset.mode; sim.syncRoster(sim.S.ents.filter((e) => !e.bot).map((e) => e.peer)); } }));
+    p.querySelector('#start')?.addEventListener('click', () => { if (room?.kind === 'server') room.start(); else if (isHost && sim) sim.introMatch(sim.S.mode); });
   }
   // HUD
   if (v.phase === 'play' || v.phase === 'break') {
@@ -755,7 +740,7 @@ function frame() {
       if (roomMode && sim.S.phase === 'lobby' && sim.S.mode !== roomMode) sim.S.mode = roomMode;
       sim.syncRoster(ids);
       if (autoStart && sim.S.phase === 'lobby') {
-        const humans = sim.S.ents.filter((e) => !e.bot).length, want = humans >= 2 ? 15000 : 25000;
+        const humans = sim.S.ents.filter((e) => !e.bot).length, want = autoStartMs(humans);
         if (cdEnd === null || cdEnd - now > want) cdEnd = now + want;
         if (now >= cdEnd) { sim.introMatch(sim.S.mode); cdEnd = null; }
       } else cdEnd = null;
