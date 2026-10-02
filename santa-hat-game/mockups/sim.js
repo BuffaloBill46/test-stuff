@@ -2,6 +2,7 @@
 // Pure game logic, no rendering, so it can be tested headless.
 import { levelInfo } from './levels.js';
 import { SPECIALS, SPECIAL_KINDS, DROP_HIT_RADIUS, cantThrow, costOf } from './specials.js';
+import { effectsOf, gearAllowed, resolvePresent, heldWith, gearMask, gearOfMask } from './gear.js';
 // Ball kinds in snapshots (B[9]): 0 normal, 1 ice, 2 split (before it splits), 3 giant, 4 fire, 5 a split piece.
 const BALL_KIND = { '': 0, ice: 1, split: 2, giant: 3, fire: 4, piece: 5 }, DROP_KIND = { sky: 1, rain: 2 };
 export const KIND_OF = ['', 'ice', 'split', 'giant', 'fire', 'piece'], DROP_OF = ['', 'sky', 'rain']; // the page reads snapshots with these
@@ -35,8 +36,15 @@ export function constrain(p) {
 // startOf(ent) → that player's starting snowballs, from their level (levels.js; Cody 2026-10-01). Default: level 1. Bots keep 4.
 // specialsOf(ent) → the special snowballs that player has in their slots (specials.js kinds); levelOf(ent) → their level.
 // Bots never throw specials (Cody: bots stay normal).
-export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = () => levelInfo(1).start, specialsOf = () => [], levelOf = () => 1 } = {}) {
-  const startCount = (e) => (e.bot ? 4 : Math.min(20, Math.max(1, Math.floor(Number(startOf(e))) || levelInfo(1).start)));
+// gearOf(ent) → the special gear that player wears (gear.js kinds, e.g. catalog/gear.js gearIn); default none; bots never get
+// gear. Read ONCE when a match starts (or when they join one): a Present Box is turned into its gear then, with this sim's
+// rand, and the result (e.gear) travels in snapshots, so a new host keeps it instead of re-rolling.
+export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = () => levelInfo(1).start, specialsOf = () => [], levelOf = () => 1, gearOf = () => [] } = {}) {
+  // the level's count, times a held bonus (Santa Bag, Backpack; rounded up). e.fx must be set first (load() sets it before this).
+  const startCount = (e) => (e.bot ? 4 : heldWith(Math.min(20, Math.max(1, Math.floor(Number(startOf(e))) || levelInfo(1).start)), e.fx));
+  // Put on a player's gear for this match: what they wear that their level allows, Present Box resolved now. Extra hits full.
+  const wearGear = (e) => { const lv = levelOf(e) || 1;
+    e.gear = e.bot ? [] : resolvePresent((gearOf(e) || []).filter((k) => gearAllowed(k, lv)), lv, rand); e.fx = effectsOf(e.gear); e.xh = e.fx.extraHits; };
   const S = {
     phase: 'lobby', mode: 'ffa', round: 0, time: 0, seq: 0, ents: [], balls: [], drops: [], gh: {}, ev: [], evId: 0, mid: '',
     nextId: 1, nextBall: 1, team: [0, 0], result: null,
@@ -52,7 +60,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
 
   function mkEnt(peer, bot, team) {
     return { id: S.nextId++, peer, bot, team, x: 0, z: 0, vx: 0, vz: 0, face: 0, stun: 0, cool: bot ? 1 : 0, ammo: bot ? 4 : levelInfo(1).start, max: bot ? 4 : levelInfo(1).start,
-      regen: 0, score: 0, lastTh: null, wob: rand() * 9, throwT: 0, ep: 0, since: 9, rq: -1 };
+      regen: 0, score: 0, lastTh: null, wob: rand() * 9, throwT: 0, ep: 0, since: 9, rq: -1, gear: [], fx: effectsOf([]), xh: 0 }; // gear: none until wearGear
   }
   function spawn(e, i = Math.floor(rand() * 16), n = 16) {
     const a = Math.PI / 2 + (i / n) * Math.PI * 2; e.x = Math.cos(a) * 9; e.z = Math.sin(a) * 9; e.vx = e.vz = 0; e.stun = 0; e.face = a + Math.PI; e.ep++; e.since = 9;
@@ -92,7 +100,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     const humans = peers.slice(0, K.MAX_HUMANS);
     S.ents.filter((e) => !e.bot && !humans.includes(e.peer)).forEach(removeEnt);
     let added = false;
-    for (const p of humans) if (!S.ents.some((e) => e.peer === p)) { const e = mkEnt(p, false, -1); e.max = e.ammo = startCount(e); spawn(e); S.ents.push(e); added = true; }
+    for (const p of humans) if (!S.ents.some((e) => e.peer === p)) { const e = mkEnt(p, false, -1); wearGear(e); e.max = e.ammo = startCount(e); spawn(e); S.ents.push(e); added = true; }
     balance(S.phase === 'lobby');
     return added;
   }
@@ -106,10 +114,12 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     if (e.lastTh === null || th < e.lastTh) e.lastTh = th;
     else if (th > e.lastTh) { e.lastTh = th; if (moving()) throwBall(e, clamp(num(r.ax), -20, 20), clamp(num(r.az), -20, 20), typeof r.sp === 'string' ? r.sp : ''); }
     if (num(r.ep) !== e.ep || e.stun > 0 || !moving()) return;
-    let vx = num(r.vx), vz = num(r.vz); const sp = hyp(vx, vz), top = K.HUMAN_SPEED * 1.05;
+    // Elf Shoes: the referee allows that much more speed (the player's own page has to move them faster too).
+    const run = K.HUMAN_SPEED * e.fx.speedMult;
+    let vx = num(r.vx), vz = num(r.vz); const sp = hyp(vx, vz), top = run * 1.05;
     if (sp > top) { vx *= top / sp; vz *= top / sp; }
     const tx = clamp(num(r.x, e.x), -K.ARENA, K.ARENA), tz = clamp(num(r.z, e.z), -K.ARENA, K.ARENA);
-    const dx = tx - e.x, dz = tz - e.z, d = hyp(dx, dz), max = K.HUMAN_SPEED * 1.4 * Math.min(e.since, 1) + 0.6;
+    const dx = tx - e.x, dz = tz - e.z, d = hyp(dx, dz), max = run * 1.4 * Math.min(e.since, 1) + 0.6;
     if (d > max) { e.x += (dx / d) * max; e.z += (dz / d) * max; } else { e.x = tx; e.z = tz; }
     e.vx = vx; e.vz = vz; e.face = num(r.f, e.face); e.since = 0;
     constrain(e);
@@ -118,7 +128,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
   // ---------- flow
   function resetRound() {
     S.ents.forEach((e, i) => { spawn(e, i, S.ents.length); e.max = startCount(e); e.ammo = e.max; // a level-up shows from the next round
-      e.cool = e.bot ? 0.8 + rand() : 0; e.regen = 0; });
+      e.cool = e.bot ? 0.8 + rand() : 0; e.regen = 0; e.xh = e.fx.extraHits; }); // every round starts with all extra hits
     Object.assign(S.hat, { st: 'ped', holder: -1, last: -1, x: 0, y: K.PED_TOP, z: 0, vx: 0, vy: 0, vz: 0, acc: 0 });
     S.balls = []; S.drops = []; S.gh = {};
   }
@@ -128,7 +138,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     S.round = 1; S.team = [0, 0]; S.result = null;
     S.mid = Array.from({ length: 4 }, () => Math.floor(rand() * 2 ** 32).toString(16).padStart(8, '0')).join('');
     balance(true);
-    S.ents.forEach((e) => { e.score = 0; });
+    S.ents.forEach((e) => { e.score = 0; wearGear(e); }); // gear (and a Present Box's pick) is set for the whole match here
     resetRound();
   }
   const go = () => { S.phase = 'play'; S.time = K.ROUND_TIME; ev('round', 1); };
@@ -202,15 +212,22 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
   }
   // Can this snowball hit this player? (Not its thrower, not a teammate, not someone knocked down or holding the hat's immunity.)
   const hittable = (e, owner) => e.id !== owner && e.stun <= 0 && !(e.immune > 0) && !(S.mode === 'team' && byId(owner) && byId(owner).team === e.team);
+  // Special gear: a hit first takes extra hits (Pumpkin Costume etc.: "+1 hit (2 balls to stun)"); Elf Hat makes a hit take 2.
+  // If fewer are left than the hit takes, it knocks you down (so Elf Hat + one extra hit still goes down on the first hit).
+  // A hit that only takes extra hits doesn't knock you down, shove you or knock the hat off; scoring is the SAME as any hit
+  // (+5 thrower, −1 target, floor 0). Knocked down: Elf Hat doubles the stun, and every extra hit comes back (Cody: "Extra hits
+  // come back after each stun, all game"; refilled at the knock-down, the same thing since nobody can be hit while down).
   function hit(e, b) {
-    e.stun = b.stunSec || K.STUN * (b.sm || 1); const l = hyp(b.vx, b.vz) || 1; e.vx = (b.vx / l) * 5; e.vz = (b.vz / l) * 5;
+    const fx = e.fx, kept = e.xh >= fx.hitMult;
+    if (kept) e.xh -= fx.hitMult;
+    else { e.stun = (b.stunSec || K.STUN * (b.sm || 1)) * fx.hitMult; e.xh = fx.extraHits; const l = hyp(b.vx, b.vz) || 1; e.vx = (b.vx / l) * 5; e.vz = (b.vz / l) * 5; }
     const thrower = byId(b.owner);
     if (thrower) addScore(thrower, PTS.hit);
     // Getting hit costs 1 point (Cody); a score never goes below 0 (a team loses only what its player had).
     if (scoring()) { const lost = Math.min(1, e.score); e.score -= lost; if (S.mode === 'team') S.team[e.team] -= lost; }
     ev('hit', e.id, r2(b.x), r2(b.y), r2(b.z));
     if (rand() < 0.5) botChat(e, 3); else botChat(thrower, 1);
-    if (S.hat.holder === e.id) knockHat(e, { x: b.vx, z: b.vz }, thrower);
+    if (!kept && S.hat.holder === e.id) knockHat(e, { x: b.vx, z: b.vz }, thrower);
   }
 
   const nearestPile = (e) => PILES.reduce((b, p) => (hyp(p[0] - e.x, p[1] - e.z) < hyp(b[0] - e.x, b[1] - e.z) ? p : b));
@@ -259,7 +276,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     for (const e of S.ents) {
       e.wob += dt * 0.7; e.cool -= dt; if (e.chat > 0) e.chat -= dt; e.throwT = Math.max(0, e.throwT - dt * 3.5);
       const pile = nearestPile(e);
-      e.regen += dt * (hyp(pile[0] - e.x, pile[1] - e.z) < 1.6 ? 9 : 1);
+      e.regen += dt * (hyp(pile[0] - e.x, pile[1] - e.z) < 1.6 ? 9 : 1) * e.fx.refillMult; // Elf Satchel: 25% faster, piles too
       if (e.regen > (e.bot ? 3 : 2.2) && e.ammo < e.max) { e.ammo++; e.regen = 0; }
       if (e.immune > 0) e.immune -= dt;
       if (e.stun > 0) { e.stun -= dt; const f = 1 - Math.min(1, dt * 4); e.vx *= f; e.vz *= f; }
@@ -291,7 +308,9 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
       const r = b.r || 1;
       if (!done) for (const e of S.ents) {
         if (!hittable(e, b.owner) || (b.g && (S.gh[b.g] || []).includes(e.id))) continue;
-        if (d2(e, b) < 0.6 * r && b.y > 0.3 - (r - 1) * 0.3 && b.y < 2.4 + (r - 1) * 0.3) { hit(e, b); if (b.g) (S.gh[b.g] ||= []).push(e.id); done = true; break; }
+        // Elf Hat: a half-size player is half as wide and half as tall above the 0.3 floor (so an aimed throw, ~1.15 high, still hits)
+        const sz = e.fx.size;
+        if (d2(e, b) < 0.6 * r * sz && b.y > 0.3 - (r - 1) * 0.3 && b.y < 0.3 + (2.1 + (r - 1) * 0.3) * sz) { hit(e, b); if (b.g) (S.gh[b.g] ||= []).push(e.id); done = true; break; }
       }
       if (done) S.balls.splice(i, 1);
     }
@@ -300,7 +319,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
       const p = S.drops[i]; p.t -= dt; if (p.t > 0) continue;
       S.drops.splice(i, 1); ev('splat', r2(p.x), r2(p.z));
       if (!moving()) continue;
-      for (const e of S.ents) if (hittable(e, p.owner) && hyp(e.x - p.x, e.z - p.z) < DROP_HIT_RADIUS) hit(e, { owner: p.owner, x: p.x, y: 1, z: p.z, vx: e.x - p.x || 0.01, vz: e.z - p.z, sm: 1 });
+      for (const e of S.ents) if (hittable(e, p.owner) && hyp(e.x - p.x, e.z - p.z) < DROP_HIT_RADIUS * e.fx.size) hit(e, { owner: p.owner, x: p.x, y: 1, z: p.z, vx: e.x - p.x || 0.01, vz: e.z - p.z, sm: 1 });
     }
 
     if (h.st === 'ped') {
@@ -347,7 +366,9 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     const h = S.hat;
     return {
       s: ++S.seq, ph: PHASES.indexOf(S.phase), md: S.mode === 'team' ? 1 : 0, rd: S.round, tm: Math.round(S.time * 10) / 10, ts: S.team.slice(),
-      E: S.ents.map((e) => [e.id, e.peer || 0, e.bot ? 1 : 0, e.team, r2(e.x), r2(e.z), r2(e.vx), r2(e.vz), r2(e.face), e.stun > 0 ? 1 : 0, e.ammo, e.score, e.throwT > 0.5 ? 1 : 0, e.ep, e.immune > 0 ? 1 : 0]),
+      E: S.ents.map((e) => [e.id, e.peer || 0, e.bot ? 1 : 0, e.team, r2(e.x), r2(e.z), r2(e.vx), r2(e.vz), r2(e.face), e.stun > 0 ? 1 : 0, e.ammo, e.score, e.throwT > 0.5 ? 1 : 0, e.ep, e.immune > 0 ? 1 : 0,
+        // only a player wearing gear adds 2 numbers: their gear (gear.js gearMask, Present Box already resolved) and extra hits left
+        ...(e.gear.length ? [gearMask(e.gear), e.xh] : [])]),
       H: [HAT.indexOf(h.st), r2(h.x), r2(h.y), r2(h.z), r2(h.vx), r2(h.vy), r2(h.vz), h.holder, r2(S.landing.x), r2(S.landing.z)],
       // balls: … owner, stun ×, kind (BALL_KIND), size, split group: special balls keep their rule through a host handover
       B: S.balls.map((b) => [b.id, r2(b.x), r2(b.y), r2(b.z), r2(b.vx), r2(b.vy), r2(b.vz), b.owner, b.sm || 1, BALL_KIND[b.kind || ''] || 0, b.r || 1, b.g || 0, r2(b.age || 0)]),
@@ -365,6 +386,8 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     S.phase = PHASES[snap.ph] || 'lobby'; S.mode = snap.md ? 'team' : 'ffa'; S.round = num(snap.rd); S.time = num(snap.tm);
     S.team = Array.isArray(snap.ts) ? [num(snap.ts[0]), num(snap.ts[1])] : [0, 0]; S.seq = num(snap.s); S.mid = /^[0-9a-f]{8,64}$/.test(String(snap.mid)) ? snap.mid : '';
     S.ents = snap.E.map((r) => ({ ...mkEnt(r[1] || null, !!r[2], num(r[3])), id: num(r[0]), x: num(r[4]), z: num(r[5]), vx: num(r[6]), vz: num(r[7]), face: num(r[8]), stun: r[9] ? 0.5 : 0, ammo: num(r[10]), score: num(r[11]), throwT: r[12] ? 0.6 : 0, ep: num(r[13]), immune: r[14] ? 1 : 0 }));
+    // gear first (the old host's pick, never re-rolled), THEN the maximum: the level's count with the gear's held bonus
+    snap.E.forEach((r, i) => { const e = S.ents[i]; e.gear = e.bot ? [] : gearOfMask(r[15]); e.fx = effectsOf(e.gear); e.xh = clamp(Math.floor(num(r[16])), 0, e.fx.extraHits); });
     S.ents.forEach((e) => { e.max = startCount(e); e.ammo = Math.min(e.ammo, e.max); }); // the level's maximum, not the default
     const H = snap.H || []; const h = S.hat;
     Object.assign(h, { st: HAT[H[0]] || 'ped', x: num(H[1]), y: num(H[2], K.PED_TOP), z: num(H[3]), vx: num(H[4]), vy: num(H[5]), vz: num(H[6]), holder: num(H[7], -1), acc: 0, cool: 0, bounces: 0, rest: 0 });

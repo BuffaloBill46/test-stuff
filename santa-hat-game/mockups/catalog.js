@@ -7,6 +7,12 @@ export const SLOT_NAMES = { shirt: 'Shirts', pants: 'Pants', face: 'Faces', skin
 // player's slots SB1–SB3 (avatar keys sb1, sb2, sb3; how many open by level: levels.js). 'sb_none' = an empty slot.
 // Prices are placeholders (Cody: "set a base price, we will change later"). Snowball Rain also needs level 5 to use (specials.js).
 export const SB_SLOTS = ['sb1', 'sb2', 'sb3'];
+// SPECIAL GEAR (Cody, 2026-10-01): items of slot 'gear' (gear.js says what each does), put in the player's gear slots G1–G2
+// (avatar keys g1, g2; how many open by level: levels.js `gear`). 'gear_none' = an empty slot. Gear WEARS OUT 7 days after the
+// first match wearing it (the database keeps that clock: 015_special_gear.sql). Prices are Claude's placeholders (Cody: "set a
+// base price, we will change later"). SLOT_NAMES has no 'gear' entry yet on purpose: the Avatar page's Special Gear tab
+// isn't built, and the page lists slots from it.
+export const GEAR_SLOTS = ['g1', 'g2'];
 // Snowball RULES (Cody, 2026-10-01: special snowball types are coming: faster, bigger, longer stun, splits). An item's
 // `rules` change how its snowballs play; the match referee reads them (sim.js). Today: stun (× the normal 0.9 s knock-down).
 
@@ -72,13 +78,30 @@ export const ITEMS = [
 
   // Backpacks (2026-10-01).
   { id: 'pack_none', slot: 'pack', name: 'No backpack', pack: 'none', level: 1 },
-  { id: 'pack_satchel', slot: 'pack', name: 'Elf Satchel', pack: 'satchel', color: 0x3f9a66, price: 0.25 },
-  { id: 'pack_sack', slot: 'pack', name: 'Toy Sack', pack: 'sack', color: 0xcf3128, price: 0.50 },
-  { id: 'pack_gift', slot: 'pack', name: 'Gift Box', pack: 'gift', color: 0x7a4fa3, price: 0.25 },
+  { id: 'pack_satchel', slot: 'pack', name: 'Elf Satchel', color: 0x3f9a66, price: 0.25 },
+  { id: 'pack_sack', slot: 'pack', name: 'Toy Sack', color: 0xcf3128, price: 0.50 },
+  { id: 'pack_gift', slot: 'pack', name: 'Gift Box', color: 0x7a4fa3, price: 0.25 },
+
+  // Special gear (2026-10-01). Cody: existing items become gear and keep their names: Toy Sack = Santa Bag, Gift Box =
+  // Present Box, Elf Satchel keeps its name. They are NEW items (gear_sack, gear_gift, gear_satchel) next to the backpacks
+  // above, which stay: they were bought as forever looks and the character still draws them (pack slot). 015 gives every
+  // backpack owner the matching gear too. Gear isn't drawn on the character yet (Cody: it will be; not built).
+  // Santa Costume's level 3 is a WEAR rule (gear.js minLevel), not an unlock level, so it still has a price.
+  { id: 'gear_none', slot: 'gear', name: 'Empty slot', level: 1 },
+  { id: 'gear_pumpkin', slot: 'gear', name: 'Pumpkin Costume', gear: 'pumpkin', color: 0xe8812c, price: 0.50 },
+  { id: 'gear_kevlar', slot: 'gear', name: 'I.C.E. Kevlar Vest', gear: 'kevlar', color: 0x9fd8ff, price: 0.50 },
+  { id: 'gear_heated', slot: 'gear', name: 'Heated Coat', gear: 'heated', color: 0xcf3128, price: 0.50 },
+  { id: 'gear_santa', slot: 'gear', name: 'Santa Costume', gear: 'santa', color: 0xcf3128, price: 1.00 },
+  { id: 'gear_gift', slot: 'gear', name: 'Gift Box', gear: 'present', color: 0x7a4fa3, price: 0.50 },
+  { id: 'gear_sack', slot: 'gear', name: 'Toy Sack', gear: 'bag', color: 0xcf3128, price: 0.75 },
+  { id: 'gear_satchel', slot: 'gear', name: 'Elf Satchel', gear: 'satchel', color: 0x3f9a66, price: 0.50 },
+  { id: 'gear_shoes', slot: 'gear', name: 'Elf Shoes', gear: 'shoes', color: 0x3f9a66, price: 0.75 },
+  { id: 'gear_elfhat', slot: 'gear', name: 'Elf Hat', gear: 'elfhat', color: 0x3f9a66, price: 0.50 },
+  { id: 'gear_backpack', slot: 'gear', name: 'Backpack', gear: 'backpack', color: 0x5a3b24, price: 0.50 },
 ];
 
 export const BY_ID = new Map(ITEMS.map((i) => [i.id, i]));
-export const DEFAULT_AVATAR = { shirt: 'shirt_red', pants: 'pants_navy', face: 'face_dots', skin: 'skin_2', hat: 'hat_none', pack: 'pack_none', snow: 'snow_white', sb1: 'sb_none', sb2: 'sb_none', sb3: 'sb_none' };
+export const DEFAULT_AVATAR = { shirt: 'shirt_red', pants: 'pants_navy', face: 'face_dots', skin: 'skin_2', hat: 'hat_none', pack: 'pack_none', snow: 'snow_white', sb1: 'sb_none', sb2: 'sb_none', sb3: 'sb_none', g1: 'gear_none', g2: 'gear_none' };
 
 // Anything unknown or in the wrong slot falls back to the default, so a bad value can never break rendering.
 export function cleanAvatar(a) {
@@ -87,6 +110,8 @@ export function cleanAvatar(a) {
   // special snowball slots: a special item, each special at most once (a repeat empties the later slot)
   const seen = new Set();
   for (const s of SB_SLOTS) { const it = BY_ID.get(a && a[s]); const ok = it && it.slot === 'sball' && (it.id === 'sb_none' || !seen.has(it.id)); out[s] = ok ? it.id : 'sb_none'; seen.add(out[s]); }
+  // gear slots, the same way: a gear item, each gear at most once (two slots hold two DIFFERENT gear), anything else → empty
+  for (const s of GEAR_SLOTS) { const it = BY_ID.get(a && a[s]); const ok = it && it.slot === 'gear' && (it.id === 'gear_none' || !seen.has(it.id)); out[s] = ok ? it.id : 'gear_none'; seen.add(out[s]); }
   return out;
 }
 
