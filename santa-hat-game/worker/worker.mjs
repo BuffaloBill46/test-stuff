@@ -5,10 +5,12 @@
 //   payouts           a run's winnings → from that game's pool (Big Hat: Slots pool; Snowball Drop / Spin: the Spin pool)
 //   pool_transfers    a skim → from the game's pool to the treasury; a top-off → from the treasury to the pool
 //   lottery_payouts   only when Cody switched lottery payouts to automatic (manual ones wait for him on the admin screen)
+//   reward_sweeps     Cody's "Claim rewards": every NON-SANTA token in the three pools → the treasury (server/rewards.js; 024)
 // Settings (environment; /etc/santa/worker.env on the Droplet, never in the repo):
 //   DATABASE_URL       Postgres connection: the worker's own limited login santa_worker (supabase/020_worker_role.sql)
 //                      through the session pooler; its password lives only in this file
-//   SPIN_POOL_WALLET, SLOTS_POOL_WALLET   the pools' public addresses (where approved top-offs go)
+//   SPIN_POOL_WALLET, SLOTS_POOL_WALLET   the pools' public addresses (where approved top-offs go; where rewards are looked for)
+//   LOTTERY_POOL_WALLET                   the lottery wallet's public address (rewards are looked for there too)
 //   SOLANA_RPC_URL     devnet: https://api.devnet.solana.com; mainnet: Cody's Helius address
 //   SANTA_MINT         the token
 //   KEYS_DIR           folder with spinPool.json, slotsPool.json, lotteryPool.json, treasury.json (64-byte key arrays; chmod 600)
@@ -21,7 +23,8 @@ import postgres from 'postgres';
 import * as kit from '@solana/kit';
 import * as T22 from '@solana-program/token-2022';
 import { runPayouts } from '../server/payouts.js';
-import { makeSolanaChain } from '../server/solanachain.js';
+import { makeSolanaChain, makeSweepChain } from '../server/solanachain.js';
+import { queueRewardClaims, chainBalances } from '../server/rewards.js';
 import { liveFee } from '../mockups/market.js';
 
 const env = (k, d = '') => process.env[k] || d;
@@ -53,8 +56,19 @@ function adapter(table) {
       return env(row.game === 'slots' ? 'SLOTS_POOL_WALLET' : 'SPIN_POOL_WALLET') || missing(row.game + ' pool address');
     } });
 }
-const tables = ['payouts', 'pool_transfers', 'lottery_payouts'], chains = Object.fromEntries(tables.map((t) => [t, adapter(t)]));
+const tables = ['payouts', 'pool_transfers', 'lottery_payouts', 'reward_sweeps'];
+// reward sweeps: from the row's pool key, ALWAYS to the treasury, never SANTA (the mint of this network, and both known ones)
+const SANTA_MINTS = new Set([mint, '3c7mmVSyEH8jfZXgxvpLsETtko1Y16DyRJ5XYB4snhGt', 'Jx95so9XYhtSJJoqup7Xb3T9Ptr9ZuUTXSgPcu6uttg']), isSanta = (m) => SANTA_MINTS.has(m);
+const sweepChain = makeSweepChain({ kit, T22, rpcUrl, treasury: treasuryAddr, isSanta, label: (row) => `Santa Hat reward_sweeps #${row.id}`,
+  keyFor: async (row) => keys[row.game] || missing(row.game + ' pool') });
+const chains = { ...Object.fromEntries(tables.slice(0, 3).map((t) => [t, adapter(t)])), reward_sweeps: sweepChain };
+const pools = { spin: env('SPIN_POOL_WALLET'), slots: env('SLOTS_POOL_WALLET'), lottery: env('LOTTERY_POOL_WALLET') }, balances = chainBalances(kit.createSolanaRpc(rpcUrl));
 async function pass() {
+  // Cody's reward claims become sweeps first (024 not applied yet: skipped quietly, like a missing money table below)
+  if ((await db.query('select to_regclass($1) is not null as x', ['public.reward_claims']))[0].x) {
+    try { for (const c of await queueRewardClaims({ db, pools, balances, isSanta })) console.log(new Date().toISOString(), 'reward claim', JSON.stringify(c)); }
+    catch (e) { console.error(new Date().toISOString(), 'reward claim failed:', e.message); }
+  }
   for (const t of tables) {
     // a money table that doesn't exist in this database yet (e.g. the lottery before 011) is skipped, not an error every pass
     if (!(await db.query('select to_regclass($1) is not null as x', ['public.' + t]))[0].x) continue;

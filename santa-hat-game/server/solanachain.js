@@ -19,13 +19,6 @@ const memo = (text) => ({ programAddress: MEMO, accounts: [], data: new TextEnco
 export function makeSolanaChain({ kit, T22, rpcUrl, mint, decimals = 6, keyFor, to, feeOf, label }) {
   const rpc = kit.createSolanaRpc(rpcUrl);
   const ata = async (owner) => (await T22.findAssociatedTokenPda({ owner, tokenProgram: T22.TOKEN_2022_PROGRAM_ADDRESS, mint }))[0];
-  const confirmed = (s) => s.confirmationStatus === 'confirmed' || s.confirmationStatus === 'finalized';
-  async function lookup(signature) {
-    const [s] = (await rpc.getSignatureStatuses([signature], { searchTransactionHistory: true }).send()).value;
-    if (!s) return null;
-    if (s.err) return 'failed';
-    return confirmed(s) ? 'landed' : 'pending';
-  }
   return {
     async sign(row) {
       const from = await keyFor(row), dest = await to(row), amount = BigInt(row.amount_raw), fee = await feeOf();
@@ -41,6 +34,20 @@ export function makeSolanaChain({ kit, T22, rpcUrl, mint, decimals = 6, keyFor, 
       const tx = await kit.signTransactionMessageWithSigners(m);
       return { signature: kit.getSignatureFromTransaction(tx), tx, blockhash: bh.blockhash };
     },
+    ...sendAndStatus(kit, rpc),
+  };
+}
+
+// send(tx) and status(signature, blockhash), shared by every adapter here so the never-pay-twice order (top) exists ONCE.
+function sendAndStatus(kit, rpc) {
+  const confirmed = (s) => s.confirmationStatus === 'confirmed' || s.confirmationStatus === 'finalized';
+  async function lookup(signature) {
+    const [s] = (await rpc.getSignatureStatuses([signature], { searchTransactionHistory: true }).send()).value;
+    if (!s) return null;
+    if (s.err) return 'failed';
+    return confirmed(s) ? 'landed' : 'pending';
+  }
+  return {
     async send(tx) {
       await rpc.sendTransaction(kit.getBase64EncodedWireTransaction(tx), { encoding: 'base64', preflightCommitment: 'confirmed' }).send();
     },
@@ -50,5 +57,31 @@ export function makeSolanaChain({ kit, T22, rpcUrl, mint, decimals = 6, keyFor, 
       if (seen) return seen;
       return alive ? 'pending' : 'expired';
     },
+  };
+}
+
+// REWARD SWEEPS (supabase/024; Cody 2026-10-02): a reward token (any mint but SANTA, either token program) from a pool wallet to
+// the treasury. Each row carries its own mint, token program and decimals; a plain transferChecked (a token with a transfer
+// fee keeps its fee itself; GP has one). The treasury's account for that token is made if missing (the pool pays the rent
+// once). There is NO destination in the row: to is always the treasury given here. isSanta(mint) → true: refused.
+export function makeSweepChain({ kit, T22, rpcUrl, keyFor, treasury, isSanta, label }) {
+  const rpc = kit.createSolanaRpc(rpcUrl);
+  return {
+    async sign(row) {
+      if (isSanta(row.mint)) throw new Error('reward sweep #' + row.id + ': SANTA is never swept');
+      const from = await keyFor(row), program = row.token_program, mint = row.mint, amount = BigInt(row.amount_raw);
+      const ataOf = async (owner) => (await T22.findAssociatedTokenPda({ owner, tokenProgram: program, mint }))[0];
+      const [source, destination] = [await ataOf(from.address), await ataOf(treasury)];
+      const { value: bh } = await rpc.getLatestBlockhash({ commitment: 'confirmed' }).send();
+      const m = kit.pipe(kit.createTransactionMessage({ version: 0 }), (x) => kit.setTransactionMessageFeePayerSigner(from, x),
+        (x) => kit.setTransactionMessageLifetimeUsingBlockhash(bh, x),
+        (x) => kit.appendTransactionMessageInstructions([
+          T22.getCreateAssociatedTokenIdempotentInstruction({ payer: from, ata: destination, owner: treasury, mint, tokenProgram: program }),
+          T22.getTransferCheckedInstruction({ source, mint, destination, authority: from, amount, decimals: row.decimals }, { programAddress: program }),
+          memo(label(row))], x));
+      const tx = await kit.signTransactionMessageWithSigners(m);
+      return { signature: kit.getSignatureFromTransaction(tx), tx, blockhash: bh.blockhash };
+    },
+    ...sendAndStatus(kit, rpc),
   };
 }

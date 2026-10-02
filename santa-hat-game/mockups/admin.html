@@ -60,6 +60,13 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
       transaction here: it's checked on the chain before it's recorded.</p>
     <div class="row"><button type="button" id="shopLoad">Show refunds owed</button></div>
     <div id="shopOwed" class="dim">Not loaded yet.</div></section>
+  <section class="plaque" id="rewardsBox"><h2>Claim rewards</h2>
+    <p class="dim">Reward tokens sent to SANTA holders (GP, GLDX, any other) land in the Drop, Slots and Lottery pool wallets.
+      Claiming sends every token in those three wallets that is NOT SANTA to the treasury. SANTA is never touched and nothing can
+      be sent anywhere else. The payout worker sends them within a minute; each pool pays a tiny one-time fee the first time
+      the treasury receives a new token.</p>
+    <div class="row"><button type="button" id="rewardsClaim">Claim rewards → Treasury</button><button type="button" class="sec" id="rewardsLoad">Show claims</button></div>
+    <div id="rewardsList" class="dim">Not loaded yet.</div></section>
   <section class="plaque" id="botsBox"><h2>Possible bots</h2>
     <p class="dim">Players whose timing over the last 24 hours looks scripted: how fast and how evenly they start the next run after one
       ends. <b>Signals only:</b> nothing happens to anyone automatically, and a dedicated player can trip the weaker ones. Private to

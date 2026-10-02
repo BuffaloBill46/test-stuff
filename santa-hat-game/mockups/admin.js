@@ -49,6 +49,8 @@ async function act(action, game, settings = {}) {
   let signature; try { signature = (await wallet.signMessage(new TextEncoder().encode(message), 'utf8')).signature; } catch { return msg('Signing was cancelled.', 'bad'); }
   const r = await post({ wallet: address, message, signature: hex(new Uint8Array(signature)) }, true);
   if (r.error) return msg('Refused: ' + r.error, 'bad');
+  if (action === 'claim-rewards') { msg(`Claim #${r.claim} sent to the payout worker. It finds the reward tokens and sends them to the treasury within a minute.`, 'ok'); setTimeout(() => act('rewards-status', 'all'), 20000); return; }
+  if (action === 'rewards-status') { rewardsList(r); return msg(r.sweeps.length ? 'Reward claims loaded.' : 'No reward sweeps yet.', 'ok'); }
   if (action === 'shop-owed') { shopList(r); return msg(r.owed.length ? `${r.owed.length} shop refund(s) to send.` : 'No shop refunds owed.', 'ok'); }
   if (action === 'shop-refund-paid') { msg(`Recorded: refund paid (${(r.arrived / 1e6).toLocaleString()} SANTA arrived). It's in the public log.`, 'ok'); return act('shop-owed', 'shop'); }
   if (action === 'lottery-owed') { owedList(r); return msg(r.owed.length ? `${r.owed.length} lottery payment(s) to send.` : 'No lottery winners waiting.', 'ok'); }
@@ -77,6 +79,17 @@ function shopList(r) {
   $('#shopOwed').innerHTML = r.owed.length ? `<table><tr><th>Player</th><th>Send to</th><th>Why</th><th>Send</th><th>Transaction</th></tr>${r.owed.map((o, i) => `<tr><td>${esc(o.name || 'player')}</td><td><code>${esc(o.wallet)}</code></td><td>${esc(o.why)}</td><td><b>${(o.raw / 1e6).toLocaleString(undefined, { maximumFractionDigits: 6 })} SANTA</b></td><td><input type="text" placeholder="paste the signature" data-shoptx="${i}"><button type="button" data-shoppaid="${i}" data-refund="${esc(o.id)}">Record</button></td></tr>`).join('')}</table>` : 'Nobody owed.';
 }
 $('#shopLoad').addEventListener('click', () => act('shop-owed', 'shop'));
+// Claim rewards (024): the claims and what each sent (known reward tokens by name; others by their mint)
+const REWARD_NAMES = { HTmQz7My6MehV7bjhJ6jde8nDND1yvsz68d24LP7YgUQ: 'GP', Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re: 'GLDX' };
+const POOL_NAMES = { spin: 'Drop pool', slots: 'Slots pool', lottery: 'Lottery wallet' };
+function rewardsList(r) {
+  const tok = (m) => REWARD_NAMES[m] || m.slice(0, 4) + '…' + m.slice(-4), amt = (w) => (Number(w.raw) / 10 ** w.decimals).toLocaleString(undefined, { maximumFractionDigits: w.decimals });
+  const empty = r.claims.filter((c) => c.status === 'queued' && !(c.found || []).length).length;
+  $('#rewardsList').innerHTML = (r.sweeps.length ? `<table><tr><th>Claim</th><th>From</th><th>Token</th><th>Amount</th><th>Status</th><th>Transaction</th></tr>${r.sweeps.map((w) => `<tr><td>#${w.claim}</td><td>${esc(POOL_NAMES[w.game] || w.game)}</td><td>${esc(tok(w.mint))}</td><td><b>${amt(w)}</b></td><td>${esc(w.status)}</td><td>${w.tx ? `<code>${esc(w.tx.slice(0, 10))}…</code>` : ''}</td></tr>`).join('')}</table>` : 'Nothing swept yet.')
+    + (r.claims.some((c) => c.status === 'requested') ? '<p>A claim is waiting for the worker…</p>' : '') + (empty ? `<p>${empty} claim(s) found no reward tokens to send.</p>` : '');
+}
+$('#rewardsClaim').addEventListener('click', () => act('claim-rewards', 'all'));
+$('#rewardsLoad').addEventListener('click', () => act('rewards-status', 'all'));
 $('#shopOwed').addEventListener('click', (e) => { const b = e.target.closest('[data-shoppaid]'); if (!b) return;
   const tx = document.querySelector(`[data-shoptx="${b.dataset.shoppaid}"]`).value.trim(); if (!tx) return msg('Paste the transaction signature first.', 'bad');
   act('shop-refund-paid', 'shop', { refund: b.dataset.refund, tx }); });

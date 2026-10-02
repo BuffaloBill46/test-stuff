@@ -19,7 +19,7 @@ import { check as checkSettings } from '../mockups/settings.js';
 import { MINT } from '../mockups/market.js';
 import { botSignals, BOT_RULES } from './bots.js';
 
-export const ACTIONS = ['pause', 'resume', 'set-rules', 'set-settings', 'record-deposit', 'release-payout', 'bot-signals', 'lottery-mode', 'lottery-paid', 'lottery-owed', 'shop-owed', 'shop-refund-paid']; // set-settings: prices, odds, prizes, store (game 'all')
+export const ACTIONS = ['pause', 'resume', 'set-rules', 'set-settings', 'record-deposit', 'release-payout', 'bot-signals', 'lottery-mode', 'lottery-paid', 'lottery-owed', 'shop-owed', 'shop-refund-paid', 'claim-rewards', 'rewards-status']; // set-settings: prices, odds, prizes, store (game 'all')
 export const FRESH_SECONDS = 300;
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 export function b58decode(s) {
@@ -80,7 +80,7 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
     if (!adminWallets.includes(wallet)) return { error: 'not an admin wallet' };
     if (!(await signatureOk(wallet, message, signature || ''))) return { error: 'signature doesn\'t match the wallet' };
     if (!(Math.abs(now() - Date.parse(m.at)) <= FRESH_SECONDS * 1000)) return { error: 'message too old (sign a fresh one)' };
-    const gameOk = ['set-settings', 'bot-signals'].includes(m.action) ? m.game === 'all' : m.action.startsWith('lottery-') ? m.game === 'lottery' : m.action.startsWith('shop-') ? m.game === 'shop' : ['spin', 'slots'].includes(m.game);
+    const gameOk = ['set-settings', 'bot-signals', 'claim-rewards', 'rewards-status'].includes(m.action) ? m.game === 'all' : m.action.startsWith('lottery-') ? m.game === 'lottery' : m.action.startsWith('shop-') ? m.game === 'shop' : ['spin', 'slots'].includes(m.game);
     if (!ACTIONS.includes(m.action) || !gameOk) return { error: 'unknown action or game' };
     if (!/^[0-9a-f]{16,64}$/.test(m.nonce)) return { error: 'bad one-time number' };
     if (m.action === 'set-rules') { const bad = checkRules(m.game, m.settings); if (bad.length) return { error: bad.join('; ') }; }
@@ -93,6 +93,8 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
     if (m.action === 'lottery-owed') return lotteryOwed();
     if (m.action === 'shop-owed') return shopOwed();
     if (m.action === 'shop-refund-paid') return shopRefundPaid(m, wallet, message, signature);
+    if (m.action === 'claim-rewards') return claimRewards(m, wallet, message, signature);
+    if (m.action === 'rewards-status') return rewardsStatus();
     return db.tx(async (t) => {
       if ((await t.query('select 1 from public.pool_log where nonce = $1', [m.nonce])).length) return { error: 'this signed message was already used' };
       const [p] = await t.query('select * from public.pools where game = $1 for update', [m.game]); // waits for any play being settled
@@ -216,6 +218,23 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
   async function txUsed(q, sig) {
     const shop = (await q('select to_regclass(\'public.shop_refunds\') is not null as x'))[0].x;
     return (await q(`select 1 from public.lottery_payouts where tx = $1 union all select 1 from public.payouts where tx = $1 union all select 1 from public.pool_transfers where tx = $1${shop ? ' union all select 1 from public.shop_refunds where refund_tx = $1' : ''}`, [sig])).length > 0;
+  }
+  // CLAIM REWARDS (Cody 2026-10-02; supabase/024): a claim waits for the payout worker, which finds every NON-SANTA token in the
+  // three pools and sends it to the treasury. Nothing to choose: no token, amount or destination comes from the message.
+  async function claimRewards(m, wallet, message, signature) {
+    return db.tx(async (t) => {
+      if ((await t.query('select 1 from public.reward_claims where nonce = $1 union all select 1 from public.pool_log where nonce = $1', [m.nonce])).length) return { error: 'this signed message was already used' };
+      if ((await t.query("select 1 from public.reward_claims where status = 'requested'")).length) return { error: 'a claim is already waiting for the worker (it looks every few seconds)' };
+      const [c] = await t.query('insert into public.reward_claims (by_wallet, nonce, message, signature) values ($1, $2, $3, $4) returning id', [wallet, m.nonce, message, signature]);
+      return { ok: true, claim: +c.id };
+    });
+  }
+  // The last claims and their sweeps (what was found, sent, still on its way, or failed), for the admin screen.
+  async function rewardsStatus() {
+    const claims = await db.query('select id, status, found, created_at from public.reward_claims order by id desc limit 10');
+    const sweeps = await db.query('select id, claim_id, game, mint, decimals, amount_raw, status, tx, created_at from public.reward_sweeps order by id desc limit 40');
+    return { ok: true, claims: claims.map((c) => ({ id: +c.id, status: c.status, found: c.found, at: new Date(c.created_at).getTime() })),
+      sweeps: sweeps.map((w) => ({ id: +w.id, claim: +w.claim_id, game: w.game, mint: w.mint, decimals: w.decimals, raw: String(w.amount_raw), status: w.status, tx: w.tx, at: new Date(w.created_at).getTime() })) };
   }
   async function shopOwed() {
     const rows = await db.query(`select r.signature, r.to_wallet, r.amount_raw, r.why, r.at, pr.name from public.shop_refunds r join public.profiles pr on pr.id = r.profile_id where r.status = 'owed' order by r.at`);
