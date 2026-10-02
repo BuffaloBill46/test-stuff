@@ -165,11 +165,14 @@ between two devices has never been tested from here. Cody and friends testing on
    and sign in with the wallet. Send Claude your Phantom devnet address and Claude will send it test SANTA + devnet SOL, so you can
    buy a run, a lottery ticket, a special snowball, gear, a level and ranked tickets for real (devnet). (Claude can't create
    accounts on the live project or sign in for you.)
-3. **Payouts on the live devnet server:** the payout worker needs the pools' private keys somewhere it runs. Claude won't paste
-   keys into dashboards. Pick one: (a) you paste the three devnet pool keys (files in C:\santa-devnet-keys) into Supabase → Edge
-   Functions → Secrets under the names Claude gives you, or (b) you give the Droplet the database connection string (Supabase →
-   Database → Connect) and Claude runs the worker there with the key files. Until then runs/lottery/shop purchases work, but winnings
-   are queued, not sent.
+3. **Payouts on the live devnet server (one copy-paste from you):** the payout worker (the program that actually sends players
+   their winnings) is INSTALLED on the Droplet and switched on, but asleep until it can reach the database. It was proven on real
+   devnet (sent a payout once, never twice). What Claude needs: in Supabase → the project → **Connect** (top bar) → pick
+   **Session pooler** → copy the address that starts `postgresql://postgres.olganobdypnxfpmsxibe:` and put your database
+   password where it says `[YOUR-PASSWORD]` (forgot it? Database → Settings → Reset password). Paste that line to Claude in chat.
+   Claude then writes it into the Droplet's private settings file, copies the four devnet wallet key files there (locked so only
+   the worker can read them), and the worker wakes up within seconds. Until then runs/lottery/shop purchases work, but winnings
+   are queued, not sent. (At mainnet the real wallets' keys go on the Droplet the same way, with your OK.)
 4. **When the public site switches from demo to the real (devnet) server:** your call after #2. One line in the page.
 5. **Mainnet (real money, needs your OK each time):** paste your Helius RPC address into Supabase secrets as SOLANA_RPC_URL (it holds
    your Helius key), real pool/treasury/lottery wallets, reset the devnet books.
@@ -182,7 +185,11 @@ between two devices has never been tested from here. Cody and friends testing on
   SANTA_MINT, SPIN/SLOTS_POOL_WALLET, LOTTERY_WALLET, TREASURY_WALLET, ADMIN_WALLETS (codyAdmin).
 - **Database:** 001–016 applied live (006 ranked tickets + 016 shop on 2026-10-02, hash-checked).
 - **Auth:** Solana wallet sign-in ON; Site URL + redirect = the live site (were localhost).
-- **Droplet** santa-hat-legends 147.182.219.161 (hardened; nothing running on it yet). Memory note "santa-droplet".
+- **Droplet** santa-hat-legends 147.182.219.161 (hardened). Payout worker installed 2026-10-02: code at
+  /opt/santa/repo (commit 014725e, owned by user `santa`), systemd service `santa-worker` (enabled; runs only once
+  `/etc/santa/worker.env` exists: DATABASE_URL, SOLANA_RPC_URL, SANTA_MINT, TREASURY_WALLET, KEYS_DIR=/etc/santa/keys), keys in
+  /etc/santa/keys (empty, chmod 700). Update: `runuser -u santa -- git -C /opt/santa/repo fetch` + checkout the new commit, then
+  `systemctl restart santa-worker`. Logs: `journalctl -u santa-worker`. Memory note "santa-droplet".
 - **Helius:** Developer plan confirmed (not wired: devnet uses the public RPC).
 
 *(Update this section at the end of every session.)*
