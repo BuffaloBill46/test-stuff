@@ -42,13 +42,16 @@ async function startRun(n) {
       if (!p.r) { res.textContent = p.refunded ? `Drop ${i + 1} couldn't play (${p.stopped ? 'Snowball Drop is paused' : p.why || 'the pool is refilling'}): its price comes back with your winnings.` : `Couldn't drop (${p.why}).`; return; }
       flying++; res.textContent = `Dropping… result locked (${short(p.proof.commit)}).`;
       landings.push(board.launch(p.r.path, p.r.bin).then(() => landed(p.r, p)));
+      if (fast) board.hurry();
       if (!fast) await new Promise((x) => setTimeout(x, 380)); // snowballs a moment apart
     }, forced);
     await Promise.all(landings);
     if (out) { res.innerHTML = runSummary(out, 'drop', 'drops'); showResult(res); }
   } finally { opening = false; fast = false; setButtons(true); $('#runDrop').textContent = ''; }
 }
-function setButtons(on) { document.querySelectorAll('#drop [data-run], #drop .bets button, #drop .runpick input, #drop .runpick [data-step]').forEach((b) => { b.disabled = !on; }); $('#drop .skip').hidden = on; }
+function setButtons(on) { document.querySelectorAll('#drop [data-run], #drop .bets button, #drop .runpick input, #drop .runpick [data-step]').forEach((b) => { b.disabled = !on; }); $('#drop .skip').hidden = on; skipLabel($('#drop .skip')); }
+// Skip ahead is a toggle (Cody): pressed, the run goes fast and the button says "Normal speed"; pressed again, back to normal.
+const skipLabel = (b) => { b.textContent = fast ? 'Normal speed' : 'Skip ahead'; b.setAttribute('aria-pressed', String(fast)); };
 function landed(r, p) {
   flying--; if (!flying) wake();
   const res = $('#drop .res'), card = $('#drop .dropcard');
@@ -72,10 +75,10 @@ export function initDrop(opts) {
   board = createBoard($('#drop canvas'));
   document.querySelectorAll('#drop [data-run]').forEach((b) => b.addEventListener('click', () => startRun(+b.dataset.run)));
   initRunPick($('#drop .runpick'), { verb: 'Drop', priceOf: (n) => priceLabel(bet * n) });
-  $('#drop .skip').addEventListener('click', () => { fast = true; board.hurry(); });
+  $('#drop .skip').addEventListener('click', (e) => { fast = !fast; if (fast) board.hurry(); else board.normal(); skipLabel(e.currentTarget); });
   document.querySelectorAll('#drop .bets button').forEach((b) => b.addEventListener('click', () => setBet(+b.dataset.dbet)));
   setBet(0.1); odds(); render();
-  window.__drop = { test, get opening() { return opening; }, get flying() { return flying; }, history, get bet() { return bet; } };
+  window.__drop = { test, get opening() { return opening; }, get flying() { return flying; }, history, get bet() { return bet; }, get fast() { return fast; } };
 }
 // The board draws (falling snow, snowballs) only while it's on screen, or while snowballs are still falling: three game
 // canvases drawing at once is heavy for a phone, and nobody sees snow that's scrolled away.

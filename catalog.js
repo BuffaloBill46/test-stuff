@@ -85,7 +85,7 @@ export const ITEMS = [
   // Special gear (2026-10-01). Cody: existing items become gear and keep their names: Toy Sack = Santa Bag, Gift Box =
   // Present Box, Elf Satchel keeps its name. They are NEW items (gear_sack, gear_gift, gear_satchel) next to the backpacks
   // above, which stay: they were bought as forever looks and the character still draws them (pack slot). 015 gives every
-  // backpack owner the matching gear too. Gear isn't drawn on the character yet (Cody: it will be; not built).
+  // backpack owner the matching gear too. Gear is drawn on the character (kit.js GEAR_LOOKS; matches draw the referee's e.gear).
   // Santa Costume's level 3 is a WEAR rule (gear.js minLevel), not an unlock level, so it still has a price.
   { id: 'gear_none', slot: 'gear', name: 'Empty slot', level: 1 },
   { id: 'gear_pumpkin', slot: 'gear', name: 'Pumpkin Costume', gear: 'pumpkin', color: 0xe8812c, price: 0.50 },

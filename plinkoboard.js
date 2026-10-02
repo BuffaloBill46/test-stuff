@@ -93,5 +93,6 @@ export function createBoard(cv) {
   function setActive(on) { active = on || balls.length > 0; if (active && !raf) { last = performance.now(); fit(); raf = requestAnimationFrame(frame); } } // never freeze a falling snowball
   // Skip ahead: the snowballs in the air (and any launched before they all land) fall four times as fast.
   const hurry = () => { speed = 4; };
-  return { launch, setActive, hurry, flying: () => balls.length };
+  const normal = () => { speed = 1; }; // "Normal speed" after Skip ahead (Cody)
+  return { launch, setActive, hurry, normal, flying: () => balls.length };
 }

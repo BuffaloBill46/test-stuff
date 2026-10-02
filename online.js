@@ -1,5 +1,5 @@
 // Santa Hat Legends (the Snowball Square game): lobby, rooms, referee hand-off, smoothing, HUD.
-import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo } from './kit.js';
+import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo, Sparks, gearTick, GEAR_TINT, disposeTree } from './kit.js';
 import { buildPlaza, makeHat, shadowBlob } from './plaza.js';
 import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js';
 import { openRoom, accounts, findWallet, gamesBoard } from './net.js';
@@ -63,6 +63,8 @@ function setTheme(id) { // from the Avatar screen; swaps the plaza in place, mid
   fog0 = null; // the new plaza's own fog; the match camera re-reads it and pulls it back with the zoom
 }
 const burst = new Burst(320); scene.add(burst.mesh);
+// special snowballs' tracers and shimmer: one draw call for all of them (drawn in draw(), after the balls)
+const sparks = new Sparks(1600); scene.add(sparks.points);
 const ballGeo = build([part(new THREE.IcosahedronGeometry(0.17, 0), C.brim, { jit: 0.02 })]);
 const hatMesh = makeHat(0.88); scene.add(hatMesh);
 const hatShadow = shadowBlob(); scene.add(hatShadow);
@@ -72,7 +74,7 @@ landRing.position.y = 0.06; scene.add(landRing);
 const ringGeo = new THREE.RingGeometry(0.55, 0.72, 24).rotateX(-Math.PI / 2);
 
 let W = innerWidth, H = innerHeight;
-function resize() { W = innerWidth; H = innerHeight; renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix(); }
+function resize() { W = innerWidth; H = innerHeight; renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix(); sparks.uH.value = (H * renderer.getPixelRatio()) / 2; }
 addEventListener('resize', resize); resize();
 
 // ---------- state
@@ -402,18 +404,19 @@ function syncViews(v) {
   const seen = new Set();
   for (const e of v.ents) {
     seen.add(e.id);
-    const key = `${v.mode === 'team' ? e.team : ''}|${e.peer === me.id}|${JSON.stringify(avatarOf(e))}`;
+    // the gear is the REFEREE's (e.gear: a Present Box already turned into its gear), so every screen dresses them the same
+    const key = `${v.mode === 'team' ? e.team : ''}|${e.peer === me.id}|${JSON.stringify(avatarOf(e))}|${(e.gear || []).join()}`;
     let w = views.get(e.id);
-    if (w && w.key !== key) { scene.remove(w.mesh, w.ring); w.label.remove(); views.delete(e.id); w = null; }
+    if (w && w.key !== key) { scene.remove(w.mesh, w.ring); disposeTree(w.mesh); w.label.remove(); views.delete(e.id); w = null; }
     if (!w) {
-      const mesh = avatarCharacter(avatarOf(e), v.mode === 'team' ? { shirt: TEAM_SHIRT[e.team] ?? C.elf } : {});
+      const mesh = avatarCharacter(avatarOf(e), v.mode === 'team' ? { shirt: TEAM_SHIRT[e.team] ?? C.elf, gear: e.gear } : { gear: e.gear });
       const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, depthWrite: false }));
       ring.position.y = 0.05; scene.add(mesh, ring);
       const label = document.createElement('div'); label.className = 'tag'; $('#tags').appendChild(label);
-      w = { mesh, ring, label, key, rx: e.x, rz: e.z, face: e.face, speed: 0 }; views.set(e.id, w);
+      w = { mesh, ring, label, key, rx: e.x, rz: e.z, face: e.face, speed: 0, xh: e.xh }; views.set(e.id, w);
     }
   }
-  for (const [id, w] of views) if (!seen.has(id)) { scene.remove(w.mesh, w.ring); w.label.remove(); views.delete(id); }
+  for (const [id, w] of views) if (!seen.has(id)) { scene.remove(w.mesh, w.ring); disposeTree(w.mesh); w.label.remove(); views.delete(id); }
 }
 
 // ---------- input
@@ -568,7 +571,7 @@ function avatarBand() {
   return { cx: W / 2, cy: (top + bottom) / 2, h: Math.max(120, bottom - top) };                                                   // panel below
 }
 function draw(v, dt, t) {
-  syncViews(v);
+  syncViews(v); gearTick(t); sparks.begin();
   const mine = myEnt(v);
   for (const e of v.ents) {
     const w = views.get(e.id); if (!w) continue;
@@ -585,6 +588,14 @@ function draw(v, dt, t) {
     w.ring.material.color.set(e.immune ? 0xffd060 : isMe ? C.lantern : v.mode === 'team' ? TEAM_RING[e.team] : 0xdfe6f5); // gold = untouchable (just got the hat)
     w.ring.material.opacity = e.immune ? 0.6 + Math.sin(t * 14) * 0.35 : 0.8;
     w.ring.scale.setScalar((isMe ? 1.15 : 0.9) * sz);
+    // Extra-hit gear took a hit (the referee's count went down): a few chips of the costume fly off
+    if (e.xh < w.xh) { const k = (e.gear || []).find((g) => GEAR_TINT[g]); burst.spawn(tmp.set(x, 1.3 * sz, z), 8, GEAR_TINT[k] ?? 0xffffff, 3, 2.5); }
+    w.xh = e.xh;
+    // Special gear twinkles (Cody: "I just want the special stuff to pop out"): gold glints circling a wearer, so gear reads as special
+    if (e.gear?.length) for (let j = 0; j < 4; j++) { const g = t * 1.7 + j * 1.571 + e.id, tw = Math.max(0, Math.sin(t * 5.5 + j * 2.1 + e.id));
+      sparks.add(x + Math.cos(g) * 0.55 * sz, (0.75 + j * 0.38) * sz, z + Math.sin(g) * 0.55 * sz, (0.16 + 0.34 * tw) * sz, TR.goldStar, tw, STAR | SOLID); }
+    // a jack-o'-lantern throws a warm candle glow in front of its carved face
+    if (e.gear?.includes('pumpkin')) sparks.add(x + Math.sin(face) * 0.42 * sz, (1.76 + w.mesh.userData.body.position.y) * sz, z + Math.cos(face) * 0.42 * sz, 0.85 * sz, TR.fire[1], 0.35 + 0.08 * Math.sin(t * 9.1));
     const p = toScreen(tmp.set(x, 2.85 * sz, z), camera, W, H), b = bubbles.get(e.peer || 'b' + e.id);
     const say = b && b.until > performance.now() ? b.text : '';
     w.label.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -100%)`;
@@ -617,7 +628,8 @@ function draw(v, dt, t) {
   for (const p of v.drops || []) { const tl = p.t - a; if (tl < 0 || tl > 1.6) continue;
     if (!drawDrops[nd]) { drawDrops[nd] = toon(ballGeo, 0.02); scene.add(drawDrops[nd]); drawMarks[nd] = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.6, depthWrite: false })); drawMarks[nd].position.y = 0.06; scene.add(drawMarks[nd]); }
     const dm = drawDrops[nd], mk = drawMarks[nd++]; dm.material = ballMat(p.kind === 'sky' ? 0x9fd8ff : 0xf5f1e8); dm.visible = true; dm.position.set(p.x, 0.2 + tl * 9, p.z);
-    mk.visible = true; mk.position.x = p.x; mk.position.z = p.z; mk.scale.setScalar(0.5 + (1.6 - tl) * 0.3); }
+    mk.visible = true; mk.position.x = p.x; mk.position.z = p.z; mk.scale.setScalar(0.5 + (1.6 - tl) * 0.3);
+    dropStreak(p, 0.2 + tl * 9, nd, t); }
   for (const b of v.balls) {
     if (!isHost && mine && b.owner === mine.id && !b.kind) continue;
     const y = b.y + b.vy * a - 0.5 * K.BALL_G * a * a; if (y < 0.05) continue;
@@ -629,7 +641,9 @@ function draw(v, dt, t) {
       if (!drawTrail[nt]) { drawTrail[nt] = toon(ballGeo, 0); scene.add(drawTrail[nt]); }
       const f = drawTrail[nt++], back = 0.022 * k; f.material = ballMat([0xffb347, 0xff7a3a, 0xcf3128][k - 1]); f.visible = true; f.scale.setScalar(1 - k * 0.22);
       f.position.set(px - b.vx * back, y - (b.vy - K.BALL_G * a) * back, pz - b.vz * back); }
+    if (b.kind) tracer(b, px, y, pz, b.vy - K.BALL_G * a, t);
   }
+  sparks.end();
   for (let i = localBalls.length - 1; i >= 0; i--) {
     const b = localBalls[i]; b.vy -= K.BALL_G * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt; b.life -= dt;
     b.mesh.position.set(b.x, b.y, b.z);
@@ -667,8 +681,64 @@ function draw(v, dt, t) {
   }
 }
 const drawBalls = [], drawTrail = [], drawDrops = [], drawMarks = [];
+// (tests) a fingerprint of a drawn character: vertex count + a weighted sum of positions and colours, unlit pieces counted apart
+function lookSig(m) { if (!m) return null; let n = 0, sum = 0, glow = 0;
+  m.traverse((o) => { const g = o.geometry; if (!g || o.material?.side === THREE.BackSide) return; const p = g.attributes.position.array, c = g.attributes.color?.array || [];
+    n += p.length / 3; if (o.material?.isMeshBasicMaterial) glow += p.length / 3; for (let i = 0; i < p.length; i++) sum += p[i] * ((i % 5) + 1) + (c[i] || 0) * 3; });
+  return { n, glow, sum: Math.round(sum * 100) / 100 }; }
 // How each special snowball looks (specials.js `look`): icy, fire-orange, the split's three colours; giant keeps the thrower's colour.
 const BALL_COLOR = { ice: () => 0xbfeaff, fire: () => 0xff7a3a, split: () => 0xcf3128, piece: (b) => [0xcf3128, 0x3f9a66, 0xf5f1e8][b.id % 3] };
+// SPECIAL SNOWBALLS STAND OUT (Cody, 2026-10-01: "make the special snowballs stand out with either a tracer and or shimmer";
+// "I just want the special stuff to pop out and actually look special"). Each kind gets its own tracer and glow in the one
+// Sparks draw call; plain snowballs get none, so a special always reads as special. Trail points are dropped along the ball's
+// real path and STAY where they were dropped (their age s grows with the clock, so the point p(now - s) holds still), which
+// reads as a trail left in the air, not a tail glued on. Everything is worked out from the referee's ball (kind, position,
+// speed), so every screen sees the same; colours are made once here, never per frame.
+const SC = (h) => new THREE.Color(h), SOLID = Sparks.SOLID, STAR = Sparks.STAR;
+const TR = { ice: SC(0x7fd0ff), iceDeep: SC(0x5fc4ff), white: SC(0xffffff), gold: SC(0xffe2a0), goldStar: SC(0xffc83a),
+  fire: [SC(0xffe45a), SC(0xffa020), SC(0xf2501a), SC(0xb3200f)], split: [SC(0xe0302a), SC(0x2fb86a), SC(0xfaf6ec)], sky: SC(0x5fb8f0), rain: SC(0xcfe6ff) };
+const tp = new V3();
+// a steady pseudo-random -0.5..0.5 for (ball, trail point), so a dropped point keeps its own wobble while it fades
+const hh = (a, b) => { let h = Math.imul(a ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(b | 0, 0xc2b2ae35); h ^= h >>> 13; h = Math.imul(h, 0x27d4eb2f); return ((h ^ (h >>> 15)) >>> 0) / 4294967296 - 0.5; };
+function tracer(b, x, y, z, vy, t) {
+  const at = (s) => tp.set(x - b.vx * s, y - vy * s - 0.5 * K.BALL_G * s * s, z - b.vz * s);
+  // the trail: n points, one dropped every d seconds; each(L 0 new → 1 old, id, s) draws one
+  const trail = (n, d, each) => { const u = t / d, f = u - Math.floor(u); for (let k = 0; k < n; k++) { const s = (k + f) * d; each(s / (n * d), Math.floor(u) - k, s); } };
+  if (b.kind === 'ice') {
+    // Ice Ball: a cold blue glow, and a trail of ice-blue chips and white twinkles that drift down as they fade
+    sparks.add(x, y, z, 1.0, TR.iceDeep, 0.5);
+    trail(12, 0.012, (L, id, s) => { const p = at(s), tw = 0.5 + 0.5 * Math.sin(t * 26 + id * 1.9), r = 0.25 * L, star = id % 3 === 0;
+      sparks.add(p.x + hh(b.id, id) * r, p.y + hh(id, b.id) * r - L * 0.25, p.z + hh(b.id + 7, id) * r, (star ? 0.45 : 0.28) * (1 - L * 0.6) * (0.6 + 0.6 * tw), star ? TR.white : TR.ice, (1 - L) * (0.5 + 0.5 * tw), star ? STAR : SOLID); });
+  } else if (b.kind === 'fire') {
+    // Fire Ball: a hot flickering glow and a flame trail, yellow to orange to red, rising as it cools, with sparks flung off
+    sparks.add(x, y, z, 1.1 * (0.9 + 0.1 * Math.sin(t * 31)), TR.fire[1], 0.55);
+    trail(14, 0.007, (L, id, s) => { const p = at(s), fl = 0.8 + 0.3 * Math.sin(t * 40 + id * 2.7), r = 0.18 * L;
+      sparks.add(p.x + hh(b.id, id) * r, p.y + L * 0.45, p.z + hh(id, b.id) * r, 0.42 * (1 - L * 0.6) * fl, TR.fire[Math.min(3, Math.floor(L * 4))], 1 - L, SOLID);
+      if (id % 3 === 0) sparks.add(p.x + hh(b.id + 3, id) * L * 0.9, p.y + L * 0.7, p.z + hh(id, b.id + 3) * L * 0.9, 0.22, TR.fire[0], 1 - L, STAR); });
+  } else if (b.kind === 'giant') {
+    // Giant Ball: a slow-pulsing golden shimmer round it, gold twinkles running over its surface, and a heavy powder wake
+    const R = 0.17 * (b.r || 3), pu = 0.5 + 0.5 * Math.sin(t * 5);
+    sparks.add(x, y, z, R * 3.4 * (1 + 0.08 * pu), TR.gold, 0.16 + 0.1 * pu);
+    for (let j = 0; j < 7; j++) { const g = t * 2.6 + j * 0.898, tw = Math.max(0, Math.sin(t * 8 + j * 2.3));
+      sparks.add(x + Math.cos(g) * R * 1.05, y + Math.sin(g * 1.3 + j) * R * 0.75, z + Math.sin(g) * R * 1.05, 0.2 + 0.32 * tw, TR.goldStar, 0.3 + 0.7 * tw, STAR | SOLID); }
+    trail(7, 0.022, (L, id, s) => { const p = at(s); sparks.add(p.x, p.y, p.z, R * 2.0 * (1 - L * 0.5), TR.white, 0.4 * (1 - L), SOLID); });
+  } else if (b.kind === 'split') {
+    // Split Ball: a three-colour ribbon (red, green, white strands braided round its path); when it splits, each piece keeps one
+    const l = Math.hypot(b.vx, b.vz) || 1, sx = -b.vz / l, sz = b.vx / l;
+    trail(14, 0.006, (L, id, s) => { const p = at(s), R = 0.15 * (1 - L * 0.3);
+      for (let j = 0; j < 3; j++) { const g = (t - s) * 26 + j * 2.094, c = Math.cos(g) * R;
+        sparks.add(p.x + sx * c, p.y + Math.sin(g) * R, p.z + sz * c, 0.17 * (1 - L * 0.5), TR.split[j], 1 - L, SOLID); } });
+  } else if (b.kind === 'piece') {
+    const c = TR.split[b.id % 3];
+    trail(10, 0.008, (L, id, s) => { const p = at(s); sparks.add(p.x, p.y, p.z, 0.2 * (1 - L * 0.5), c, 1 - L, SOLID); });
+  }
+}
+// Sky Ball / Snowball Rain: a streak above each falling snowball (it falls 9 a second) and a white twinkle on the ball itself
+function dropStreak(p, y, i, t) {
+  const c = p.kind === 'sky' ? TR.sky : TR.rain, n = p.kind === 'sky' ? 6 : 4;
+  for (let k = 1; k <= n; k++) sparks.add(p.x, y + k * 0.22, p.z, 0.2 * (1 - k / (n + 1)), c, 0.85 * (1 - k / (n + 1)), SOLID);
+  const tw = Math.max(0, Math.sin(t * 18 + i * 2.3)); sparks.add(p.x, y, p.z, 0.25 + 0.4 * tw, TR.white, 0.4 + 0.6 * tw, STAR);
+}
 
 // ---------- main loop
 let last = performance.now(), T = 0, chromeAt = 0;
@@ -774,9 +844,11 @@ addEventListener('pagehide', () => { if (isHost) board.unpublish(); room?.leave(
 const preview = new THREE.Group(); preview.position.set(0, 0, 6.5); preview.visible = false; scene.add(preview);
 const previewHat = toon(hatGeo({ scale: 0.88 }), 0.03);
 function setPreview(a) {
-  if (preview.userData.ch) preview.remove(preview.userData.ch);
-  const ch = avatarCharacter(a); preview.userData.ch = ch; preview.add(ch);
-  previewHat.position.set(0, K.HEAD_Y, 0); previewHat.rotation.y = Math.PI / 2; preview.add(previewHat);
+  if (preview.userData.ch) { preview.remove(preview.userData.ch); disposeTree(preview.userData.ch); }
+  // the preview wears what is in the gear slots (a Gift Box: a wrapped present); an Elf Hat or a Santa cap takes the hat's place
+  const gear = GEAR_SLOTS.map((s) => BY_ID.get(cleanAvatar(a)[s])?.gear).filter(Boolean);
+  const ch = avatarCharacter(a, { gear }); preview.userData.ch = ch; preview.add(ch);
+  previewHat.position.set(0, K.HEAD_Y, 0); previewHat.rotation.y = Math.PI / 2; preview.add(previewHat); previewHat.visible = !gear.some((k) => k === 'elfhat' || k === 'santa');
 }
 setPreview(me.a);
 const acct = accounts({ local: LOCAL, rules: { SLOTS, SB_SLOTS, GEAR_SLOTS, statOf, BY_ID, usable, DEFAULT_AVATAR } });
@@ -805,4 +877,7 @@ window.__sq = { get armed() { return armed; }, throwAt: (x, z) => tryThrow(x, z)
   // tests: the plaza theme, and what's on the GPU / in the scene (a theme swap must not leave the old plaza behind)
   // tests: the size a player is drawn at (Elf Hat: 0.5)
   drawnScale: (id) => views.get(id)?.mesh.scale.x,
+  // tests: a fingerprint of how a player is drawn (vertices, shapes, colours), the same for a gear list on the default look,
+  // and how many tracer/shimmer points were drawn last frame (plain snowballs and no gear: none)
+  look: (id) => lookSig(views.get(id)?.mesh), lookOf: (gear) => { const m = avatarCharacter(DEFAULT_AVATAR, { gear }), r = lookSig(m); disposeTree(m); return r; }, sparks: () => sparks.n,
   get theme() { return theme; }, setTheme, gpu: () => ({ ...renderer.info.memory, kids: scene.children.length, fog: scene.fog && [scene.fog.color.getHex(), scene.fog.near, scene.fog.far] }) };

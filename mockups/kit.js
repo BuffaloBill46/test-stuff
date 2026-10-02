@@ -101,7 +101,7 @@ export function toon(geo, outline = 0.035) {
 // character and prop still on screen, so they are never disposed. (A material's dispose leaves its texture alone, so the
 // shared glow and snow-dot textures survive; the plaza frees its own sky texture itself.)
 export function disposeTree(root) {
-  const shared = new Set([TOON, ...hullCache.values()]);
+  const shared = new Set([TOON, GEAR_GLOW, ...hullCache.values()]);
   root.traverse((o) => { o.geometry?.dispose(); for (const m of [].concat(o.material || [])) if (!shared.has(m)) m.dispose(); });
 }
 
@@ -240,6 +240,45 @@ export class Burst {
     this.mesh.instanceMatrix.needsUpdate = true; if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
   }
 }
+
+// Soft additive glow points, ALL in one draw call (special-snowball tracers and shimmer, Cody 2026-10-01: "make the special
+// snowballs stand out with either a tracer and or shimmer"). Refilled every frame from what is on screen (begin, add…, end):
+// nothing is created per frame, and 18 snowballs plus 60 falling drops cost the same single call. Sizes are world units.
+export class Sparks {
+  constructor(max = 1200) {
+    this.max = max; this.n = 0;
+    this.pos = new Float32Array(max * 3); this.col = new Float32Array(max * 3); this.size = new Float32Array(max); this.mode = new Float32Array(max);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute('aCol', new THREE.BufferAttribute(this.col, 3).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute('aSize', new THREE.BufferAttribute(this.size, 1).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute('aMode', new THREE.BufferAttribute(this.mode, 1).setUsage(THREE.DynamicDrawUsage));
+    // uH: half the drawing height in pixels (set on resize), so a size is the same share of the view on every screen
+    this.uH = { value: 400 };
+    // Premultiplied blending, so each point picks: ADDED light (a glow; alpha 0) or SOLID colour painted over (alpha = cover).
+    // Added light can't show red on white snow (it turns pink, then white), so flames, ribbons and chips are solid; halos glow.
+    // aMode = mode + brightness: whole part bit 1 = SOLID, bit 2 = STAR (a crisp four-point twinkle); fraction = brightness.
+    const m = new THREE.ShaderMaterial({ uniforms: { uH: this.uH }, transparent: true, depthWrite: false,
+      blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
+      vertexShader: 'attribute vec3 aCol; attribute float aSize; attribute float aMode; uniform float uH; varying vec3 vCol; varying float vMode;\nvoid main(){ vCol = aCol; vMode = aMode; vec4 mv = modelViewMatrix * vec4(position, 1.); gl_Position = projectionMatrix * mv; gl_PointSize = aSize * projectionMatrix[1][1] * uH / max(0.1, -mv.z); }',
+      fragmentShader: 'varying vec3 vCol; varying float vMode;\nvoid main(){ vec2 q = abs(gl_PointCoord - .5) * 2.; float d = max(0., 1. - length(q)), m = d * d, md = floor(vMode), k = fract(vMode);\n' +
+        '  if (md >= 2.) m = max(m * m * 1.5, max(0., 1. - q.x * 7.) * (1. - q.y) + max(0., 1. - q.y * 7.) * (1. - q.x));\n' +
+        '  if (m <= 0.01) discard; float solid = mod(md, 2.); vec3 c = linearToOutputTexel(vec4(vCol, 1.)).rgb; m = min(1., m * (1. + solid)) * k;\n' +
+        '  gl_FragColor = vec4(c * m, solid * m); }' });
+    this.points = new THREE.Points(g, m); this.points.frustumCulled = false; g.setDrawRange(0, 0);
+  }
+  begin() { this.n = 0; }
+  // c: a THREE.Color made once (never per frame); k: brightness 0..1; mode: Sparks.SOLID | Sparks.STAR (0 = a soft glow)
+  add(x, y, z, size, c, k = 1, mode = 0) {
+    if (this.n >= this.max || k <= 0.01 || size <= 0) return; const i = this.n++, j = i * 3;
+    this.pos[j] = x; this.pos[j + 1] = y; this.pos[j + 2] = z; this.col[j] = c.r; this.col[j + 1] = c.g; this.col[j + 2] = c.b; this.size[i] = size; this.mode[i] = mode + Math.min(k, 0.999);
+  }
+  end() {
+    const g = this.points.geometry; g.setDrawRange(0, this.n);
+    for (const a of ['position', 'aCol', 'aSize', 'aMode']) { const at = g.attributes[a]; at.clearUpdateRanges(); at.addUpdateRange(0, Math.max(1, this.n) * at.itemSize); at.needsUpdate = true; }
+  }
+}
+Sparks.SOLID = 1; Sparks.STAR = 2;
 
 // ---------- prop geometry (all return merged geometries)
 const G = THREE;
@@ -430,39 +469,192 @@ function packPieces(shape, color) {
   return [];
 }
 
+// ---------- SPECIAL GEAR worn on the character (Cody, 2026-10-01: "a pumpkin should look like a jack o lantern not just orange
+// shirt. Santa suit should look like Santa and so on"). gear.js kinds → pieces MERGED into the character's own meshes (body,
+// arms, legs, the hat mesh), so gear costs no extra draw calls; only the warm light of a jack-o'-lantern's carved face and the
+// Heated Coat's coil are one small unlit mesh (GEAR_GLOW, shared). The match draws what the REFEREE says each player wears
+// (snapshot e.gear: a Present Box already turned into its gear); the Avatar preview and Store thumbnails draw the slots.
+// Coordinates: the character faces +z; torso 0.62 × 0.72 × 0.38 centred at y 1.2; head centre y 1.82 (radius ~0.3); arms hang
+// from (±0.42, 1.52), hands at -0.72; legs from (±0.16, 0.86), feet at -0.8.
+export const GEAR_GLOW = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false });
+// The carved face and coil flicker like a candle (one shared material, so one call a frame moves every wearer's light).
+export function gearTick(t) { GEAR_GLOW.color.setScalar(0.82 + 0.12 * Math.sin(t * 9.1) + 0.06 * Math.sin(t * 23.7)); }
+// The colour a chip of each extra-hit gear shows when it takes a hit (online.js: a bit of the costume flies off)
+export const GEAR_TINT = { pumpkin: 0xe8812c, kevlar: 0xbfe6ff, heated: 0xcf3128, santa: 0xf3efe6 };
+// A ridged pumpkin: 16 sides, every other one pulled in, so 8 lobes show as facets in the toon light.
+function pumpkinBall(r) {
+  const g = new G.SphereGeometry(r, 16, 7), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), k = Math.round(Math.atan2(z, x) / (Math.PI / 8)) & 1 ? 0.86 : 1; p.setXYZ(i, x * k, p.getY(i) * 0.8, z * k); }
+  return g;
+}
+// A floppy cone (Elf Hat): bends over to one side as it rises, like hatCone but taller.
+function floppyCone(h) {
+  const g = new G.CylinderGeometry(0.025, 0.28, h, 7, 6), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) { const t = (p.getY(i) + h / 2) / h; p.setX(i, p.getX(i) + 0.42 * t * t * t); p.setY(i, p.getY(i) - 0.22 * t * t * t * t); }
+  return g;
+}
+// A triangle prism (carved eyes and teeth): `up` points the tip up (true) or down.
+const tri = (s, color, pos, up = true, d = 0.06) => part(new G.CylinderGeometry(s, s, d, 3), color, { pos, rot: [Math.PI / 2, up ? Math.PI : 0, 0] });
+// Each gear: body (torso/head/back pieces), hat (replaces the cosmetic hat; steps aside for the Santa hat like one), arm/leg
+// (added to each limb, by side -1/+1), feet (replace the boots), sleeve/pants (recolour the limbs), noHead (the pumpkin is the
+// head), back (hides a cosmetic backpack), glow (unlit pieces).
+const GEAR_LOOKS = {
+  // Sits a little low (centre 1.77, on the shoulders) so the Santa hat, worn at the usual height, leaves the carved eyes showing.
+  pumpkin: () => ({ noHead: true, body: [
+    part(pumpkinBall(0.36), 0xf08a2a, { pos: [0, 1.77, 0], jit: 0.012, seed: 61 }),
+    part(new G.CylinderGeometry(0.035, 0.06, 0.16, 5), 0x5d6b2a, { pos: [0.02, 2.09, 0], rot: [0.15, 0, -0.25] }),
+    part(new G.TetrahedronGeometry(0.07), C.elfDark, { pos: [-0.07, 2.05, 0.03], rot: [0.5, 0.3, 0.9], scale: [1.4, 0.5, 1] }),
+    // two pumpkin teeth left standing in the carved grin
+    part(new G.BoxGeometry(0.05, 0.045, 0.03), 0xf08a2a, { pos: [-0.05, 1.665, 0.345] }), part(new G.BoxGeometry(0.05, 0.045, 0.03), 0xf08a2a, { pos: [0.06, 1.615, 0.345] }),
+  ], glow: [
+    // carved triangle eyes and nose, and a wide grin curving up at both ends; the light flickers (gearTick)
+    tri(0.09, 0xffd040, [-0.13, 1.83, 0.31]), tri(0.09, 0xffd040, [0.13, 1.83, 0.31]), tri(0.045, 0xffb030, [0, 1.74, 0.335]),
+    part(new G.BoxGeometry(0.13, 0.085, 0.05), 0xffb030, { pos: [-0.125, 1.66, 0.305], rot: [0, 0.35, -0.4] }),
+    part(new G.BoxGeometry(0.13, 0.085, 0.05), 0xffb030, { pos: [0, 1.635, 0.325] }),
+    part(new G.BoxGeometry(0.13, 0.085, 0.05), 0xffb030, { pos: [0.125, 1.66, 0.305], rot: [0, -0.35, 0.4] }),
+  ] }),
+  kevlar: () => ({ body: [
+    part(new G.BoxGeometry(0.68, 0.6, 0.44), 0x5d8db4, { pos: [0, 1.28, 0], jit: 0.015, seed: 62 }),
+    // icy armour plates: four on the chest, one on the back, a pad on each shoulder; dark straps down the sides
+    ...[[-0.14, 1.41], [0.14, 1.41], [-0.14, 1.17], [0.14, 1.17]].map(([x, y], i) => part(new G.BoxGeometry(0.24, 0.2, 0.05), 0xbfe6ff, { pos: [x, y, 0.235], jit: 0.012, seed: 63 + i })),
+    part(new G.BoxGeometry(0.5, 0.44, 0.05), 0xa9d8f5, { pos: [0, 1.3, -0.235], jit: 0.012, seed: 67 }),
+    ...[-1, 1].map((s) => part(new G.BoxGeometry(0.24, 0.08, 0.46), 0xbfe6ff, { pos: [s * 0.25, 1.6, 0], rot: [0, 0, s * -0.25], jit: 0.01 })),
+    ...[-1, 1].map((s) => part(new G.BoxGeometry(0.03, 0.56, 0.3), 0x2c3e55, { pos: [s * 0.345, 1.28, 0] })),
+    // frost glints along the plates' top edges
+    ...[-0.2, 0.08, 0.2].map((x, i) => part(new G.BoxGeometry(0.06, 0.025, 0.02), 0xffffff, { pos: [x, i ? 1.5 : 1.26, 0.262] })),
+  ] }),
+  heated: () => ({ sleeve: 0xcf3128, body: [
+    // puffy quilted bands, alternating shades, with a dark seam between each (a quilted winter coat)
+    ...[1.47, 1.27, 1.07, 0.87].map((y, i) => part(new G.BoxGeometry(0.72, 0.22, 0.48), i % 2 ? 0xb52620 : 0xcf3128, { pos: [0, y, 0], jit: 0.025, seed: 70 + i })),
+    ...[1.37, 1.17, 0.97].map((y) => part(new G.BoxGeometry(0.7, 0.03, 0.46), 0x6e1410, { pos: [0, y, 0] })),
+    part(new G.BoxGeometry(0.52, 0.13, 0.42), 0x8f1712, { pos: [0, 1.62, 0], jit: 0.015 }),
+    part(new G.BoxGeometry(0.03, 0.78, 0.04), 0xc9c3b6, { pos: [0, 1.2, 0.25] }),
+    // the heater: a dark chest panel with a glowing coil behind it
+    part(new G.BoxGeometry(0.2, 0.16, 0.03), 0x2a1a18, { pos: [0.16, 1.43, 0.25] }),
+  ], arm: () => [0.18, 0.42].map((y) => part(new G.BoxGeometry(0.26, 0.17, 0.26), 0xcf3128, { pos: [0, -y, 0], jit: 0.02 })),
+  glow: [0, 1, 2, 3].map((i) => part(new G.BoxGeometry(0.06, 0.025, 0.02), 0xff8a2a, { pos: [0.1 + i * 0.04, 1.43, 0.27], rot: [0, 0, i % 2 ? -0.8 : 0.8] })) }),
+  santa: () => ({ sleeve: 0xcf3128, pants: 0xcf3128, body: [
+    part(new G.BoxGeometry(0.68, 0.74, 0.44), 0xcf3128, { pos: [0, 1.2, 0], jit: 0.015, seed: 75 }),
+    // white fur: the hem, down the front, the collar
+    part(new G.BoxGeometry(0.74, 0.11, 0.5), C.brim, { pos: [0, 0.84, 0], jit: 0.02, seed: 76 }),
+    part(new G.BoxGeometry(0.11, 0.66, 0.05), C.brim, { pos: [0, 1.22, 0.225], jit: 0.012 }),
+    part(new G.TorusGeometry(0.2, 0.07, 4, 9), C.brim, { pos: [0, 1.6, 0], rot: [Math.PI / 2, 0, 0], jit: 0.015 }),
+    // a black belt with a gold buckle
+    part(new G.BoxGeometry(0.72, 0.12, 0.48), C.coal, { pos: [0, 1.0, 0] }),
+    part(new G.BoxGeometry(0.17, 0.14, 0.04), C.gold, { pos: [0, 1.0, 0.25] }), part(new G.BoxGeometry(0.08, 0.06, 0.04), C.coal, { pos: [0, 1.0, 0.262] }),
+    // the white beard and moustache (the eyes stay)
+    part(new G.IcosahedronGeometry(0.25, 0), C.brim, { pos: [0, 1.66, 0.13], scale: [1.15, 1.15, 0.8], jit: 0.04, seed: 77 }),
+    part(new G.BoxGeometry(0.15, 0.06, 0.06), C.brim, { pos: [-0.07, 1.77, 0.27], rot: [0, 0, 0.25] }), part(new G.BoxGeometry(0.15, 0.06, 0.06), C.brim, { pos: [0.07, 1.77, 0.27], rot: [0, 0, -0.25] }),
+  ], hat: hatParts({ scale: 0.62, y: 1.98, rotY: Math.PI / 2 + 0.4, seed: 78 }),
+  arm: () => [part(new G.BoxGeometry(0.25, 0.1, 0.25), C.brim, { pos: [0, -0.6, 0], jit: 0.01 })],
+  feet: [part(new G.BoxGeometry(0.28, 0.24, 0.36), C.coal, { pos: [0, -0.75, 0.05], jit: 0.01 }), part(new G.BoxGeometry(0.29, 0.07, 0.3), C.brim, { pos: [0, -0.62, 0] })] }),
+  present: () => ({ body: [
+    // a wrapped present held in front (the Avatar screen and Store; a match shows what it turned into)
+    part(new G.BoxGeometry(0.4, 0.36, 0.3), 0x7a4fa3, { pos: [0, 1.1, 0.36], jit: 0.01 }),
+    part(new G.BoxGeometry(0.42, 0.38, 0.07), C.gold, { pos: [0, 1.1, 0.36] }), part(new G.BoxGeometry(0.07, 0.38, 0.32), C.gold, { pos: [0, 1.1, 0.36] }),
+    part(new G.TetrahedronGeometry(0.09), C.gold, { pos: [-0.06, 1.31, 0.36], rot: [0.4, 0, 0.6] }), part(new G.TetrahedronGeometry(0.09), C.gold, { pos: [0.06, 1.31, 0.36], rot: [0.4, 0, -0.6] }),
+  ] }),
+  bag: () => ({ back: true, body: [
+    // a bulging red toy sack over the back, open at the top, with toys peeking out: a gift, a candy cane, a teddy
+    part(new G.IcosahedronGeometry(0.36, 1), 0xb8282a, { pos: [0, 1.3, -0.44], scale: [1.05, 1.2, 0.85], jit: 0.045, seed: 80 }),
+    part(new G.TorusGeometry(0.17, 0.05, 4, 8), 0x7e1714, { pos: [0, 1.7, -0.44], rot: [Math.PI / 2 - 0.3, 0, 0] }),
+    part(new G.CylinderGeometry(0.03, 0.03, 0.5, 5), C.gold, { pos: [0, 1.38, -0.16], rot: [0.5, 0, 0.9] }),
+    part(new G.BoxGeometry(0.16, 0.16, 0.16), C.elf, { pos: [0.08, 1.8, -0.42], rot: [0.2, 0.5, 0.15] }), part(new G.BoxGeometry(0.17, 0.04, 0.17), C.gold, { pos: [0.08, 1.85, -0.42], rot: [0.2, 0.5, 0.15] }),
+    part(new G.CylinderGeometry(0.025, 0.025, 0.36, 5), 0xf6f2ea, { pos: [-0.1, 1.84, -0.47], rot: [0, 0, 0.15] }),
+    part(new G.BoxGeometry(0.06, 0.04, 0.06), C.hat, { pos: [-0.11, 1.9, -0.47], rot: [0, 0, 0.6] }),
+    part(new G.BoxGeometry(0.11, 0.035, 0.05), C.hat, { pos: [-0.16, 2.02, -0.47], rot: [0, 0, -0.5] }),
+    part(new G.IcosahedronGeometry(0.075, 0), 0x9a6a3a, { pos: [0.0, 1.8, -0.55] }),
+    part(new G.IcosahedronGeometry(0.03, 0), 0x9a6a3a, { pos: [-0.06, 1.86, -0.55] }), part(new G.IcosahedronGeometry(0.03, 0), 0x9a6a3a, { pos: [0.06, 1.86, -0.55] }),
+  ] }),
+  backpack: () => ({ back: true, body: [
+    // a sturdy trail backpack: body, top flap with buckles, front pocket, a rolled sleeping mat on top, straps over the shoulders
+    part(new G.BoxGeometry(0.46, 0.56, 0.24), 0x5a3b24, { pos: [0, 1.25, -0.32], jit: 0.02, seed: 85 }),
+    part(new G.BoxGeometry(0.48, 0.14, 0.27), 0x3e2817, { pos: [0, 1.5, -0.33], rot: [-0.08, 0, 0], jit: 0.01 }),
+    part(new G.BoxGeometry(0.32, 0.22, 0.08), 0x7a5634, { pos: [0, 1.11, -0.46], jit: 0.01 }),
+    ...[-0.1, 0.1].map((x) => part(new G.BoxGeometry(0.05, 0.06, 0.03), 0xc9c3b6, { pos: [x, 1.42, -0.47] })),
+    part(new G.CylinderGeometry(0.09, 0.09, 0.52, 7), 0x3d6fb0, { pos: [0, 1.64, -0.32], rot: [0, 0, Math.PI / 2] }),
+    ...[-0.14, 0.14].map((x) => part(new G.BoxGeometry(0.03, 0.2, 0.2), 0x2b1d12, { pos: [x, 1.64, -0.32] })),
+    ...[-0.15, 0.15].flatMap((x) => [part(new G.BoxGeometry(0.07, 0.03, 0.42), 0x2b1d12, { pos: [x, 1.575, -0.02] }),
+      part(new G.BoxGeometry(0.07, 0.56, 0.03), 0x2b1d12, { pos: [x, 1.3, 0.2] })]),
+  ] }),
+  satchel: () => ({ body: [
+    // a green messenger satchel on the right hip (a little behind, clear of the swinging arm), its strap across the chest
+    part(new G.BoxGeometry(0.32, 0.27, 0.11), C.elf, { pos: [0.27, 0.98, -0.22], rot: [0, -0.7, 0], jit: 0.012, seed: 88 }),
+    part(new G.BoxGeometry(0.33, 0.13, 0.125), C.elfDark, { pos: [0.27, 1.06, -0.22], rot: [0, -0.7, 0] }),
+    part(new G.BoxGeometry(0.06, 0.05, 0.03), C.gold, { pos: [0.31, 1.0, -0.27], rot: [0, -0.7, 0] }),
+    part(new G.BoxGeometry(0.06, 0.82, 0.03), 0x7a5634, { pos: [-0.02, 1.27, 0.2], rot: [0, 0, 0.72] }),
+    part(new G.BoxGeometry(0.06, 0.82, 0.03), 0x7a5634, { pos: [-0.02, 1.27, -0.2], rot: [0, 0, 0.72] }),
+  ] }),
+  shoes: () => ({ feet: [
+    // curled-toe green elf shoes with a gold bell on each tip
+    part(new G.BoxGeometry(0.28, 0.15, 0.36), C.elf, { pos: [0, -0.8, 0.06], jit: 0.01 }),
+    part(new G.BoxGeometry(0.3, 0.06, 0.3), C.hat, { pos: [0, -0.71, 0.02] }),
+    part(new G.ConeGeometry(0.09, 0.28, 5), C.elf, { pos: [0, -0.77, 0.32], rot: [Math.PI / 2 - 0.5, 0, 0] }),
+    part(new G.ConeGeometry(0.045, 0.14, 5), C.elfDark, { pos: [0, -0.65, 0.43], rot: [-0.5, 0, 0] }),
+    part(new G.IcosahedronGeometry(0.045, 0), C.gold, { pos: [0, -0.6, 0.4] }),
+  ] }),
+  elfhat: (o) => ({ hat: [
+    // a tall floppy green elf hat, a red band, a gold bell on its tip
+    part(floppyCone(1.0), C.elf, { pos: [0, (o.pumpkin ? 2.0 : 1.98) + 0.5, 0], rot: [0, Math.PI / 2 + 0.5, 0], jit: 0.02, seed: 90 }),
+    part(new G.TorusGeometry(0.28, 0.07, 4, 10), C.hat, { pos: [0, o.pumpkin ? 2.0 : 1.98, 0], rot: [Math.PI / 2, 0, 0], jit: 0.012 }),
+    part(new G.IcosahedronGeometry(0.075, 0), C.gold, { pos: [0.42 * Math.cos(Math.PI / 2 + 0.5), (o.pumpkin ? 2.0 : 1.98) + 0.78, -0.42 * Math.sin(Math.PI / 2 + 0.5)] }),
+  ] }),
+};
+// Everything a list of gear adds to the character, combined. `keepSleeves`: team matches keep the team colour on the arms.
+function gearLook(kinds, { keepSleeves } = {}) {
+  const L = { body: [], hat: [], arm: [], feet: null, glow: [], noHead: false, back: false, sleeve: null, pants: null };
+  const ks = kinds || [], pumpkin = ks.includes('pumpkin');
+  for (const k of ks) { const f = GEAR_LOOKS[k]; if (!f) continue; const g = f({ pumpkin });
+    L.body.push(...(g.body || [])); L.glow.push(...(g.glow || [])); if (g.hat) L.hat = g.hat; if (g.arm) L.arm.push(g.arm);
+    // Elf Shoes win over the Santa boots (both can be worn: speed and hits)
+    if (g.feet && !(L.feet && k === 'santa')) L.feet = g.feet;
+    if (g.noHead) L.noHead = true; if (g.back) L.back = true; if (g.sleeve && !keepSleeves) L.sleeve = g.sleeve; if (g.pants) L.pants = g.pants; }
+  // Elf Hat over a Santa cap (the hat is the gear doing something)
+  if (ks.includes('elfhat') && ks.includes('santa')) L.hat = GEAR_LOOKS.elfhat({ pumpkin }).hat;
+  return L;
+}
+
 export function character(o = {}) {
+  const look = gearLook(o.gear, { keepSleeves: o.keepSleeves });
   const fullHead = HEADS[o.face];
-  const shirt = o.shirt ?? C.hat, pants = o.pants ?? 0x34405e, skin = o.skin ?? C.skin, seed = o.seed ?? 1;
+  const shirt = o.shirt ?? C.hat, pants = look.pants ?? o.pants ?? 0x34405e, skin = o.skin ?? C.skin, seed = o.seed ?? 1;
   const g = new G.Group();
   const bodyParts = [
     part(new G.BoxGeometry(0.62, 0.72, 0.38), shirt, { pos: [0, 1.2, 0], jit: 0.03, seed }),
     part(new G.BoxGeometry(0.64, 0.1, 0.4), C.woodDark, { pos: [0, 0.9, 0] }),
     part(new G.BoxGeometry(0.12, 0.1, 0.05), C.gold, { pos: [0, 0.9, 0.21] }),
-    ...(fullHead ? fullHead.parts() : [
+    // a Pumpkin Costume's jack-o'-lantern IS the head
+    ...(look.noHead ? [] : fullHead ? fullHead.parts() : [
       part(new G.IcosahedronGeometry(0.28, 0), skin, { pos: [0, 1.82, 0], scale: [1, 1.08, 1], jit: 0.03, seed: seed + 2 }),
       ...faceParts(o.face || (o.beard ? 'beard' : 'dots'))]),
+    ...look.body,
   ];
-  if (o.ears) bodyParts.push(
+  if (o.ears && !look.noHead) bodyParts.push(
     part(new G.ConeGeometry(0.08, 0.34, 4), skin, { pos: [-0.3, 1.9, 0], rot: [0, 0, 1.25] }),
     part(new G.ConeGeometry(0.08, 0.34, 4), skin, { pos: [0.3, 1.9, 0], rot: [0, 0, -1.25] }));
   if (o.cap) bodyParts.push(
     part(new G.ConeGeometry(0.3, 0.7, 6), o.cap, { pos: [0, 2.3, -0.05], rot: [-0.35, 0, 0], jit: 0.03 }),
     part(new G.TorusGeometry(0.27, 0.07, 4, 8), C.brim, { pos: [0, 2.0, 0], rot: [Math.PI / 2, 0, 0] }),
     part(new G.IcosahedronGeometry(0.09, 0), C.gold, { pos: [0, 2.6, -0.28] }));
-  if (o.pack) bodyParts.push(...packPieces(o.pack.shape, o.pack.color));
+  // a Toy Sack or Backpack on the back takes the place of a cosmetic backpack
+  if (o.pack && !look.back) bodyParts.push(...packPieces(o.pack.shape, o.pack.color));
   const body = toon(build(bodyParts), 0.03); g.add(body);
   // The hat is its own mesh (riding on the body's bob) so the game can hide it while this player wears the Santa hat.
-  const hp = o.hat ? hatPieces(o.hat.shape, o.hat.color) : [];
+  // An Elf Hat or a Santa Costume's cap takes the cosmetic hat's place (and steps aside for the Santa hat the same way).
+  const hp = look.hat.length ? look.hat : o.hat ? hatPieces(o.hat.shape, o.hat.color) : [];
   const hatMesh = hp.length ? toon(build(hp), 0.025) : null; if (hatMesh) body.add(hatMesh);
+  if (look.glow.length) body.add(new THREE.Mesh(build(look.glow), GEAR_GLOW));
   const limb = (w, h, color, x, y, extra = []) => {
     const geo = build([part(new G.BoxGeometry(w, h, w), color, { pos: [0, -h / 2, 0], jit: 0.02 }), ...extra]);
     const m = toon(geo, 0.028); m.position.set(x, y, 0); g.add(m); return m;
   };
   const hands = fullHead ? fullHead.hands : skin;
-  const armL = limb(0.2, 0.66, shirt, -0.42, 1.52, [part(new G.BoxGeometry(0.2, 0.14, 0.2), hands, { pos: [0, -0.72, 0] })]);
-  const armR = limb(0.2, 0.66, shirt, 0.42, 1.52, [part(new G.BoxGeometry(0.2, 0.14, 0.2), hands, { pos: [0, -0.72, 0] })]);
-  const legL = limb(0.24, 0.84, pants, -0.16, 0.86, [part(new G.BoxGeometry(0.26, 0.14, 0.34), C.woodDark, { pos: [0, -0.8, 0.05] })]);
-  const legR = limb(0.24, 0.84, pants, 0.16, 0.86, [part(new G.BoxGeometry(0.26, 0.14, 0.34), C.woodDark, { pos: [0, -0.8, 0.05] })]);
+  // gear: sleeves (a coat's colour, cuffs, puffy bands) and feet (Santa's boots, elf shoes)
+  const sleeve = look.sleeve ?? shirt, cuffs = () => look.arm.flatMap((f) => f()), feet = () => (look.feet ? look.feet.map((p) => p.clone()) : [part(new G.BoxGeometry(0.26, 0.14, 0.34), C.woodDark, { pos: [0, -0.8, 0.05] })]);
+  const armL = limb(0.2, 0.66, sleeve, -0.42, 1.52, [part(new G.BoxGeometry(0.2, 0.14, 0.2), hands, { pos: [0, -0.72, 0] }), ...cuffs()]);
+  const armR = limb(0.2, 0.66, sleeve, 0.42, 1.52, [part(new G.BoxGeometry(0.2, 0.14, 0.2), hands, { pos: [0, -0.72, 0] }), ...cuffs()]);
+  const legL = limb(0.24, 0.84, pants, -0.16, 0.86, feet());
+  const legR = limb(0.24, 0.84, pants, 0.16, 0.86, feet());
   g.userData = { armL, armR, legL, legR, body, hatMesh, phase: Math.random() * 6 };
   return g;
 }

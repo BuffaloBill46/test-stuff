@@ -152,7 +152,9 @@ async function startRun(n) {
     if (out) { res.innerHTML = runSummary(out, 'pull', 'pulls'); showResult(res); }
   } finally { busy = false; fast = false; setButtons(true); $('#runBig').textContent = ''; }
 }
-function setButtons(on) { document.querySelectorAll('#slots [data-run], #slots .runpick input, #slots .runpick [data-step]').forEach((b) => { b.disabled = !on; }); $('#slots .skip').hidden = on; }
+function setButtons(on) { document.querySelectorAll('#slots [data-run], #slots .runpick input, #slots .runpick [data-step]').forEach((b) => { b.disabled = !on; }); $('#slots .skip').hidden = on; skipLabel($('#slots .skip')); }
+// Skip ahead is a toggle (Cody): pressed, the run goes fast and the button says "Normal speed"; pressed again, back to normal.
+const skipLabel = (b) => { b.textContent = fast ? 'Normal speed' : 'Skip ahead'; b.setAttribute('aria-pressed', String(fast)); };
 async function showPull(p, i, n) {
   const card = $('#slots .machine'), res = $('#slots .machine .res');
   $('#runBig').innerHTML = `Pull <b>${i + 1}</b> of <b>${n}</b>`;
@@ -198,7 +200,7 @@ export async function initGames(opts = {}) {
   view = createMachine($('#slots .machine canvas'));
   document.querySelectorAll('#slots [data-run]').forEach((b) => b.addEventListener('click', () => startRun(+b.dataset.run)));
   initRunPick($('#slots .runpick'), { verb: 'Pull', priceOf: (n) => priceLabel(M.bet * n) });
-  $('#slots .skip').addEventListener('click', () => { fast = true; view.slam(); });
+  $('#slots .skip').addEventListener('click', (e) => { fast = !fast; if (fast) view.slam(); skipLabel(e.currentTarget); });
   $('#slots .machine canvas').addEventListener('click', () => { if (busy) view.slam(); }); // tap the machine: stop the reels now
   $('#fsBtn').addEventListener('click', toggleFull);
   $('#howBtn').addEventListener('click', openHow);
@@ -230,7 +232,7 @@ export async function initGames(opts = {}) {
   if (SERVER) resumePaid().then((r) => { if (r) { console.info('finished a paid run from an earlier visit', r.run); refreshCredits(); } }).catch(() => {});
   showMarket();
   loadWinners();
-  window.__slots = { state, view, test, get shownPool() { return shownPool; }, get busy() { return busy; } };
+  window.__slots = { state, view, test, get shownPool() { return shownPool; }, get busy() { return busy; }, get fast() { return fast; } };
 }
 
 // Live SANTA price and the token's live tax (read-only lookups). Refreshed every minute while the page is open.
