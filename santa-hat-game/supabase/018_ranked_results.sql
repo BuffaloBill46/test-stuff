@@ -39,6 +39,27 @@ begin
 end $$;
 revoke execute on function public.record_ranked_result(text, uuid, int), public.release_room_holds(text) from public, anon, authenticated;
 
+-- Holding again after leaving: 006's hold_ticket answered 'already' for ANY earlier hold in that match, so a player who left
+-- a ranked room before its start (ticket given back) could never rejoin that same room (found by tests/referee-ranked.test.mjs).
+-- Now a RELEASED hold can be taken again, charging a ticket again; a held or spent one is still 'already'.
+create or replace function public.hold_ticket(p_profile uuid, p_match text, p_now timestamptz default now()) returns text
+language plpgsql security definer set search_path = '' as $$
+declare t public.tickets; src text; was text;
+begin
+  t := public.tickets_row(p_profile, p_now);
+  select state into was from public.ticket_holds where profile_id = p_profile and match_id = p_match;
+  if was is not null and was <> 'released' then return 'already'; end if;
+  if t.free_used < 10 then
+    update public.tickets set free_used = free_used + 1 where profile_id = p_profile; src := 'free';
+  elsif t.extra > 0 then
+    update public.tickets set extra = extra - 1 where profile_id = p_profile; src := 'extra';
+  else return 'none'; end if;
+  insert into public.ticket_holds (profile_id, match_id, source, at) values (p_profile, p_match, src, p_now)
+    on conflict (profile_id, match_id) do update set source = excluded.source, state = 'held', at = excluded.at;
+  return src;
+end $$;
+revoke execute on function public.hold_ticket(uuid, text, timestamptz) from public, anon, authenticated;
+
 -- The referee's lookup also returns rank points (ranked matching: similar points first).
 drop function public.referee_profile(uuid);
 create function public.referee_profile(p_user uuid) returns table (id uuid, level int, avatar jsonb, name text, rank_points int)

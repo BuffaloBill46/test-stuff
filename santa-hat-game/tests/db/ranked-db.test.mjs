@@ -25,6 +25,11 @@ assert.equal(await one(`select public.hold_ticket($1, 'ref-r1')`, [ann]), 'alrea
 assert.deepEqual(await left(ann), { free_left: 9, extra: 0, held: 1 });
 assert.equal(await one(`select public.release_ticket($1, 'ref-r1')`, [ann]), true);
 assert.deepEqual(await left(ann), { free_left: 10, extra: 0, held: 0 }, 'left before the start: ticket back');
+// …and rejoining that same room takes a ticket again (006 said 'already' for a released hold: the player could never rejoin)
+assert.equal(await one(`select public.hold_ticket($1, 'ref-r1')`, [ann]), 'free', 'rejoin after leaving: held again');
+assert.deepEqual(await left(ann), { free_left: 9, extra: 0, held: 1 }, 'charged again');
+assert.equal(await one(`select public.hold_ticket($1, 'ref-r1')`, [ann]), 'already', 'a live hold is still already');
+await one(`select public.release_ticket($1, 'ref-r1')`, [ann]);
 // both hold, the match starts: spent (leaving now gives nothing back)
 await one(`select public.hold_ticket($1, 'ref-r2')`, [ann]); await one(`select public.hold_ticket($1, 'ref-r2')`, [ben]);
 assert.equal(await one(`select public.start_ranked_match('ref-r2')`), 2);

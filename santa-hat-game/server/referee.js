@@ -13,6 +13,7 @@
 //   · { t: 'counted', d: { place, level, xp, up } } my Auto match finish counted toward levels (server-recorded)
 import { createSim, K } from '../mockups/sim.js';
 import { snapMs, autoStartMs, isPublic, botName, refereeOpts } from '../mockups/refcore.js';
+import { settleRanked, RULES } from '../mockups/ranked.js';
 import { cleanAvatar, BY_ID, DEFAULT_AVATAR, SB_SLOTS, GEAR_SLOTS } from '../mockups/catalog.js';
 import { clampLevel } from '../mockups/levels.js';
 
@@ -21,6 +22,8 @@ const better = (a, b) => a.j < b.j || (a.j === b.j && a.id < b.id); // the page'
 const cleanCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
 const cleanName = (s) => String(s ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 14);
 const isId = (s) => typeof s === 'string' && /^[A-Za-z0-9_-]{4,24}$/.test(s);
+const RID = 'ref-'; // ranked rooms' ticket-hold ids start with this (supabase/018 release_room_holds)
+export const NO_TICKETS = 'No ranked tickets left. 10 free ones come back every 24 hours, or buy more in the Store.';
 
 // A player who isn't signed in (or whose sign-in didn't check out) keeps their look, but nothing that changes play: plain
 // snowballs, no special snowballs, no gear, level 1. Their page's word is all there is, and it can't be trusted for those.
@@ -36,13 +39,20 @@ export function guestLook(a) {
 //   database only accepts with items they own; supabase/015 save_profile), or null. When given, unverified players play
 //   as guests (guestLook); without it (no database yet), the page's word is used, as in the page-run rooms.
 // finish(match) → { counted: [{ place, level, xp, up }] } records an Auto match's places (server/levels.js finishByReferee).
-export function createReferee({ now = () => Date.now(), rand = Math.random, identify = null, finish = null, log = console } = {}) {
+// ranked: { hold(pid, rid) → 'free'|'extra'|'already'|'none', start(rid), release(pid, rid), result(mid, pid, change) → points,
+//   cleanup(prefix) } (supabase/006 + 018). Without it (or without identify) ranked stays closed. rankedSpecials: whether
+//   special snowballs count in ranked (Cody's open question; on = as they're sold today).
+export function createReferee({ now = () => Date.now(), rand = Math.random, identify = null, finish = null, ranked = null, rankedSpecials = true, log = console } = {}) {
   const rooms = new Map(); // code → room
+  let rankedSeq = 0;
+  // A restart: tickets still held for rooms of an earlier run come back (those rooms are gone).
+  if (ranked?.cleanup) Promise.resolve(ranked.cleanup(RID)).then((n) => { if (n) log.log('referee: gave back', n, 'held ranked tickets from before a restart'); }, (e) => log.error('referee: ticket cleanup failed', e.message));
   const boardWatchers = new Set();
   let boardAt = 0;
 
   function makeRoom(code) {
-    const room = { code, conns: new Map(), auto: isPublic(code), mode: code[1] === 'T' && isPublic(code) ? 'team' : 'ffa', cdEnd: null, lastSnap: 0, emoteAt: new Map() };
+    const room = { code, conns: new Map(), auto: isPublic(code), mode: code[1] === 'T' && isPublic(code) ? 'team' : 'ffa', cdEnd: null, lastSnap: 0, emoteAt: new Map(),
+      ranked: isPublic(code) && code[1] === 'R', rid: RID + Math.floor(rand() * 2 ** 48).toString(36) + now().toString(36), started: false, lastPhase: 'lobby' };
     room.info = (e) => room.conns.get(e.peer)?.me;
     room.sim = createSim(rand, refereeOpts(room.info));
     room.sim.S.mode = room.mode;
@@ -58,6 +68,9 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
   function connect(conn) {
     let room = null, me = null;
     const err = (why) => { conn.send(JSON.stringify({ t: 'err', why })); };
+    // the server closing a room (a ranked match is over): this connection is out of it, still open for the next search
+    const kick = () => { room = null; me = null; };
+    const seat = (r) => { room = r; room.conns.set(me.id, { send: conn.send, me, kick }); sendAll(room, peersMsg(room)); };
     let joining = false, closed = false;
     async function join(m) {
       if (room || joining) return err('already in a room');
@@ -75,6 +88,8 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
       let r = rooms.get(code);
       if (!r) { if (rooms.size >= MAX_ROOMS) return err('the server is full right now; try again soon'); r = makeRoom(code); }
       if (r.conns.has(p.id)) return err('that player is already in this room');
+      // ranked games: players only through Auto match (a ticket, and the server's pick); watching is fine
+      if (r.ranked && !p.w) { if (!r.conns.size) rooms.delete(code); return err('Ranked games are joined with Auto match.'); }
       const w = !!p.w, ps = [...r.conns.values()].map((c) => c.me);
       if (w && ps.filter((x) => x.w).length >= MAX_WATCHERS) return err(`That game already has ${MAX_WATCHERS} watchers. Try another.`);
       if (!w && ps.filter((x) => !x.w).length >= K.MAX_HUMANS) return err(`Room ${code} is full (${K.MAX_HUMANS} players).`);
@@ -84,14 +99,52 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
         : { id: p.id, n: cleanName(p.n) || 'Player', j: now(), a: cleanAvatar(p.a), w, l: clampLevel(p.l), pid: /^[0-9a-f-]{36}$/.test(String(p.pid)) ? p.pid : null };
       // the same account twice in one room (two tabs) would count its finishes twice: one seat per account
       if (me.pid && [...r.conns.values()].some((c) => c.me.pid === me.pid)) { me = null; if (!r.conns.size) rooms.delete(code); return err('you are already in this room in another tab'); }
-      room = r; room.conns.set(me.id, { send: conn.send, me });
-      sendAll(room, peersMsg(room));
+      seat(r);
+    }
+    // Ranked Auto match: the SERVER picks the room (similar rank points first), holds one ticket, and seats the player.
+    async function findRanked(m) {
+      if (room || joining) return err('already in a room');
+      if (!ranked || !identify) return err('Ranked opens soon.');
+      const p = m.me || {};
+      if (!isId(p.id)) return err('bad player id');
+      if (typeof m.token !== 'string' || !m.token) return err('Ranked needs you signed in.');
+      joining = true;
+      try {
+        let who = null;
+        try { who = await identify(m.token); } catch (e) { log.error('referee: sign-in check failed', e.message); }
+        if (closed) return;
+        if (!who) return err('Ranked needs you signed in.');
+        if ([...rooms.values()].some((r) => r.ranked && [...r.conns.values()].some((c) => c.me.pid === who.pid))) return err('you are already in a ranked game in another tab');
+        const rp = Number(who.rp) || 0, avg = (r) => { const ps = players(r); return ps.reduce((a, x) => a + (x.rp || 0), 0) / (ps.length || 1); };
+        const open = [...rooms.values()].filter((r) => r.ranked && !r.started && r.sim.S.phase === 'lobby' && players(r).length < K.MAX_HUMANS)
+          .sort((a, b) => Math.abs(avg(a) - rp) - Math.abs(avg(b) - rp));
+        let r = open[0];
+        if (!r) {
+          if (rooms.size >= MAX_ROOMS) return err('the server is full right now; try again soon');
+          let code; do code = 'PR' + ((rankedSeq++ % 99) + 1); while (rooms.has(code));
+          r = makeRoom(code);
+        }
+        let held;
+        try { held = await ranked.hold(who.pid, r.rid); } catch (e) { log.error('referee: ticket hold failed', e.message); held = 'error'; }
+        const drop = () => { if (!r.conns.size) rooms.delete(r.code); };
+        if (closed || r.started || !rooms.has(r.code)) { // the room moved on while the ticket was being held: give it back
+          if (held === 'free' || held === 'extra') Promise.resolve(ranked.release(who.pid, r.rid)).catch(() => {});
+          drop(); return closed ? undefined : err('That game just started. Press Auto match again.');
+        }
+        if (held === 'none') { drop(); return err(NO_TICKETS); }
+        if (held !== 'free' && held !== 'extra') { drop(); return err('Something went wrong holding your ticket. Try again.'); }
+        const a = cleanAvatar(who.a);
+        if (!rankedSpecials) for (const s of SB_SLOTS) a[s] = DEFAULT_AVATAR[s];
+        me = { id: p.id, n: cleanName(who.n) || 'Player', j: now(), a, w: false, l: clampLevel(who.l), pid: who.pid, rp };
+        seat(r);
+      } finally { joining = false; }
     }
     return {
       message(text) {
         let m; try { m = JSON.parse(text); } catch { return err('send JSON'); }
         if (!m || typeof m !== 'object') return;
         if (m.t === 'join') return join(m);
+        if (m.t === 'ranked') return findRanked(m);
         if (m.t === 'board') { boardWatchers.add(conn); conn.send(JSON.stringify({ t: 'board', games: board() })); return; }
         if (!room) return err('join a room first');
         if (m.t === 'rep') { if (!me.w) room.sim.setReport(me.id, m.d); return; }
@@ -109,6 +162,8 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
         closed = true;
         boardWatchers.delete(conn);
         if (!room) return;
+        // left a ranked room before its match started: the ticket comes back (after the start it's spent)
+        if (room.ranked && !room.started && me.pid && !me.w) Promise.resolve(ranked?.release(me.pid, room.rid)).catch((e) => log.error('referee: ticket release failed', e.message));
         room.conns.delete(me.id); room.emoteAt.delete(me.id);
         if (!room.conns.size) rooms.delete(room.code); else sendAll(room, peersMsg(room));
         room = null;
@@ -123,16 +178,26 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
       const sim = room.sim, ids = players(room).map((p) => p.id);
       if (room.auto && sim.S.phase === 'lobby' && sim.S.mode !== room.mode) sim.S.mode = room.mode;
       sim.syncRoster(ids);
-      if (room.auto && sim.S.phase === 'lobby' && ids.length) {
+      const enough = room.ranked ? ids.length >= 2 : ids.length > 0; // ranked: at least 2 real players (decided)
+      if (room.auto && sim.S.phase === 'lobby' && enough) {
         const want = autoStartMs(ids.length);
         if (room.cdEnd === null || room.cdEnd - t > want) room.cdEnd = t + want;
-        if (t >= room.cdEnd) { sim.introMatch(sim.S.mode); room.cdEnd = null; }
+        if (t >= room.cdEnd) {
+          sim.introMatch(sim.S.mode); room.cdEnd = null;
+          if (room.ranked) { // tickets spent now; who started is remembered (leaving mid-match still counts as not placing)
+            room.started = true; room.startedWith = new Set(players(room).map((x) => x.pid).filter(Boolean));
+            Promise.resolve(ranked.start(room.rid)).catch((e) => log.error('referee: spending tickets failed for', room.rid, e.message));
+          }
+        }
       } else room.cdEnd = null;
       sim.step(dt);
-      if (room.auto && finish && sim.S.phase === 'end' && sim.S.mid && room.reported !== sim.S.mid) report(room);
+      if (room.auto && (finish || room.ranked) && sim.S.phase === 'end' && sim.S.mid && room.reported !== sim.S.mid) report(room);
+      if (room.ranked && room.lastPhase === 'end' && sim.S.phase === 'lobby') { closeRoom(room, 'Match over. Press Auto match for the next ranked game.'); continue; }
+      room.lastPhase = sim.S.phase;
       if (t - room.lastSnap >= snapMs(ids.length)) {
         room.lastSnap = t;
         const s = sim.snapshot(); s.hid = 'server'; s.hj = 0; s.pub = room.auto ? 1 : 0; s.cd = room.cdEnd ? Math.max(0, (room.cdEnd - t) / 1000) : 0;
+        if (room.ranked) { s.rk = 1; if (sim.S.phase === 'lobby' && !enough) s.wait = 1; } // ranked; waiting for a 2nd real player
         sendAll(room, { t: 'snap', d: s });
       }
     }
@@ -145,7 +210,8 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
     const S = room.sim.S, mid = S.mid; room.reported = mid;
     const order = [...S.ents].sort((a, b) => b.score - a.score || a.id - b.id);
     const places = order.map((e) => (e.bot ? null : room.conns.get(e.peer)?.me.pid || null));
-    if (!places.some(Boolean)) return; // nobody signed in: nothing to record
+    if (room.ranked && ranked) rankedPoints(room, order);
+    if (!places.some(Boolean) || !finish) return; // nobody signed in: nothing to record
     Promise.resolve(finish({ id: mid, auto: true, places })).then((r) => {
       for (const c of r?.counted || []) {
         const pid = places[c.place - 1], conn = [...room.conns.values()].find((x) => x.me.pid === pid);
@@ -154,13 +220,34 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
     }).catch((e) => log.error('referee: recording match', mid, 'failed:', e.message));
   }
 
+  // Ranked points (mockups/ranked.js settleRanked; bots in the pot and able to win): each real player's change, once per match.
+  // Someone who left during the match isn't in it any more but started it: not placing, so quitting a loss doesn't dodge it.
+  function rankedPoints(room, order) {
+    const mid = room.sim.S.mid, seen = new Set();
+    const ps = order.map((e) => { const pid = e.bot ? null : room.conns.get(e.peer)?.me.pid || null; if (pid) seen.add(pid); return { id: pid || 'x' + e.id, bot: !pid, score: e.score }; });
+    const { points } = settleRanked(ps);
+    for (const pid of room.startedWith || []) if (!seen.has(pid)) points[pid] = RULES.notPlacing;
+    for (const [pid, change] of Object.entries(points)) {
+      Promise.resolve(ranked.result(mid, pid, change)).then((total) => {
+        const c = [...room.conns.values()].find((x) => x.me.pid === pid);
+        if (c) c.send(JSON.stringify({ t: 'rank', d: { change, points: total } }));
+      }).catch((e) => log.error('referee: ranked result failed', mid, e.message));
+    }
+  }
+  // The server closes a room (a ranked match is over): everyone is told and taken out; their lines stay open.
+  function closeRoom(room, why) {
+    sendAll(room, { t: 'closed', why });
+    for (const c of room.conns.values()) c.kick();
+    rooms.delete(room.code);
+  }
+
   // The live games list (public rooms only, like today's lobby): honest now, because the server makes it, not a host page.
   function board() {
     // Same fields as the page's publishSummary() (online.js), which the lobby list reads.
     return [...rooms.values()].filter((r) => r.auto).map((r) => {
       const S = r.sim.S, top = [...S.ents].sort((a, b) => b.score - a.score)[0], ps = [...r.conns.values()].map((c) => c.me);
       const nameOf = (e) => (e.bot ? botName(e.id) : r.conns.get(e.peer)?.me.n || 'Player');
-      return { code: r.code, mode: S.mode, ranked: 0, phase: S.phase, round: S.round, time: Math.ceil(S.time),
+      return { code: r.code, mode: S.mode, ranked: r.ranked ? 1 : 0, phase: S.phase, round: S.round, time: Math.ceil(S.time),
         humans: ps.filter((p) => !p.w).length, watchers: ps.filter((p) => p.w).length,
         leader: top && S.phase !== 'lobby' ? nameOf(top) : '', lscore: top ? top.score : 0 };
     });

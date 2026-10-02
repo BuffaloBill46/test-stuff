@@ -8,7 +8,8 @@ import { gearIn } from './gear.js';
 export const snapMs = (humans) => (humans <= 4 ? 125 : humans <= 6 ? 170 : 220);
 // An Auto match room starts by itself: 15 seconds after 2+ real players are in, or 25 seconds with just 1 (bots fill in).
 export const autoStartMs = (humans) => (humans >= 2 ? 15000 : 25000);
-export const isPublic = (c) => /^P[FT][1-5]$/.test(c);
+// Public rooms: Auto match FFA/TEAM PF1–PF5 / PT1–PT5, and ranked PR1–PR99 (made by the referee server's matching)
+export const isPublic = (c) => /^P(?:[FT][1-5]|R[1-9]\d?)$/.test(c);
 
 // Bots look and sound like players so nobody can pick them out and farm them.
 export const BOT_NAMES = ['frostbyte', 'Kaylee_x', 'mikey2012', 'NoScopeNate', 'ghostpepper', 'jollyroger7', 'TannerB', 'lil_snowcone',
