@@ -319,6 +319,32 @@ $25 skim at $1,025, top-off below $100 back to $300; both sizes play the same bo
 top-offs, lowest $112. Drops played on board 1 (8 rows, 50/50 bounces, 10× · 5× · 1× · 0.4× · 0×) carry no board number and
 still re-check on board 1; new results carry `board: 2`.
 
+**Stocking Stuffer (Cody's brief, 2026-10-02; BUILT on a branch, NOT published, 025 NOT applied).** A fireplace mantel with 20
+stockings in two rows of 10: 8 hide a gift, 12 hide coal. Each turn Santa opens stockings one at a time, up to 8; the first coal
+ends it; paid by gifts found before the coal: 0 → 0 · 1 → 0.5× · 2 → 1.75× · 3 → 4× · 4 → 8× · 5 → 16× · 6 → 40× · 7 → 90× ·
+all 8 → 250×. Chances are exact (P(at least k) = 8·…·(8−k+1) / 20·…·(20−k+1)): 60% · 1 in 4.0 · 10.2 · 28.8 · 92.3 · 346 ·
+1,615 · 10,498 · 125,970. **Pays back exactly 60.519%** (Cody's brief said 60.6%; the page shows the computed figure).
+- **Open for Cody: 60.5% is far below the ~80% every other game was set to** ("we lose 16% to fees"). Built as briefed.
+- Runs (Play 1/5/10/any to 100), 10¢ or $1, same fair order. Fair numbers: 38 per turn; the first 19 shuffle the gifts and
+  coal into the stockings (Fisher–Yates, one number per swap), the next 19 shuffle the opening order the same way (two shuffles,
+  so different stockings open each turn; the chances are identical). The house now draws 38 numbers a play for every game
+  (was 17); the numbers are prefix-stable, so old plays re-check the same. "Check this result" re-runs both shuffles and draws a
+  2×10 map of the gifts, the coal and the stockings opened (numbered in order).
+- Money: like Snowball Drop: 10% burned, the rest into the **Drop pool** (the 'spin' row), winners absorb the 3% tax (card
+  description and every win message say so). Payout cap = the play's top prize × its price (250× = $250 on $1).
+- **Open for Cody before real money: the pool rule** (a play starts only if the pool covers its top prize) refuses $1 turns
+  while the Drop pool is between $100 and $250 (below $100 the top-off to $300 comes first). In a simulation (half drops, half
+  turns, 40% at $1) 0.5% of $1 turns were refused; real swings may differ. Options: 10¢ only, its own pool, or a bigger pool /
+  higher top-off. Nothing about the pool was changed.
+- Celebrations follow the money: 3+ gifts celebrate (stamp, sound; 5+ bigger), 2 gifts a light touch (no stamp), 1 gift (0.5×)
+  is said plainly as less than the turn cost. Pay table editable on the admin screen (guard rails: 9 prizes 0–1000×, never less
+  for more gifts, payback 50–98%, the Drop pool top-off must cover the top prize); old settings keep Cody's table.
+- Look: 2D canvas like the Drop board (low-poly shapes, ink outlines): stone chimney breast, pine garland, snowy mantel, red /
+  white / green knit stockings with fur cuffs, a fire with ONE low-alpha warm wash (checked with all 20 stockings open).
+  Prizes like 1.75 × 10¢ = 17.5¢ stay exact (the database's cents column shows 18¢; the SANTA sent is the exact 17.5¢).
+  Files: `mockups/stocking.js`, `stockingboard.js`, `stockingui.js`, `supabase/025_stocking.sql`; tests `tests/stocking.test.mjs`,
+  `tests/db/stocking-db.test.mjs`, `tests/browser/stocking-test.mjs`.
+
 **No credits: buy a RUN of 1, 5 or 10 plays that plays straight away; winnings are sent automatically (Cody, 2026-10-01;
 replaces every credit design below).** "Remove the credit system. Leave the 3 options to buy 1, 5, 10 on each game. Whatever
 they buy auto plays ... This way we don't really hold player funds." Then: "I'm ok with us sending the winnings to the player

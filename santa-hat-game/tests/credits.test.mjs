@@ -40,7 +40,7 @@ let plays = 0, checked = 0;
 for (let session = 0; session < 40; session++) {
   const { ledger, pools } = fresh(); const house = createHouse(ledger, pools);
   for (let k = 0; k < 6; k++) {
-    const kind = Object.keys(KINDS)[Math.floor(Math.random() * 3)], bet = SIZES[kind][Math.floor(Math.random() * SIZES[kind].length)];
+    const kind = Object.keys(KINDS)[Math.floor(Math.random() * Object.keys(KINDS).length)], bet = SIZES[kind][Math.floor(Math.random() * SIZES[kind].length)];
     const n = Math.random() < 0.7 ? RUN_SIZES[Math.floor(Math.random() * 3)] : 1 + Math.floor(Math.random() * MAX_RUN), g = KINDS[kind].game; // the buttons, or any size
     const before = house.steps.length, sent0 = ledger.sent[g];
     const b = await house.buy(kind, bet, n, newSeed(8));
@@ -57,6 +57,7 @@ for (let session = 0; session < 40; session++) {
       assert.ok(close(pools[g].pool, pool0 - s.r.pay - (s.r.skim || 0) + (s.r.topOff || 0)), 'the pool moves by exactly the prize');
       const c = await check(s.proof); assert.ok(c.matches, 'secret matches the fingerprint shown before the play');
       if (kind === 'drop') assert.deepEqual([c.outcome.path, c.outcome.mult], [s.r.path, s.r.mult]);
+      else if (kind === 'stocking') assert.deepEqual([c.outcome.opened, c.outcome.coal, c.outcome.mult], [s.r.opened, s.r.coal, s.r.mult]);
       else if (g === 'spin') assert.deepEqual([c.outcome.slice, c.outcome.bonusSlice, c.outcome.mult], [s.r.slice, s.r.bonusSlice, s.r.mult]);
       else if (s.r.jackpot) assert.ok(c.outcome.jackpot); else assert.deepEqual(c.outcome.stops, s.r.stops);
       checked++; plays++;

@@ -21,8 +21,10 @@ export const KINDS = {
   spin: { game: 'spin', bet: 0.10, name: 'Santa Hat Spin', one: 'spin', many: 'spins' },
   big: { game: 'slots', bet: 1.00, name: 'Big Hat', one: 'pull', many: 'pulls' },
   drop: { game: 'spin', bet: 0.10, name: 'Snowball Drop', one: 'drop', many: 'drops' },
+  // Stocking Stuffer (Cody, 2026-10-02) plays from the Drop pool too; a "turn" = Santa opening stockings until the first coal
+  stocking: { game: 'spin', bet: 0.10, name: 'Stocking Stuffer', one: 'turn', many: 'turns' },
 };
-export const SIZES = { spin: [0.10, 1.00], drop: [0.10, 1.00], big: [1.00] };
+export const SIZES = { spin: [0.10, 1.00], drop: [0.10, 1.00], big: [1.00], stocking: [0.10, 1.00] };
 export const RUN_SIZES = [1, 5, 10]; // the quick buttons
 // Any run from 1 to MAX_RUN plays can be bought (Cody, 2026-10-01: the custom box under the buttons; database 014 says the same).
 export const MAX_RUN = 100;

@@ -10,6 +10,8 @@ import { KINDS, MAX_RUN, isRunSize } from '../mockups/credits.js';
 import { BETS as DROP_SIZES } from '../mockups/plinko.js';
 const near = (a, b) => Math.abs(a - b) < 1e-9;
 import { play as dropPlay, canPlay as canDrop, MAX_MULT as DROP_TOP } from '../mockups/plinko.js';
+// Stocking Stuffer (Cody, 2026-10-02): plays from the Drop pool like Snowball Drop; its pay table comes from the play's settings
+import { play as stockPlay, canPlay as canStock, topMult as stockTop, BETS as STOCK_SIZES } from '../mockups/stocking.js';
 import { DEFAULT_SETTINGS, build } from '../mockups/settings.js';
 import { spin, canSpin, topMult } from '../mockups/spin.js';
 import { pull, canPull, FEE, MAX_FIXED } from '../mockups/slots.js';
@@ -20,9 +22,11 @@ import { verifyPayment } from './verify.js';
 
 // The most ONE play can ever pay (jackpot aside), worked out from the prize table the play ran on, never from what a
 // simulation happened to see (Cody, 2026-10-01: "I don't want a hold on a player that wins"). Big Hat: every line at the top
-// line prize + a hat on every square; Spin: the wheel's top result; Snowball Drop: the edge present. A real win can't pass it.
+// line prize + a hat on every square; Spin: the wheel's top result; Snowball Drop: the edge present; Stocking Stuffer: all 8
+// gifts (250× with Cody's table). A real win can't pass it.
 export function maxPerPlay(cfg, kind, bet) {
   if (kind === 'drop') return DROP_TOP * bet;
+  if (kind === 'stocking') return stockTop(cfg.stocking.pays) * bet;
   if (KINDS[kind]?.game === 'spin') return topMult(cfg.wheel) * bet;
   const m = cfg.machine; return (m.lines.length * MAX_FIXED(m) / m.bet + m.reels * m.rows * (m.hatBonus || 0)) * bet;
 }
@@ -61,8 +65,11 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   const poolState = (r, price) => ({ pool: (+r.santa_raw / DEC) * price, treasury: 0, rules: r.rules, prepaid: true });
   const toRaw = (usd, price) => Math.round((usd / price) * DEC);
   // The sizes each game can be played at under these settings (Spin's come from the admin prices).
-  const sizesFor = (kind, cfg) => (kind === 'spin' ? [cfg.prices.spin10, cfg.prices.spin100] : kind === 'drop' ? DROP_SIZES : [cfg.prices.big]);
-  const canTake = (kind, state, bet, cfg) => (kind === 'drop' ? canDrop(state, bet) : kind === 'spin' ? canSpin(state, bet, cfg.wheel) : canPull(state, { ...cfg.machine, bet }));
+  const sizesFor = (kind, cfg) => (kind === 'spin' ? [cfg.prices.spin10, cfg.prices.spin100] : kind === 'drop' ? DROP_SIZES : kind === 'stocking' ? STOCK_SIZES : [cfg.prices.big]);
+  // Stocking Stuffer: a turn starts only if the Drop pool covers its top prize. NOTE FOR CODY: 250× on $1 = $250, so $1 turns are
+  // refused (before any payment) while that pool is between $100 and $250. Not changed here: 10¢ only, its own pool, or a
+  // bigger pool / top-off are his call before real money.
+  const canTake = (kind, state, bet, cfg) => (kind === 'drop' ? canDrop(state, bet) : kind === 'stocking' ? canStock(state, bet, cfg.stocking.pays) : kind === 'spin' ? canSpin(state, bet, cfg.wheel) : canPull(state, { ...cfg.machine, bet }));
 
   // A price for a run of n plays (1 to 100) of `kind` at size `bet`. Refused up front if the pool can't take a play now,
   // or if this player's last run isn't finished, so a payment is never taken for plays that would be refused.
@@ -183,14 +190,14 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
         state = poolState(p, price);
         const rand = fair.randFrom(await f.numbers(pl.secret, playerSeed, +pl.play_no, NUMS));  // 4. the player's number goes in
         const cfg = await cfgFor(+pl.settings_version), bet = +pl.bet;                         // the play's own settings and price
-        r = pl.kind === 'drop' ? dropPlay(state, bet, rand) : K.game === 'spin' ? spin(state, bet, rand, undefined, cfg.wheel) : pull(state, { ...cfg.machine, bet }, rand);
+        r = pl.kind === 'drop' ? dropPlay(state, bet, rand) : pl.kind === 'stocking' ? stockPlay(state, bet, rand, undefined, cfg.stocking.pays) : K.game === 'spin' ? spin(state, bet, rand, undefined, cfg.wheel) : pull(state, { ...cfg.machine, bet }, rand);
       } catch (e) { await refundPlay(t, pl.id, +pl.bet, price); return withRun({ failed: true, why: e.message, refunded: +pl.bet }); }
       if (r.paused) { await refundPlay(t, pl.id, +pl.bet, price); return withRun({ refused: true, stopped: !!r.stopped, refunded: +pl.bet }); }
       // Every movement in exact SANTA at the run's locked price; the pool changes by exactly these amounts.
       const skimRaw = toRaw(r.skim || 0, price), topRaw = toRaw(r.topOff || 0, price);
       const payRaw = Math.min(toRaw(r.pay, price), +p.santa_raw + topRaw - skimRaw); // never more than the pool holds
       const poolDelta = topRaw - skimRaw - payRaw, treasuryDelta = Math.round(skimRaw * (1 - FEE)) - Math.round(topRaw / (1 - FEE));
-      const result = pl.kind === 'drop' ? { path: r.path, bin: r.bin, mult: r.mult, board: r.board } : K.game === 'spin' ? { slice: r.slice, ...(r.bonusSlice !== undefined ? { bonusSlice: r.bonusSlice } : {}), mult: r.mult } : { stops: r.stops, jackpot: r.jackpot, wins: r.wins.length, hats: r.hats };
+      const result = pl.kind === 'drop' ? { path: r.path, bin: r.bin, mult: r.mult, board: r.board } : pl.kind === 'stocking' ? { opened: r.opened, found: r.found, coal: r.coal, mult: r.mult } : K.game === 'spin' ? { slice: r.slice, ...(r.bonusSlice !== undefined ? { bonusSlice: r.bonusSlice } : {}), mult: r.mult } : { stops: r.stops, jackpot: r.jackpot, wins: r.wins.length, hats: r.hats };
       await t.query('select public.settle_play($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',  // skims/top-offs queued as real transfers
         [pl.id, playerSeed, JSON.stringify(result), Math.round(r.pay * 100) / 100, payRaw, price, poolDelta, treasuryDelta, wallet, 0, skimRaw, topRaw]);
       return withRun({ r, payRaw, poolDelta, price, poolUsd: state.pool, proof: { kind: pl.kind, bet: +pl.bet, commit: pl.commit, secret: pl.secret, playerSeed, playNo: +pl.play_no, settingsVersion: +pl.settings_version, ...(pl.kind === 'drop' ? { board: r.board } : {}) } });  // revealed
@@ -204,9 +211,11 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     if (winnersCache.list && Date.now() - winnersCache.at < 10_000) return winnersCache.list; // public: cached 10 s
     const rows = await db.query(`select pr.name, pl.kind, pl.pay, pl.bet, pl.settled_at, pl.result from public.plays pl join public.profiles pr on pr.id = pl.profile_id
       where pl.state = 'settled' and pl.pay > pl.bet order by pl.settled_at desc, pl.id desc limit $1`, [limit]);
-    const list = rows.map((w) => { const bet = +w.bet || KINDS[w.kind].bet, pay = +w.pay;
-      return { game: w.kind === 'big' ? 'slots' : w.kind === 'drop' ? (bet >= 1 ? 'drop100' : 'drop10') : w.kind === 'spin' ? (bet >= 1 ? 'spin100' : 'spin10') : w.kind, name: w.name, amount: pay, gainPct: ((pay - bet) / bet) * 100, at: new Date(w.settled_at).getTime(),
-        note: w.result?.jackpot ? 'pool jackpot' : w.result?.mult ? `${w.result.mult}×` : '', big: pay >= 10 * bet }; });
+    // the exact prize where the result has a multiplier (the pay column is whole cents: Stocking Stuffer's 1.75 × 10¢ = 17.5¢
+    // is stored as 18¢, but the SANTA sent is the exact 17.5¢)
+    const list = rows.map((w) => { const bet = +w.bet || KINDS[w.kind].bet, pay = typeof w.result?.mult === 'number' ? w.result.mult * bet : +w.pay;
+      return { game: w.kind === 'big' ? 'slots' : w.kind === 'drop' ? (bet >= 1 ? 'drop100' : 'drop10') : w.kind === 'stocking' ? (bet >= 1 ? 'stock100' : 'stock10') : w.kind === 'spin' ? (bet >= 1 ? 'spin100' : 'spin10') : w.kind, name: w.name, amount: pay, gainPct: ((pay - bet) / bet) * 100, at: new Date(w.settled_at).getTime(),
+        note: w.result?.jackpot ? 'pool jackpot' : w.kind === 'stocking' && w.result?.found ? `${w.result.found} gifts · ${w.result.mult}×` : w.result?.mult ? `${w.result.mult}×` : '', big: pay >= 10 * bet }; });
     winnersCache = { at: Date.now(), list }; return list;
   }
   // Public pool status (for the admin screen, and for anyone who wants to check): balances, settings, pending transfers, log.
