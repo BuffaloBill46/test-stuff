@@ -88,7 +88,9 @@ export function check(s, rules = { spin: SPIN_RULES, slots: POOL_RULES }) {
 export function checkItem(it) {
   const p = [], one = (it.level !== undefined) !== (it.price !== undefined);
   if (!/^[a-z0-9_]{3,40}$/.test(it.id || '')) p.push(`item id "${it.id}" must be 3–40 lowercase letters, digits or _`);
-  if (!SLOTS.includes(it.slot)) p.push(`item ${it.id}: slot must be one of ${SLOTS.join(', ')}`);
+  // Cody, 2026-10-01: the editor prices special snowballs and special gear too, and keeps the looks (sold on the Avatar screen
+  // or given away in season passes). A NEW special snowball or gear is refused below: what it does in a match needs code.
+  if (![...SLOTS, 'sball', 'gear'].includes(it.slot)) p.push(`item ${it.id}: slot must be one of ${[...SLOTS, 'sball', 'gear'].join(', ')}`);
   if (!it.name || String(it.name).length > 24) p.push(`item ${it.id}: name 1–24 characters`);
   if (!one) p.push(`item ${it.id}: unlocks at a level OR has a price, not both`);
   if (it.level !== undefined && !(Number.isInteger(it.level) && it.level >= 1 && it.level <= 100)) p.push(`item ${it.id}: level 1–100`);
@@ -100,6 +102,7 @@ export function checkItem(it) {
     else if (it.slot === 'hat' || it.slot === 'pack') { // a new colour of a hat or backpack the game can already draw
       const k = it.slot; if (!ITEMS.some((x) => x.slot === k && x[k] === it[k] && it[k] !== 'none')) p.push(`new ${k === 'hat' ? 'hat' : 'backpack'} ${it.id}: must reuse an existing shape (a brand-new shape needs code)`);
       if (!Number.isInteger(it.color) || it.color < 0 || it.color > 0xffffff) p.push(`new item ${it.id}: needs a colour`); }
+    else if (it.slot === 'sball' || it.slot === 'gear') p.push(`new ${it.slot === 'sball' ? 'special snowball' : 'special gear'} ${it.id}: what it does in a match needs code (you can change the price of the existing ones)`);
     else p.push(`new ${it.slot} items need code (skin tones are fixed)`);
   }
   return p;

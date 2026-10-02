@@ -111,9 +111,12 @@ async function loadSettings() {
     <label>Price ($, or empty)<input type="number" step="any" data-new="price"></label><label>Level (or empty)<input type="number" step="1" data-new="level"></label>`;
   preview();
 }
+// Special snowballs and special gear first (what the Store sells), then the looks (Avatar screen / season passes); empty slots hidden.
+const SECTION = (it) => (it.slot === 'sball' ? 0 : it.slot === 'gear' ? 1 : 2);
+const SLOT_LABEL = { sball: 'special snowball', gear: 'special gear' };
 function renderItems() {
   const list = itemsWith({ store: { items: [...(gs.store?.items || []), ...added] } });
-  $('#gsItems').innerHTML = `<table class="items"><tr><th>Item</th><th>Slot</th><th>Price $</th><th>Level</th></tr>${list.map((it) => `<tr data-item="${esc(it.id)}"><td>${it.color !== undefined ? `<span class="swatch" style="background:#${it.color.toString(16).padStart(6, '0')}"></span> ` : ''}${esc(it.name)}</td><td>${esc(it.slot)}</td>
+  $('#gsItems').innerHTML = `<table class="items"><tr><th>Item</th><th>Slot</th><th>Price $</th><th>Level</th></tr>${[...list].filter((it) => it.id !== 'sb_none' && it.id !== 'gear_none').sort((a, b) => SECTION(a) - SECTION(b)).map((it) => `<tr data-item="${esc(it.id)}"><td>${it.color !== undefined ? `<span class="swatch" style="background:#${it.color.toString(16).padStart(6, '0')}"></span> ` : ''}${esc(it.name)}</td><td>${esc(SLOT_LABEL[it.slot] || it.slot)}</td>
     <td><input type="number" step="any" data-f="price" value="${it.price ?? ''}"></td><td><input type="number" step="1" data-f="level" value="${it.level ?? ''}"></td></tr>`).join('')}</table>`;
 }
 // Read the form into a settings record.
