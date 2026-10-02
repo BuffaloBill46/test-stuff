@@ -326,3 +326,9 @@ The first special-snowball tracers were all additive glow (light ADDED to the pi
 trail turned pink and the split ball's red/green ribbon nearly vanished; overlapping Giant Ball halos whited out the middle of
 a phone screen. Only the maxed-out screenshot showed it. Tracers now pick per point: glow (added light) for halos, SOLID colour
 (painted over) for flames, ribbons and chips, and a crisp star for twinkles (kit.js Sparks). Colour that must read on snow is solid.
+
+## Before asking Cody to unblock something, look for the route that needs nobody (2026-10-02)
+For two days the game server's deploy waited on Cody typing `npx supabase login`, because the first plan said so. The Supabase
+connector could deploy all along: a one-line Edge Function importing the server from the public repo at a pinned commit (Deno
+fetches and bundles it; `deno check` on the one-liner proves the whole graph first). Cody: "why didn't you do that in the first
+place." When a step is blocked on a person, list the other routes first (connectors, a different host, a pinned remote import).
