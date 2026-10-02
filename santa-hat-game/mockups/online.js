@@ -6,7 +6,7 @@ import { openRoom, accounts, findWallet, gamesBoard } from './net.js';
 import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js';
 import { initTabs, avatarCharacter, renderProgress } from './tabs.js';
 import { levelInfo, clampLevel } from './levels.js';
-import { SERVER, call } from './gameserver.js';
+import { SERVER, call, token as signInToken } from './gameserver.js';
 import { SPECIALS, cantThrow } from './specials.js';
 import { gearIn, effectsOf, heldWith, gearOfMask, statOf } from './gear.js';
 import { initLottery } from './lotteryui.js';
@@ -145,7 +145,7 @@ async function enterRoom(code, quick, opts = {}) {
     const c = quick ? 'P' + (mode === 'team' ? 'T' : 'F') + (attempt + 1) : code;
     me.j = Date.now();
     let r;
-    try { r = await openRoom(c.toLowerCase(), me, { local: LOCAL, referee: REFEREE }); }
+    try { r = await openRoom(c.toLowerCase(), me, { local: LOCAL, referee: REFEREE, token: REFEREE ? await signInToken() : null }); }
     catch (e) {
       if (quick && /full/.test(e.why || '')) continue; // the referee server said this public room is full: try the next one
       status(e.why || "Couldn't reach the game server. Check your connection, or try Practice."); return;
@@ -163,6 +163,8 @@ async function enterRoom(code, quick, opts = {}) {
   room.on('rep', (id, r) => { if (isHost && sim) sim.setReport(id, r); });
   room.on('emote', (e) => { if (e && typeof e.p === 'string') showEmote(e.p, Number(e.e)); });
   room.on('peers', (ps) => ps.forEach((p) => names.set(p.id, cleanName(p.n) || 'Player')));
+  // Referee server: it recorded my Auto match finish itself (the page reports nothing there); show my new level.
+  room.on('counted', (d) => { if (profile && d && Number.isInteger(d.level)) { profile.level = d.level; profile.xp = d.xp; me.l = d.level; renderProgress(profile); } });
   room.on('gone', () => { leaveRoom(); status('Lost the connection to the game server. Try again.'); }); // referee server only
   room.peers().forEach((p) => names.set(p.id, cleanName(p.n) || 'Player'));
   joinedAt = performance.now(); lastSnapAt = 0; snaps = []; curHost = null; lastRaw = null; isHost = false; sim = null; ctl.ep = -1;

@@ -173,6 +173,9 @@ between two devices has never been tested from here. Cody and friends testing on
    Claude then writes it into the Droplet's private settings file, copies the four devnet wallet key files there (locked so only
    the worker can read them), and the worker wakes up within seconds. Until then runs/lottery/shop purchases work, but winnings
    are queued, not sent. (At mainnet the real wallets' keys go on the Droplet the same way, with your OK.)
+   **Easier option (new):** reply "yes, make the worker its own login" and Claude makes the payout worker a limited database
+   login of its own, like the match referee got tonight (it can only touch the payout tables), so you never paste anything.
+   Your OK is still needed because it switches on sending devnet winnings automatically.
 4. **When the public site switches from demo to the real (devnet) server:** your call after #2. One line in the page.
 5. **Mainnet (real money, needs your OK each time):** paste your Helius RPC address into Supabase secrets as SOLANA_RPC_URL (it holds
    your Helius key), real pool/treasury/lottery wallets, reset the devnet books.
@@ -194,7 +197,9 @@ between two devices has never been tested from here. Cody and friends testing on
 - **Match referee server LIVE on the Droplet (2026-10-02, phase 1, opt-in):** service `santa-referee` (worker/referee.mjs on
   127.0.0.1:8081) behind Caddy at `wss://147-182-219-161.sslip.io` (free automatic certificate; health:
   https://147-182-219-161.sslip.io/health). Try it: add `&ref=wss://147-182-219-161.sslip.io` to the game's address (needs the
-  page published with refcore.js). Two real browsers played a match through it from Cody's PC. Phase 2 list: TODO.
+  page published with refcore.js). Two real browsers played a match through it from Cody's PC. Phase 2 (server side) live
+  the same day: sign-ins checked, saved level/look used, finishes recorded, through its own limited database login
+  `santa_referee` (017; password only in /etc/santa/referee.env on the Droplet, set as a SCRAM hash, never in the repo). TODO.
 
 *(Update this section at the end of every session.)*
 

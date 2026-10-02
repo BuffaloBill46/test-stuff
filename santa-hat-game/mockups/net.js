@@ -106,13 +106,14 @@ async function localRoom(code, me) {
 // Our own referee server (server/referee.js on the Droplet): it runs the match; this page only sends moves and draws its
 // snapshots, so it never becomes the referee (kind 'server': online.js skips the hand-off election). Resolves once the
 // server has let us in; rejects with the server's reason (room full, too many watchers…). 'gone' fires if the line drops.
-function refereeRoom(url, code, me) {
+// token: the player's Supabase sign-in, so the server uses their SAVED level and look (and records their finishes).
+function refereeRoom(url, code, me, token) {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(url), L = listeners();
     let peers = [], own = null, joined = false, left = false;
     const send = (m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
     const t = setTimeout(() => { if (!joined) { left = true; ws.close(); reject(new Error('timed out')); } }, 12000);
-    ws.onopen = () => send({ t: 'join', code, me: { id: me.id, n: me.n, j: me.j, a: me.a, w: !!me.w, l: me.l || 1, pid: me.pid || null } });
+    ws.onopen = () => send({ t: 'join', code, ...(token ? { token } : {}), me: { id: me.id, n: me.n, j: me.j, a: me.a, w: !!me.w, l: me.l || 1, pid: me.pid || null } });
     ws.onmessage = ({ data }) => {
       let m; try { m = JSON.parse(data); } catch { return; }
       if (m.t === 'peers') {
@@ -121,6 +122,7 @@ function refereeRoom(url, code, me) {
         if (!joined) { joined = true; clearTimeout(t); resolve(api); }
       } else if (m.t === 'snap') L.fire('snap', m.d);
       else if (m.t === 'emote') L.fire('emote', m.d);
+      else if (m.t === 'counted') L.fire('counted', m.d); // my Auto match finish, recorded by the server
       else if (m.t === 'err' && !joined) { left = true; clearTimeout(t); ws.close(); const e = new Error(m.why); e.why = m.why; reject(e); }
     };
     ws.onclose = () => { if (!joined) { clearTimeout(t); if (!left) reject(new Error('closed')); } else if (!left) L.fire('gone'); };
@@ -190,8 +192,8 @@ let board = null;
 export function gamesBoard({ local = false, referee = null } = {}) { return board || (board = referee ? refereeBoard(referee) : local ? localBoard() : supabaseBoard()); }
 
 // referee: the referee server's address (wss://…); when set, every room runs there instead of in a player's page.
-export function openRoom(code, me, { local = false, referee = null } = {}) {
-  return referee ? refereeRoom(referee, code, me) : local ? localRoom(code, me) : supabaseRoom(code, me);
+export function openRoom(code, me, { local = false, referee = null, token = null } = {}) {
+  return referee ? refereeRoom(referee, code, me, token) : local ? localRoom(code, me) : supabaseRoom(code, me);
 }
 
 // ---------- accounts: Solana wallet sign-in (Supabase Web3 auth) and profiles
