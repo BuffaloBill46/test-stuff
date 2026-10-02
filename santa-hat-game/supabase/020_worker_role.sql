@@ -1,3 +1,4 @@
+-- APPLIED live 2026-10-02 (through the Supabase connector); the worker runs on the Droplet with this login.
 -- 020: the payout worker's own database login (worker/worker.mjs on the Droplet; server/payouts.js), 2026-10-02.
 -- Cody: "keep going down the list until we can launch" (HANDOFF list #3, the no-paste option: no database password to share).
 -- Least privilege. It can: read the three money queues and update ONLY their sending state (status, tx, blockhash, attempts),
