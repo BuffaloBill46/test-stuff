@@ -9,7 +9,7 @@ import { createShop } from '../../server/shop.js';
 import { splitPayment, MINT } from '../../mockups/market.js';
 import { SHOP_BURN_BPS, TICKET_PACKS } from '../../mockups/shoprules.js';
 
-const db = await makeDb(['001_profiles.sql', '002_items_seed.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '006_ranked_tickets.sql', '008_hats_backpacks.sql', '010_levels.sql', '012_special_snowballs.sql']);
+const db = await makeDb(['001_profiles.sql', '002_items_seed.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '006_ranked_tickets.sql', '008_hats_backpacks.sql', '009_lock_my_plays.sql', '010_levels.sql', '011_lottery.sql', '012_special_snowballs.sql']);
 for (const f of ['015_special_gear.sql', '016_shop.sql']) await db.pg.exec(readFileSync(new URL(`../../supabase/${f}`, import.meta.url), 'utf8'));
 const PRICE = 0.00085, FEE = { bps: 300, max: 1e15 }, TREASURY = 'TReASURYwa11et'.padEnd(44, '1').replace(/[0OIl]/g, '9');
 let wn = 0; const W = () => { const c = 'ABCDEFGHJK'[wn++]; return (c + 'Swa11et').padEnd(43, '1') + c; };
@@ -88,4 +88,25 @@ for (const role of ['anon', 'authenticated']) {
   await assert.rejects(db.pg.query(`select public.shop_buy('00000000-0000-0000-0000-000000000000'::uuid, 'x', 1, 'w')`), /permission denied/, `${role} can't grant`);
   await db.pg.exec('reset role');
 }
+// 9. Cody refunds an owed purchase by hand from the admin screen: checked on the chain (from the treasury, at least the amount, to
+// that player), recorded once, and the same transaction can't count for anything else.
+{ const { createAdmin, adminMessage, b58encode } = await import('../../server/admin.js');
+  const kp = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign', 'verify']), cody = b58encode(new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey)));
+  const nonce = () => [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const signed = async (fields) => { const message = adminMessage({ at: new Date().toISOString(), nonce: nonce(), ...fields });
+    const sig = new Uint8Array(await crypto.subtle.sign('Ed25519', kp.privateKey, new TextEncoder().encode(message))); return { wallet: cody, message, signature: [...sig].map((b) => b.toString(16).padStart(2, '0')).join('') }; };
+  const handTx = (to, sent, from = TREASURY) => { const sig = ('HandRefund' + (++sigNo)).padEnd(88, '5').replace(/[0OIl]/g, '9'), b = (i, o, x) => ({ accountIndex: i, mint: MINT, owner: o, uiTokenAmount: { amount: String(x), decimals: 6 } });
+    txs.set(sig, { blockTime: Math.floor(Date.now() / 1000), meta: { err: null, preTokenBalances: [b(1, from, 1e13), b(2, to, 1e9)], postTokenBalances: [b(1, from, 1e13 - sent), b(2, to, 1e9 + Math.floor(sent * 0.97))] }, transaction: { message: { accountKeys: [] } } }); return sig; };
+  const admin = createAdmin({ db, adminWallets: [cody], chain, poolWallets: { treasury: TREASURY }, mint: MINT });
+  const owed = await admin.run(await signed({ action: 'shop-owed', game: 'shop' }));
+  assert.ok(owed.ok && owed.owed.length === 1, 'one refund owed: ' + JSON.stringify(owed)); const o = owed.owed[0];
+  const tryPay = async (tx) => admin.run(await signed({ action: 'shop-refund-paid', game: 'shop', settings: { refund: o.id, tx } }));
+  assert.match((await tryPay(handTx(o.wallet, o.raw - 1))).error, /owed/, 'less than owed: refused');
+  assert.match((await tryPay(handTx(o.wallet, o.raw, A.w))).error, /treasury sent/, 'not from the treasury: refused');
+  assert.match((await tryPay(handTx(A.w, o.raw))).error, /arrived in the player/, 'to someone else: refused');
+  const r = await tryPay(handTx(o.wallet, o.raw)); assert.ok(r.ok, JSON.stringify(r));
+  assert.equal((await db.query('select status from public.shop_refunds where signature = $1', [o.id]))[0].status, 'paid');
+  assert.match((await tryPay(handTx(o.wallet, o.raw))).error, /already paid/, 'paid twice: refused');
+  assert.equal((await admin.run(await signed({ action: 'shop-owed', game: 'shop' }))).owed.length, 0, 'nothing owed now');
+  assert.ok((await admin.run(await signed({ action: 'shop-owed', game: 'spin' }))).error, 'wrong game in the signed message: refused'); }
 console.log('OK: shop: items (special snowballs, gear, looks), a level and ranked tickets, each a checked payment (50% burned / 50% treasury) granted once; reused payments/quotes, short, wrong wallet refused; a paid-but-ungrantable purchase owed back in full; worn-out gear re-bought for a fresh 7 days; nothing unsellable quoted; the website kept out');

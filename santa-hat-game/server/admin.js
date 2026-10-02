@@ -9,6 +9,8 @@
 //   lottery-mode (game 'lottery': winners paid by the worker 'auto', or by Cody 'manual'),
 //   lottery-paid (game 'lottery': Cody paid a winner by hand; checked on the chain: left the lottery wallet, arrived at the winner),
 //   lottery-owed (game 'lottery', READ only, private: who to pay by hand, full wallets and amounts).
+//   shop-owed (game 'shop', READ only, private: purchases that were paid but couldn't be granted, owed back in full; 016),
+//   shop-refund-paid (game 'shop': Cody refunded one by hand from the treasury; checked on the chain like lottery-paid).
 // Changes take the pool's row lock, so they wait for any play being settled: never mid-pull. Every change is logged publicly.
 // NOT here (needs the pool key; FOR_MAIN_CLAUDE.md): the emergency withdrawal transfer itself.
 import { POOL_RULES } from '../mockups/slots.js';
@@ -17,7 +19,7 @@ import { check as checkSettings } from '../mockups/settings.js';
 import { MINT } from '../mockups/market.js';
 import { botSignals, BOT_RULES } from './bots.js';
 
-export const ACTIONS = ['pause', 'resume', 'set-rules', 'set-settings', 'record-deposit', 'release-payout', 'bot-signals', 'lottery-mode', 'lottery-paid', 'lottery-owed']; // set-settings: prices, odds, prizes, store (game 'all')
+export const ACTIONS = ['pause', 'resume', 'set-rules', 'set-settings', 'record-deposit', 'release-payout', 'bot-signals', 'lottery-mode', 'lottery-paid', 'lottery-owed', 'shop-owed', 'shop-refund-paid']; // set-settings: prices, odds, prizes, store (game 'all')
 export const FRESH_SECONDS = 300;
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 export function b58decode(s) {
@@ -78,7 +80,7 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
     if (!adminWallets.includes(wallet)) return { error: 'not an admin wallet' };
     if (!(await signatureOk(wallet, message, signature || ''))) return { error: 'signature doesn\'t match the wallet' };
     if (!(Math.abs(now() - Date.parse(m.at)) <= FRESH_SECONDS * 1000)) return { error: 'message too old (sign a fresh one)' };
-    const gameOk = ['set-settings', 'bot-signals'].includes(m.action) ? m.game === 'all' : m.action.startsWith('lottery-') ? m.game === 'lottery' : ['spin', 'slots'].includes(m.game);
+    const gameOk = ['set-settings', 'bot-signals'].includes(m.action) ? m.game === 'all' : m.action.startsWith('lottery-') ? m.game === 'lottery' : m.action.startsWith('shop-') ? m.game === 'shop' : ['spin', 'slots'].includes(m.game);
     if (!ACTIONS.includes(m.action) || !gameOk) return { error: 'unknown action or game' };
     if (!/^[0-9a-f]{16,64}$/.test(m.nonce)) return { error: 'bad one-time number' };
     if (m.action === 'set-rules') { const bad = checkRules(m.game, m.settings); if (bad.length) return { error: bad.join('; ') }; }
@@ -89,6 +91,8 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
     if (m.action === 'lottery-mode') return lotteryMode(m, wallet, message, signature);
     if (m.action === 'lottery-paid') return lotteryPaid(m, wallet, message, signature);
     if (m.action === 'lottery-owed') return lotteryOwed();
+    if (m.action === 'shop-owed') return shopOwed();
+    if (m.action === 'shop-refund-paid') return shopRefundPaid(m, wallet, message, signature);
     return db.tx(async (t) => {
       if ((await t.query('select 1 from public.pool_log where nonce = $1', [m.nonce])).length) return { error: 'this signed message was already used' };
       const [p] = await t.query('select * from public.pools where game = $1 for update', [m.game]); // waits for any play being settled
@@ -192,15 +196,13 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
     const [po] = await db.query('select * from public.lottery_payouts where id = $1', [id]);
     if (!po) return { error: 'no such lottery payout' };
     if (po.status !== 'manual') return { error: 'that payout isn\x27t waiting to be sent by hand (it\x27s ' + po.status + ')' };
-    const usedBy = (sg) => db.query('select 1 from public.lottery_payouts where tx = $1 union all select 1 from public.payouts where tx = $1 union all select 1 from public.pool_transfers where tx = $1', [sg]);
-    if ((await usedBy(sig)).length) return { error: 'that transaction was already recorded for a payout' }; // (checked again below, inside the save)
+    if (await txUsed((q, p) => db.query(q, p), sig)) return { error: 'that transaction was already recorded for a payout' }; // (checked again below, inside the save)
     const tx = await chain.getTransaction(sig), left = -depositOf(tx, mint, lw), arrived = depositOf(tx, mint, po.to_wallet);
     if (!(left >= +po.amount_raw)) return { error: `the lottery wallet sent ${Math.max(0, left)}; this winner is owed ${po.amount_raw} (or the transaction isn't finalized yet: wait a minute)` };
     if (!(arrived > 0)) return { error: 'no SANTA arrived in the winner\x27s wallet in that transaction' };
     return db.tx(async (t) => {
       if ((await t.query('select 1 from public.pool_log where nonce = $1', [m.nonce])).length) return { error: 'this signed message was already used' };
-      const used = await t.query('select 1 from public.lottery_payouts where tx = $1 union all select 1 from public.payouts where tx = $1 union all select 1 from public.pool_transfers where tx = $1', [sig]);
-      if (used.length) return { error: 'that transaction was already recorded for a payout' };
+      if (await txUsed((q, p) => t.query(q, p), sig)) return { error: 'that transaction was already recorded for a payout' };
       const r = await t.query(`update public.lottery_payouts set status = 'sent', tx = $2 where id = $1 and status = 'manual' returning id`, [id, sig]);
       if (!r.length) return { error: 'that payout was just recorded' };
       await t.query(`insert into public.pool_log (game, what, by_wallet, nonce, details) values ('lottery', 'paid by hand', $1, $2, $3)`, [wallet, m.nonce, JSON.stringify({ payout: +id, to: po.to_wallet, raw: +po.amount_raw, arrived, tx: sig, message, signature })]);
@@ -209,6 +211,39 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
   }
   // READ only, private to the admin (like bot-signals): the lottery winners and refunds waiting for Cody to send by hand, with the
   // FULL wallet (he needs it to send; the public lists only show it shortened), the draw, the place and the amount. Nothing logged.
+  // Is this transaction already recorded for ANY payout or refund? (One transaction pays one thing, ever.) The shop's refunds
+  // table exists from 016 on; older databases don't have it.
+  async function txUsed(q, sig) {
+    const shop = (await q('select to_regclass(\'public.shop_refunds\') is not null as x'))[0].x;
+    return (await q(`select 1 from public.lottery_payouts where tx = $1 union all select 1 from public.payouts where tx = $1 union all select 1 from public.pool_transfers where tx = $1${shop ? ' union all select 1 from public.shop_refunds where refund_tx = $1' : ''}`, [sig])).length > 0;
+  }
+  async function shopOwed() {
+    const rows = await db.query(`select r.signature, r.to_wallet, r.amount_raw, r.why, r.at, pr.name from public.shop_refunds r join public.profiles pr on pr.id = r.profile_id where r.status = 'owed' order by r.at`);
+    return { ok: true, owed: rows.map((r) => ({ id: r.signature, wallet: r.to_wallet, raw: +r.amount_raw, why: r.why, name: r.name, at: new Date(r.at).getTime() })) };
+  }
+  // Cody refunded a shop purchase by hand: the transaction must have taken at least the amount out of the TREASURY and put SANTA in
+  // that player's wallet, and never have been recorded for anything else.
+  async function shopRefundPaid(m, wallet, message, signature) {
+    const sig = String(m.settings?.tx || '').trim(), id = String(m.settings?.refund || ''), tw = poolWallets?.treasury;
+    if (!/^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(id)) return { error: 'which refund? (its payment signature)' };
+    if (!/^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(sig)) return { error: 'paste the transaction signature (the long code from your wallet or Solscan)' };
+    if (!tw || !chain) return { error: 'the server doesn\x27t know the treasury wallet yet' };
+    const [r] = await db.query('select * from public.shop_refunds where signature = $1', [id]);
+    if (!r) return { error: 'no such refund' };
+    if (r.status !== 'owed') return { error: 'that refund was already paid' };
+    if (await txUsed((q, p) => db.query(q, p), sig)) return { error: 'that transaction was already recorded for a payout' };
+    const tx = await chain.getTransaction(sig), left = -depositOf(tx, mint, tw), arrived = depositOf(tx, mint, r.to_wallet);
+    if (!(left >= +r.amount_raw)) return { error: `the treasury sent ${Math.max(0, left)}; this player is owed ${r.amount_raw} (or the transaction isn't finalized yet: wait a minute)` };
+    if (!(arrived > 0)) return { error: 'no SANTA arrived in the player\x27s wallet in that transaction' };
+    return db.tx(async (t) => {
+      if ((await t.query('select 1 from public.pool_log where nonce = $1', [m.nonce])).length) return { error: 'this signed message was already used' };
+      if (await txUsed((q, p) => t.query(q, p), sig)) return { error: 'that transaction was already recorded for a payout' };
+      const u = await t.query(`update public.shop_refunds set status = 'paid', refund_tx = $2 where signature = $1 and status = 'owed' returning signature`, [id, sig]);
+      if (!u.length) return { error: 'that refund was just recorded' };
+      await t.query(`insert into public.pool_log (game, what, by_wallet, nonce, details) values ('shop', 'refunded by hand', $1, $2, $3)`, [wallet, m.nonce, JSON.stringify({ refund: id, to: r.to_wallet, raw: +r.amount_raw, arrived, tx: sig, message, signature })]);
+      return { ok: true, refund: id, sent: left, arrived };
+    });
+  }
   async function lotteryOwed() {
     const [s] = await db.query('select payout_mode from public.lottery_settings');
     const rows = await db.query(`select p.id, p.place, p.to_wallet, p.amount_raw, p.created_at, d.kind, d.draws_at, pr.name

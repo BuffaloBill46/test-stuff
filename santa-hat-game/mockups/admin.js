@@ -49,6 +49,8 @@ async function act(action, game, settings = {}) {
   let signature; try { signature = (await wallet.signMessage(new TextEncoder().encode(message), 'utf8')).signature; } catch { return msg('Signing was cancelled.', 'bad'); }
   const r = await post({ wallet: address, message, signature: hex(new Uint8Array(signature)) }, true);
   if (r.error) return msg('Refused: ' + r.error, 'bad');
+  if (action === 'shop-owed') { shopList(r); return msg(r.owed.length ? `${r.owed.length} shop refund(s) to send.` : 'No shop refunds owed.', 'ok'); }
+  if (action === 'shop-refund-paid') { msg(`Recorded: refund paid (${(r.arrived / 1e6).toLocaleString()} SANTA arrived). It's in the public log.`, 'ok'); return act('shop-owed', 'shop'); }
   if (action === 'lottery-owed') { owedList(r); return msg(r.owed.length ? `${r.owed.length} lottery payment(s) to send.` : 'No lottery winners waiting.', 'ok'); }
   if (action === 'lottery-paid' || action === 'lottery-mode') { msg(action === 'lottery-paid' ? `Recorded: payout #${r.payout} paid (${(r.arrived / 1e6).toLocaleString()} SANTA arrived). It's in the public log.` : `Lottery payouts are now ${r.mode}. It's in the public log.`, 'ok'); return act('lottery-owed', 'lottery'); }
   if (action === 'bot-signals') { bots(r); return msg(`Checked ${r.checkedRuns} runs from the last 24 hours: ${r.flagged.length ? r.flagged.length + ' player(s) to look at.' : 'nothing looks scripted.'}`, 'ok'); }
@@ -69,6 +71,15 @@ function bots(r) {
 }
 $('#botCheck').addEventListener('click', () => act('bot-signals', 'all'));
 // The lottery's manual payouts: who, their FULL wallet (to send to), what for, and how much to send; paste the transaction to record it.
+// Shop refunds owed (016): who, how much, why; paste the refund transaction to record it.
+function shopList(r) {
+  $('#shopBox').classList.toggle('alert', r.owed.length > 0);
+  $('#shopOwed').innerHTML = r.owed.length ? `<table><tr><th>Player</th><th>Send to</th><th>Why</th><th>Send</th><th>Transaction</th></tr>${r.owed.map((o, i) => `<tr><td>${esc(o.name || 'player')}</td><td><code>${esc(o.wallet)}</code></td><td>${esc(o.why)}</td><td><b>${(o.raw / 1e6).toLocaleString(undefined, { maximumFractionDigits: 6 })} SANTA</b></td><td><input type="text" placeholder="paste the signature" data-shoptx="${i}"><button type="button" data-shoppaid="${i}" data-refund="${esc(o.id)}">Record</button></td></tr>`).join('')}</table>` : 'Nobody owed.';
+}
+$('#shopLoad').addEventListener('click', () => act('shop-owed', 'shop'));
+$('#shopOwed').addEventListener('click', (e) => { const b = e.target.closest('[data-shoppaid]'); if (!b) return;
+  const tx = document.querySelector(`[data-shoptx="${b.dataset.shoppaid}"]`).value.trim(); if (!tx) return msg('Paste the transaction signature first.', 'bad');
+  act('shop-refund-paid', 'shop', { refund: b.dataset.refund, tx }); });
 function owedList(r) {
   $('#lotMode').textContent = 'Payouts are ' + r.mode + '.';
   $('#lotteryBox').classList.toggle('alert', r.owed.length > 0);

@@ -65,7 +65,7 @@ Deno.serve(makeHandler({
   shop: createShop({ db, chain, livePrice: makePrice({ db, livePrice }), liveFee: feeOfMint, treasury: env('TREASURY_WALLET') || null, ...mintOpt, cluster }),
   // The Santa Lottery (needs supabase/011_lottery.sql and the LOTTERY_WALLET setting; until set, no tickets are sold).
   lottery: createLottery({ db, chain: { ...chain, latestBlock }, livePrice: makePrice({ db, livePrice }), liveFee: feeOfMint, wallet: env('LOTTERY_WALLET') || null, ...mintOpt, cluster }),
-  admin: createAdmin({ db, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), chain, poolWallets: { ...poolWallets, lottery: env('LOTTERY_WALLET') || null }, ...mintOpt }), // chain: to check Cody's deposits
+  admin: createAdmin({ db, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), chain, poolWallets: { ...poolWallets, lottery: env('LOTTERY_WALLET') || null, treasury: env('TREASURY_WALLET') || null }, ...mintOpt }), // chain: to check Cody's deposits
   async profileFor(token: string) {
     const { data, error } = await auth.auth.getUser(token);
     if (error || !data.user) return null;
