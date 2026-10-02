@@ -199,8 +199,23 @@ branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from
   guests): `PUBLIC_ACTIONS` in gameserver.js, `tests/public-actions.test.mjs` keeps it equal to server/http.js.
 - **controls-test.mjs takes ~16 minutes** in the WSL test browser (the zoom section waits for the camera); give it no time
   limit (a 590/900 s limit killed it and looked like a crash).
-- **Decided, NOT built:** special gear (items, effects, Special Gear tab, shows on the character, 7-day timer), plaza themes
-  picked on the Avatar screen (Halloween first).
+- **Special gear: RULES BUILT, page NOT built** (agent-built on Cody's OK to use agents, reviewed line by line and merged):
+  `mockups/gear.js` (GEAR table with one stat each, gearIn, effectsOf, resolvePresent, heldWith, snapshot mask), gear items in
+  `catalog.js` (g1/g2 slots; old backpacks stay as looks, owners also get the gear), referee effects in `sim.js` behind
+  `gearOf` (extra hits, Elf Hat half size + 2×, held/refill/speed, Present Box picked once per match, kept through handovers),
+  and **hits now check the ball's whole path each frame** (fixes thin/fast targets on slow hosts). **No stacking the same stat**
+  (Cody). `supabase/015_special_gear.sql` NOT applied: apply it WITH the page. Still to build: Special Gear tab (replacing
+  Backpacks; show NO_STACK_NOTE), the page passing gearOf + bigger counter + Elf Shoes speed, gear drawn on the character, the
+  server calling record_gear_worn / take_off_worn_gear, net.js local save of g1/g2, buying gear again after it wears out.
+  Open for Cody: should an extra-hit-only hit knock the hat off (now: no); Elf Hat + one extra hit goes down on the 1st hit;
+  can Present Box pick Elf Hat; gear names Toy Sack/Gift Box vs Santa Bag/Present Box; stop selling old backpacks; free 7-day
+  gear for backpack owners. Tests: `tests/gear.test.mjs`, `tests/db/gear-db.test.mjs`.
+- **Plaza themes BUILT** (agent-built, reviewed, merged): `mockups/themes.js` (Christmas + Halloween), `plaza.js` builds
+  either and swaps mid-match, a "Plaza theme" picker on the Avatar screen (only you see it; remembered on the device).
+  Christmas proven pixel-identical (`tests/browser/theme-christmas-same.mjs`). Cody to look at Halloween's snow patches
+  (read lilac-pink at dusk). Test: `tests/browser/theme-test.mjs`.
+- **spin-test.mjs is STALE since Spin was removed** (it waits for the Spin wheel's bonus, which is never drawn now). Not deleted.
+- **Devnet funder** topped up by Cody: 7.95 devnet SOL (2026-10-01).
 - **Old browser tests fixed:** mp.mjs, idle.mjs. `live.mjs` is still stale (see the test list).
 - **Devnet:** test SANTA `Jx95so9XYhtSJJoqup7Xb3T9Ptr9ZuUTXSgPcu6uttg` (Token-2022, 6 dec, 3%), Spin/Slots/Lottery pools, treasury,
   test player, Santa's own funding wallet; public addresses in `devnet.json`, keys in `C:\santa-devnet-keys` (never the repo).
