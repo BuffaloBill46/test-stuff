@@ -26,7 +26,7 @@ for (const [label, vw, vh] of [['desk', 1280, 800], ['phone', 390, 844]]) {
   await page.screenshot({ path: `${OUT}-${label}-1-play.png` });
   await page.evaluate(() => document.querySelector('#how-ranking').scrollIntoView()); await wait(500);
   await page.screenshot({ path: `${OUT}-${label}-1b-ranking.png` });
-  await tap('#t-store'); await page.waitForSelector('.item img', { timeout: 60000 }); await wait(800);
+  await tap('#t-store'); await page.waitForSelector('.shopitem img', { timeout: 60000 }); await wait(800);
   console.log(label, 'store items shown:', await page.locator('.item').count());
   await page.screenshot({ path: `${OUT}-${label}-2-store.png` });
   await tap('#signin'); await wait(400);
