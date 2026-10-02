@@ -70,4 +70,36 @@ for (let i = 0; i < MAX_WATCHERS; i++) conn('w').say({ t: 'join', code: 'CAP1', 
 const w5 = conn('w5'); w5.say({ t: 'join', code: 'CAP1', me: me('watch9xx', { w: true }) }); assert.match(w5.last('err').why, /watchers/);
 const bad = conn('bad'); bad.say({ t: 'join', code: 'CAP2', me: me('<script>') }); assert.match(bad.last('err').why, /bad player id/);
 bad.h.message('not json'); assert.match(bad.last('err').why, /JSON/);
+// --- phase 2: who's who from the database; the server records Auto match finishes itself
+{
+  let tt = 5_000_000; const finishes = [], PID = '11111111-2222-4333-8444-555555555555', PID2 = '99999999-2222-4333-8444-555555555555';
+  const saved = { good: { pid: PID, l: 7, n: 'RealName', a: { sb1: 'sb_ice', g1: 'gear_pumpkin' } }, good2: { pid: PID2, l: 2, n: 'Second', a: {} } };
+  const r2 = createReferee({ now: () => tt, identify: async (tok) => saved[tok] || null, finish: async (m) => { finishes.push(m); return { counted: [{ place: m.places.indexOf(PID) + 1, level: 7, xp: 3, up: false }] }; } });
+  const c2 = (n) => { const c = { got: [], send: (x) => c.got.push(JSON.parse(x)) }; c.h = r2.connect(c); c.say = (m) => c.h.message(JSON.stringify(m)); c.last = (k) => [...c.got].reverse().find((m) => m.t === k); return c; };
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+  // run the clock until c's latest snapshot shows the phase (at most 10 minutes of match time)
+  const until = (c, ph) => { for (let i = 0; i < 600 * 30 && PHASES[c.last('snap')?.d.ph] !== ph; i++) { tt += 1000 / 30; r2.tick(1 / 30); } };
+  const real = c2(), cheat = c2(), twin = c2(), other = c2();
+  real.say({ t: 'join', code: 'PF4', token: 'good', me: me('real0001', { n: 'Fake', l: 1 }) }); await settle();
+  cheat.say({ t: 'join', code: 'PF4', token: 'forged', me: me('cheat001', { l: 10, pid: PID, a: { sb1: 'sb_ice', sb2: 'sb_sky', g1: 'gear_pumpkin' } }) }); await settle();
+  const ps = Object.fromEntries(real.last('peers').ps.map((p) => [p.id, p]));
+  assert.deepEqual([ps.real0001.l, ps.real0001.n, ps.real0001.pid, ps.real0001.a.sb1], [7, 'RealName', PID, 'sb_ice'], 'signed in: the SAVED level, name and look');
+  assert.deepEqual([ps.cheat001.l, ps.cheat001.pid, ps.cheat001.a.sb1, ps.cheat001.a.sb2, ps.cheat001.a.g1], [1, null, 'sb_none', 'sb_none', 'gear_none'], 'a forged sign-in plays as a plain guest (no claimed level, account, specials or gear)');
+  twin.say({ t: 'join', code: 'PF4', token: 'good', me: me('twin0001') }); await settle();
+  assert.match(twin.last('err').why, /another tab/, 'one seat per account');
+  other.say({ t: 'join', code: 'PF4', token: 'good2', me: me('othr0001') }); await settle();
+  until(real, 'play'); until(real, 'end');
+  await settle();
+  assert.equal(PHASES[real.last('snap').d.ph], 'end');
+  assert.equal(finishes.length, 1, 'recorded once per match');
+  assert.deepEqual([finishes[0].auto, finishes[0].places.length >= 4, finishes[0].places.filter(Boolean).sort()], [true, true, [PID, PID2].sort()], 'every place, accounts by id (bots and guests as empty places)');
+  assert.equal(finishes[0].id, real.last('snap').d.mid);
+  assert.deepEqual(real.last('counted')?.d, { place: finishes[0].places.indexOf(PID) + 1, level: 7, xp: 3, up: false }, 'the counted player is told');
+  assert.equal(cheat.last('counted'), undefined, 'nobody else is');
+  // a private room counts nothing
+  const pr = c2(); pr.say({ t: 'join', code: 'PRIV9', token: 'good', me: me('priv0001') }); await settle(); pr.say({ t: 'start' });
+  until(pr, 'play'); until(pr, 'end');
+  await settle(); assert.equal(PHASES[pr.last('snap').d.ph], 'end'); assert.equal(finishes.length, 1, 'private rooms record nothing');
+}
+console.log('OK: phase 2: saved level/look for signed-in players, forged sign-ins play as guests, one seat per account, Auto match finishes recorded once by the server and told to the player');
 console.log('OK: server referee: rooms by the server clock, auto start, a full match to the end, moves checked, fakes ignored, honest games list, owner-only controls, caps');

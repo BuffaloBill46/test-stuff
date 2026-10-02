@@ -8,10 +8,12 @@
 //   { t: 'rep', d }  my moves (the page's report())          { t: 'emote', d: { e } }
 //   { t: 'start' } / { t: 'mode', mode }  private rooms: only the room's owner (the earliest player still in it)
 //   { t: 'board' }  send me the live games list (lobby), now and every few seconds
+//   join may carry token: the player's Supabase sign-in token (checked with identify; see createReferee)
 // server → page: { t: 'peers', ps, own } · { t: 'snap', d } · { t: 'emote', d } · { t: 'board', games } · { t: 'err', why }
+//   · { t: 'counted', d: { place, level, xp, up } } my Auto match finish counted toward levels (server-recorded)
 import { createSim, K } from '../mockups/sim.js';
 import { snapMs, autoStartMs, isPublic, botName, refereeOpts } from '../mockups/refcore.js';
-import { cleanAvatar } from '../mockups/catalog.js';
+import { cleanAvatar, BY_ID, DEFAULT_AVATAR, SB_SLOTS, GEAR_SLOTS } from '../mockups/catalog.js';
 import { clampLevel } from '../mockups/levels.js';
 
 export const MAX_WATCHERS = 4, MAX_ROOMS = 200, BOARD_MS = 3000;
@@ -20,8 +22,21 @@ const cleanCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
 const cleanName = (s) => String(s ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 14);
 const isId = (s) => typeof s === 'string' && /^[A-Za-z0-9_-]{4,24}$/.test(s);
 
+// A player who isn't signed in (or whose sign-in didn't check out) keeps their look, but nothing that changes play: plain
+// snowballs, no special snowballs, no gear, level 1. Their page's word is all there is, and it can't be trusted for those.
+export function guestLook(a) {
+  const c = { ...cleanAvatar(a) };
+  if (BY_ID.get(c.snow)?.rules) c.snow = DEFAULT_AVATAR.snow;
+  for (const s of [...SB_SLOTS, ...GEAR_SLOTS]) c[s] = DEFAULT_AVATAR[s];
+  return c;
+}
+
 // now() in ms (tests pass a fake clock); rand for the matches (bots, spawn spots).
-export function createReferee({ now = () => Date.now(), rand = Math.random } = {}) {
+// identify(token) → { pid, l, a, n } of a signed-in player from the DATABASE (their saved level and saved look, which the
+//   database only accepts with items they own; supabase/015 save_profile), or null. When given, unverified players play
+//   as guests (guestLook); without it (no database yet), the page's word is used, as in the page-run rooms.
+// finish(match) → { counted: [{ place, level, xp, up }] } records an Auto match's places (server/levels.js finishByReferee).
+export function createReferee({ now = () => Date.now(), rand = Math.random, identify = null, finish = null, log = console } = {}) {
   const rooms = new Map(); // code → room
   const boardWatchers = new Set();
   let boardAt = 0;
@@ -43,11 +58,20 @@ export function createReferee({ now = () => Date.now(), rand = Math.random } = {
   function connect(conn) {
     let room = null, me = null;
     const err = (why) => { conn.send(JSON.stringify({ t: 'err', why })); };
-    function join(m) {
-      if (room) return err('already in a room');
+    let joining = false, closed = false;
+    async function join(m) {
+      if (room || joining) return err('already in a room');
       const code = cleanCode(m.code), p = m.me || {};
       if (!code) return err('no room code');
       if (!isId(p.id)) return err('bad player id');
+      // Who this is, checked BEFORE any room is touched (a slow check can't leave an empty room behind)
+      let who = null;
+      if (identify && typeof m.token === 'string' && m.token) {
+        joining = true;
+        try { who = await identify(m.token); } catch (e) { log.error('referee: sign-in check failed', e.message); }
+        joining = false;
+        if (closed) return;
+      }
       let r = rooms.get(code);
       if (!r) { if (rooms.size >= MAX_ROOMS) return err('the server is full right now; try again soon'); r = makeRoom(code); }
       if (r.conns.has(p.id)) return err('that player is already in this room');
@@ -55,7 +79,11 @@ export function createReferee({ now = () => Date.now(), rand = Math.random } = {
       if (w && ps.filter((x) => x.w).length >= MAX_WATCHERS) return err(`That game already has ${MAX_WATCHERS} watchers. Try another.`);
       if (!w && ps.filter((x) => !x.w).length >= K.MAX_HUMANS) return err(`Room ${code} is full (${K.MAX_HUMANS} players).`);
       // The joining time is the SERVER's clock (a page can't claim it joined first to take over the room's controls).
-      me = { id: p.id, n: cleanName(p.n) || 'Player', j: now(), a: cleanAvatar(p.a), w, l: clampLevel(p.l), pid: /^[0-9a-f-]{36}$/.test(String(p.pid)) ? p.pid : null };
+      me = who ? { id: p.id, n: cleanName(who.n) || 'Player', j: now(), a: cleanAvatar(who.a), w, l: clampLevel(who.l), pid: who.pid }
+        : identify ? { id: p.id, n: cleanName(p.n) || 'Player', j: now(), a: guestLook(p.a), w, l: 1, pid: null }
+        : { id: p.id, n: cleanName(p.n) || 'Player', j: now(), a: cleanAvatar(p.a), w, l: clampLevel(p.l), pid: /^[0-9a-f-]{36}$/.test(String(p.pid)) ? p.pid : null };
+      // the same account twice in one room (two tabs) would count its finishes twice: one seat per account
+      if (me.pid && [...r.conns.values()].some((c) => c.me.pid === me.pid)) { me = null; if (!r.conns.size) rooms.delete(code); return err('you are already in this room in another tab'); }
       room = r; room.conns.set(me.id, { send: conn.send, me });
       sendAll(room, peersMsg(room));
     }
@@ -78,6 +106,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random } = {
         }
       },
       gone() {
+        closed = true;
         boardWatchers.delete(conn);
         if (!room) return;
         room.conns.delete(me.id); room.emoteAt.delete(me.id);
@@ -100,6 +129,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random } = {
         if (t >= room.cdEnd) { sim.introMatch(sim.S.mode); room.cdEnd = null; }
       } else room.cdEnd = null;
       sim.step(dt);
+      if (room.auto && finish && sim.S.phase === 'end' && sim.S.mid && room.reported !== sim.S.mid) report(room);
       if (t - room.lastSnap >= snapMs(ids.length)) {
         room.lastSnap = t;
         const s = sim.snapshot(); s.hid = 'server'; s.hj = 0; s.pub = room.auto ? 1 : 0; s.cd = room.cdEnd ? Math.max(0, (room.cdEnd - t) / 1000) : 0;
@@ -107,6 +137,21 @@ export function createReferee({ now = () => Date.now(), rand = Math.random } = {
       }
     }
     if (boardWatchers.size && t - boardAt >= BOARD_MS) { boardAt = t; const s = JSON.stringify({ t: 'board', games: board() }); for (const c of boardWatchers) c.send(s); }
+  }
+
+  // An Auto match ended: its places, in the page's order (score, then entity id), each a profile id or null (a bot or a
+  // guest), go to the levels code, and each counted player is told their new level ({ t: 'counted' }).
+  function report(room) {
+    const S = room.sim.S, mid = S.mid; room.reported = mid;
+    const order = [...S.ents].sort((a, b) => b.score - a.score || a.id - b.id);
+    const places = order.map((e) => (e.bot ? null : room.conns.get(e.peer)?.me.pid || null));
+    if (!places.some(Boolean)) return; // nobody signed in: nothing to record
+    Promise.resolve(finish({ id: mid, auto: true, places })).then((r) => {
+      for (const c of r?.counted || []) {
+        const pid = places[c.place - 1], conn = [...room.conns.values()].find((x) => x.me.pid === pid);
+        if (conn) conn.send(JSON.stringify({ t: 'counted', d: { place: c.place, level: c.level, xp: c.xp, up: c.up } }));
+      }
+    }).catch((e) => log.error('referee: recording match', mid, 'failed:', e.message));
   }
 
   // The live games list (public rooms only, like today's lobby): honest now, because the server makes it, not a host page.

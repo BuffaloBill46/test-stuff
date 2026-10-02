@@ -1,11 +1,16 @@
 // The SERVER REFEREE's web door on the Droplet (rooms and rules: server/referee.js). Players' pages connect here with a
 // WebSocket (a live two-way line) instead of Supabase Realtime; Caddy in front gives it https (wss://) and passes the visitor's
-// address in x-forwarded-for. Settings (environment): PORT (default 8081), HOST, ORIGINS (extra allowed websites, comma-separated).
+// address in x-forwarded-for. Settings (environment): PORT (default 8081), HOST, ORIGINS (extra allowed websites, comma-separated),
+// DATABASE_URL: the referee's own limited database login (supabase/017_referee_role.sql). With it, players are who their
+//   Supabase sign-in says (their SAVED level and look), and Auto match finishes are recorded here. Without it: phase-1 rooms
+//   (the page's word, nothing recorded). SUPABASE_URL / SUPABASE_KEY: where sign-ins are checked (default: the game's project
+//   and its publishable key, the public one already in the website).
 // Run: node referee.mjs        Health check: GET /health → { rooms, players }
 import http from 'node:http';
 import { WebSocketServer } from 'ws';
 import { createReferee } from '../server/referee.js';
 import { ALLOWED_ORIGINS } from '../server/http.js';
+import { createLevels } from '../server/levels.js';
 
 const PORT = Number(process.env.PORT) || 8081, TICK_MS = 1000 / 30;
 const MAX_MSG = 4096, MAX_PER_SEC = 40, MAX_PER_ADDRESS = 16; // a page sends ~6 reports a second; a full lobby tab is 1 line
@@ -14,7 +19,25 @@ const okOrigin = (o) => origins.has(o) || /^http:\/\/localhost(:\d+)?$/.test(o |
 // Only Caddy on this machine may tell us the visitor's address; anyone else is who they connected as.
 const addressOf = (req) => { const direct = req.socket.remoteAddress || ''; return /^(::ffff:)?127\.0\.0\.1$|^::1$/.test(direct) ? String(req.headers['x-forwarded-for'] || direct).split(',')[0].trim() : direct; };
 
-const ref = createReferee();
+const SB_URL = process.env.SUPABASE_URL || 'https://olganobdypnxfpmsxibe.supabase.co';
+const SB_KEY = process.env.SUPABASE_KEY || 'sb_publishable_eLn_YYzLDOTuUAOTZLeyKQ_PLGT8B6N'; // publishable: meant to be public
+let identify = null, finish = null;
+if (process.env.DATABASE_URL) {
+  const { default: postgres } = await import('postgres');
+  const sql = postgres(process.env.DATABASE_URL, { max: 3, prepare: false });
+  const db = { query: (q, p = []) => sql.unsafe(q, p) };
+  // The sign-in token → the Supabase user (Supabase checks it) → the profile it's linked to → that profile's SAVED level/look.
+  identify = async (token) => {
+    const r = await fetch(SB_URL + '/auth/v1/user', { headers: { apikey: SB_KEY, authorization: 'Bearer ' + token } });
+    if (!r.ok) return null;
+    const user = await r.json(); if (!user?.id) return null;
+    const p = (await db.query('select * from public.referee_profile($1)', [user.id]))[0]; // 017: the referee login's one lookup
+    return p ? { pid: p.id, l: p.level, a: p.avatar, n: p.name } : null;
+  };
+  finish = createLevels({ db }).finishByReferee;
+  console.log('referee: sign-ins checked, finishes recorded');
+} else console.log('referee: no DATABASE_URL: phase-1 rooms (the page word is used, nothing recorded)');
+const ref = createReferee({ identify, finish });
 const perAddress = new Map();
 const server = http.createServer((req, res) => {
   if (req.url === '/health') {

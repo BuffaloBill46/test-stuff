@@ -8,7 +8,8 @@
 // TRUST, stated plainly: until the always-on referee server exists (DigitalOcean, decided), the match is refereed in the host
 // player's browser, so the places come from that browser; a cheater could report false places. The database still caps it
 // (one count per match per player, places 1–3 only, level 9 → 10 needs firsts). Bought levels don't depend on this: they're
-// checked against a real payment. When the referee moves to the server, it calls finish itself and nothing else changes.
+// checked against a real payment. Rooms on the referee server (server/referee.js) report through finishByReferee instead:
+// there the places are the server's own.
 import { levelInfo, progressLine, countsForLevels } from '../mockups/levels.js';
 import { GEAR_SLOTS, BY_ID } from '../mockups/catalog.js';
 import { gearIn } from '../mockups/gear.js';
@@ -24,12 +25,12 @@ export function createLevels({ db }) {
   }
   // match: { id, auto: true, places: [profile id or null (a bot or a guest), ...] in finishing order }. Sent by the HOST,
   // who must be one of the places (a player in that match).
-  async function finish(host, match) {
+  async function finish(host, match, { byReferee = false } = {}) {
     if (!match || typeof match !== 'object') return { error: 'send the match' };
     if (!MATCH_ID.test(String(match.id))) return { error: 'bad match id' };
     if (!countsForLevels(match)) return { counted: [] }; // practice, private rooms: nothing counts (not an error)
     const places = Array.isArray(match.places) ? match.places.slice(0, 8) : [];
-    if (!places.some((p) => p === host)) return { error: 'only a player in the match can report it' };
+    if (!byReferee && !places.some((p) => p === host)) return { error: 'only a player in the match can report it' };
     // Every account's finish counts toward its match stats (games played, top-3 %: the load screen; supabase/013), once per match.
     for (let i = 0; i < places.length; i++) {
       const p = places[i];
@@ -69,5 +70,8 @@ export function createLevels({ db }) {
     const rows = await db.query('select * from public.player_stats($1::uuid[])', [list]);
     return { players: rows.map((r) => ({ id: r.profile_id, games: r.games, top3: r.top3, top3Pct: r.games ? Math.round((r.top3 / r.games) * 100) : 0, level: r.level, rankPoints: r.rank_points })) };
   }
-  return { progress, finish, stats };
+  // The referee SERVER's own report (server/referee.js through worker/referee.mjs): it ran the match itself, so the places are
+  // the truth and there's no host to check. Never reachable from the web door (http.js passes only (profile, match)).
+  const finishByReferee = (match) => finish(null, match, { byReferee: true });
+  return { progress, finish, finishByReferee, stats };
 }

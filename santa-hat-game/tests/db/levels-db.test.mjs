@@ -103,6 +103,12 @@ assert.equal((await ask('to', { action: 'progress' })).xp, 0, '4th place counts 
 fr = await ask('th', { action: 'finish', match: { id: 'auto-match-0001', auto: true, places: [host, null, guest2] } });
 assert.deepEqual(fr.counted.map((c) => c.xp), [1, 1], 'reporting the same match again counts nothing');
 assert.match((await ask('to', { action: 'finish', match: { id: 'auto-match-0002', auto: true, places: [host, guest2] } })).error, /only a player in the match/, 'only a player in the match can report it');
+// …and a page can't claim to be the referee server (byReferee is only a code path, never read from a request)
+assert.match((await ask('to', { action: 'finish', byReferee: true, match: { id: 'auto-match-0002', auto: true, byReferee: true, places: [host, guest2] } })).error, /only a player in the match/, 'the referee path is not reachable from the web');
+// The referee server's own report (it ran the match): counts with no host; 'auto-match-0002' wasn't counted above
+fr = await lv.finishByReferee({ id: 'auto-match-0002', auto: true, places: [guest2, null] });
+assert.deepEqual(fr.counted.map((c) => [c.place, c.xp, !!c.you]), [[1, 2, false]], 'the referee server reports a finish: Gus 1st counted');
+assert.deepEqual((await lv.finishByReferee({ id: 'auto-match-0002', auto: true, places: [guest2] })).counted.map((c) => c.xp), [2], 'once per match');
 assert.deepEqual((await ask('th', { action: 'finish', match: { id: 'practice-0003', auto: true, practice: true, places: [host] } })).counted, [], 'practice counts nothing');
 assert.deepEqual((await ask('th', { action: 'finish', match: { id: 'private-0004', auto: false, places: [host] } })).counted, [], 'private rooms count nothing');
 assert.match((await ask('th', { action: 'finish', match: { id: 'x', auto: true, places: [host] } })).error, /bad match id/);
