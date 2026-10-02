@@ -1,4 +1,4 @@
--- NOT APPLIED YET. Player match stats for the match load screen (Cody, 2026-10-01: total games played, top-3 win %, level, rank
+-- APPLIED live 2026-10-01 (function bodies hash-checked against this file). Player match stats for the match load screen (Cody, 2026-10-01: total games played, top-3 win %, level, rank
 -- points). Every Auto match finish of a player with an account is recorded once (the host reports it: server/levels.js finish);
 -- games played = how many, top-3 % = how many of them placed 1st–3rd. Server-only writes; the totals are public (like the
 -- leaderboard), the per-match rows are not.

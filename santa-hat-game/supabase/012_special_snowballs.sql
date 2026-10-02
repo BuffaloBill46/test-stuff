@@ -1,4 +1,4 @@
--- NOT APPLIED YET. Special snowballs (Cody, 2026-10-01; mockups/specials.js, catalog.js). Items of slot 'sball' go in the avatar's
+-- APPLIED live 2026-10-01 (function bodies hash-checked against this file). Special snowballs (Cody, 2026-10-01; mockups/specials.js, catalog.js). Items of slot 'sball' go in the avatar's
 -- special snowball slots sb1, sb2, sb3. Without this file, save_profile (008) copies only the 7 look slots and would SILENTLY DROP
 -- a player's loadout on save, so it ships with the page that shows the slots. Item rows match mockups/catalog.js (tests/catalog-sql.mjs).
 

@@ -182,16 +182,14 @@ branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from
 - **Renamed:** Santa Hat Legends (brand). Test-version notes on Play/Games/Store. All published.
 - **Special snowballs BUILT, NOT published** (DESIGN_NOTES, Cody's handwritten pages): Ice/Split/Giant/Fire/Sky/Rain in the
   referee (`mockups/specials.js`, `sim.js`), SB1–SB3 buttons + Q/E/R in matches (numbered by their real slot), the Avatar
-  screen's Special Snowballs tab, the Store shelf; hat immunity 2 s and −1 per hit are in. **Publish only together with
-  `supabase/012_special_snowballs.sql` applied** (the live save_profile would silently drop loadouts). Tests:
+  screen's Special Snowballs tab, the Store shelf; hat immunity 2 s and −1 per hit are in. `supabase/012_special_snowballs.sql` is APPLIED live (2026-10-01, hash-checked), so loadouts save. Tests:
   `tests/specials.test.mjs`, `tests/db/sball-db.test.mjs`, `tests/browser/specials-play.mjs`, `tests/browser/loadout-test.mjs`.
 - **Match load screen + 5…1 countdown BUILT, NOT published** (Cody): referee phases `intro` (5 s) and `count` (5 s), nobody
   moves/throws in either; every player's level, games, top-3 %, rank points, special snowballs; gear says "coming soon". Numbers
-  need `supabase/013_match_stats.sql` + the deployed server (dashes until then). Tests: `tests/match-intro.test.mjs`,
+  need the deployed server (013 is applied live; dashes until the server is deployed). Tests: `tests/match-intro.test.mjs`,
   `tests/browser/match-intro-test.mjs`. Browser tests that start matches skip the 10 s (they set the timer to 0).
 - **Games tab changes BUILT, NOT published** (Cody, 2026-10-01): any run of 1–100 from a ▼ number ▲ box under each game's
-  buttons (`mockups/runpick.js`; rules/server say 1–100; **`supabase/014_run_sizes.sql` must be applied before the deployed
-  server sells a run over 10**); a "This run 7 / 25 · won $3.40" counter between each game and its buttons; bigger Big Hat
+  buttons (`mockups/runpick.js`; rules/server say 1–100; `supabase/014_run_sizes.sql` is applied live); a "This run 7 / 25 · won $3.40" counter between each game and its buttons; bigger Big Hat
   reels; "Top Line JackPot" + one "Jackpot odds (Top Line or Pool) about 1 in 7,665" row; Drop shows only "1 in 14.2 to hit a
   5× or 10×"; **price locked per run** (every play of a run converts at its quote's price; note at the top of the Games
   page); settles wait out the server's speed limit (`mockups/slowdown.js`). Tests: `tests/browser/runpick-test.mjs`,
@@ -214,11 +212,11 @@ branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from
   server's network; waits for finalized; a paid-but-unconfirmed run is retried on the next visit). Proven on real devnet in a
   browser: pay → 5 plays → ONE payout sent, books = wallets (`tests/browser/devnet-pay-test.mjs`).
 - **Not done yet:** Edge Function deploy + its settings (waits on `npx supabase login` by Cody), a real-Phantom check in Cody's
-  Chrome, the scheduled payout worker, skims on chain, reconcile on a schedule, applying 012/013/014 live (then publish the specials, load screen and Games tab pages).
+  Chrome, the scheduled payout worker, skims on chain, reconcile on a schedule, publishing the specials, load screen and Games tab pages (012–014 are applied).
 - **Waiting on Cody:** `npx supabase login` typed in a real terminal (the CLI refuses non-interactive logins; Claude won't handle
   account tokens). Decided: devnet wallets are Claude's to make and fund (labelled in `devnet.json`; the funder was topped up from
   Cody's general devnet key); lottery payouts manual; real wallets at launch.
-- **Next, in order:** apply 012 + 013 + 014 live (hash-checked), advisors, browser suite, publish; deploy the Edge Function + settings once
+- **Next, in order:** (012–014 applied live 2026-10-01) browser suite, then publish the pages; deploy the Edge Function + settings once
   Cody has logged in, then a full devnet test through it → special gear → themes.
 
 **Built and live (all demo, no real money):**

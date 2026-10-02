@@ -33,7 +33,7 @@ existing bot (frozen/failed payouts, books ≠ wallet, top-off waiting, server d
 - [x] **Slots payouts decided** (Big Hat, 11 straight/diagonal lines, 100× top line, 6¢ hat bonus, 78.1% payback + the pool jackpot ≈ 80%: Cody's target, 2026-09-30). The live numbers are always in `PAYTABLE.md`; regenerate it with `node tests/paytable.mjs` after any change.
 
 ## Next to build
-- [x] **Match load screen (5 s) + 5-second countdown (Cody 2026-10-01): built** (referee phases intro/count, `tests/match-intro.test.mjs`, `tests/browser/match-intro-test.mjs`). Still to go live: apply 013 (match stats) and deploy the game server, or the numbers stay dashes. Gear line says "coming soon" until special gear is built.
+- [x] **Match load screen (5 s) + 5-second countdown (Cody 2026-10-01): built** (referee phases intro/count, `tests/match-intro.test.mjs`, `tests/browser/match-intro-test.mjs`). 013 applied live 2026-10-01; the numbers show once the game server is deployed (dashes until then). Gear line says "coming soon" until special gear is built.
 - [x] **`specials-play.mjs` intermittent (2026-10-01): found.** The test checked 250 ms after a throw, but the referee reads throws once per frame and test browsers draw ~3 a second; the throw always happened, sometimes after the check. The test now waits until the referee has processed each throw (3 clean runs). Not a game bug: the referee had refused nothing.
 - [ ] **Plaza themes, picked on the Avatar screen (Cody 2026-10-01):** a theme layer for `plaza.js`, then Halloween (less snow). Each player sees their own pick. DESIGN_NOTES → "Plaza themes".
 - [ ] **Levels, special snowballs, special gear, hat immunity, −1 per hit (Cody 2026-10-01):** DESIGN_NOTES → "Levels, special snowballs and special gear".
@@ -75,7 +75,7 @@ existing bot (frozen/failed payouts, books ≠ wallet, top-off waiting, server d
 - [ ] More click games from the idea list (Hat Drop, Present Pick, Sleigh Climb, Advent Scratch, Naughty or Nice). Needs Cody's pick of game and its odds/payback first.
 
 ### Runs: buy 1, 5 or 10 plays that play straight away; winnings sent automatically (decided, Cody 2026-10-01)
-- [x] **Any run of 1–100 from a box with ▼ ▲ under the buttons + a "This visit" running total (Cody 2026-10-01): built** (`mockups/runpick.js`, `playcredits.js`, `tests/browser/runpick-test.mjs`). **Needs `supabase/014_run_sizes.sql` applied live before the deployed server takes a run over 10** (until then the database refuses it and the page says the server couldn't sell it).
+- [x] **Any run of 1–100 from a box with ▼ ▲ under the buttons + a "This visit" running total (Cody 2026-10-01): built** (`mockups/runpick.js`, `playcredits.js`, `tests/browser/runpick-test.mjs`). 014 applied live 2026-10-01.
 Replaces play credits (2026-09-30). Each game has Play 1 / 5 / 10 at the size picked on the card; one confirm and one payment,
 then the plays run; when the last one lands, the run's winnings are sent to the player's wallet in one transfer, with no claim
 button and no player signature. **We never hold a player balance.** Rules and why: DESIGN_NOTES → "No credits".
