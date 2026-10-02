@@ -1,0 +1,11 @@
+{
+  "name": "santa-hat-worker",
+  "private": true,
+  "description": "The payout worker for the always-on Droplet (worker.mjs). Run: npm install, then node worker.mjs with its settings in the environment.",
+  "type": "module",
+  "dependencies": {
+    "@solana-program/token-2022": "^0.19.0",
+    "@solana/kit": "^8.4.0",
+    "postgres": "3.4.5"
+  }
+}
