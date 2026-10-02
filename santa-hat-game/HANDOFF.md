@@ -191,6 +191,10 @@ between two devices has never been tested from here. Cody and friends testing on
   /etc/santa/keys (empty, chmod 700). Update: `runuser -u santa -- git -C /opt/santa/repo fetch` + checkout the new commit, then
   `systemctl restart santa-worker`. Logs: `journalctl -u santa-worker`. Memory note "santa-droplet".
 - **Helius:** Developer plan confirmed (not wired: devnet uses the public RPC).
+- **Match referee server LIVE on the Droplet (2026-10-02, phase 1, opt-in):** service `santa-referee` (worker/referee.mjs on
+  127.0.0.1:8081) behind Caddy at `wss://147-182-219-161.sslip.io` (free automatic certificate; health:
+  https://147-182-219-161.sslip.io/health). Try it: add `&ref=wss://147-182-219-161.sslip.io` to the game's address (needs the
+  page published with refcore.js). Two real browsers played a match through it from Cody's PC. Phase 2 list: TODO.
 
 *(Update this section at the end of every session.)*
 

@@ -3,20 +3,21 @@
 // match runs on the server (neither page ever becomes the referee), a player's moves show up in the server's snapshots, emotes
 // travel, the lobby's games list comes from the server, and a full public room sends Auto match on to the next one.
 // Needs: npm install in worker/. Run: node referee-server-test.mjs
+// Against the LIVE referee (the Droplet) instead of a local one: REF_URL=wss://147-182-219-161.sslip.io node referee-server-test.mjs
 import { createRequire } from 'module'; import { readFileSync, existsSync } from 'fs'; import { execSync, spawn } from 'child_process'; import path from 'path'; import { fileURLToPath } from 'url';
 const require = createRequire(import.meta.url);
 const { chromium } = require(path.join(execSync('npm root -g').toString().trim(), 'playwright'));
 const ROOT = new URL('../../mockups', import.meta.url).pathname, fails = [], check = (ok, msg) => { if (!ok) fails.push(msg); console.log((ok ? '  ✓ ' : '  ✗ ') + msg); };
-const PORT = 8092, REF = `ws://localhost:${PORT}`;
-const door = spawn(process.execPath, [fileURLToPath(new URL('../../worker/referee.mjs', import.meta.url))], { env: { ...process.env, PORT: String(PORT) }, stdio: 'inherit' });
-for (let i = 0; i < 40; i++) { try { await fetch(`http://localhost:${PORT}/health`); break; } catch { await new Promise((r) => setTimeout(r, 150)); } }
+const PORT = 8092, REMOTE = process.env.REF_URL || '', REF = REMOTE || `ws://localhost:${PORT}`, HEALTH = REMOTE ? REMOTE.replace(/^ws/, 'http') + '/health' : `http://localhost:${PORT}/health`;
+const door = REMOTE ? { kill() {} } : spawn(process.execPath, [fileURLToPath(new URL('../../worker/referee.mjs', import.meta.url))], { env: { ...process.env, PORT: String(PORT) }, stdio: 'inherit' });
+for (let i = 0; i < 40; i++) { try { await fetch(HEALTH); break; } catch { await new Promise((r) => setTimeout(r, 150)); } }
 // The game's files from a plain local web server: no request interception (in this Playwright it breaks WebSockets, even
 // ones it was told to leave alone), so the page loads like the live site does (three.js etc. from the internet).
 import http from 'http';
 const WEB = 8096, TYPES = { js: 'text/javascript', html: 'text/html', png: 'image/png', css: 'text/css', json: 'application/json' };
 const web = http.createServer((req, res) => { const p = path.join(ROOT, decodeURIComponent(req.url.split('?')[0])); if (!p.startsWith(ROOT) || !existsSync(p)) { res.writeHead(404); return res.end(); }
   res.writeHead(200, { 'content-type': TYPES[p.split('.').pop()] || 'application/octet-stream' }); res.end(readFileSync(p)); }).listen(WEB);
-const health = async () => (await fetch(`http://localhost:${PORT}/health`)).json();
+const health = async () => (await fetch(HEALTH)).json();
 
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 async function open(name, room = '') {
