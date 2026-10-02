@@ -309,3 +309,9 @@ re-checks silently never asked; both halves looked right on their own. The list 
 Adding `// at the run's locked price` to the end of a refund call in server/games.js commented out the `finishRun(...)` that
 followed on the SAME line: a stuck run would have been refunded but never paid. Only the stuck-run test caught it. In this
 codebase several statements share a line; put a new comment on its own line above, never at the end of an existing one.
+
+## A smaller target needs a path check, not an end-point check (2026-10-01)
+Elf Hat (half-size player) was first built by halving the hit distance. The gear test's long aimed throw then missed: at a slow
+host's 1/20 s step a snowball moves 0.9, more than a half-size player is wide, so checking only where the ball ENDED a step
+let it fly straight through. The referee now measures to the path the ball took that step. Whenever a target shrinks or a
+ball speeds up (a Fire Ball moves 1.8 a step), check the worst frame rate, not the test's tidy one.
