@@ -18,6 +18,9 @@ const esc = (s) => { const d = document.createElement('div'); d.textContent = s;
 const short = (w) => (w ? w.slice(0, 4) + '…' + w.slice(-4) : '');
 const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} }, del(k) { try { localStorage.removeItem(k); } catch {} } };
 
+// What a special snowball costs to throw, in snowballs from the counter (Cody 2026-10-02: "cost x snowballs", not "uses 2")
+const costWords = (S) => (S.cost === 'all' ? 'Costs all your snowballs' : `Costs ${S.cost} snowball${S.cost === 1 ? '' : 's'}`);
+
 // ---------- item thumbnails: each item rendered once on the real model, cached as an image
 let thumbR = null;
 const thumbs = new Map();
@@ -319,7 +322,7 @@ export function initTabs(app) {
       const sbs = ITEMS.filter((i) => i.slot === 'sball' && i.id !== 'sb_none'), gear = ITEMS.filter((i) => i.slot === 'gear' && i.id !== 'gear_none');
       box.innerHTML = `<div class="shop"><div class="shophead"><h3>1. Special Snowballs</h3><p class="rule"><b>Yours forever</b> Buy one once and keep it. Put it in a special slot (SB1–SB3) on the Avatar screen; a throw uses that many snowballs from your counter.</p></div>
         <div class="shopgrid">${sbs.map((i) => { const S = SPECIALS[i.special];
-          return `<div class="shopitem"><img alt="" src="${thumbnail(i)}"><div><b>${esc(i.name)}</b><span class="uses">${S.cost === 'all' ? 'uses all' : 'uses ' + S.cost}${S.minLevel ? ' · level ' + S.minLevel + '+' : ''}</span><p>${esc(S.note)}</p>${status(i)}</div><div class="shopbtns"><button class="sec" data-try="${i.id}">Try it</button>${buyBtn(i)}</div><p class="shopnote" aria-live="polite"></p></div>`; }).join('')}</div></div>
+          return `<div class="shopitem"><img alt="" src="${thumbnail(i)}"><div><b>${esc(i.name)}</b><span class="uses">${costWords(S)}${S.minLevel ? ' · level ' + S.minLevel + '+' : ''}</span><p>${esc(S.note)}</p>${status(i)}</div><div class="shopbtns"><button class="sec" data-try="${i.id}">Try it</button>${buyBtn(i)}</div><p class="shopnote" aria-live="polite"></p></div>`; }).join('')}</div></div>
         <div class="shop"><div class="shophead"><h3>2. Special Gear</h3><p class="rule"><b>Lasts ${WEAR_DAYS} days</b> The clock starts at your first match wearing it and keeps running; then it wears out. You can take it off and put it back on until then.</p>
           <p class="rule"><b>No stacking</b> ${esc(NO_STACK_NOTE)} One gear slot, two from level 8.</p></div>
         <div class="shopgrid">${gear.map((i) => { const G = GEAR[i.gear];
@@ -363,7 +366,7 @@ export function initTabs(app) {
     $('#avgrid').innerHTML = ITEMS.filter((i) => i.slot === state.slot).map((i) => {
       const ok = usable(i, lvl, state.owned), on = sb ? d.a[state.sbSlot] === i.id : gr ? d.a[state.gSlot] === i.id : d.a[i.slot] === i.id, S = SPECIALS[i.special], G = GEAR[i.gear];
       if (gr) return `<button class="pick wide ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}">${G ? `<img alt="" src="${thumbnail(i)}">` : `<i class="chip" style="background:#${(i.color ?? 0x5a6688).toString(16).padStart(6, '0')}"></i>`}${esc(i.name)}<small>${G ? esc(G.note) : 'Leave this slot empty'}</small><small>${!ok ? '$' + i.price.toFixed(2) + ' in Store' : G?.minLevel && lvl < G.minLevel ? 'level ' + G.minLevel + '+' : G ? statName(i.gear) : ''}</small></button>`;
-      if (sb) return `<button class="pick wide ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${S ? esc(S.note) : 'Leave this slot empty'}</small><small>${!ok ? '$' + i.price.toFixed(2) + ' in Store' : S ? (S.cost === 'all' ? 'uses all' : 'uses ' + S.cost) + (S.minLevel && lvl < S.minLevel ? ' · level ' + S.minLevel : '') : 'empty slot'}</small></button>`;
+      if (sb) return `<button class="pick wide ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${S ? esc(S.note) : 'Leave this slot empty'}</small><small>${!ok ? '$' + i.price.toFixed(2) + ' in Store' : S ? costWords(S) + (S.minLevel && lvl < S.minLevel ? ' · level ' + S.minLevel : '') : 'empty slot'}</small></button>`;
       // look items are bought here on the Avatar screen, not in the Store (Cody, 2026-10-01)
       return `<button class="pick ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${ok ? 'Unlocked' : i.price != null ? '$' + i.price.toFixed(2) : 'Level ' + i.level}</small></button>`;
     }).join('');
