@@ -40,9 +40,12 @@ export function forPlayer(err, closeDialog) {
   setTimeout(() => { try { closeDialog?.(); } catch {} document.querySelector('#signin')?.click(); }, 900);
   return 'Sign in first: buying needs your account and its wallet. Opening sign-in…';
 }
+// Ranked tickets are real even on the demo site (the match server uses the real database), so they're read from the game
+// server either way: the test link's ?server=, else the live one.
+const LIVE_GAMES = 'https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games';
 export async function call(action, body = {}) {
   const t = await token();
   if (!t && !PUBLIC_ACTIONS.includes(action)) return { error: 'sign in first' };
-  const r = await fetch(SERVER, { method: 'POST', headers: { 'content-type': 'application/json', ...(t ? { authorization: 'Bearer ' + t } : {}) }, body: JSON.stringify({ action, ...body }) });
+  const r = await fetch(action === 'tickets' ? SERVER || LIVE_GAMES : SERVER, { method: 'POST', headers: { 'content-type': 'application/json', ...(t ? { authorization: 'Bearer ' + t } : {}) }, body: JSON.stringify({ action, ...body }) });
   try { return await r.json(); } catch { return { error: `the game server answered ${r.status}` }; }
 }

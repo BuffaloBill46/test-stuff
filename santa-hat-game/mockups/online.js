@@ -4,7 +4,8 @@ import { buildPlaza, makeHat, shadowBlob } from './plaza.js';
 import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js';
 import { openRoom, accounts, findWallet, gamesBoard } from './net.js';
 import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js';
-import { initTabs, avatarCharacter, renderProgress, thumbnail } from './tabs.js';
+import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js';
+import { TICKET_MAX } from './ranked.js';
 import { levelInfo, clampLevel } from './levels.js';
 import { SERVER, call, token as signInToken } from './gameserver.js';
 import { SPECIALS, cantThrow } from './specials.js';
@@ -774,24 +775,16 @@ if (SERVER) call('market').then((m) => {
   if (m?.cluster === 'devnet') notes.forEach((n) => { n.innerHTML = '<b>Test network</b> Purchases and prizes use test SANTA on Solana devnet: the real steps, with no real value.'; });
   else if (m?.cluster) notes.forEach((n) => { n.hidden = true; });
 }).catch(() => {});
-// The top-bar ticket chip (server mode, signed in): free tickets left today, with bought ones in its tooltip.
-function showTicketChip(r) {
-  const chip = $('#tixchip'); if (!chip || !r || !Number.isFinite(r.free)) return;
-  chip.classList.remove('soon'); chip.querySelector('b').textContent = `${r.free}/10${r.extra ? ' +' + r.extra : ''}`;
-  chip.title = `Ranked tickets: ${r.free} free left today${r.extra ? `, ${r.extra} bought` : ''}. 1 per ranked match.`;
-}
-if (SERVER) setTimeout(() => call('tickets').then(showTicketChip).catch(() => {}), 1500); // after sign-in has had a moment
 // The ranked lobby's ticket line (game server 'tickets'): free ones left today, bought ones, when the free ones refill.
 async function showTickets(ranked) {
   const el = $('#tixLine'); el.hidden = true;
-  if (!ranked || !SERVER) return;
-  const r = await call('tickets').catch(() => null);
+  if (!ranked) return;
+  const r = await refreshTickets(app.profile); // also updates Player Progress
   if (lobbyKind !== 'ranked') return; // the player switched lobbies meanwhile
   if (r?.error === 'sign in first') { el.textContent = 'Sign in to play ranked.'; el.hidden = false; return; }
   if (!r || r.error || !Number.isFinite(r.free)) return;
-  showTicketChip(r);
   const h = Math.max(0, Math.ceil((r.resetsAt - Date.now()) / 3600000));
-  el.textContent = `Ranked tickets: ${r.free} free today${r.extra ? ` + ${r.extra} bought` : ''}${r.free < 10 ? ` · free ones refill in ${h} h` : ''}`;
+  el.innerHTML = `Your tickets <b>${r.free + r.extra} / ${TICKET_MAX}</b> · 10 free a day${r.free < 10 ? ` · refill in ${h} h` : ''}`;
   el.hidden = false;
 }
 // ---------- lobbies: Unranked (FFA / TEAM) and FFA RANKED, each with a live games list and Watch now

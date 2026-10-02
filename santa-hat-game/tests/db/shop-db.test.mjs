@@ -10,7 +10,7 @@ import { splitPayment, MINT } from '../../mockups/market.js';
 import { SHOP_BURN_BPS, TICKET_PACKS } from '../../mockups/shoprules.js';
 
 const db = await makeDb(['001_profiles.sql', '002_items_seed.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '006_ranked_tickets.sql', '008_hats_backpacks.sql', '009_lock_my_plays.sql', '010_levels.sql', '011_lottery.sql', '012_special_snowballs.sql']);
-for (const f of ['015_special_gear.sql', '016_shop.sql']) await db.pg.exec(readFileSync(new URL(`../../supabase/${f}`, import.meta.url), 'utf8'));
+for (const f of ['015_special_gear.sql', '016_shop.sql', '022_ticket_cap.sql']) await db.pg.exec(readFileSync(new URL(`../../supabase/${f}`, import.meta.url), 'utf8'));
 const PRICE = 0.00085, FEE = { bps: 300, max: 1e15 }, TREASURY = 'TReASURYwa11et'.padEnd(44, '1').replace(/[0OIl]/g, '9');
 let wn = 0; const W = () => { const c = 'ABCDEFGHJK'[wn++]; return (c + 'Swa11et').padEnd(43, '1') + c; };
 const mk = async (name, level = 1) => { const id = (await db.query('insert into auth.users default values returning id'))[0].id, w = W();
@@ -65,7 +65,11 @@ assert.match((await shop.quote(A.id, { kind: 'item', id: 'shirt_red' })).error, 
   const tx = await shop.tickets(A.id);
   assert.deepEqual([tx.free, tx.extra, tx.held], [10, 5, 0], JSON.stringify(tx)); assert.ok(tx.resetsAt > Date.now(), 'the free ones refill later');
   assert.match((await shop.quote(A.id, { kind: 'tickets', n: 3 })).error, /1, 5 or 10/);
-  assert.ok((await buy(A, { kind: 'tickets', n: 5 })).r.ok, 'up to 10 a day'); }
+  assert.ok((await buy(A, { kind: 'tickets', n: 5 })).r.ok, 'up to 10 a day');
+  // 25 at once (022): a day later, with 8 bought, a 5-pack would pass the 10-bought cap: refused at the QUOTE, before paying
+  await db.query(`update public.ticket_purchases set at = at - interval '2 days' where profile_id = $1`, [A.id]); await db.query('update public.tickets set extra = 8 where profile_id = $1', [A.id]);
+  assert.match((await shop.quote(A.id, { kind: 'tickets', n: 5 })).error, /at most 10 bought ranked tickets; room for 2 more/, 'refused before paying');
+  assert.ok((await shop.quote(A.id, { kind: 'tickets', n: 1 })).id, 'a 1-pack still fits'); }
 
 // 5. A checked payment that can't be granted is OWED BACK in full (never kept for nothing): two level quotes, both paid.
 { const C = await mk('Cy'); const q1 = await shop.quote(C.id, { kind: 'level' }), q2 = await shop.quote(C.id, { kind: 'level' });

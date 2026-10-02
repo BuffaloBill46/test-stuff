@@ -8,7 +8,8 @@ import { forSale } from './shoprules.js';
 import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS } from './gear.js';
 import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable } from './catalog.js';
 import { SPECIALS } from './specials.js';
-import { settingsReady } from './gameserver.js';
+import { settingsReady, call } from './gameserver.js';
+import { TICKET_MAX } from './ranked.js';
 import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js';
 import { THEMES, THEME_IDS } from './themes.js';
 
@@ -88,6 +89,19 @@ export function avatarCharacter(a, extra = {}) {
     hat: hat.hat !== 'none' ? { shape: hat.hat, color: hat.color } : null, pack: pack.pack !== 'none' ? { shape: pack.pack, color: pack.color } : null, ...extra });
 }
 
+// Ranked tickets (Cody 2026-10-02: on Player Progress and in the ranked lobby, seen without scrolling): free left today +
+// bought, out of TICKET_MAX. Read from the game server (ranked.js; supabase/006 ticket_status). Returns its answer.
+export async function refreshTickets(profile) {
+  const el = document.querySelector('#pgTix');
+  if (!profile) { if (el) el.textContent = 'Sign in'; return { error: 'sign in first' }; }
+  const r = await call('tickets').catch(() => null);
+  if (el) el.textContent = r && Number.isFinite(r.free) ? `${r.free + r.extra} / ${TICKET_MAX}` : '—';
+  const chip = document.querySelector('#tixchip'); // the top bar's chip (computers)
+  if (chip && r && Number.isFinite(r.free)) { chip.classList.remove('soon'); chip.querySelector('b').textContent = `${r.free + r.extra}/${TICKET_MAX}`;
+    chip.title = `Ranked tickets: ${r.free} free left today${r.extra ? `, ${r.extra} bought` : ''}. 1 per ranked match.`; }
+  return r;
+}
+
 // The Player Progress box on the Play page (Cody, 2026-10-01). Guests see level 1; a signed-in player sees their own.
 export function renderProgress(profile) {
   const el = document.querySelector('#progress'); if (!el) return;
@@ -98,6 +112,7 @@ export function renderProgress(profile) {
   el.querySelector('#pgGives').innerHTML = [['Starting snowballs', g.start], ['Special ball slots', g.sb], ['Gear slots', g.gear]]
     .map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
   el.querySelector('#pgPts').textContent = profile ? String(profile.rank_points ?? 0) : '—';
+  refreshTickets(profile);
   const buy = el.querySelector('#pgBuy');
   buy.hidden = price === null; // levels above 5 are earned, not bought
   if (price !== null) { buy.textContent = `Buy level ${pl.level + 1} · $${price.toFixed(2)}`; buy.disabled = false; }

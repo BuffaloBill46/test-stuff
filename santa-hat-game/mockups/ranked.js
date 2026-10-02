@@ -4,6 +4,9 @@
 // Claude's picks where the text is silent (DESIGN_NOTES → Ranked points): the pot is created by the match (not taken from
 // players, or not placing would cost 10, not 5); tied players split the places they share (whole points, leftovers to the
 // earlier place); a player's rank points never go below 0.
+// Ranked tickets a player can have at once (Cody 2026-10-02): 25 = the 10 free a day + up to 10 BOUGHT ("I don't want people
+// being able to buy 15") + up to 5 GIVEN away by Cody (giveaways: not built yet). supabase/022 enforces the bought cap.
+export const TICKET_MAX = 25, FREE_DAILY = 10, BOUGHT_MAX = 10, GIFT_MAX = 5;
 export const RULES = { perPlayer: 10, notPlacing: -5, split3: [1], split4: [0.6, 0.2, 0.2] };
 
 // players: [{ id, bot, score }] → { pot, prizes: [..by place], points: { id: change } } for real players only.
