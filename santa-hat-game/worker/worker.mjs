@@ -6,7 +6,9 @@
 //   pool_transfers    a skim → from the game's pool to the treasury; a top-off → from the treasury to the pool
 //   lottery_payouts   only when Cody switched lottery payouts to automatic (manual ones wait for him on the admin screen)
 // Settings (environment; /etc/santa/worker.env on the Droplet, never in the repo):
-//   DATABASE_URL       Postgres connection (Supabase → Connect → transaction pooler; holds the database password)
+//   DATABASE_URL       Postgres connection: the worker's own limited login santa_worker (supabase/020_worker_role.sql)
+//                      through the session pooler; its password lives only in this file
+//   SPIN_POOL_WALLET, SLOTS_POOL_WALLET   the pools' public addresses (where approved top-offs go)
 //   SOLANA_RPC_URL     devnet: https://api.devnet.solana.com; mainnet: Cody's Helius address
 //   SANTA_MINT         the token
 //   KEYS_DIR           folder with spinPool.json, slotsPool.json, lotteryPool.json, treasury.json (64-byte key arrays; chmod 600)
@@ -46,8 +48,9 @@ function adapter(table) {
     to: async (row) => {
       if (table !== 'pool_transfers') return row.to_wallet;
       if (row.kind === 'skim') return treasuryAddr;
-      const [p] = await db.query('select wallet from public.pools where game = $1', [row.game]).catch(() => [{}]);
-      return p?.wallet || env(row.game === 'slots' ? 'SLOTS_POOL_WALLET' : 'SPIN_POOL_WALLET') || missing(row.game + ' pool address');
+      // a top-off goes to its pool's wallet, from the settings (pools has no wallet column: it used to ask for one, fail
+      // quietly and fall back to this; found 2026-10-02 while giving the worker its own limited login)
+      return env(row.game === 'slots' ? 'SLOTS_POOL_WALLET' : 'SPIN_POOL_WALLET') || missing(row.game + ' pool address');
     } });
 }
 const tables = ['payouts', 'pool_transfers', 'lottery_payouts'], chains = Object.fromEntries(tables.map((t) => [t, adapter(t)]));
