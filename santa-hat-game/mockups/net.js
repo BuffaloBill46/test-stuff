@@ -226,7 +226,12 @@ function remoteAccounts() {
     profile: () => rpc('ensure_profile'),
     save: (name, avatar) => rpc('save_profile', { p_name: name, p_avatar: avatar }),
     async inventory() { const { data, error } = await c.from('inventory').select('item_id'); if (error) throw new Error(error.message); return data.map((r) => r.item_id); },
-    async leaderboard() {
+    // since (a time): the Today / This week boards, points GAINED since then (supabase/019 ranked_board); none: all time.
+    async leaderboard(since) {
+      if (since) {
+        const { data, error } = await c.rpc('ranked_board', { p_since: new Date(since).toISOString() });
+        if (error) throw new Error(error.message); return data.map((r) => ({ name: r.name, wallet: r.wallet, level: r.level, rank_points: r.points, matches: r.matches }));
+      }
       const { data, error } = await c.from('profiles').select('name, wallet, avatar, level, rank_points').order('rank_points', { ascending: false }).order('created_at').limit(50);
       if (error) throw new Error(error.message); return data;
     },
@@ -308,7 +313,7 @@ function localAccounts(rules) {
       c.used = true; put(db); return db.profiles[c.pid];
     },
     async inventory() { const db = get(), l = db.logins[me]; return l ? db.inv[l.pid] || [] : []; },
-    async leaderboard() { return Object.values(get().profiles).sort((a, b) => b.rank_points - a.rank_points); },
+    async leaderboard(since) { return since ? [] : Object.values(get().profiles).sort((a, b) => b.rank_points - a.rank_points); }, // no ranked matches on this computer
     async signOut() { setMe(null); },
   };
 }
