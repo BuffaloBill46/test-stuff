@@ -213,6 +213,20 @@ function localAccounts(rules) {
       for (const s of rules.SB_SLOTS || []) { const id = avatar?.[s] ?? 'sb_none', it = rules.BY_ID.get(id);
         if (!it || it.slot !== 'sball' || !rules.usable(it, p.level, owned)) throw new Error(`Special snowball "${id}" isn't unlocked`);
         if (id !== 'sb_none' && Object.values(clean).includes(id)) throw new Error('The same special snowball can\x27t fill two slots'); clean[s] = id; }
+      // gear slots, same rules as the database (015 save_profile): owned gear only, the same gear not in both, the 2nd slot from
+      // level 8, the Santa Costume from level 3, and no two gear boosting the same stat (Cody: "Can't stack same stat"; gear.js
+      // statOf). Not mirrored: the 7-day wear clock (the database takes worn-out gear off; this stand-in has no clock).
+      const stats = [];
+      for (const s of rules.GEAR_SLOTS || []) { const id = avatar?.[s] ?? 'gear_none', it = rules.BY_ID.get(id);
+        if (!it || it.slot !== 'gear' || !rules.usable(it, p.level, owned)) throw new Error(`Gear "${id}" isn't unlocked`);
+        if (id !== 'gear_none') {
+          if (s === 'g2' && p.level < 8) throw new Error('The second gear slot opens at level 8');
+          if (it.gear === 'santa' && p.level < 3) throw new Error('The Santa Costume is worn from level 3');
+          if (Object.values(clean).includes(id)) throw new Error('The same gear can\x27t fill two slots');
+          const st = rules.statOf(it.gear); if (st && stats.includes(st)) throw new Error('Two gear can\x27t boost the same stat');
+          if (st) stats.push(st);
+        }
+        clean[s] = id; }
       p.name = n; p.avatar = clean; put(db); return p;
     },
     async logins() { const db = get(), l = db.logins[me]; return l ? kindsOf(db, l.pid) : []; },

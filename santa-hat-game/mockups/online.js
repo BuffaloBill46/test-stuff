@@ -3,11 +3,12 @@ import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON
 import { buildPlaza, makeHat, shadowBlob } from './plaza.js';
 import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js';
 import { openRoom, accounts, findWallet, gamesBoard } from './net.js';
-import { SLOTS, SB_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js';
+import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js';
 import { initTabs, avatarCharacter, renderProgress } from './tabs.js';
 import { levelInfo, clampLevel } from './levels.js';
 import { SERVER, call } from './gameserver.js';
 import { SPECIALS, cantThrow } from './specials.js';
+import { gearIn, effectsOf, heldWith, gearOfMask, statOf } from './gear.js';
 import { initLottery } from './lotteryui.js';
 import { play as sfx, initSoundButtons } from './sfx.js';
 import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js';
@@ -94,7 +95,9 @@ function decode(s) {
   const H = Array.isArray(s.H) ? s.H : [];
   return {
     seq: n(s.s), phase: PHASES[s.ph] || 'lobby', mode: s.md ? 'team' : 'ffa', round: n(s.rd), time: n(s.tm), ts: [n(s.ts?.[0]), n(s.ts?.[1])],
-    ents: (Array.isArray(s.E) ? s.E : []).map((r) => ({ id: n(r[0]), peer: typeof r[1] === 'string' ? r[1] : null, bot: !!r[2], team: n(r[3]), x: n(r[4]), z: n(r[5]), vx: n(r[6]), vz: n(r[7]), face: n(r[8]), stun: !!r[9], ammo: n(r[10]), score: n(r[11]), thr: !!r[12], ep: n(r[13]) })),
+    ents: (Array.isArray(s.E) ? s.E : []).map((r) => ({ id: n(r[0]), peer: typeof r[1] === 'string' ? r[1] : null, bot: !!r[2], team: n(r[3]), x: n(r[4]), z: n(r[5]), vx: n(r[6]), vz: n(r[7]), face: n(r[8]), stun: !!r[9], ammo: n(r[10]), score: n(r[11]), thr: !!r[12], ep: n(r[13]),
+      // special gear, as the REFEREE resolved it (a Present Box already turned into its pick) and extra hits left; none = []
+      gear: gearOfMask(r[15]), xh: n(r[16]) })),
     hat: { st: ['ped', 'head', 'air', 'ground'][H[0]] || 'ped', x: n(H[1]), y: n(H[2], K.PED_TOP), z: n(H[3]), vx: n(H[4]), vy: n(H[5]), vz: n(H[6]), holder: n(H[7], -1), lx: n(H[8]), lz: n(H[9]) },
     balls: (Array.isArray(s.B) ? s.B : []).map((b) => ({ id: n(b[0]), x: n(b[1]), y: n(b[2]), z: n(b[3]), vx: n(b[4]), vy: n(b[5]), vz: n(b[6]), owner: n(b[7]), kind: KIND_OF[n(b[9])] || '', r: n(b[10], 1) || 1 })),
     drops: (Array.isArray(s.D) ? s.D : []).map((p) => ({ x: n(p[0]), z: n(p[1]), t: n(p[2]), owner: n(p[3]), kind: DROP_OF[n(p[4])] || 'rain' })),
@@ -108,7 +111,7 @@ const nameOf = (e) => (e.bot ? BOT_NAMES[botHash(e.id) % BOT_NAMES.length] : (e.
 
 // ---------- referee hand-off
 function becomeHost() {
-  isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)), startOf, specialsOf, levelOf }); // snowball rules, starting snowballs (level), special snowballs
+  isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)), startOf, specialsOf, levelOf, gearOf }); // snowball rules, starting snowballs (level), special snowballs, gear
   if (lastRaw) sim.load(lastRaw);
   room?.setHost(true);
   sim.S.ev.forEach((v) => { lastEv = Math.max(lastEv, v[0]); });
@@ -172,7 +175,7 @@ async function enterRoom(code, quick, opts = {}) {
 
 function startPractice() {
   if (!profile) { me.n = cleanName($('#name')?.value) || me.n; store.set('sq_name', me.n); }
-  practice = true; room = null; roomCode = ''; isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)), startOf, specialsOf, levelOf }); me.j = Date.now(); me.w = false; ctl.ep = -1; snaps = []; lastEv = 0;
+  practice = true; room = null; roomCode = ''; isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)), startOf, specialsOf, levelOf, gearOf }); me.j = Date.now(); me.w = false; ctl.ep = -1; snaps = []; lastEv = 0;
   roomMode = null; autoStart = false; sim.S.mode = lobbyMode; closeLobby(); renderChrome();
 }
 
@@ -224,7 +227,8 @@ function controls(dt, v) {
   if (k.has('KeyD') || k.has('ArrowRight')) w.x += 1;
   if (w.length() > 1) w.normalize();
   if (!canMove) w.set(0, 0, 0);
-  const top = K.HUMAN_SPEED * (v.hat.st === 'head' && v.hat.holder === e.id ? K.HOLD_SLOW : 1), kk = Math.min(1, dt * 10);
+  // Elf Shoes (+25%): the referee allows the extra speed (sim.js setReport), so my own page has to move me that much faster too.
+  const top = K.HUMAN_SPEED * fxOf(e).speedMult * (v.hat.st === 'head' && v.hat.holder === e.id ? K.HOLD_SLOW : 1), kk = Math.min(1, dt * 10);
   ctl.vx += (w.x * top - ctl.vx) * kk; ctl.vz += (w.z * top - ctl.vz) * kk;
   ctl.x += ctl.vx * dt; ctl.z += ctl.vz * dt; constrain(ctl);
   const sp = Math.hypot(ctl.vx, ctl.vz);
@@ -234,7 +238,7 @@ function controls(dt, v) {
 function tryThrow(tx, tz) {
   const v = currentView, e = myEnt(v);
   if (!e || e.stun || ctl.cool > 0 || e.ammo <= 0 || !(v.phase === 'lobby' || v.phase === 'play')) return;
-  if (armed && cantThrow(armed, { ammo: e.ammo, max: startOf(e), level: me.l || 1 })) armed = ''; // not enough snowballs any more: a plain throw
+  if (armed && cantThrow(armed, { ammo: e.ammo, max: maxOf(e), level: me.l || 1 })) armed = ''; // not enough snowballs any more: a plain throw
   ctl.sp = armed; armed = ''; ui.lastHud = '';
   ctl.t++; ctl.ax = tx; ctl.az = tz; ctl.cool = K.HUMAN_COOL; ctl.throwT = 1; ctl.dirty = true; sfx('throw');
   const dx = tx - ctl.x, dz = tz - ctl.z, l = Math.hypot(dx, dz) || 1; ctl.face = Math.atan2(dx, dz);
@@ -324,6 +328,13 @@ const startOf = (e) => levelInfo(levelOf(e)).start;
 // The special snowballs a player brings: what's in their slots that their level opens (catalog.js specialsIn). Bots: none.
 const specialsOf = (e) => (e.bot ? [] : specialsIn(avatarOf(e), levelOf(e), levelInfo(levelOf(e)).sb));
 const mySpecials = () => specialsIn(me.a, me.l || 1, levelInfo(me.l || 1).sb);
+// The special gear a player brings (gear.js gearIn: the gear slots their level opens, worn by level rules, no stacking). The
+// referee reads it once at match start (a Present Box is turned into its pick then). Bots: none (Cody: bots stay normal).
+const gearOf = (e) => (e.bot ? [] : gearIn(avatarOf(e), levelOf(e)));
+// What a player's gear does, read from the REFEREE's snapshot (e.gear), never guessed from an avatar: a Present Box's pick is
+// only known there. maxOf: the snowball counter's size (Santa Bag/Toy Sack +50%, Backpack +25%, rounded up), as sim.js holds it.
+const fxOf = (e) => effectsOf(e?.gear);
+const maxOf = (e) => heldWith(startOf(e), fxOf(e));
 // My slots as the Avatar screen numbers them: [{ n: 1..3, kind }] for each open slot holding a special I can use (SB2 stays SB2).
 const mySlots = () => { const lvl = me.l || 1, ok = new Set(mySpecials()); return SB_SLOTS.slice(0, levelInfo(lvl).sb).map((s, i) => ({ n: i + 1, kind: BY_ID.get(cleanAvatar(me.a)[s])?.special })).filter((x) => x.kind && ok.has(x.kind)); };
 // Levels: when an Auto match ends, the host reports every finishing place (bots and guests as empty places) to the game
@@ -351,20 +362,28 @@ function loadStats(v) {
   const ids = v.ents.filter((e) => !e.bot).map((e) => infoOf(e).pid).filter(Boolean);
   if (ids.length) call('stats', { profiles: ids }).then((r) => { for (const p of r?.players || []) statsOf.set(p.id, p); }).catch(() => { statsFor = ''; });
 }
+// A player's gear for the load screen, by the item names players bought (Cody: Toy Sack, Gift Box keep their names): the slots
+// their level opens, as the match wears them (gearIn). A Gift Box shows what it turned into, from the referee's snapshot.
+const gearItemName = (kind) => [...BY_ID.values()].find((it) => it.gear === kind)?.name || kind;
+function gearNames(a, lvl, e) {
+  const c = cleanAvatar(a), kinds = gearIn(a, lvl), pick = (e.gear || []).find((k) => !kinds.includes(k));
+  return GEAR_SLOTS.slice(0, levelInfo(lvl).gear).map((s) => BY_ID.get(c[s])).filter((it) => it?.gear && kinds.includes(it.gear))
+    .map((it) => it.name + (it.gear === 'present' && pick ? ' (' + gearItemName(pick) + ')' : ''));
+}
 function lineupRow(e, v) {
   const team = v.mode === 'team' ? ` <u class="t${e.team}">${TEAM_NAME[e.team]}</u>` : '';
   if (e.bot) return `<li class="bot"><span class="who">${esc(nameOf(e))} <i>elf bot</i>${team}</span></li>`;
   const p = infoOf(e), st = p.pid ? statsOf.get(p.pid) : null, lvl = clampLevel(st?.level ?? p.l), dash = (x) => (st ? x : '–');
-  const sbs = specialsIn(p.a || {}, lvl, levelInfo(lvl).sb).map((k) => SPECIALS[k].name);
+  const sbs = specialsIn(p.a || {}, lvl, levelInfo(lvl).sb).map((k) => SPECIALS[k].name), gear = gearNames(p.a || {}, lvl, e);
   return `<li class="${e.peer === me.id ? 'me' : ''}"><span class="who">${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}${team}</span><b class="lv">LV ${lvl}</b>
     <dl><div><dt>Games</dt><dd>${dash(st?.games)}</dd></div><div><dt>Top 3</dt><dd>${dash(st?.top3Pct + '%')}</dd></div><div><dt>Rank pts</dt><dd>${dash(st?.rankPoints)}</dd></div></dl>
-    <p class="kit"><span>Snowballs</span>${sbs.length ? sbs.map(esc).join(' · ') : 'plain only'}</p><p class="kit"><span>Gear</span>coming soon</p></li>`;
+    <p class="kit"><span>Snowballs</span>${sbs.length ? sbs.map(esc).join(' · ') : 'plain only'}</p><p class="kit"><span>Gear</span>${gear.length ? gear.map(esc).join(' · ') : 'none'}</p></li>`;
 }
 // The SB buttons under the counter: one per open slot with a special in it (name and how many snowballs it uses). A button is
 // off when it can't be thrown now (not enough snowballs; Rain: a full counter and level 5). Pressed = armed for the next throw.
 function sbRow(m) {
   const list = mySlots(); if (!list.length) return '';
-  const level = me.l || 1, max = startOf(m);
+  const level = me.l || 1, max = maxOf(m);
   return `<div class="sbrow">${list.map(({ n, kind: k }) => { const S = SPECIALS[k], why = cantThrow(k, { ammo: m.ammo, max, level });
     return `<button type="button" data-sb="${n - 1}" aria-pressed="${armed === k}" ${why ? 'disabled' : ''} title="${S.note}${why ? ' (' + why + ')' : ''}"><b>SB${n}</b> ${S.name} <small>${S.cost === 'all' ? 'all' : S.cost}</small></button>`; }).join('')}</div>`;
 }
@@ -519,8 +538,8 @@ function renderChrome() {
     if (armed && !mySpecials().includes(armed)) armed = '';
     setHud(`<div class="stat plaque"><i>Round</i><b>${v.round}/${K.ROUNDS}</b></div>
       <div class="stat plaque ${v.time < 10 && v.phase === 'play' ? 'warn' : ''}"><i>${v.phase === 'break' ? 'Next round' : 'Time'}</i><b>${Math.ceil(v.time)}</b></div>
-      ${m ? `<div class="stat plaque nice"><i>You</i><b>${m.score}</b></div>` : ''}
-      ${m ? `<div class="stat plaque"><i>Snowballs</i><div class="pips">${Array.from({ length: startOf(m) }, (_, i) => `<u class="${i < m.ammo ? '' : 'off'}"></u>`).join('')}</div>${sbRow(m)}</div>` : ''}`);
+      ${m ? `<div class="stat plaque nice"><i>You${hitsLeft(m)}</i><b>${m.score}</b></div>` : ''}
+      ${m ? `<div class="stat plaque"><i>Snowballs</i><div class="pips">${Array.from({ length: maxOf(m) }, (_, i) => `<u class="${i < m.ammo ? '' : 'off'}"></u>`).join('')}</div>${sbRow(m)}</div>` : ''}`);
   } else setHud('');
   // scoreboard
   let board = '';
@@ -531,6 +550,8 @@ function renderChrome() {
   }
   if (board !== ui.lastBoard) { ui.lastBoard = board; const b = $('#board'); b.hidden = !board; b.innerHTML = board; }
 }
+// Extra-hit gear (Pumpkin Costume etc.): a quiet note on my score plaque, how many extra hits I have left (the referee's count).
+const hitsLeft = (m) => (fxOf(m).extraHits ? ` · +${m.xh} hit${m.xh === 1 ? '' : 's'}` : '');
 function setHud(s) { if (s !== ui.lastHud) { ui.lastHud = s; $('#hud').innerHTML = s; } }
 
 // ---------- per-frame drawing
@@ -555,12 +576,14 @@ function draw(v, dt, t) {
     w.speed += (Math.min(sp, 8) - w.speed) * Math.min(1, dt * 8);
     w.rx = x; w.rz = z;
     animate(w.mesh, dt, e.stun ? 0 : w.speed, isMe ? ctl.throwT : e.thr ? 0.8 : 0);
+    // Elf Hat: that player is drawn at half size on every screen (the referee's gear, so everyone sees the same; sim.js hits it so)
+    const sz = fxOf(e).size; w.mesh.scale.setScalar(sz);
     w.mesh.position.set(x, 0, z); w.mesh.rotation.y = face; w.mesh.rotation.z = e.stun ? Math.sin(t * 28) * 0.18 : 0;
     w.ring.position.set(x, 0.05, z);
     w.ring.material.color.set(e.immune ? 0xffd060 : isMe ? C.lantern : v.mode === 'team' ? TEAM_RING[e.team] : 0xdfe6f5); // gold = untouchable (just got the hat)
     w.ring.material.opacity = e.immune ? 0.6 + Math.sin(t * 14) * 0.35 : 0.8;
-    w.ring.scale.setScalar(isMe ? 1.15 : 0.9);
-    const p = toScreen(tmp.set(x, 2.85, z), camera, W, H), b = bubbles.get(e.peer || 'b' + e.id);
+    w.ring.scale.setScalar((isMe ? 1.15 : 0.9) * sz);
+    const p = toScreen(tmp.set(x, 2.85 * sz, z), camera, W, H), b = bubbles.get(e.peer || 'b' + e.id);
     const say = b && b.until > performance.now() ? b.text : '';
     w.label.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -100%)`;
     const text = say || nameOf(e); if (w.label.dataset.t !== text) { w.label.dataset.t = text; w.label.textContent = text; }
@@ -570,7 +593,9 @@ function draw(v, dt, t) {
   const h = v.hat; let hx = h.x, hy = h.y, hz = h.z, rot = null;
   hatShadow.visible = landRing.visible = false;
   for (const [id, w] of views) { const c = w.mesh.userData.hatMesh; if (c) c.visible = !(h.st === 'head' && h.holder === id); } // a worn cosmetic hat steps aside for the Santa hat
-  if (h.st === 'head') { const w = views.get(h.holder); if (w) { hx = w.rx; hz = w.rz; hy = K.HEAD_Y + w.mesh.userData.body.position.y; rot = [0, w.mesh.rotation.y + Math.PI / 2, w.mesh.rotation.z]; } }
+  // hs: the wearer's drawn size (Elf Hat: half), so the Santa hat sits on a half-size head at half size
+  let hs = 1;
+  if (h.st === 'head') { const w = views.get(h.holder); if (w) { hs = w.mesh.scale.x; hx = w.rx; hz = w.rz; hy = (K.HEAD_Y + w.mesh.userData.body.position.y) * hs; rot = [0, w.mesh.rotation.y + Math.PI / 2, w.mesh.rotation.z]; } }
   else if (h.st === 'air') {
     const a = Math.min(v.age || 0, 1.2); hx = h.x + h.vx * a; hz = h.z + h.vz * a; hy = Math.max(0.15, h.y + h.vy * a - 0.5 * K.HAT_G * a * a);
     hatMesh.rotation.x += dt * 7; hatMesh.rotation.z += dt * 5;
@@ -580,7 +605,7 @@ function draw(v, dt, t) {
   else rot = [0, hatMesh.rotation.y, 0.4];
   if (rot) hatMesh.rotation.set(...rot);
   hatMesh.position.set(hx, hy, hz);
-  hatMesh.scale.setScalar(THREE.MathUtils.lerp(hatMesh.scale.x, h.st === 'ped' ? 2.2 : 1, Math.min(1, dt * 8)));
+  hatMesh.scale.setScalar(THREE.MathUtils.lerp(hatMesh.scale.x, h.st === 'ped' ? 2.2 : hs, Math.min(1, dt * 8)));
   hatGlow.position.set(hx, hy + 0.5, hz); hatGlow.material.opacity = 0.22 + Math.sin(t * 4) * 0.08;
   // snowballs: the referee's (extrapolated), except my own, which I drew instantly
   const a = Math.min(v.age || 0, 1);
@@ -752,7 +777,7 @@ function setPreview(a) {
   previewHat.position.set(0, K.HEAD_Y, 0); previewHat.rotation.y = Math.PI / 2; preview.add(previewHat);
 }
 setPreview(me.a);
-const acct = accounts({ local: LOCAL, rules: { SLOTS, SB_SLOTS, BY_ID, usable, DEFAULT_AVATAR } });
+const acct = accounts({ local: LOCAL, rules: { SLOTS, SB_SLOTS, GEAR_SLOTS, statOf, BY_ID, usable, DEFAULT_AVATAR } });
 const app = {
   me, accounts: acct,
   hasWallet: () => LOCAL || !!findWallet(),
@@ -776,4 +801,6 @@ window.__sq = { get armed() { return armed; }, throwAt: (x, z) => tryThrow(x, z)
   // tests: where the ring's outer wall lands on screen (-1..1 = inside the view), all the way round, at the ground and wall top
   ringFit: (r = 15.0) => { let x0 = 9, x1 = -9, y0 = 9, y1 = -9; for (let i = 0; i < 72; i++) for (const y of [0, 1]) { const a = (i / 72) * Math.PI * 2, p = new V3(Math.cos(a) * r, y, Math.sin(a) * r).project(camera); x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); } return { x0, x1, y0, y1 }; }, get room() { return room; }, get isHost() { return isHost; }, get sim() { return sim; }, get view() { return currentView; }, me, ctl, enterRoom, leaveRoom, startPractice, idleFor: (ms) => { lastInput = performance.now() - ms; },
   // tests: the plaza theme, and what's on the GPU / in the scene (a theme swap must not leave the old plaza behind)
+  // tests: the size a player is drawn at (Elf Hat: 0.5)
+  drawnScale: (id) => views.get(id)?.mesh.scale.x,
   get theme() { return theme; }, setTheme, gpu: () => ({ ...renderer.info.memory, kids: scene.children.length, fog: scene.fog && [scene.fog.color.getHex(), scene.fog.near, scene.fog.far] }) };
