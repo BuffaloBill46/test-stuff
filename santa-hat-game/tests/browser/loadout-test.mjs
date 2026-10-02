@@ -50,7 +50,8 @@ await p.click('#leave').catch(() => {}); await p.waitForTimeout(800);
 
 console.log('4. The Store has a Special Snowballs shelf');
 await p.click('#t-store'); await p.waitForTimeout(1500);
-const shelf = await p.evaluate(() => { const c = [...document.querySelectorAll('.carousel')].find((x) => /Special Snowballs/.test(x.querySelector('h4')?.textContent || '')); return c ? [...c.querySelectorAll('.item b')].map((b) => b.textContent) : []; });
+await p.waitForFunction(() => document.querySelectorAll('#carousels .shop').length, null, { timeout: 30000 });
+const shelf = await p.evaluate(() => { const c = [...document.querySelectorAll('#carousels .shop')].find((x) => /Special Snowballs/.test(x.querySelector('h3')?.textContent || '')); return c ? [...c.querySelectorAll('.shopitem b')].map((b) => b.textContent) : []; });
 check(shelf.join() === 'Ice Ball,Split Ball,Giant Ball,Fire Ball,Sky Ball,Snowball Rain', 'shelf: ' + shelf.join(', '));
 check(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
 console.log(fails.length ? 'FAILED:\n - ' + fails.join('\n - ') : 'ALL CHECKS PASSED');

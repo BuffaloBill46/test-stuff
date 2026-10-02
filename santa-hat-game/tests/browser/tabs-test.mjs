@@ -40,7 +40,7 @@ for (const [label, vw, vh] of [['desk', 1280, 800], ['phone', 390, 844]]) {
   console.log(label, 'after sign-in:', await page.textContent('#signin'), '| rank chip', await page.textContent('#rankchip b'));
   // try on the Gorilla from the store: must preview but refuse to save
   await tap('#t-store'); await wait(300);
-  await page.locator('[data-try="face_gorilla"]').click(); await wait(1500);
+  await page.locator('[data-try="sb_ice"]').click(); await wait(1500);
   console.log(label, 'gorilla save disabled:', await page.isDisabled('#avsave'), '|', await page.textContent('#avmsg'));
   await page.screenshot({ path: `${OUT}-${label}-3-tryon-gorilla.png` });
   await page.click('[data-slot="face"]'); await wait(300); await page.click('[data-pick="face_smile"]');

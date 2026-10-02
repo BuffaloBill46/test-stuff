@@ -57,7 +57,7 @@ console.log('1. Without a game server (today\'s site): the lotteries show, buyin
   check(target === midnight, `Daily counts down to the next 00:00 UTC (${new Date(target).toISOString()})`);
   await p.fill('.lotcard[data-lot="weekly-10"] input', '37'); await p.evaluate(() => window.__lottery.render());
   check(await p.inputValue('.lotcard[data-lot="weekly-10"] input') === '37', 'a number being typed survives a refresh');
-  await p.evaluate(() => document.querySelector('.lotcard [data-buy="5"]').click()); await p.waitForTimeout(400);
+  await p.evaluate(() => { document.querySelector('.lotcard [data-amt="5"]').click(); document.querySelector('.lotcard [data-buy="custom"]').click(); }); await p.waitForTimeout(400);
   check(/open soon/.test(await p.textContent('.lotcard .lotnote')), 'buying says sales open soon (nothing sold)');
   check(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await p.locator('#lottery').screenshot({ path: 'out/lottery-demo.png' }); await p.context().close(); }
@@ -67,18 +67,22 @@ console.log('2. With the game server: buy 5 tickets in Weekly 10¢, see the pot;
   await p.exposeFunction('testPay', (q) => payFor(q)); await p.evaluate(() => { window.santaPay = (q) => window.testPay(q); });
   for (;;) { const t = Date.now(), at = schedule.nextDraw('weekly-10', t); if (at - t > CLOSE + 7000) break; await p.waitForTimeout(500); } // room to buy before the close
   const weekly = '.lotcard[data-lot="weekly-10"]';
-  await p.evaluate((s) => document.querySelector(s + ' [data-buy="5"]').click(), weekly);
+  // 5, then Buy tickets (Cody's card layout: the amount buttons pick, one button buys)
+  await p.evaluate((s) => { document.querySelector(s + ' [data-amt="5"]').click(); document.querySelector(s + ' [data-buy="custom"]').click(); }, weekly);
   await p.waitForFunction((s) => /tickets #|Not paid|error|closed/i.test(document.querySelector(s + ' .lotnote').textContent), weekly, { timeout: 20000 }).catch(() => {});
   const note = await p.textContent(weekly + ' .lotnote');
   check(/You have tickets #1–#5/.test(note), 'bought: ' + note);
   await p.evaluate(() => window.__lottery.refresh()); await p.waitForTimeout(800);
-  check(/5 tickets/.test(await p.textContent(weekly)) && /pot \d/.test(await p.textContent(weekly)), 'the card shows the pot and 5 tickets sold');
+  { const t = (await p.textContent(weekly)).replace(/\s+/g, ' ');
+    check(/Tickets sold ?5(?!\d)/.test(t) && /Prize pot ?\d/.test(t) && /Yours ?5 of 5 · 100\.0%/.test(t), 'the card shows the pot, 5 tickets sold and yours (5 of 5 · 100.0%): ' + t.slice(0, 240)); }
   check(/You have tickets #1–#5/.test(await p.textContent(weekly + ' .lotnote')), 'the buy message is still there after the refresh');
   const drawAt = schedule.nextDraw('weekly-10', Date.now()); while (Date.now() < drawAt + 500) await p.waitForTimeout(500);
   await p.evaluate(() => window.__lottery.refresh());
   await p.waitForFunction(() => /Weekly 10¢/.test(document.querySelector('#lotResults')?.textContent || ''), null, { timeout: 20000 }).catch(() => {});
   const res = (await p.textContent('#lotResults')).replace(/\s+/g, ' ');
   check(/Recent draws/.test(res) && /1st Cody/.test(res), 'the draw shows its winner: ' + res.slice(0, 140));
+  // the next draw is a fresh one: my 5 tickets were in the drawn one, so the card counts me from 0 again (not "5 of 0")
+  { const t = (await p.textContent(weekly)).replace(/\s+/g, ' '); check(/Yours ?0 of 0 · 0\.0%/.test(t), 'after the draw, Yours starts again: ' + (t.match(/Yours[^D]*/) || [''])[0]); }
   await p.evaluate(() => document.querySelector('#lotResults [data-check]').click());
   await p.waitForFunction(() => /Matches|NOT match|Could not/.test(document.querySelector('.lotcheck').textContent), null, { timeout: 20000 }).catch(() => {});
   check(/^Matches/.test(await p.textContent('.lotcheck')), 'Check this draw: ' + (await p.textContent('.lotcheck')));

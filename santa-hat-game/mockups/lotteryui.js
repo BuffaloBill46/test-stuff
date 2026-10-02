@@ -18,19 +18,37 @@ function left(ms) {
   const s = Math.floor(ms / 1000), d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
   return d ? `${d}d ${h}h ${m}m` : h ? `${h}h ${m}m` : `${m}m ${s % 60}s`;
 }
-const info = (kind) => { const o = live?.open?.find((x) => x.lottery === kind);
-  return winnersText(LOTTERIES[kind].split) + (o ? ` · pot <b>${santa(o.pot_raw)}</b> · ${o.tickets.toLocaleString()} ticket${o.tickets === 1 ? '' : 's'}` : ''); };
+// Your tickets in each draw, as THIS browser bought them (the server's public answer has totals, not who holds what). Keyed by
+// lottery + draw time, so a new draw starts at 0.
+const MINE = 'santa.myLotteryTickets';
+// The draw's key: the server's own draw time when it has answered (the draw actually open), else this browser's schedule.
+const drawKey = (kind) => kind + '@' + (live?.open?.find((x) => x.lottery === kind)?.drawsAt ?? nextDraw(kind, Date.now()));
+const mineOf = (kind) => { try { return JSON.parse(localStorage.getItem(MINE) || '{}')[drawKey(kind)] || 0; } catch { return 0; } };
+// filed under the draw the SERVER says the tickets are in (its reply's drawsAt; moved tickets count in the next draw)
+const addMine = (kind, n, drawsAt) => { try { const m = JSON.parse(localStorage.getItem(MINE) || '{}'), k = drawsAt ? kind + '@' + drawsAt : drawKey(kind); m[k] = (m[k] || 0) + n; localStorage.setItem(MINE, JSON.stringify(m)); } catch {} };
+// The card's changing parts (Cody, 2026-10-01: laid out like his other game's lottery cards): a notice, then rows of facts.
+const info = (kind) => { const o = live?.open?.find((x) => x.lottery === kind), L = LOTTERIES[kind], mine = mineOf(kind), sold = o ? o.tickets : 0;
+  const notice = !SERVER ? '🧪 Test version: tickets aren\'t on sale yet, so there\'s nothing to win this draw.'
+    : o && o.sales === false ? 'Sales are closed: this draw is about to be drawn.'
+    : `Ticket sales close 5 minutes before the draw. 10% of every ticket is burned; the rest is the pot.`;
+  return { notice, rows: [['Ticket', money(L.ticket)], ['Prize pot', o ? santa(o.pot_raw) : '–'], ['Tickets sold', o ? sold.toLocaleString() : '–'],
+    ['Winners', L.split.length === 1 ? '1 takes it all' : 'Top 3 · 60/25/15'], ['Yours', `${mine} of ${sold.toLocaleString()} · ${sold ? ((mine / sold) * 100).toFixed(1) : '0.0'}%`]] }; };
+// A ticket in each lottery's colour (daily red, weekly gold, Christmas green), like the icons in Cody's other game.
+const ICON = { 'daily-10': '#e5484d', 'daily-100': '#e5484d', 'weekly-10': '#f5c542', 'weekly-100': '#f5c542', christmas: '#3fb950' };
+const ticketIcon = (kind) => `<svg class="lotico" viewBox="0 0 32 22" aria-hidden="true"><path d="M2 3h28v5a3 3 0 0 0 0 6v5H2v-5a3 3 0 0 0 0-6z" fill="${ICON[kind] || '#f5c542'}"/><path d="M8 7h16v8H8z" fill="none" stroke="#0c0d12" stroke-width="2" opacity=".55"/><path d="M11 11h10" stroke="#0c0d12" stroke-width="2" opacity=".55"/></svg>`;
 function card(kind) {
-  const L = LOTTERIES[kind], at = nextDraw(kind, Date.now());
-  const when = at === null ? 'Drawn' : kind === 'christmas' ? 'Draws Dec 23, 7 PM Eastern' : `Draws in <b data-left="${at}">${left(at - Date.now())}</b>`;
+  const L = LOTTERIES[kind], at = nextDraw(kind, Date.now()), i = info(kind);
+  const when = at === null ? 'Drawn' : kind === 'christmas' ? `<b data-left="${at}">${left(at - Date.now())}</b>` : `<b data-left="${at}">${left(at - Date.now())}</b>`;
   return `<article class="lotcard" data-lot="${kind}">
-    <header><h3>${esc(L.name)}</h3><em>${money(L.ticket)} a ticket</em></header>
-    <p class="lotwhen">${when}</p>
-    <p class="dim lotinfo">${info(kind)}</p>
-    <div class="lotbuy" role="group" aria-label="Buy ${esc(L.name)} tickets">
-      ${[1, 5, 10].map((n) => `<button class="sec" data-buy="${n}">${n}</button>`).join('')}
-      <input type="number" min="1" max="10000" step="1" value="25" aria-label="How many tickets"><button class="go" data-buy="custom">Buy</button>
+    <header>${ticketIcon(kind)}<h3>${esc(L.name)}</h3></header>
+    <p class="lotnotice">${esc(i.notice)}</p>
+    <dl class="lotrows">${i.rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}<div><dt>Draws in</dt><dd>${when}</dd></div></dl>
+    ${kind === 'christmas' ? '<p class="lotwhen">Draws December 23, 7 PM Eastern</p>' : ''}
+    <div class="lotbuy" role="group" aria-label="How many ${esc(L.name)} tickets">
+      ${[1, 5, 10].map((n) => `<button type="button" data-amt="${n}">${n}</button>`).join('')}
+      <input type="number" min="1" max="10000" step="1" value="1" aria-label="How many tickets">
     </div>
+    <button class="lotgo" data-buy="custom">Buy tickets</button>
     <p class="lotnote" aria-live="polite"></p></article>`;
 }
 // The cards are built ONCE; later updates only change their changing parts (countdown, pot, tickets), so a buy message or a
@@ -41,7 +59,8 @@ function render() {
   for (const k of kinds) {
     let c = grid.querySelector(`[data-lot="${k}"]`); const at = String(nextDraw(k, Date.now()));
     if (!c || (c.querySelector('[data-left]') && c.querySelector('[data-left]').dataset.left !== at)) { const t = document.createElement('template'); t.innerHTML = card(k).trim(); const n = t.content.firstChild; c ? c.replaceWith(n) : grid.append(n); c = n; }
-    c.querySelector('.lotinfo').innerHTML = info(k);
+    const i = info(k); c.querySelector('.lotnotice').textContent = i.notice;
+    c.querySelectorAll('.lotrows dd').forEach((dd, n) => { if (i.rows[n]) dd.textContent = i.rows[n][1]; });
   }
   const recent = live?.recent || [];
   $('#lotResults').innerHTML = recent.length ? `<h3>Recent draws</h3><ol class="lotres">${recent.map((r) => `<li data-draw="${r.id}">
@@ -91,6 +110,7 @@ async function buy(kind, n, note) {
   note.textContent = 'Confirming the payment…';
   const b = await buyPaid(q.id, signature);
   if (b.error) { note.textContent = b.error; return; }
+  if (!b.refunded && b.tickets) addMine(kind, b.tickets.last - b.tickets.first + 1, b.drawsAt);
   note.textContent = b.refunded ? b.note : `You have tickets #${b.tickets.first}${b.tickets.last > b.tickets.first ? '–#' + b.tickets.last : ''}${b.moved ? ' in the NEXT draw (this one had closed)' : ''}. Good luck!`;
   refresh();
 }
@@ -112,6 +132,8 @@ async function check(li) {
 export function initLottery() {
   if (!$('#lotGrid')) return;
   render(); setInterval(tick, 1000);
+  // 1 / 5 / 10 pick how many; "Buy tickets" buys that many (or whatever was typed)
+  $('#lotGrid').addEventListener('click', (e) => { const a = e.target.closest('[data-amt]'); if (a) { $('input', a.closest('[data-lot]')).value = a.dataset.amt; return; } });
   $('#lotGrid').addEventListener('click', (e) => { const b = e.target.closest('[data-buy]'); if (!b) return; const c = b.closest('[data-lot]');
     const n = b.dataset.buy === 'custom' ? Math.floor(Number($('input', c).value)) : +b.dataset.buy; buy(c.dataset.lot, n, $('.lotnote', c)); });
   $('#lotResults').addEventListener('click', (e) => { const b = e.target.closest('[data-check]'); if (b) check(b.closest('[data-draw]')); });

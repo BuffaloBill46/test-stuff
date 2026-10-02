@@ -97,8 +97,11 @@ check(/0×nowin·18of40onthewheel45\.0%/.test((await p.textContent('#oddsList'))
   const want = Math.round(1 / (1 - (1 - st.topPerLine * st.lines) * (1 - M.poolJackpotOdds))).toLocaleString('en-US');
   check((await p.textContent('#slots .facts')).includes(`Jackpot odds (Top Line or Pool)about 1 in ${want}`) && want !== '7,665', `the Big Hat facts show the published odds (about 1 in ${want}, not the default 7,665): ` + await p.textContent('#slots .facts')); }
 check(await p.evaluate(() => window.__spin.SLICES && window.__spin.view.shownMult !== undefined), 'wheel ready');
-await p.evaluate(() => document.querySelector('#t-store').click()); await p.waitForTimeout(1500);
-check(/Mint/.test(await p.textContent('#carousels')) && /\$0\.30/.test(await p.textContent('#carousels')), 'the new Mint shirt is in the store at $0.30');
+// The Store sells only special snowballs and gear now (Cody, 2026-10-01), so a published look item shows on the Avatar screen with
+// its price. (The admin store editor still edits look items only: see TODO.)
+await p.evaluate(() => document.querySelector('#t-avatar').click()); await p.waitForTimeout(800);
+await p.evaluate(() => document.querySelector('[data-slot="shirt"]').click()); await p.waitForTimeout(500);
+check(/Mint/.test(await p.textContent('#avgrid')) && /\$0\.30/.test(await p.textContent('#avgrid')), 'the new Mint shirt is on the Avatar screen at $0.30');
 await p.evaluate(() => document.querySelector('#t-games').click()); await p.waitForTimeout(800);
 // A run of 5 pulls through the server, on settings v1: every play lands and re-checks on the new reels.
 await p.exposeFunction('testPay', (q) => payFor(q));

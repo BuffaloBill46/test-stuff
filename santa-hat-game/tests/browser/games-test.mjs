@@ -44,7 +44,7 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
     return { exp, before };
   }
   let r = await read(); console.log(label, 'at rest:', JSON.stringify(r));
-  check(r.pool === '$500.00' && r.bal === '$20.00', label + ': starting pool/balance');
+  check(r.pool === '$500.00' && r.bal === '$100.00', label + ': starting pool/balance');
   check(r.pct === '25%' && r.jp === '$125.00' && r.top === '$100.00', label + ': jackpot readouts');
   check(!r.wide, label + ': page wider than screen');
   check(await p.locator('#payRows tbody tr').count() === 12, label + ': paytable rows (9 symbols + hat bonus + pool jackpot + coal)');
