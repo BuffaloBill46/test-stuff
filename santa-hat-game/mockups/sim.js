@@ -57,6 +57,8 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
   const scoring = () => S.phase === 'play';
   const moving = () => S.phase === 'play' || S.phase === 'lobby';
   const d2 = (a, b) => hyp(a.x - b.x, a.z - b.z);
+  // How close a ball's path from (ox, oz) to where it is now came to a player (on the ground plane).
+  const pathDist = (e, ox, oz, b) => { const dx = b.x - ox, dz = b.z - oz, L = dx * dx + dz * dz, t = L > 0 ? clamp(((e.x - ox) * dx + (e.z - oz) * dz) / L, 0, 1) : 1; return hyp(e.x - ox - dx * t, e.z - oz - dz * t); };
 
   function mkEnt(peer, bot, team) {
     return { id: S.nextId++, peer, bot, team, x: 0, z: 0, vx: 0, vz: 0, face: 0, stun: 0, cool: bot ? 1 : 0, ammo: bot ? 4 : levelInfo(1).start, max: bot ? 4 : levelInfo(1).start,
@@ -295,7 +297,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     }
 
     for (let i = S.balls.length - 1; i >= 0; i--) {
-      const b = S.balls[i]; b.vy -= K.BALL_G * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt; b.life -= dt; b.age = (b.age || 0) + dt;
+      const b = S.balls[i], ox = b.x, oz = b.z; b.vy -= K.BALL_G * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt; b.life -= dt; b.age = (b.age || 0) + dt;
       // Split Ball: 0.3 s after the throw it becomes 3 pieces fanning out along its path; a player can be hit by only one piece (Cody).
       if (b.kind === 'split' && b.age >= SPECIALS.split.splitAfter) {
         S.balls.splice(i, 1); const fan = (SPECIALS.split.fanDeg * Math.PI) / 180;
@@ -308,9 +310,11 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
       const r = b.r || 1;
       if (!done) for (const e of S.ents) {
         if (!hittable(e, b.owner) || (b.g && (S.gh[b.g] || []).includes(e.id))) continue;
-        // Elf Hat: a half-size player is half as wide and half as tall above the 0.3 floor (so an aimed throw, ~1.15 high, still hits)
+        // Elf Hat: a half-size player is half as wide and half as tall above the 0.3 floor (so an aimed throw, ~1.15 high, still hits).
+        // Measured to the PATH the ball took this step, not just where it ended: a slow host steps 1/20 s, the ball moves 0.9 a
+        // step, and a half-size player is only 0.6 wide, so an end-point check let snowballs fly straight through an Elf Hat.
         const sz = e.fx.size;
-        if (d2(e, b) < 0.6 * r * sz && b.y > 0.3 - (r - 1) * 0.3 && b.y < 0.3 + (2.1 + (r - 1) * 0.3) * sz) { hit(e, b); if (b.g) (S.gh[b.g] ||= []).push(e.id); done = true; break; }
+        if (pathDist(e, ox, oz, b) < 0.6 * r * sz &&b.y > 0.3 - (r - 1) * 0.3 && b.y < 0.3 + (2.1 + (r - 1) * 0.3) * sz) { hit(e, b); if (b.g) (S.gh[b.g] ||= []).push(e.id); done = true; break; }
       }
       if (done) S.balls.splice(i, 1);
     }
