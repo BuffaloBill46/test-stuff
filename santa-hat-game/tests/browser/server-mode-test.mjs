@@ -10,6 +10,7 @@ const { createGameServer } = await import('../../server/games.js');
 const { makeHandler } = await import('../../server/http.js');
 const { makeLimiter, memoryStore } = await import('../../server/ratelimit.js');
 const { splitPayment, MINT } = await import('../../mockups/market.js');
+const PORT = Number(process.env.PORT) || 8787; // another port when 8787 is busy: PORT=8797 node server-mode-test.mjs
 const ROOT = new URL('../../mockups', import.meta.url).pathname, fails = [], check = (ok, msg) => { if (!ok) fails.push(msg); };
 
 // --- the server: real SQL, stand-in chain and price (fixed so the test is repeatable)
@@ -51,15 +52,15 @@ const web = http.createServer(async (req, res) => {
     if (!pth.startsWith(ROOT) || !existsSync(pth)) { res.writeHead(404); return res.end(); }
     res.writeHead(200, { 'content-type': pth.endsWith('.js') ? 'text/javascript' : pth.endsWith('.png') ? 'image/png' : 'text/html' }); return res.end(readFileSync(pth)); }
   const chunks = []; for await (const c of req) chunks.push(c);
-  const r = await handle(new Request('http://localhost:8787' + req.url, { method: req.method, headers: req.headers, body: req.method === 'POST' ? Buffer.concat(chunks) : undefined }));
+  const r = await handle(new Request('http://localhost:' + PORT + '' + req.url, { method: req.method, headers: req.headers, body: req.method === 'POST' ? Buffer.concat(chunks) : undefined }));
   res.writeHead(r.status, Object.fromEntries(r.headers)); res.end(Buffer.from(await r.arrayBuffer()));
-}).listen(8787);
+}).listen(PORT);
 
 // --- the page
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } }); const errors = [];
 await ctx.route('**/*', async (route) => { const url = route.request().url();
-  if (url.startsWith('http://localhost:8787/')) return route.continue();
+  if (url.startsWith('http://localhost:' + PORT + '/')) return route.continue();
   if (url.includes('cdn.jsdelivr.net/npm/three@')) return route.fulfill({ body: readFileSync(path.resolve('node_modules/three/build', url.split('/build/')[1])), contentType: 'text/javascript' });
   if (/cdn\.jsdelivr\.net\/npm\/|fonts\.googleapis|fonts\.gstatic/.test(url)) { try { return route.fulfill({ body: execSync(`curl -sS -L "${url}"`, { maxBuffer: 1e8 }), contentType: url.includes('googleapis') ? 'text/css' : url.includes('gstatic') ? 'font/woff2' : 'text/javascript' }); } catch { return route.abort(); } }
   if (url.startsWith('http://localhost/')) { const p = url.replace('http://localhost/', '').split(/[?#]/)[0], f = path.join(ROOT, p); if (!existsSync(f)) return route.fulfill({ status: 404, body: 'nf' }); return route.fulfill({ body: readFileSync(f), contentType: p.endsWith('.js') ? 'text/javascript' : p.endsWith('.png') ? 'image/png' : 'text/html' }); }
@@ -71,7 +72,7 @@ await db.query(`insert into public.profiles (id, wallet, name, avatar) values ($
 const rq = (await db.query(`insert into public.quotes (profile_id, kind, n, bet, usd, santa_raw, price_usd) values ($1, 'spin', 1, 1, 1, 1, 0.00085) returning id`, [other]))[0].id;
 const rrun = (await db.query(`select public.buy_run($1, $2, 1, 0, 0, 0) as id`, [rq, 'RUDOLPH' + '5'.repeat(81)]))[0].id;
 await db.query(`update public.plays set state = 'settled', commit = $2, secret = 's', player_seed = 'p', result = '{"mult":5}', pay = 5, settled_at = now() where run_id = $1`, [rrun, 'f'.repeat(64)]);
-await p.goto('http://localhost:8787/online.html?net=local&server=' + encodeURIComponent('http://localhost:8787/api') + '&token=test-token', { timeout: 90000 });
+await p.goto('http://localhost:' + PORT + '/online.html?net=local&server=' + encodeURIComponent('http://localhost:' + PORT + '/api') + '&token=test-token', { timeout: 90000 });
 await p.waitForFunction(() => window.__sq, null, { timeout: 60000 });
 await p.evaluate(() => document.querySelector('#t-games').click()); await p.waitForFunction(() => window.__slots, null, { timeout: 90000 });
 await p.waitForFunction(() => /Rudolph/.test(document.querySelector('#winList')?.textContent || ''), null, { timeout: 15000 }).catch(() => {});
