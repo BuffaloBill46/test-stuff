@@ -214,14 +214,15 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
   }
   // Can this snowball hit this player? (Not its thrower, not a teammate, not someone knocked down or holding the hat's immunity.)
   const hittable = (e, owner) => e.id !== owner && e.stun <= 0 && !(e.immune > 0) && !(S.mode === 'team' && byId(owner) && byId(owner).team === e.team);
-  // Special gear: a hit first takes extra hits (Pumpkin Costume etc.: "+1 hit (2 balls to stun)"); Elf Hat makes a hit take 2.
-  // If fewer are left than the hit takes, it knocks you down (so Elf Hat + one extra hit still goes down on the first hit).
+  // Special gear: a hit first takes ONE extra hit (Pumpkin Costume etc.: "+1 hit (2 balls to stun)"), with or without an Elf Hat
+  // (Cody, 2026-10-01: "it still takes 2 hits if they have gear on"); when none are left the hit knocks you down. Elf Hat only
+  // makes the knock-down last twice as long.
   // A hit that only takes extra hits doesn't knock you down, shove you or knock the hat off; scoring is the SAME as any hit
   // (+5 thrower, −1 target, floor 0). Knocked down: Elf Hat doubles the stun, and every extra hit comes back (Cody: "Extra hits
   // come back after each stun, all game"; refilled at the knock-down, the same thing since nobody can be hit while down).
   function hit(e, b) {
-    const fx = e.fx, kept = e.xh >= fx.hitMult;
-    if (kept) e.xh -= fx.hitMult;
+    const fx = e.fx, kept = e.xh >= 1;
+    if (kept) e.xh -= 1;
     else { e.stun = (b.stunSec || K.STUN * (b.sm || 1)) * fx.hitMult; e.xh = fx.extraHits; const l = hyp(b.vx, b.vz) || 1; e.vx = (b.vx / l) * 5; e.vz = (b.vz / l) * 5; }
     const thrower = byId(b.owner);
     if (thrower) addScore(thrower, PTS.hit);

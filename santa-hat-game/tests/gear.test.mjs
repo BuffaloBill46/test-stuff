@@ -94,7 +94,7 @@ function match({ gear = {}, lv = {}, seed = 7 } = {}) {
   m.shoot(); assert.notEqual(m.sim.S.hat.holder, m.P('b').id, 'the knock-down knocks it off'); }
 { const m = match({ gear: { b: ['pumpkin'] } }); m.shoot(); assert.equal(m.P('b').xh, 0); m.sim.S.time = 0.01; m.run(K.BREAK_TIME + 0.2); assert.equal(m.sim.S.round, 2); assert.equal(m.P('b').xh, 1, 'a new round starts with every extra hit'); }
 
-// Elf Hat: stun twice as long (normal and Ice Ball), a hit takes 2 extra hits, half size.
+// Elf Hat: stun twice as long (normal and Ice Ball), half size; a hit still takes just ONE extra hit (Cody, 2026-10-01).
 { const m = match({ gear: { b: ['elfhat'] } }); const s = m.shoot(); assert.ok(s > K.STUN && s <= 2 * K.STUN, `Elf Hat: ${s.toFixed(2)} s of ${2 * K.STUN}`); }
 { const rand = seeded(1);
   const sim = createSim(rand, { gearOf: (e) => (e.peer === 'b' ? ['elfhat'] : []), specialsOf: (e) => (e.peer === 'a' ? ['ice'] : []), startOf: () => 12 });
@@ -103,8 +103,9 @@ function match({ gear = {}, lv = {}, seed = 7 } = {}) {
   sim.setReport('a', { q: 1, ep: A.ep, x: 0, z: 0, t: 0 }); sim.setReport('a', { q: 2, ep: A.ep, x: 0, z: 0, t: 1, ax: 0, az: 5, sp: 'ice' });
   for (let t = 0; t < 0.6; t += 0.05) sim.step(0.05); assert.ok(B.stun > 3.4 && B.stun <= 4, `Ice Ball on an Elf Hat: ${B.stun.toFixed(2)} s of 4`); }
 { const m = match({ gear: { b: ['elfhat', 'santa'] }, lv: { b: 8 } });
-  assert.equal(m.shoot(), 0, 'Elf Hat + Santa: the 1st hit takes both extra hits'); assert.equal(m.P('b').xh, 0); assert.ok(m.shoot() > 0, 'the 2nd knocks down'); }
-{ const m = match({ gear: { b: ['elfhat', 'pumpkin'] }, lv: { b: 8 } }); assert.ok(m.shoot() > 0, 'Elf Hat + 1 extra hit: the 1st hit (worth 2) knocks down'); }
+  assert.equal(m.shoot(), 0, 'Elf Hat + Santa: the 1st hit takes one extra hit'); assert.equal(m.P('b').xh, 1); assert.equal(m.shoot(), 0, 'the 2nd takes the other');
+  const s = m.shoot(); assert.ok(s > K.STUN && s <= 2 * K.STUN, 'the 3rd knocks down, for twice as long'); }
+{ const m = match({ gear: { b: ['elfhat', 'pumpkin'] }, lv: { b: 8 } }); assert.equal(m.shoot(), 0, 'Elf Hat + Pumpkin: the 1st hit only takes the extra hit (Cody: still 2 hits)'); assert.ok(m.shoot() > 0, 'the 2nd knocks down'); }
 for (const [gear, want] of [[[], true], [['elfhat'], false]]) { // a snowball passing 0.45 to the side: hits a full-size player, misses a half-size one
   const m = match({ gear: { b: gear } }); m.put('a', 0, 0); m.put('b', 0.45, 6); m.thr('a', 0, 6); m.run(0.6);
   assert.equal(m.P('b').stun > 0, want, `${gear.length ? 'Elf Hat' : 'no gear'}: 0.45 off the line ${want ? 'hits' : 'misses'}`); }
@@ -165,4 +166,4 @@ for (const [gear, top] of [[[], K.HUMAN_SPEED * 1.05], [['shoes'], K.HUMAN_SPEED
   // size: only gear wearers carry 2 more numbers
   const rows = snap.E; assert.ok(rows.filter((r) => r.length > 15).length === 2 && rows.every((r) => r.length === 15 || r.length === 17));
 }
-console.log('OK: special gear: +1/+2 hits (2 or 3 snowballs to knock down, +5/−1 on every hit, hat stays until knocked down, all back after each stun and each round), Elf Hat (2× stun, a hit takes 2, half size but aimed throws hit), Santa Bag/Backpack (round up, refill to it, Rain uses it all), Elf Satchel 25% faster, Elf Shoes 25% faster, Santa Costume level 3+, no stacking (two gear of the same stat: only the first counts; different stats combine), Present Box never itself/Santa below 3/a doubled gear, same seed same pick, bots none, all through a host handover (exact round trip)');
+console.log('OK: special gear: +1/+2 hits (2 or 3 snowballs to knock down, +5/−1 on every hit, hat stays until knocked down, all back after each stun and each round), Elf Hat (2× stun, a hit still takes just 1, half size but aimed throws hit), Santa Bag/Backpack (round up, refill to it, Rain uses it all), Elf Satchel 25% faster, Elf Shoes 25% faster, Santa Costume level 3+, no stacking (two gear of the same stat: only the first counts; different stats combine), Present Box never itself/Santa below 3/a doubled gear, same seed same pick, bots none, all through a host handover (exact round trip)');

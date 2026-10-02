@@ -6,8 +6,8 @@
 //   hits: extra hits before a hit knocks you down (Cody: "+1 hit (2 balls to stun)"); they come back after each stun, all game.
 //   held: + share of snowballs held (the starting count and the most you can hold), rounded up.
 //   refill: snowballs come back this much faster.  speed: + share of move speed.
-//   size: the player's size (Elf Hat: half), and hitMult: how many times stronger a snowball is on them (Elf Hat: 2×,
-//   so a stun lasts twice as long and a hit takes 2 extra hits instead of 1).
+//   size: the player's size (Elf Hat: half), and hitMult: how much longer a knock-down lasts on them (Elf Hat: 2×). A hit still
+//   takes just ONE extra hit with an Elf Hat (Cody, 2026-10-01: "it still takes 2 hits if they have gear on").
 //   present: at match start it becomes one random OTHER gear the player's level allows (resolvePresent).
 //   minLevel: worn only from that level (Santa Costume: level 3+, like Snowball Rain's level 5 in specials.js).
 import { BY_ID, GEAR_SLOTS, cleanAvatar } from './catalog.js';
@@ -21,7 +21,7 @@ export const GEAR = {
   bag: { name: 'Santa Bag', stat: 'held', held: 0.5, note: '+50% snowballs held' },
   satchel: { name: 'Elf Satchel', stat: 'refill', refill: 0.25, note: 'Snowballs come back 25% faster' },
   shoes: { name: 'Elf Shoes', stat: 'speed', speed: 0.25, note: '+25% move speed' },
-  elfhat: { name: 'Elf Hat', stat: 'size', size: 0.5, hitMult: 2, note: 'Half size, but snowballs do 2× on you (stun twice as long; a hit takes 2 extra hits)' },
+  elfhat: { name: 'Elf Hat', stat: 'size', size: 0.5, hitMult: 2, note: 'Half size, but when you\'re knocked down you stay down twice as long' },
   backpack: { name: 'Backpack', stat: 'held', held: 0.25, note: '+25% snowballs held' },
 };
 // Fixed order: a player's gear travels in match snapshots as a bitmask of these (gearMask), so NEVER reorder; add at the end.

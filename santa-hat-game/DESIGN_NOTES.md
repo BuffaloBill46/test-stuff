@@ -172,9 +172,13 @@ names (Cody: "use the names from already made items").
 | Santa Bag | +50% snowballs held (round up) |
 | Elf Satchel | snowballs come back 25% faster |
 | Elf Shoes | +25% move speed |
-| Elf Hat | half-size player, but snowballs do 2× their effect on you (stun twice as long; an extra hit counts double) |
+| Elf Hat | half-size player, but a knock-down lasts twice as long (a hit still takes just 1 extra hit: Cody 2026-10-01) |
 | Backpack | +25% snowballs held (round up) |
 - Extra hits come back after each stun, all game.
+- **Cody's answers (2026-10-01):** the Santa hat pops off ONLY when its wearer is knocked down (a hit that just uses an extra
+  hit leaves it on); Elf Hat + extra-hit gear still takes 2 hits (Elf Hat only doubles the knock-down time); Present Box CAN
+  turn into the Elf Hat ("it's a gamble what you get, makes it fun"); Special Gear REPLACES the Backpacks section, and the
+  backpack section is gone (not sold). Names stay as made (Toy Sack, Gift Box, Elf Satchel).
 - **RULE: no stacking the same stat (Cody, 2026-10-01: "Can't stack same stat").** Each gear boosts one stat: extra hits
   (Pumpkin, Kevlar Vest, Heated Coat, Santa Costume), snowballs held (Santa Bag, Backpack), refill (Elf Satchel), speed (Elf
   Shoes), size (Elf Hat). Two gear with the same stat can't be worn together: the save refuses it (015), the match counts only
