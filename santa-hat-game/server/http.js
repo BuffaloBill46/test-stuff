@@ -5,6 +5,7 @@
 //   settle { ticket, seed }    → result + revealed secret; the run's last play also says what was sent to the wallet
 //   winners                    → the shared Recent winners list (public, no sign-in)
 //   settings { version? }      → public game settings (prices, odds, prizes); any version, for re-checking old plays
+//   alerts                     → public: run the alert checks (Cody's Telegram; server/alerts.js); answers counts only
 //   market                     → public: the SANTA price quotes use now (10-minute median) and the token's tax
 //   pools                      → public pool status: balances, settings, pending transfers, change log (admin screen)
 //   progress                   → my level and progress toward the next (server/levels.js)
@@ -62,6 +63,9 @@ export function makeHandler(deps) {
     }
     if (body?.action === 'lottery' && deps.lottery) { // public: open draws and recent results (anyone can re-check a draw)
       try { return reply(origin, 200, await deps.lottery.draws()); } catch (e) { console.error('lottery error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
+    }
+    if (body?.action === 'alerts' && deps.alerts) { // public trigger for the 5-minute alert check (server/alerts.js): counts only
+      try { return reply(origin, 200, await deps.alerts.run()); } catch (e) { console.error('alerts error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
     }
     if (body?.action === 'market') { // public: the price quotes use and the token's tax (the page's info line)
       try { return reply(origin, 200, await deps.server.market()); } catch (e) { console.error('market error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }

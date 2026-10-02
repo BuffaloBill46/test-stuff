@@ -59,13 +59,19 @@ check(Math.hypot(stay.x - j.x, stay.y - j.y) < 3, `pulled past its edge, the joy
 const k = await p.evaluate(() => getComputedStyle(document.querySelector('#joy')).getPropertyValue('--jx').trim());
 check(k === '0px', 'the knob springs back to the centre on release');
 // two quick taps, then a third held: it lights up and follows the finger
+// (This test browser draws ~3 frames a second and acknowledges each touch only after a frame, so its "quick" taps can really be
+// more than 0.7 s apart: then the triple-tap can't be tested HERE, and it says so. Real Chrome checks it at full speed and with
+// the CPU slowed 20× and 150×: scratchpad joytest, 2026-10-02.)
+const tt0 = Date.now();
 await tap(j.x, j.y); await p.waitForTimeout(90); await tap(j.x, j.y); await p.waitForTimeout(90);
-await touch('touchStart', [[j.x, j.y]]); await p.waitForTimeout(700);
-check(await p.evaluate(() => document.querySelector('#joy').classList.contains('moving')), 'triple-tap and hold picks it up (lit)');
+await touch('touchStart', [[j.x, j.y]]); const tapSpan = Date.now() - tt0; await p.waitForTimeout(700);
+const canTriple = tapSpan < 650;
+if (canTriple) check(await p.evaluate(() => document.querySelector('#joy').classList.contains('moving')), 'triple-tap and hold picks it up (lit)');
+else console.log(`  - triple-tap not testable in this browser (its three taps took ${tapSpan} ms)`);
 for (let i = 1; i <= 10; i++) { await touch('touchMove', [[j.x + i * 9, j.y - i * 14]]); await p.waitForTimeout(40); }
 await touch('touchEnd', []); await p.waitForTimeout(300);
 const moved = await joyBox();
-check(Math.hypot(moved.x - j.x, moved.y - j.y) > 100 && !(await p.evaluate(() => document.querySelector('#joy').classList.contains('moving'))), `it went where it was dragged and put down (${Math.round(j.x)},${Math.round(j.y)} → ${Math.round(moved.x)},${Math.round(moved.y)})`);
+if (canTriple) check(Math.hypot(moved.x - j.x, moved.y - j.y) > 100 && !(await p.evaluate(() => document.querySelector('#joy').classList.contains('moving'))), `it went where it was dragged and put down (${Math.round(j.x)},${Math.round(j.y)} → ${Math.round(moved.x)},${Math.round(moved.y)})`);
 // ordinary steering afterwards doesn't pick it up again
 await touch('touchStart', [[moved.x, moved.y]]); await p.waitForTimeout(700); await touch('touchMove', [[moved.x + 80, moved.y]]); await p.waitForTimeout(200); await touch('touchEnd', []); await p.waitForTimeout(200);
 const still = await joyBox(); check(Math.hypot(still.x - moved.x, still.y - moved.y) < 3, 'one long press is just steering: it stays locked');

@@ -8,6 +8,9 @@
 //   LOTTERY_WALLET                       public address of the lottery wallet (until set, no lottery tickets are sold)
 //   TREASURY_WALLET                      public address of the treasury (until set, the shop sells nothing: Store items, levels, tickets)
 //   SOLANA_CLUSTER                       'devnet' or 'mainnet' (optional: read from SOLANA_RPC_URL otherwise)
+//   TELEGRAM_BOT_TOKEN                   Cody's "Santa Hat Alerts" bot (a secret only he pastes; until set, alerts are off)
+//   TELEGRAM_CHAT_ID                     optional: where alerts go (else the chat that sent the bot /start, remembered)
+//   REFEREE_HEALTH_URL                   optional: the match server's health check (default https://play.santahatgames.com/health)
 // Pool wallet KEYS are not used here (payouts are sent by a separate worker) and never go in the website.
 import postgres from 'npm:postgres@3.4.5';
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -19,6 +22,7 @@ import { makeLimiter, dbStore } from '../../../server/ratelimit.js';
 import { createLevels } from '../../../server/levels.js';
 import { createLottery } from '../../../server/lottery.js';
 import { createShop } from '../../../server/shop.js';
+import { createAlerts, makeTelegram } from '../../../server/alerts.js';
 import { livePrice, liveFee } from '../../../mockups/market.js';
 
 const env = (k: string) => Deno.env.get(k) ?? '';
@@ -71,7 +75,22 @@ const server = createGameServer({ db, chain, livePrice: makePrice({ db, livePric
 // the real visitor and can't be set by them (FOR_MAIN_CLAUDE); if not, pass addressOf here.
 const limiter = makeLimiter({ store: dbStore(db) });
 
+// Alerts to Cody's Telegram (server/alerts.js; supabase/021): pool wallets read on the chain for the books check.
+async function walletRaw(game: string) {
+  const owner = poolWallets[game as 'spin' | 'slots']; if (!owner) return null;
+  const r = await fetch(rpcUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getTokenAccountsByOwner',
+    params: [owner, { mint: env('SANTA_MINT') || '3c7mmVSyEH8jfZXgxvpLsETtko1Y16DyRJ5XYB4snhGt' }, { encoding: 'jsonParsed', commitment: 'finalized' }] }) });
+  const j = await r.json(); if (!j.result) throw new Error('no balance from the network');
+  return (j.result.value || []).reduce((a: number, x: any) => a + Number(x.account.data.parsed.info.tokenAmount.amount), 0);
+}
+async function refereeHealth() {
+  const r = await fetch(env('REFEREE_HEALTH_URL') || 'https://play.santahatgames.com/health', { signal: AbortSignal.timeout(8000) });
+  if (!r.ok) throw new Error('health answered ' + r.status);
+}
+const alerts = createAlerts({ db, telegram: makeTelegram({ token: env('TELEGRAM_BOT_TOKEN'), chatId: env('TELEGRAM_CHAT_ID') || null, db }), walletRaw, refereeHealth });
+
 Deno.serve(makeHandler({
+  alerts,
   server,
   limiter,
   levels: createLevels({ db }), // progress + Auto match finishes (needs supabase/010_levels.sql)
