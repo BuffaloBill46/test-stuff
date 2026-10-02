@@ -43,7 +43,7 @@ assert.ok(s.E.some((r) => r[11] > 0), 'someone scored');
 // --- the live games list: honest (the server makes it), the page's fields
 const l = conn('lobby'); l.say({ t: 'board' });
 const g = l.last('board').games.find((x) => x.code === 'PF1');
-assert.deepEqual(Object.keys(g).sort(), ['code', 'humans', 'leader', 'lscore', 'mode', 'phase', 'ranked', 'round', 'time', 'watchers'].sort());
+assert.deepEqual(Object.keys(g).sort(), ['code', 'humans', 'leader', 'lscore', 'mode', 'phase', 'ranked', 'round', 'style', 'time', 'watchers'].sort());
 assert.equal(g.humans, 2); assert.equal(g.phase, 'end'); assert.ok(g.leader, 'names the leader');
 
 // --- private room: only the owner may pick the mode and start; emotes are rate-limited
@@ -102,4 +102,35 @@ bad.h.message('not json'); assert.match(bad.last('err').why, /JSON/);
   await settle(); assert.equal(PHASES[pr.last('snap').d.ph], 'end'); assert.equal(finishes.length, 1, 'private rooms record nothing');
 }
 console.log('OK: phase 2: saved level/look for signed-in players, forged sign-ins play as guests, one seat per account, Auto match finishes recorded once by the server and told to the player');
+// --- Auto match (Cody, 2026-10-02): tick FFA/TEAM and normal/special gear, the server pairs you with the best waiting game
+{
+  let at = 9_000_000; const r3 = createReferee({ now: () => at });
+  const c3 = () => { const c = { got: [], send: (x) => c.got.push(JSON.parse(x)) }; c.h = r3.connect(c); c.say = (m) => c.h.message(JSON.stringify(m)); c.last = (k) => [...c.got].reverse().find((m) => m.t === k); return c; };
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+  const auto = async (id, modes, styles, extra = {}) => { const c = c3(); c.say({ t: 'auto', modes, styles, me: me(id, extra) }); await settle(); return c; };
+  const codeOf = (c) => c.last('peers')?.code;
+  // nobody waiting: a new room of a ticked type and style
+  const a1 = await auto('auto0001', ['team'], ['normal']); assert.equal(codeOf(a1), 'PTN1', 'new TEAM normal room');
+  const a2 = await auto('auto0002', ['ffa'], ['gear']); assert.equal(codeOf(a2), 'PFG1', 'new FFA gear room');
+  const a3 = await auto('auto0003', ['ffa'], ['gear']); assert.equal(codeOf(a3), 'PFG1', 'joins the waiting FFA gear room');
+  // ticking both types and both styles: the waiting room with the MOST players (PFG1 has 2, PTN1 has 1)
+  const a4 = await auto('auto0004', ['ffa', 'team'], ['normal', 'gear']); assert.equal(codeOf(a4), 'PFG1', 'both ticked: the fullest waiting room');
+  // styles never mix: a normal-only player isn't put in the gear room, though it's fuller
+  const a5 = await auto('auto0005', ['ffa', 'team'], ['normal']); assert.equal(codeOf(a5), 'PTN1', 'normal play only: the normal room');
+  // in a normal-play room the server strips special snowballs and gear (the look stays)
+  const n1 = a5.last('peers').ps.find((p) => p.id === 'auto0005');
+  const fancy = await auto('auto0006', ['team'], ['normal'], { a: { shirt: 'shirt_red', sb1: 'sb_ice', g1: 'gear_pumpkin' }, l: 9 });
+  const f1 = fancy.last('peers').ps.find((p) => p.id === 'auto0006');
+  assert.deepEqual([f1.a.shirt, f1.a.sb1, f1.a.g1], ['shirt_red', 'sb_none', 'gear_none'], 'normal play: look kept, specials and gear stripped by the server');
+  const g6 = await auto('auto0007', ['ffa'], ['gear'], { a: { sb1: 'sb_ice' }, l: 9 });
+  assert.equal(g6.last('peers').ps.find((p) => p.id === 'auto0007').a.sb1, 'sb_ice', 'special gear rooms keep them');
+  // a match being played is never picked: PFG1 starts; the next FFA gear player gets a new room
+  for (let i = 0; i < 20 * 30; i++) { at += 1000 / 30; r3.tick(1 / 30); }
+  assert.notEqual(PHASES[a2.last('snap').d.ph], 'lobby', 'PFG1 started');
+  const late = await auto('auto0008', ['ffa'], ['gear']); assert.equal(codeOf(late), 'PFG2', 'not dropped into a running match');
+  // the games list says each room's style
+  const lst = c3(); lst.say({ t: 'board' }); const byCode = Object.fromEntries(lst.last('board').games.map((x) => [x.code, x.style]));
+  assert.deepEqual([byCode.PTN1, byCode.PFG2], ['normal', 'gear']);
+}
+console.log('OK: Auto match: ticked types and styles, fullest waiting room first, styles never mix, normal play strips specials and gear on the server, running matches never picked');
 console.log('OK: server referee: rooms by the server clock, auto start, a full match to the end, moves checked, fakes ignored, honest games list, owner-only controls, caps');

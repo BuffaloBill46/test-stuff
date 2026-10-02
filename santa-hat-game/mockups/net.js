@@ -108,13 +108,14 @@ async function localRoom(code, me) {
 // server has let us in; rejects with the server's reason (room full, too many watchers…). 'gone' fires if the line drops.
 // token: the player's Supabase sign-in, so the server uses their SAVED level and look (and records their finishes).
 // ranked: search for a ranked game instead of joining a code (the server picks the room and holds a ticket).
-function refereeRoom(url, code, me, token, ranked = false) {
+// auto: what's ticked for Auto match ({ modes: ['ffa', 'team'], styles: ['normal', 'gear'] }): the server picks the best room.
+function refereeRoom(url, code, me, token, ranked = false, auto = null) {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(url), L = listeners();
     let peers = [], own = null, joined = false, left = false, at = code;
     const send = (m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
     const t = setTimeout(() => { if (!joined) { left = true; ws.close(); reject(new Error('timed out')); } }, 12000);
-    ws.onopen = () => send({ t: ranked ? 'ranked' : 'join', code, ...(token ? { token } : {}), me: { id: me.id, n: me.n, j: me.j, a: me.a, w: !!me.w, l: me.l || 1, pid: me.pid || null } });
+    ws.onopen = () => send({ t: ranked ? 'ranked' : auto ? 'auto' : 'join', code, ...(auto ? { modes: auto.modes, styles: auto.styles } : {}), ...(token ? { token } : {}), me: { id: me.id, n: me.n, j: me.j, a: me.a, w: !!me.w, l: me.l || 1, pid: me.pid || null } });
     ws.onmessage = ({ data }) => {
       let m; try { m = JSON.parse(data); } catch { return; }
       if (m.t === 'peers') {
@@ -195,8 +196,8 @@ let board = null;
 export function gamesBoard({ local = false, referee = null } = {}) { return board || (board = referee ? refereeBoard(referee) : local ? localBoard() : supabaseBoard()); }
 
 // referee: the referee server's address (wss://…); when set, every room runs there instead of in a player's page.
-export function openRoom(code, me, { local = false, referee = null, token = null, ranked = false } = {}) {
-  return referee ? refereeRoom(referee, code, me, token, ranked) : local ? localRoom(code, me) : supabaseRoom(code, me);
+export function openRoom(code, me, { local = false, referee = null, token = null, ranked = false, auto = null } = {}) {
+  return referee ? refereeRoom(referee, code, me, token, ranked, auto) : local ? localRoom(code, me) : supabaseRoom(code, me);
 }
 
 // ---------- accounts: Solana wallet sign-in (Supabase Web3 auth) and profiles

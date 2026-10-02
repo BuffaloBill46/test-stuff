@@ -12,7 +12,7 @@ import { gearIn, effectsOf, heldWith, gearOfMask, statOf } from './gear.js';
 import { initLottery } from './lotteryui.js';
 import { play as sfx, initSoundButtons } from './sfx.js';
 import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js';
-import { snapMs, autoStartMs, isPublic, botAvatar, botName, refereeOpts } from './refcore.js';
+import { snapMs, autoStartMs, isPublic, styleOf, botAvatar, botName, refereeOpts } from './refcore.js';
 
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
@@ -78,7 +78,15 @@ let room = null, roomCode = '', practice = false, isHost = false, sim = null, jo
 let lastRaw = null, curHost = null, snaps = [], lastEv = 0, lastSnapSent = 0, lastSnapAt = 0;
 // Auto match rooms have a fixed mode and start on their own; private rooms are started by their referee.
 let rankNews = null; // ranked: { change, points } from the referee server after the match
-let roomMode = null, autoStart = false, cdEnd = null, boardAt = 0, lobbyKind = 'unranked', lobbyMode = 'ffa';
+let roomMode = null, autoStart = false, cdEnd = null, boardAt = 0, lobbyKind = 'unranked';
+// Auto match game types (Cody, 2026-10-02: tick boxes under Auto match, 1 or both; remembered). lobbyMode: the first ticked
+// (what Practice and a new private room start in).
+let autoModes = (() => { try { const v = JSON.parse(store.get('sq_amodes') || '["ffa"]'); return Array.isArray(v) && v.length ? v.filter((x) => x === 'ffa' || x === 'team') : ['ffa']; } catch { return ['ffa']; } })();
+if (!autoModes.length) autoModes = ['ffa'];
+let lobbyMode = autoModes[0];
+// …and the style: normal play (plain snowballs) and/or special gear (Cody, 2026-10-02); both ticked at first
+let autoStyles = (() => { try { const v = JSON.parse(store.get('sq_astyles') || '["normal","gear"]'); return Array.isArray(v) ? v.filter((x) => x === 'normal' || x === 'gear') : []; } catch { return []; } })();
+if (!autoStyles.length) autoStyles = ['normal', 'gear'];
 const MAX_WATCHERS = 4;
 const board = gamesBoard({ local: LOCAL, referee: REFEREE });
 let bg = createSim(); bg.syncRoster([]); // attract-mode plaza behind the home screen
@@ -149,21 +157,23 @@ async function enterRoom(code, quick, opts = {}) {
   status(opts.watch ? 'Joining as a watcher…' : 'Connecting…');
   if (!profile) { me.n = cleanName($('#name')?.value) || me.n; store.set('sq_name', me.n); }
   me.w = !!opts.watch;
-  const mode = opts.mode || lobbyMode;
-  for (let attempt = 0; attempt < (quick ? 5 : 1); attempt++) {
-    const c = quick ? 'P' + (mode === 'team' ? 'T' : 'F') + (attempt + 1) : code;
+  // without the match server (tests: ?ref=off / ?net=local) Auto match tries the ticked types' rooms in turn
+  const tries = quick ? autoModes.flatMap((md) => autoStyles.flatMap((st) => [1, 2, 3, 4, 5].map((n) => 'P' + (md === 'team' ? 'T' : 'F') + (st === 'normal' ? 'N' : 'G') + n))) : [code];
+  const serverPicks = quick && !!REFEREE; // the match server picks the best room for the ticked types itself
+  for (let attempt = 0; attempt < (serverPicks ? 1 : tries.length); attempt++) {
+    const c = serverPicks ? '' : tries[attempt];
     me.j = Date.now();
     let r;
-    try { r = await openRoom(c.toLowerCase(), me, { local: LOCAL, referee: REFEREE, token: REFEREE ? await signInToken() : null, ranked: !!opts.ranked }); }
+    try { r = await openRoom(c.toLowerCase(), me, { local: LOCAL, referee: REFEREE, token: REFEREE ? await signInToken() : null, ranked: !!opts.ranked, auto: serverPicks ? { modes: autoModes, styles: autoStyles } : null }); }
     catch (e) {
-      if (quick && /full/.test(e.why || '')) continue; // the referee server said this public room is full: try the next one
+      if (quick && !serverPicks && /full/.test(e.why || '')) continue; // this public room is full: try the next one
       status(e.why || "Couldn't reach the game server. Check your connection, or try Practice."); return;
     }
     await new Promise((res) => setTimeout(res, 1200));
     const players = r.peers().filter((p) => !p.w).length, watchers = r.peers().filter((p) => p.w && p.id !== me.id).length;
     if (me.w && watchers >= MAX_WATCHERS) { r.leave(); status(`That game already has ${MAX_WATCHERS} watchers. Try another.`); return; }
     if (!me.w && players > K.MAX_HUMANS) { r.leave(); if (quick) continue; status(`Room ${c} is full (8 players).`); return; }
-    room = r; roomCode = opts.ranked ? r.code() : c; practice = false; break;
+    room = r; roomCode = opts.ranked || serverPicks ? r.code() : c; practice = false; break;
   }
   if (!room) { status('All public rooms are full right now. Try a private room.'); return; }
   roomMode = isPublic(roomCode) ? (roomCode[1] === 'T' ? 'team' : 'ffa') : null; autoStart = isPublic(roomCode); cdEnd = null;
@@ -344,7 +354,7 @@ const { gearOf } = REF;
 const fxOf = (e) => effectsOf(e?.gear);
 const maxOf = (e) => heldWith(startOf(e), fxOf(e));
 // My slots as the Avatar screen numbers them: [{ n: 1..3, kind }] for each open slot holding a special I can use (SB2 stays SB2).
-const mySlots = () => { const lvl = me.l || 1, ok = new Set(mySpecials()); return SB_SLOTS.slice(0, levelInfo(lvl).sb).map((s, i) => ({ n: i + 1, kind: BY_ID.get(cleanAvatar(me.a)[s])?.special })).filter((x) => x.kind && ok.has(x.kind)); };
+const mySlots = () => { if (room && autoStart && styleOf(roomCode) === 'normal') return []; const lvl = me.l || 1, ok = new Set(mySpecials()); return SB_SLOTS.slice(0, levelInfo(lvl).sb).map((s, i) => ({ n: i + 1, kind: BY_ID.get(cleanAvatar(me.a)[s])?.special })).filter((x) => x.kind && ok.has(x.kind)); };
 // Levels: when an Auto match ends, the host reports every finishing place (bots and guests as empty places) to the game
 // server, which counts top-3 finishes for players with accounts, once per match (the match id travels with handovers).
 // Only in server mode, and only from a signed-in host (the server checks the host played in it). Practice/private: nothing.
@@ -517,7 +527,7 @@ function renderChrome() {
   let card = '';
   if (v.phase === 'lobby' && (v.pub || autoStart)) {
     const roster = humans.map((e) => `<li>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}${v.mode === 'team' ? ` <u class="t${e.team}">${TEAM_NAME[e.team]}</u>` : ''}</li>`).join('');
-    card = `<div class="eyebrow">${v.rk ? 'Ranked' : 'Auto match'} · ${v.mode === 'team' ? 'TEAM' : 'FFA'}${me.w ? ' · watching' : ''}</div><h2>${v.wait ? 'Looking for another real player…' : v.cd ? `Starting in ${Math.ceil(v.cd)}` : 'Finding players…'}</h2>
+    card = `<div class="eyebrow">${v.rk ? 'Ranked' : 'Auto match'} · ${v.mode === 'team' ? 'TEAM' : 'FFA'}${v.rk ? '' : styleOf(roomCode) === 'normal' ? ' · Normal play' : ' · Special gear'}${me.w ? ' · watching' : ''}</div><h2>${v.wait ? 'Looking for another real player…' : v.cd ? `Starting in ${Math.ceil(v.cd)}` : 'Finding players…'}</h2>
       <ul class="roster">${roster}</ul><p class="dim">${v.rk ? 'Ranked needs 2 real players. Leave before it starts and your ticket comes back. ' : 'More players can still join. '}Bots fill any empty spots when it starts.</p>`;
   } else if (v.phase === 'lobby') {
     const share = practice ? '' : `<p class="share">Friends join with code <b>${esc(roomCode)}</b> or this link:<br><span class="link">${esc(location.origin + location.pathname + '?room=' + roomCode + REF_KEEP)}</span></p>`;
@@ -839,12 +849,13 @@ function openLobby(kind) {
   lobbyKind = kind; const ranked = kind === 'ranked';
   $('#lobbyEyebrow').textContent = ranked ? 'Ranked · 1 ticket · sign-in needed' : 'Unranked · free';
   $('#lobbyTitle').textContent = ranked ? 'FFA RANKED' : 'Unranked';
-  $('#lobbyModes').hidden = ranked; $('#tourney').hidden = !ranked;
+  $('#tourney').hidden = !ranked;
   document.querySelectorAll('#home .unr').forEach((el) => { el.hidden = ranked; });
   // ranked opens with the referee server (it holds the ticket and picks the room); without it, still 'opening soon'
   showTickets(ranked);
   $('#quick').disabled = ranked && !REFEREE; $('#quick').textContent = ranked ? (REFEREE ? 'Auto match · 1 ticket' : 'Auto match · opening soon') : 'Auto match';
-  document.querySelectorAll('[data-lmode]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.lmode === lobbyMode)));
+  document.querySelectorAll('[data-amode]').forEach((b) => { b.checked = autoModes.includes(b.dataset.amode); });
+  document.querySelectorAll('[data-astyle]').forEach((b) => { b.checked = autoStyles.includes(b.dataset.astyle); });
   $('#home').hidden = false; status('');
   if (!stopBoard) board.watch(renderGames).then((stop) => { stopBoard = stop; }).catch(() => { $('#gamesList').innerHTML = '<p class="dim">Couldn\'t load the games list right now.</p>'; });
 }
@@ -853,19 +864,29 @@ let lastGames = [];
 function renderGames(list = lastGames) {
   lastGames = list;
   const ranked = lobbyKind === 'ranked';
-  const games = list.filter((g) => (ranked ? g.ranked : !g.ranked && g.mode === lobbyMode) && isPublic(cleanCode(g.code)))
+  const games = list.filter((g) => (ranked ? g.ranked : !g.ranked && autoModes.includes(g.mode) && autoStyles.includes(g.style || 'gear')) && isPublic(cleanCode(g.code)))
     .sort((a, b) => (b.watchers - a.watchers) || (b.humans - a.humans));
-  const label = ranked ? 'ranked' : lobbyMode === 'team' ? 'TEAM' : 'FFA';
+  const label = ranked ? 'ranked' : autoModes.length > 1 ? 'FFA or TEAM' : autoModes[0] === 'team' ? 'TEAM' : 'FFA';
   $('#gamesList').innerHTML = games.length ? games.map((g) => {
     const full = (Number(g.watchers) || 0) >= MAX_WATCHERS;
     const state = g.phase === 'lobby' || g.phase === 'intro' || g.phase === 'count' ? 'Starting soon' : g.phase === 'end' ? 'Final scores' : `Round ${Number(g.round) || 1}/3 · ${Number(g.time) || 0}s`;
-    return `<div class="game"><div><b>${g.mode === 'team' ? 'TEAM' : 'FFA'}</b><span>${Number(g.humans) || 0}/8 players${g.watchers ? ` · ${Number(g.watchers)} watching` : ''}</span></div>
+    return `<div class="game"><div><b>${g.mode === 'team' ? 'TEAM' : 'FFA'}${g.ranked ? '' : (g.style || 'gear') === 'normal' ? ' · Normal' : ' · Gear'}</b><span>${Number(g.humans) || 0}/8 players${g.watchers ? ` · ${Number(g.watchers)} watching` : ''}</span></div>
       <div><span>${esc(state)}</span>${g.leader ? `<span>Leader: ${esc(String(g.leader).slice(0, 14))} · ${Number(g.lscore) || 0}</span>` : ''}</div>
       <button class="sec" data-watch="${esc(cleanCode(g.code))}" ${full ? 'disabled' : ''}>${full ? 'Watchers full' : 'Watch now'}</button></div>`;
   }).join('') : `<p class="dim">No ${label} games right now.${ranked && !REFEREE ? ' Ranked opens soon.' : ' Start one with Auto match.'}</p>`;
 }
 $('#gamesList').addEventListener('click', (e) => { const b = e.target.closest('[data-watch]'); if (b) enterRoom(b.dataset.watch, false, { watch: true }); });
-document.querySelectorAll('[data-lmode]').forEach((b) => b.addEventListener('click', () => { lobbyMode = b.dataset.lmode; document.querySelectorAll('[data-lmode]').forEach((x) => x.setAttribute('aria-checked', String(x === b))); renderGames(); }));
+// the tick boxes: at least one stays ticked (unticking the last one is undone); remembered
+document.querySelectorAll('[data-amode]').forEach((b) => b.addEventListener('change', () => {
+  const next = [...document.querySelectorAll('[data-amode]')].filter((x) => x.checked).map((x) => x.dataset.amode);
+  if (!next.length) { b.checked = true; return; }
+  autoModes = next; lobbyMode = autoModes[0]; store.set('sq_amodes', JSON.stringify(autoModes)); renderGames();
+}));
+document.querySelectorAll('[data-astyle]').forEach((b) => b.addEventListener('change', () => {
+  const next = [...document.querySelectorAll('[data-astyle]')].filter((x) => x.checked).map((x) => x.dataset.astyle);
+  if (!next.length) { b.checked = true; return; }
+  autoStyles = next; store.set('sq_astyles', JSON.stringify(autoStyles)); renderGames();
+}));
 $('#playRanked').addEventListener('click', () => openLobby('ranked'));
 $('#quick').addEventListener('click', () => (lobbyKind === 'ranked' ? enterRoom('', false, { ranked: true }) : enterRoom('', true)));
 $('#create').addEventListener('click', () => enterRoom(rid(4).toUpperCase().replace(/[^A-Z0-9]/g, 'X'), false));

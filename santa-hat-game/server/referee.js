@@ -8,11 +8,13 @@
 //   { t: 'rep', d }  my moves (the page's report())          { t: 'emote', d: { e } }
 //   { t: 'start' } / { t: 'mode', mode }  private rooms: only the room's owner (the earliest player still in it)
 //   { t: 'board' }  send me the live games list (lobby), now and every few seconds
+//   { t: 'auto', modes: ['ffa'|'team', …], styles: ['normal'|'gear', …], me, token? }  Auto match: the server picks the room
+//     (pickAuto), then as join
 //   join may carry token: the player's Supabase sign-in token (checked with identify; see createReferee)
 // server → page: { t: 'peers', ps, own } · { t: 'snap', d } · { t: 'emote', d } · { t: 'board', games } · { t: 'err', why }
 //   · { t: 'counted', d: { place, level, xp, up } } my Auto match finish counted toward levels (server-recorded)
 import { createSim, K } from '../mockups/sim.js';
-import { snapMs, autoStartMs, isPublic, botName, refereeOpts } from '../mockups/refcore.js';
+import { snapMs, autoStartMs, isPublic, styleOf, botName, refereeOpts } from '../mockups/refcore.js';
 import { settleRanked, RULES } from '../mockups/ranked.js';
 import { cleanAvatar, BY_ID, DEFAULT_AVATAR, SB_SLOTS, GEAR_SLOTS } from '../mockups/catalog.js';
 import { clampLevel } from '../mockups/levels.js';
@@ -52,7 +54,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
 
   function makeRoom(code) {
     const room = { code, conns: new Map(), auto: isPublic(code), mode: code[1] === 'T' && isPublic(code) ? 'team' : 'ffa', cdEnd: null, lastSnap: 0, emoteAt: new Map(),
-      ranked: isPublic(code) && code[1] === 'R', rid: RID + Math.floor(rand() * 2 ** 48).toString(36) + now().toString(36), started: false, lastPhase: 'lobby' };
+      ranked: isPublic(code) && code[1] === 'R', style: styleOf(code), rid: RID + Math.floor(rand() * 2 ** 48).toString(36) + now().toString(36), started: false, lastPhase: 'lobby' };
     room.info = (e) => room.conns.get(e.peer)?.me;
     room.sim = createSim(rand, refereeOpts(room.info));
     room.sim.S.mode = room.mode;
@@ -97,6 +99,8 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
       me = who ? { id: p.id, n: cleanName(who.n) || 'Player', j: now(), a: cleanAvatar(who.a), w, l: clampLevel(who.l), pid: who.pid }
         : identify ? { id: p.id, n: cleanName(p.n) || 'Player', j: now(), a: guestLook(p.a), w, l: 1, pid: null }
         : { id: p.id, n: cleanName(p.n) || 'Player', j: now(), a: cleanAvatar(p.a), w, l: clampLevel(p.l), pid: /^[0-9a-f-]{36}$/.test(String(p.pid)) ? p.pid : null };
+      // a normal-play room: plain snowballs for everyone, whatever they own (the look stays; specials and gear don't count)
+      if (r.style === 'normal') me.a = guestLook(me.a);
       // the same account twice in one room (two tabs) would count its finishes twice: one seat per account
       if (me.pid && [...r.conns.values()].some((c) => c.me.pid === me.pid)) { me = null; if (!r.conns.size) rooms.delete(code); return err('you are already in this room in another tab'); }
       seat(r);
@@ -145,6 +149,11 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
         if (!m || typeof m !== 'object') return;
         if (m.t === 'join') return join(m);
         if (m.t === 'ranked') return findRanked(m);
+        if (m.t === 'auto') { // Auto match: the server picks the best public room for the game types the player ticked
+          if (room || joining) return err('already in a room');
+          const code = pickAuto(m.modes, m.styles);
+          return code ? join({ ...m, t: 'join', code }) : err('All public rooms are full right now. Try a private room.');
+        }
         if (m.t === 'board') { boardWatchers.add(conn); conn.send(JSON.stringify({ t: 'board', games: board() })); return; }
         if (!room) return err('join a room first');
         if (m.t === 'rep') { if (!me.w) room.sim.setReport(me.id, m.d); return; }
@@ -204,6 +213,24 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
     if (boardWatchers.size && t - boardAt >= BOARD_MS) { boardAt = t; const s = JSON.stringify({ t: 'board', games: board() }); for (const c of boardWatchers) c.send(s); }
   }
 
+  // Auto match (Cody, 2026-10-02: tick FFA, TEAM or both, "get paired to best game"): among the WAITING public rooms of the
+  // ticked types with a free seat, the one with the most players already in it (ties: the one starting soonest). None waiting:
+  // a new room of a ticked type (FFA first when both are ticked). Never a match already being played. Null when all are full.
+  // styles: 'normal' (plain play) and/or 'gear' (special snowballs and gear count), ticked the same way.
+  function pickAuto(modes, styles) {
+    const want = (Array.isArray(modes) ? modes : []).filter((x) => x === 'ffa' || x === 'team');
+    if (!want.length) want.push('ffa');
+    const kinds = (Array.isArray(styles) ? styles : []).filter((x) => x === 'normal' || x === 'gear');
+    if (!kinds.length) kinds.push('gear');
+    const open = [...rooms.values()].filter((r) => r.auto && !r.ranked && want.includes(r.mode) && kinds.includes(r.style) && r.sim.S.phase === 'lobby' && players(r).length < K.MAX_HUMANS);
+    open.sort((a, b) => players(b).length - players(a).length || (a.cdEnd ?? Infinity) - (b.cdEnd ?? Infinity));
+    if (open.length && players(open[0]).length) return open[0].code;
+    for (const mode of ['ffa', 'team'].filter((x) => want.includes(x))) for (const style of ['gear', 'normal'].filter((x) => kinds.includes(x))) {
+      for (let n = 1; n <= 5; n++) { const code = 'P' + (mode === 'team' ? 'T' : 'F') + (style === 'normal' ? 'N' : 'G') + n; if (!rooms.has(code)) return code; }
+    }
+    return open[0]?.code || null; // every room of these types exists: an empty waiting one, if any
+  }
+
   // An Auto match ended: its places, in the page's order (score, then entity id), each a profile id or null (a bot or a
   // guest), go to the levels code, and each counted player is told their new level ({ t: 'counted' }).
   function report(room) {
@@ -247,7 +274,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
     return [...rooms.values()].filter((r) => r.auto).map((r) => {
       const S = r.sim.S, top = [...S.ents].sort((a, b) => b.score - a.score)[0], ps = [...r.conns.values()].map((c) => c.me);
       const nameOf = (e) => (e.bot ? botName(e.id) : r.conns.get(e.peer)?.me.n || 'Player');
-      return { code: r.code, mode: S.mode, ranked: r.ranked ? 1 : 0, phase: S.phase, round: S.round, time: Math.ceil(S.time),
+      return { code: r.code, mode: S.mode, style: r.style, ranked: r.ranked ? 1 : 0, phase: S.phase, round: S.round, time: Math.ceil(S.time),
         humans: ps.filter((p) => !p.w).length, watchers: ps.filter((p) => p.w).length,
         leader: top && S.phase !== 'lobby' ? nameOf(top) : '', lscore: top ? top.score : 0 };
     });
