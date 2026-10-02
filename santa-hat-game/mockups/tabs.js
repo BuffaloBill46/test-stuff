@@ -1,5 +1,5 @@
 // Site tabs: Play / Store / Avatar / Ranks, wallet sign-in, avatar editor, leaderboard.
-import { THREE, character, lights, toon, part, build, hatGeo } from './kit.js';
+import { THREE, character, lights, toon, part, build, hatGeo, giftGeo, C } from './kit.js';
 import { GEAR_SLOTS } from './catalog.js';
 import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS } from './gear.js';
 import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable } from './catalog.js';
@@ -26,11 +26,12 @@ function thumbnail(item) {
     scene.add(ball); cam.position.set(0.4, 0.5, 2.4); cam.lookAt(0, 0, 0);
   } else {
     const a = { ...DEFAULT_AVATAR, [item.slot]: item.id };
-    const ch = avatarCharacter(a); ch.rotation.y = -0.35; scene.add(ch);
+    const ch = avatarCharacter(a, item.slot === 'gear' ? { gear: [item.gear] } : {}); ch.rotation.y = -0.35; scene.add(ch);
     if (item.slot === 'face' || item.slot === 'skin') { const h = toon(hatGeo({ scale: 0.88 }), 0.03); h.position.y = 2.05; h.rotation.y = Math.PI / 2 - 0.35; scene.add(h); cam.position.set(0, 1.92, 1.75); cam.lookAt(0, 1.86, 0); }
     else if (item.slot === 'pants') { cam.position.set(0, 0.9, 3.4); cam.lookAt(0, 0.65, 0); }
     else if (item.slot === 'hat') { cam.position.set(0, 2.15, 1.9); cam.lookAt(0, 1.98, 0); }
     else if (item.slot === 'pack') { ch.rotation.y = Math.PI - 0.6; cam.position.set(0, 1.5, 2.9); cam.lookAt(0, 1.25, 0); } // from behind
+    else if (item.slot === 'gear') gearShot(scene, ch, cam, item.gear);
     else { cam.position.set(0, 1.5, 3.6); cam.lookAt(0, 1.25, 0); }
   }
   thumbR.render(scene, cam);
@@ -39,10 +40,23 @@ function thumbnail(item) {
   thumbs.set(item.id, url); return url;
 }
 
+// Special gear thumbnails: the gear worn on the real model, framed on the part it changes (a Gift Box: just the wrapped present)
+function gearShot(scene, ch, cam, kind) {
+  const at = (p, l) => { cam.position.set(...p); cam.lookAt(...l); };
+  if (kind === 'present') { scene.remove(ch); scene.add(toon(giftGeo(0x7a4fa3, C.gold, 0.7), 0.03)); at([0.9, 1.0, 1.6], [0, 0.32, 0]); }
+  else if (kind === 'pumpkin') at([0, 1.9, 1.75], [0, 1.76, 0]);
+  else if (kind === 'elfhat') { ch.rotation.y = 0.6; at([0, 2.2, 2.9], [0, 2.15, 0]); }
+  else if (kind === 'shoes') { ch.rotation.y = 0.8; at([0, 0.6, 1.4], [0, 0.12, 0]); }
+  else if (kind === 'bag' || kind === 'backpack') { ch.rotation.y = Math.PI - 0.6; at([0, 1.6, 3.0], [0, 1.4, 0]); }
+  else if (kind === 'satchel') { ch.rotation.y = -2.0; at([0, 1.3, 2.6], [0, 1.1, 0]); }
+  else at([0, 1.5, 2.7], [0, 1.25, 0]);
+}
+
 export function avatarCharacter(a, extra = {}) {
   const av = cleanAvatar(a), get = (s) => BY_ID.get(av[s]);
   const hat = get('hat'), pack = get('pack');
-  return character({ shirt: extra.shirt ?? get('shirt').color, pants: get('pants').color, skin: get('skin').color, face: get('face').face, seed: 3,
+  // extra.gear: the special gear to dress them in (gear.js kinds); a team shirt (extra.shirt) keeps the team colour on the arms
+  return character({ keepSleeves: extra.shirt != null, shirt: extra.shirt ?? get('shirt').color, pants: get('pants').color, skin: get('skin').color, face: get('face').face, seed: 3,
     hat: hat.hat !== 'none' ? { shape: hat.hat, color: hat.color } : null, pack: pack.pack !== 'none' ? { shape: pack.pack, color: pack.color } : null, ...extra });
 }
 
@@ -247,7 +261,7 @@ export function initTabs(app) {
         <div class="shop"><div class="shophead"><h3>2. Special Gear</h3><p class="rule"><b>Lasts ${WEAR_DAYS} days</b> The clock starts at your first match wearing it and keeps running; then it wears out. You can take it off and put it back on until then.</p>
           <p class="rule"><b>No stacking</b> ${esc(NO_STACK_NOTE)} One gear slot, two from level 8.</p></div>
         <div class="shopgrid">${gear.map((i) => { const G = GEAR[i.gear];
-          return `<div class="shopitem"><i class="chip" style="background:#${(i.color ?? 0x5a6688).toString(16).padStart(6, '0')}"></i><div><b>${esc(i.name)}</b><span class="uses">${G.minLevel ? 'level ' + G.minLevel + '+' : statName(i.gear)}</span><p>${esc(G.note)}</p>${status(i)}</div><button class="sec" data-try="${i.id}">Try it</button></div>`; }).join('')}</div></div>`;
+          return `<div class="shopitem"><img alt="" src="${thumbnail(i)}"><div><b>${esc(i.name)}</b><span class="uses">${G.minLevel ? 'level ' + G.minLevel + '+' : statName(i.gear)}</span><p>${esc(G.note)}</p>${status(i)}</div><button class="sec" data-try="${i.id}">Try it</button></div>`; }).join('')}</div></div>`;
     });
   }
   $('#carousels').addEventListener('click', (e) => {
@@ -278,7 +292,7 @@ export function initTabs(app) {
         + `<p class="avrule"><b>Lasts ${WEAR_DAYS} days</b> from your first match wearing it. <b>No stacking</b> ${esc(NO_STACK_NOTE)}</p>`; }
     $('#avgrid').innerHTML = ITEMS.filter((i) => i.slot === state.slot).map((i) => {
       const ok = usable(i, lvl, state.owned), on = sb ? d.a[state.sbSlot] === i.id : gr ? d.a[state.gSlot] === i.id : d.a[i.slot] === i.id, S = SPECIALS[i.special], G = GEAR[i.gear];
-      if (gr) return `<button class="pick wide ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}"><i class="chip" style="background:#${(i.color ?? 0x5a6688).toString(16).padStart(6, '0')}"></i>${esc(i.name)}<small>${G ? esc(G.note) : 'Leave this slot empty'}</small><small>${!ok ? '$' + i.price.toFixed(2) + ' in Store' : G?.minLevel && lvl < G.minLevel ? 'level ' + G.minLevel + '+' : G ? statName(i.gear) : ''}</small></button>`;
+      if (gr) return `<button class="pick wide ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}">${G ? `<img alt="" src="${thumbnail(i)}">` : `<i class="chip" style="background:#${(i.color ?? 0x5a6688).toString(16).padStart(6, '0')}"></i>`}${esc(i.name)}<small>${G ? esc(G.note) : 'Leave this slot empty'}</small><small>${!ok ? '$' + i.price.toFixed(2) + ' in Store' : G?.minLevel && lvl < G.minLevel ? 'level ' + G.minLevel + '+' : G ? statName(i.gear) : ''}</small></button>`;
       if (sb) return `<button class="pick wide ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${S ? esc(S.note) : 'Leave this slot empty'}</small><small>${!ok ? '$' + i.price.toFixed(2) + ' in Store' : S ? (S.cost === 'all' ? 'uses all' : 'uses ' + S.cost) + (S.minLevel && lvl < S.minLevel ? ' · level ' + S.minLevel : '') : 'empty slot'}</small></button>`;
       // look items are bought here on the Avatar screen, not in the Store (Cody, 2026-10-01)
       return `<button class="pick ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${ok ? 'Unlocked' : i.price != null ? '$' + i.price.toFixed(2) : 'Level ' + i.level}</small></button>`;
