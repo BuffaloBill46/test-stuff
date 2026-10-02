@@ -107,29 +107,32 @@ async function localRoom(code, me) {
 // snapshots, so it never becomes the referee (kind 'server': online.js skips the hand-off election). Resolves once the
 // server has let us in; rejects with the server's reason (room full, too many watchers…). 'gone' fires if the line drops.
 // token: the player's Supabase sign-in, so the server uses their SAVED level and look (and records their finishes).
-function refereeRoom(url, code, me, token) {
+// ranked: search for a ranked game instead of joining a code (the server picks the room and holds a ticket).
+function refereeRoom(url, code, me, token, ranked = false) {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(url), L = listeners();
-    let peers = [], own = null, joined = false, left = false;
+    let peers = [], own = null, joined = false, left = false, at = code;
     const send = (m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
     const t = setTimeout(() => { if (!joined) { left = true; ws.close(); reject(new Error('timed out')); } }, 12000);
-    ws.onopen = () => send({ t: 'join', code, ...(token ? { token } : {}), me: { id: me.id, n: me.n, j: me.j, a: me.a, w: !!me.w, l: me.l || 1, pid: me.pid || null } });
+    ws.onopen = () => send({ t: ranked ? 'ranked' : 'join', code, ...(token ? { token } : {}), me: { id: me.id, n: me.n, j: me.j, a: me.a, w: !!me.w, l: me.l || 1, pid: me.pid || null } });
     ws.onmessage = ({ data }) => {
       let m; try { m = JSON.parse(data); } catch { return; }
       if (m.t === 'peers') {
         peers = (m.ps || []).map((p) => ({ id: p.id, n: String(p.n ?? '').slice(0, 14), j: Number(p.j) || 0, a: p.a, w: !!p.w, l: Number(p.l) || 1, pid: p.pid || null }));
-        own = m.own || null; L.fire('peers', peers);
+        own = m.own || null; if (typeof m.code === 'string') at = m.code; L.fire('peers', peers);
         if (!joined) { joined = true; clearTimeout(t); resolve(api); }
       } else if (m.t === 'snap') L.fire('snap', m.d);
       else if (m.t === 'emote') L.fire('emote', m.d);
       else if (m.t === 'counted') L.fire('counted', m.d); // my Auto match finish, recorded by the server
+      else if (m.t === 'rank') L.fire('rank', m.d); // my ranked points change
+      else if (m.t === 'closed') { left = true; L.fire('closed', m.why); } // the server closed the room (a ranked match is over)
       else if (m.t === 'err' && !joined) { left = true; clearTimeout(t); ws.close(); const e = new Error(m.why); e.why = m.why; reject(e); }
     };
     ws.onclose = () => { if (!joined) { clearTimeout(t); if (!left) reject(new Error('closed')); } else if (!left) L.fire('gone'); };
     const api = {
       kind: 'server',
       peers: () => peers, on: L.on,
-      owner: () => own, // the room's controls (mode, Start) belong to the earliest player still in it, by the server's clock
+      owner: () => own, code: () => at, // the room the server put us in (ranked: its pick) // the room's controls (mode, Start) belong to the earliest player still in it, by the server's clock
       start: () => send({ t: 'start' }), mode: (mode) => send({ t: 'mode', mode }),
       sendSnap() {}, setHost() {}, // the server is the referee
       sendRep: (r) => send({ t: 'rep', d: r }),
@@ -192,8 +195,8 @@ let board = null;
 export function gamesBoard({ local = false, referee = null } = {}) { return board || (board = referee ? refereeBoard(referee) : local ? localBoard() : supabaseBoard()); }
 
 // referee: the referee server's address (wss://…); when set, every room runs there instead of in a player's page.
-export function openRoom(code, me, { local = false, referee = null, token = null } = {}) {
-  return referee ? refereeRoom(referee, code, me, token) : local ? localRoom(code, me) : supabaseRoom(code, me);
+export function openRoom(code, me, { local = false, referee = null, token = null, ranked = false } = {}) {
+  return referee ? refereeRoom(referee, code, me, token, ranked) : local ? localRoom(code, me) : supabaseRoom(code, me);
 }
 
 // ---------- accounts: Solana wallet sign-in (Supabase Web3 auth) and profiles

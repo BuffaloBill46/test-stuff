@@ -62,7 +62,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
   const players = (room) => [...room.conns.values()].map((c) => c.me).filter((m) => !m.w).sort((a, b) => (better(a, b) ? -1 : 1));
   const owner = (room) => players(room)[0]?.id || null;
   const sendAll = (room, msg, skip) => { const s = JSON.stringify(msg); for (const [id, c] of room.conns) if (id !== skip) c.send(s); };
-  const peersMsg = (room) => ({ t: 'peers', own: owner(room), ps: [...room.conns.values()].map(({ me }) => ({ id: me.id, n: me.n, j: me.j, a: me.a, w: me.w, l: me.l, pid: me.pid })) });
+  const peersMsg = (room) => ({ t: 'peers', code: room.code, own: owner(room), ps: [...room.conns.values()].map(({ me }) => ({ id: me.id, n: me.n, j: me.j, a: me.a, w: me.w, l: me.l, pid: me.pid })) });
 
   // A new connection. Returns the handlers the door calls: message(text) and gone().
   function connect(conn) {

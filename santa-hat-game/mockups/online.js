@@ -71,6 +71,7 @@ let profile = null; // signed-in wallet profile, if any
 let room = null, roomCode = '', practice = false, isHost = false, sim = null, joinedAt = 0;
 let lastRaw = null, curHost = null, snaps = [], lastEv = 0, lastSnapSent = 0, lastSnapAt = 0;
 // Auto match rooms have a fixed mode and start on their own; private rooms are started by their referee.
+let rankNews = null; // ranked: { change, points } from the referee server after the match
 let roomMode = null, autoStart = false, cdEnd = null, boardAt = 0, lobbyKind = 'unranked', lobbyMode = 'ffa';
 const MAX_WATCHERS = 4;
 const board = gamesBoard({ local: LOCAL, referee: REFEREE });
@@ -95,11 +96,13 @@ function decode(s) {
     drops: (Array.isArray(s.D) ? s.D : []).map((p) => ({ x: n(p[0]), z: n(p[1]), t: n(p[2]), owner: n(p[3]), kind: DROP_OF[n(p[4])] || 'rain' })),
     ev: Array.isArray(s.V) ? s.V : [], res: Array.isArray(s.R) ? { team: s.R[0], top: s.R[1], mvp: s.R[2] } : null,
     cd: n(s.cd), pub: !!s.pub, mid: typeof s.mid === 'string' ? s.mid : '',
+    rk: !!s.rk, wait: !!s.wait, // ranked (referee server); waiting for a 2nd real player
   };
 }
 
 const inRoom = () => !!room || practice;
-const nameOf = (e) => (e.bot ? botName(e.id) :(e.peer === me.id ? me.n : names.get(e.peer)) || 'Player');
+// (on the referee server my own name is the one it checked, like everyone else's: a signed-in player's saved name)
+const nameOf = (e) => (e.bot ? botName(e.id) : (e.peer === me.id && room?.kind !== 'server' ? me.n : names.get(e.peer) || (e.peer === me.id ? me.n : '')) || 'Player');
 
 // ---------- referee hand-off
 function becomeHost() {
@@ -145,7 +148,7 @@ async function enterRoom(code, quick, opts = {}) {
     const c = quick ? 'P' + (mode === 'team' ? 'T' : 'F') + (attempt + 1) : code;
     me.j = Date.now();
     let r;
-    try { r = await openRoom(c.toLowerCase(), me, { local: LOCAL, referee: REFEREE, token: REFEREE ? await signInToken() : null }); }
+    try { r = await openRoom(c.toLowerCase(), me, { local: LOCAL, referee: REFEREE, token: REFEREE ? await signInToken() : null, ranked: !!opts.ranked }); }
     catch (e) {
       if (quick && /full/.test(e.why || '')) continue; // the referee server said this public room is full: try the next one
       status(e.why || "Couldn't reach the game server. Check your connection, or try Practice."); return;
@@ -154,7 +157,7 @@ async function enterRoom(code, quick, opts = {}) {
     const players = r.peers().filter((p) => !p.w).length, watchers = r.peers().filter((p) => p.w && p.id !== me.id).length;
     if (me.w && watchers >= MAX_WATCHERS) { r.leave(); status(`That game already has ${MAX_WATCHERS} watchers. Try another.`); return; }
     if (!me.w && players > K.MAX_HUMANS) { r.leave(); if (quick) continue; status(`Room ${c} is full (8 players).`); return; }
-    room = r; roomCode = c; practice = false; break;
+    room = r; roomCode = opts.ranked ? r.code() : c; practice = false; break;
   }
   if (!room) { status('All public rooms are full right now. Try a private room.'); return; }
   roomMode = isPublic(roomCode) ? (roomCode[1] === 'T' ? 'team' : 'ffa') : null; autoStart = isPublic(roomCode); cdEnd = null;
@@ -165,8 +168,11 @@ async function enterRoom(code, quick, opts = {}) {
   room.on('peers', (ps) => ps.forEach((p) => names.set(p.id, cleanName(p.n) || 'Player')));
   // Referee server: it recorded my Auto match finish itself (the page reports nothing there); show my new level.
   room.on('counted', (d) => { if (profile && d && Number.isInteger(d.level)) { profile.level = d.level; profile.xp = d.xp; me.l = d.level; renderProgress(profile); } });
+  room.on('rank', (d) => { if (d && Number.isFinite(d.change)) { rankNews = d; if (profile && Number.isFinite(d.points)) profile.rank_points = d.points; } });
+  room.on('closed', (why) => { leaveRoom(); openLobby('ranked'); status(String(why || 'Match over.')); }); // the server ended a ranked room
   room.on('gone', () => { leaveRoom(); status('Lost the connection to the game server. Try again.'); }); // referee server only
   room.peers().forEach((p) => names.set(p.id, cleanName(p.n) || 'Player'));
+  rankNews = null;
   joinedAt = performance.now(); lastSnapAt = 0; snaps = []; curHost = null; lastRaw = null; isHost = false; sim = null; ctl.ep = -1;
   try { history.replaceState(null, '', '?room=' + roomCode + KEEP); } catch {}
   $('#home').hidden = true; status('');
@@ -495,8 +501,8 @@ function renderChrome() {
   let card = '';
   if (v.phase === 'lobby' && (v.pub || autoStart)) {
     const roster = humans.map((e) => `<li>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}${v.mode === 'team' ? ` <u class="t${e.team}">${TEAM_NAME[e.team]}</u>` : ''}</li>`).join('');
-    card = `<div class="eyebrow">Auto match · ${v.mode === 'team' ? 'TEAM' : 'FFA'}${me.w ? ' · watching' : ''}</div><h2>${v.cd ? `Starting in ${Math.ceil(v.cd)}` : 'Finding players…'}</h2>
-      <ul class="roster">${roster}</ul><p class="dim">More players can still join. Bots fill any empty spots when it starts.</p>`;
+    card = `<div class="eyebrow">${v.rk ? 'Ranked' : 'Auto match'} · ${v.mode === 'team' ? 'TEAM' : 'FFA'}${me.w ? ' · watching' : ''}</div><h2>${v.wait ? 'Looking for another real player…' : v.cd ? `Starting in ${Math.ceil(v.cd)}` : 'Finding players…'}</h2>
+      <ul class="roster">${roster}</ul><p class="dim">${v.rk ? 'Ranked needs 2 real players. Leave before it starts and your ticket comes back. ' : 'More players can still join. '}Bots fill any empty spots when it starts.</p>`;
   } else if (v.phase === 'lobby') {
     const share = practice ? '' : `<p class="share">Friends join with code <b>${esc(roomCode)}</b> or this link:<br><span class="link">${esc(location.origin + location.pathname + '?room=' + roomCode + (REFEREE ? '&ref=' + encodeURIComponent(REFEREE) : ''))}</span></p>`;
     const roster = humans.map((e) => `<li>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}${v.mode === 'team' ? ` <u class="t${e.team}">${TEAM_NAME[e.team]}</u>` : ''}</li>`).join('');
@@ -517,6 +523,7 @@ function renderChrome() {
     card = `<div class="eyebrow">Match over</div><h2>${headline}</h2>
       ${v.mode === 'team' ? `<div class="result"><div class="stat nice"><i>Nice</i><b>${v.ts[0]}</b></div><div class="stat naughty"><i>Naughty</i><b>${v.ts[1]}</b></div></div>` : ''}
       ${mvp ? `<div class="verdict">MVP: ${esc(nameOf(mvp))} with ${mvp.score}</div>` : ''}
+      ${v.rk && rankNews ? `<div class="verdict">Rank points ${rankNews.change >= 0 ? '+' : '−'}${Math.abs(rankNews.change)}${Number.isFinite(rankNews.points) ? ` · now ${rankNews.points}` : ''}</div>` : ''}
       <ol class="final">${sorted.map((e) => `<li><span>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}</span><b>${e.score}</b></li>`).join('')}</ol>
       <p class="dim">Back to the lobby in ${Math.ceil(v.time)}s</p>`;
   }
@@ -791,7 +798,8 @@ function openLobby(kind) {
   $('#lobbyTitle').textContent = ranked ? 'FFA RANKED' : 'Unranked';
   $('#lobbyModes').hidden = ranked; $('#tourney').hidden = !ranked;
   document.querySelectorAll('#home .unr').forEach((el) => { el.hidden = ranked; });
-  $('#quick').disabled = ranked; $('#quick').textContent = ranked ? 'Auto match · opening soon' : 'Auto match';
+  // ranked opens with the referee server (it holds the ticket and picks the room); without it, still 'opening soon'
+  $('#quick').disabled = ranked && !REFEREE; $('#quick').textContent = ranked ? (REFEREE ? 'Auto match · 1 ticket' : 'Auto match · opening soon') : 'Auto match';
   document.querySelectorAll('[data-lmode]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.lmode === lobbyMode)));
   $('#home').hidden = false; status('');
   if (!stopBoard) board.watch(renderGames).then((stop) => { stopBoard = stop; }).catch(() => { $('#gamesList').innerHTML = '<p class="dim">Couldn\'t load the games list right now.</p>'; });
@@ -810,12 +818,12 @@ function renderGames(list = lastGames) {
     return `<div class="game"><div><b>${g.mode === 'team' ? 'TEAM' : 'FFA'}</b><span>${Number(g.humans) || 0}/8 players${g.watchers ? ` · ${Number(g.watchers)} watching` : ''}</span></div>
       <div><span>${esc(state)}</span>${g.leader ? `<span>Leader: ${esc(String(g.leader).slice(0, 14))} · ${Number(g.lscore) || 0}</span>` : ''}</div>
       <button class="sec" data-watch="${esc(cleanCode(g.code))}" ${full ? 'disabled' : ''}>${full ? 'Watchers full' : 'Watch now'}</button></div>`;
-  }).join('') : `<p class="dim">No ${label} games right now.${ranked ? ' Ranked opens soon.' : ' Start one with Auto match.'}</p>`;
+  }).join('') : `<p class="dim">No ${label} games right now.${ranked && !REFEREE ? ' Ranked opens soon.' : ' Start one with Auto match.'}</p>`;
 }
 $('#gamesList').addEventListener('click', (e) => { const b = e.target.closest('[data-watch]'); if (b) enterRoom(b.dataset.watch, false, { watch: true }); });
 document.querySelectorAll('[data-lmode]').forEach((b) => b.addEventListener('click', () => { lobbyMode = b.dataset.lmode; document.querySelectorAll('[data-lmode]').forEach((x) => x.setAttribute('aria-checked', String(x === b))); renderGames(); }));
 $('#playRanked').addEventListener('click', () => openLobby('ranked'));
-$('#quick').addEventListener('click', () => enterRoom('', true));
+$('#quick').addEventListener('click', () => (lobbyKind === 'ranked' ? enterRoom('', false, { ranked: true }) : enterRoom('', true)));
 $('#create').addEventListener('click', () => enterRoom(rid(4).toUpperCase().replace(/[^A-Z0-9]/g, 'X'), false));
 $('#joinBtn').addEventListener('click', () => { const c = cleanCode($('#code').value); if (c.length < 3) { status('Type the room code your friend shared.'); return; } enterRoom(c, false); });
 $('#practice').addEventListener('click', startPractice);

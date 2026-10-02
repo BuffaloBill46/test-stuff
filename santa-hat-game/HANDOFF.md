@@ -206,6 +206,8 @@ between two devices has never been tested from here. Cody and friends testing on
   page published with refcore.js). Two real browsers played a match through it from Cody's PC. Phase 2 (server side) live
   the same day: sign-ins checked, saved level/look used, finishes recorded, through its own limited database login
   `santa_referee` (017; password only in /etc/santa/referee.env on the Droplet, set as a SCRAM hash, never in the repo). TODO.
+  RANKED live on it too (018 applied): sign-in + ticket, server-picked room, 2 real players to start, rank points once per
+  match. All of it reaches players only once the page uses the referee by default and is published (Cody's call).
 
 *(Update this section at the end of every session.)*
 
