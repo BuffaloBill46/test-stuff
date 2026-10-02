@@ -187,8 +187,8 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ### >>> CODY'S LIST: things only Cody can do (newest first; Claude adds, Cody ticks) <<<
 **Quick questions (just answer in chat):**
-- **Lottery, the one refund left:** tickets are final (done, shown on every card). A payment that only confirms AFTER the
-  Christmas draw already ran never becomes a ticket (no draw left); today that money goes back. Keep that? (Claude: yes.)
+- ~~Lottery, the one refund left~~ **DECIDED (Cody, 2026-10-02): refund it.** A payment that confirms after the Christmas
+  draw ran never becomes a ticket, so it is refunded in full (what the code already does).
 - **Special snowballs in RANKED:** count them, or plain snowballs only in ranked so it can't be pay-to-win? One switch
   (`rankedSpecials` in worker/referee.mjs); it's ON (they count) until you say.
 
