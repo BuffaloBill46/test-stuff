@@ -470,7 +470,9 @@ canvas.addEventListener('pointerdown', (e) => {
   if (e.pointerType === 'touch' && !$('#joy').hidden && joy.id === null && Math.hypot(e.clientX - joy.ox, e.clientY - joy.oy) <= JOY_GRAB) {
     joy.id = e.pointerId; $('#joy').classList.add('on');
     // triple-tap and hold: the third touch inside the time window, still held a moment later, picks the joystick up
-    const now = performance.now(); joy.taps = [...joy.taps.filter((t) => now - t < JOY_TAPS_MS), now];
+    // timed by when the finger touched (e.timeStamp), not when the page got to it: on a slow or busy phone touches are handled
+    // late, which made three quick taps look slow (found by the controls test at ~3 frames a second)
+    const now = e.timeStamp || performance.now(); joy.taps = [...joy.taps.filter((t) => now - t < JOY_TAPS_MS), now];
     clearTimeout(joy.holdTimer);
     if (joy.taps.length >= 3) { joy.taps = []; const id = e.pointerId; joy.holdTimer = setTimeout(() => { if (joy.id === id) startMoving(); }, JOY_HOLD_MS); }
     steer(e.clientX, e.clientY); return;

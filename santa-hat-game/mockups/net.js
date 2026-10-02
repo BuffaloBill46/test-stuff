@@ -3,6 +3,7 @@
 // Message plan (Supabase counts every delivery): the host sends snapshots on the room channel;
 // each player sends their moves on their own channel, which only the host listens to.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm';
+import { humanToken, resetHumanCheck } from './human.js';
 
 const SB_URL = 'https://olganobdypnxfpmsxibe.supabase.co';
 const SB_KEY = 'sb_publishable_eLn_YYzLDOTuUAOTZLeyKQ_PLGT8B6N'; // publishable key: meant to be public
@@ -212,7 +213,9 @@ function remoteAccounts() {
     async signIn() {
       const wallet = findWallet(); if (!wallet) throw new Error('NO_WALLET');
       if (!wallet.isConnected && wallet.connect) await wallet.connect();
-      const { error } = await c.auth.signInWithWeb3({ chain: 'solana', statement: STATEMENT, wallet });
+      // the "are you human?" token (human.js; none while it's off), used once
+      const captchaToken = await humanToken();
+      const { error } = await c.auth.signInWithWeb3({ chain: 'solana', statement: STATEMENT, wallet, ...(captchaToken ? { options: { captchaToken } } : {}) }).finally(resetHumanCheck);
       if (error) throw new Error(error.message);
       return true; // the caller loads the profile, or redeems a pending link code instead
     },
@@ -220,7 +223,8 @@ function remoteAccounts() {
     createLinkCode: (want) => rpc('create_link_code', { p_want: want }),
     redeem: (code) => rpc('redeem_link_code', { p_code: code }),
     async signInEmail(email) {
-      const { error } = await c.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true } });
+      const captchaToken = await humanToken();
+      const { error } = await c.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true, ...(captchaToken ? { captchaToken } : {}) } }).finally(resetHumanCheck);
       if (error) throw new Error(error.message);
       return null; // finishes when they tap the link in their email and land back here (or type its code: verifyEmailCode)
     },
