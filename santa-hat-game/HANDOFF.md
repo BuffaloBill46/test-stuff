@@ -49,7 +49,7 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
   - `catalog.js`: every avatar item (slot, level or price).
   - Games tab: `games.js` (Slots page), `spinui.js` (Spin page), `slots.js` / `spin.js` (rules), `slots3d.js` / `spin3d.js` (3D).
   - Snowball Drop: `plinko.js` (rules), `plinkoboard.js` (the board), `dropui.js` (its Games-tab card); preview `plinko.html`.
-  - Runs (buy 1/5/10 plays that play straight away) and fair results: `credits.js` (the run ledger; the file name is older
+  - Runs (buy 1/5/10 plays, or any number up to 100 from the box, that play straight away) and fair results: `credits.js` (the run ledger; the file name is older
     than the design), `fair.js` (secrets, fingerprints, numbers), `house.js` (Cody's order; a stand-in for the server),
     `playcredits.js` (the buy confirm, playing a run, "Check this result"), `runui.js` (the end-of-run summary).
   - `market.js`: live SANTA price and the token's live tax (read-only), plus the payment split math. `sfx.js`: sound effects.

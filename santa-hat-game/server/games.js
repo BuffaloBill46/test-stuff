@@ -6,7 +6,7 @@
 //   settle → the player's number in, draw, record, reveal the secret; the run's last play queues ONE payout (finish_run)
 // `db` = { query(sql, params) → rows, tx(fn) } on a direct Postgres connection (a transaction holds the pool row lock).
 // `chain.getTransaction(sig)` = Solana getTransaction (jsonParsed, finalized). Keys and secrets never leave the server.
-import { KINDS, RUN_SIZES } from '../mockups/credits.js';
+import { KINDS, MAX_RUN, isRunSize } from '../mockups/credits.js';
 import { BETS as DROP_SIZES } from '../mockups/plinko.js';
 const near = (a, b) => Math.abs(a - b) < 1e-9;
 import { play as dropPlay, canPlay as canDrop, MAX_MULT as DROP_TOP } from '../mockups/plinko.js';
@@ -64,12 +64,12 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   const sizesFor = (kind, cfg) => (kind === 'spin' ? [cfg.prices.spin10, cfg.prices.spin100] : kind === 'drop' ? DROP_SIZES : [cfg.prices.big]);
   const canTake = (kind, state, bet, cfg) => (kind === 'drop' ? canDrop(state, bet) : kind === 'spin' ? canSpin(state, bet, cfg.wheel) : canPull(state, { ...cfg.machine, bet }));
 
-  // A price for a run of n plays (1, 5 or 10) of `kind` at size `bet`. Refused up front if the pool can't take a play now,
+  // A price for a run of n plays (1 to 100) of `kind` at size `bet`. Refused up front if the pool can't take a play now,
   // or if this player's last run isn't finished, so a payment is never taken for plays that would be refused.
   async function quote(profile, kind, n, bet) {
     if (!isKind(kind)) return { error: 'unknown game' };
     if (retired.includes(kind)) return { error: 'that game has been retired' };
-    if (!RUN_SIZES.includes(n)) return { error: 'buy 1, 5 or 10' };
+    if (!isRunSize(n)) return { error: `buy 1 to ${MAX_RUN} plays` };
     const payer = await walletOf(profile);
     if (!payer) return { error: 'playing for SANTA needs a linked wallet (winnings are sent to it)' };
     const recent = (await row(`select count(*)::int as n from public.quotes where profile_id = $1 and created_at > now() - interval '1 hour'`, [profile])).n;

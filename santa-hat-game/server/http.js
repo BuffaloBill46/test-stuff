@@ -1,6 +1,6 @@
 // SERVER: the web door to the game server (runs inside the Supabase Edge Function; plain JS so it's tested in node too).
 // One address, POST JSON { action, ... }:
-//   quote  { kind, n, bet }    → a 60-second SANTA price for a run of 1, 5 or 10 plays at one size
+//   quote  { kind, n, bet }    → a 60-second SANTA price for a run of 1 to 100 plays at one size
 //   buy    { quote, signature }→ checks the finalized payment → the run's plays, each with its locked fingerprint
 //   settle { ticket, seed }    → result + revealed secret; the run's last play also says what was sent to the wallet
 //   winners                    → the shared Recent winners list (public, no sign-in)

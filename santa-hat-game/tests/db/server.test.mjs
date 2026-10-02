@@ -59,7 +59,7 @@ let b = await server.buy(me, q.id, S('A'));
 assert.equal(b.ok, true); assert.equal(b.plays.length, 10, 'ten plays, each with its locked fingerprint');
 assert.ok(b.plays.every((p) => /^[0-9a-f]{64}$/.test(p.commit)));
 assert.equal(await pool('spin'), START.spin + splitPayment(q.santaRaw, 1000, FEE).arrives, 'exactly the SANTA that arrived reached the Spin pool at purchase');
-for (const [n, bet, why] of [[3, 1, /1, 5 or 10/], [5, 0.37, /size/], [5, 2, /size/]]) assert.match((await server.quote(me, 'spin', n, bet)).error, why);
+for (const [n, bet, why] of [[101, 1, /1 to 100/], [0, 1, /1 to 100/], [5, 0.37, /size/], [5, 2, /size/]]) assert.match((await server.quote(me, 'spin', n, bet)).error, why);
 assert.match((await server.quote(me, 'big', 1, 0.1)).error, /size/, 'Big Hat is $1 a pull');
 assert.deepEqual(await server.quote(me, 'spin', 1, 1), { busy: true }, 'one run at a time: this one still has plays to go');
 

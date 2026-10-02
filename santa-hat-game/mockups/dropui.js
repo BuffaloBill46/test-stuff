@@ -2,10 +2,11 @@
 // Spin pool readout, odds, last drops. Every drop runs in the house's order (paid → secret locked → drawn → revealed;
 // playcredits.js / house.js), on the Spin pool (shared, Cody); the run's winnings are sent at the end. The board only
 // animates the path the draw already decided. DEMO: the same demo balance as Slots.
-import { PAYS, WAYS, TOTAL, payback, realWin } from './plinko.js';
+import { realWin } from './plinko.js';
 import { createBoard } from './plinkoboard.js';
 import { playRun, short } from './playcredits.js';
 import { runSummary } from './runui.js';
+import { initRunPick, priceLabel } from './runpick.js';
 import { showResult } from './spinui.js';
 import { play as sfx } from './sfx.js';
 
@@ -21,15 +22,12 @@ function render() {
   $('#dropHistory').innerHTML = history.length ? history.map((m) => { const [bg, fg] = STYLE(m); return `<li style="background:${bg};color:${fg}">${m}×</li>`; }).join('')
     : '<li class="empty">No drops yet.</li>';
 }
-function odds() {
-  const groups = [...new Set(PAYS)].sort((a, b) => b - a).map((m) => ({ m, ways: PAYS.reduce((a, p, k) => a + (p === m ? WAYS[k] : 0), 0) }));
-  $('#dropOdds').innerHTML = groups.map(({ m, ways }) => `<li><i style="background:${STYLE(m)[0]}"></i><span><b>${m}×</b> ${m >= 10 ? 'the edge presents' : m > 1 ? 'win' : m === 1 ? 'money back' : m > 0 ? 'part back' : 'no win'}<br>${((ways / TOTAL) * 100).toFixed(1)}% · 1 in ${+(TOTAL / ways).toFixed(1)}</span></li>`).join('')
-    + `<li><span>Pays back ${(payback() * 100).toFixed(1)}% · a win (5× or 10×) 1 drop in ${(1 / realWin()).toFixed(1)}. Every present is the same width: the pegs make the edges rare.</span></li>`;
-}
+// One odds line (Cody, 2026-10-01: in place of the list of presents): how often a drop wins 5× or 10×, from the board's real odds.
+function odds() { $('#dropOdds').innerHTML = `<b>1 in ${(1 / realWin()).toFixed(1)}</b> to hit a 5× or 10×`; }
 function stamp(text) { const fl = $('#drop .flash'); fl.textContent = text; fl.classList.remove('show'); void fl.offsetWidth; fl.classList.add('show'); }
 function setBet(b) {
   bet = b; document.querySelectorAll('#drop .bets button').forEach((x) => x.setAttribute('aria-checked', String(+x.dataset.dbet === b)));
-  document.querySelectorAll('#drop [data-run]').forEach((x) => { const v = Math.round(b * +x.dataset.run * 100) / 100; $('small', x).textContent = v < 1 ? Math.round(v * 100) + '¢' : '$' + v; });
+  document.querySelectorAll('#drop [data-run]').forEach((x) => { $('small', x).textContent = priceLabel(b * +x.dataset.run); }); // incl. the custom one ($2.50, not $2.5)
 }
 
 // A run of n drops at the chosen size: pay once, then the snowballs drop one after another; winnings are sent at the end.
@@ -50,7 +48,7 @@ async function startRun(n) {
     if (out) { res.innerHTML = runSummary(out, 'drop', 'drops'); showResult(res); }
   } finally { opening = false; fast = false; setButtons(true); $('#runDrop').textContent = ''; }
 }
-function setButtons(on) { document.querySelectorAll('#drop [data-run], #drop .bets button').forEach((b) => { b.disabled = !on; }); $('#drop .skip').hidden = on; }
+function setButtons(on) { document.querySelectorAll('#drop [data-run], #drop .bets button, #drop .runpick input, #drop .runpick [data-step]').forEach((b) => { b.disabled = !on; }); $('#drop .skip').hidden = on; }
 function landed(r, p) {
   flying--; if (!flying) wake();
   const res = $('#drop .res'), card = $('#drop .dropcard');
@@ -73,6 +71,7 @@ export function initDrop(opts) {
   wallet = opts.wallet; addWinner = opts.addWinner || addWinner; pool = opts.pool; onPool = opts.onPool || onPool;
   board = createBoard($('#drop canvas'));
   document.querySelectorAll('#drop [data-run]').forEach((b) => b.addEventListener('click', () => startRun(+b.dataset.run)));
+  initRunPick($('#drop .runpick'), { verb: 'Drop', priceOf: (n) => priceLabel(bet * n) });
   $('#drop .skip').addEventListener('click', () => { fast = true; board.hurry(); });
   document.querySelectorAll('#drop .bets button').forEach((b) => b.addEventListener('click', () => setBet(+b.dataset.dbet)));
   setBet(0.1); odds(); render();

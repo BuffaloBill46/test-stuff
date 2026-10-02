@@ -3,7 +3,7 @@
 // their 1, 5 or 10 roll it auto sends", with no player signature). Game rules only, no graphics.
 // DEMO: the ledger lives in this browser. In the real version it lives ONLY in the database and only the server changes it.
 // Rules:
-//  - One payment buys a RUN: 1, 5 or 10 plays of one game at one size (Spin / Snowball Drop: 10¢ or $1; Big Hat: $1).
+//  - One payment buys a RUN: 1 to 100 plays (buttons for 1, 5, 10; any number in the box) of one game at one size (Spin / Snowball Drop: 10¢ or $1; Big Hat: $1).
 //  - The money moves at purchase: 10% burned, the rest (after SANTA's 3% tax) lands in that game's pool right away
 //    (Spin and Snowball Drop: the Spin pool; Big Hat: the Slots pool).
 //  - The plays are made right after the payment is confirmed (each gets its secret locked then) and play straight away.
@@ -23,7 +23,10 @@ export const KINDS = {
   drop: { game: 'spin', bet: 0.10, name: 'Snowball Drop', one: 'drop', many: 'drops' },
 };
 export const SIZES = { spin: [0.10, 1.00], drop: [0.10, 1.00], big: [1.00] };
-export const RUN_SIZES = [1, 5, 10];
+export const RUN_SIZES = [1, 5, 10]; // the quick buttons
+// Any run from 1 to MAX_RUN plays can be bought (Cody, 2026-10-01: the custom box under the buttons; database 014 says the same).
+export const MAX_RUN = 100;
+export const isRunSize = (n) => Number.isInteger(n) && n >= 1 && n <= MAX_RUN;
 export const isSize = (kind, bet) => (SIZES[kind] || []).some((x) => Math.abs(x - bet) < 1e-9);
 export const costOf = (n, bet) => Math.round(n * bet * 100) / 100;
 export const newLedger = () => ({ runs: {}, payments: {}, plays: 0, sent: { spin: 0, slots: 0 } });
@@ -34,7 +37,7 @@ export function buyRun(ledger, pools, kind, bet, n, paymentId) {
   const K = KINDS[kind];
   if (!K) return { ok: false, why: 'unknown game' };
   if (!isSize(kind, bet)) return { ok: false, why: 'unknown size' };
-  if (!RUN_SIZES.includes(n)) return { ok: false, why: 'buy 1, 5 or 10' };
+  if (!isRunSize(n)) return { ok: false, why: `buy 1 to ${MAX_RUN} plays` };
   if (!paymentId || ledger.payments[paymentId]) return { ok: false, why: 'payment already used' };
   const cost = costOf(n, bet), id = 'run' + (Object.keys(ledger.runs).length + 1);
   ledger.payments[paymentId] = { run: id, cost };

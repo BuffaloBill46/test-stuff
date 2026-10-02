@@ -301,6 +301,13 @@ sends" (no claim button). How it works:
 - Each game card has three buttons (Pull/Spin/Drop 1, 5, 10) at the size picked on the card (Spin and Drop: 10¢ or $1;
   Big Hat: $1). One confirm, one payment; the plays start the moment the payment is confirmed. Skip ahead finishes the
   animations (results are already decided; Skip only stops showing them slowly).
+- **Any size from 1 to 100 (Cody, 2026-10-01):** under the three buttons, a number box with ▼ ▲ arrows (hold to keep
+  going, or type) and its own Play button; at most 100 plays per run ("Maybe set a max of 100 spins per run"). Database
+  `014_run_sizes.sql`, `credits.js` MAX_RUN, the server all say 1–100. Each play is still checked against the pool as it is
+  made; a refused play is refunded in the run's one transfer, so a big run can't overdraw a pool.
+- **Running total (Cody, 2026-10-01):** a "This visit" table at the top of the Games tab: per game and in total, plays,
+  spent (refunded plays come off), won (before the 3% token tax) and net. Kept for the browser tab (a reload keeps it); Reset
+  clears it. Nothing is stored on the server for it.
 - The server makes the run's plays (and locks each secret) only after the payment is confirmed. The plays settle one after
   another; the run's LAST play queues ONE payout of everything the run won, plus the price of any play the pool refused
   (emergency stop or refilling). Nothing waits on the player, so nothing is left behind if they close the tab: the server

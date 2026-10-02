@@ -1,7 +1,7 @@
-// Runs (buy 1, 5 or 10 plays that play straight away) + fair results + claiming: every rule as an assertion.
+// Runs (buy 1 to 100 plays that play straight away) + fair results + claiming: every rule as an assertion.
 // Cody, 2026-10-01: no stored credits; when a run's last play is done, its winnings are sent automatically.
 import assert from 'node:assert/strict';
-import { KINDS, SIZES, RUN_SIZES, newLedger, buyRun, audit, costOf } from '../mockups/credits.js';
+import { KINDS, SIZES, RUN_SIZES, MAX_RUN, newLedger, buyRun, audit, costOf } from '../mockups/credits.js';
 import { createHouse, check, outcomeFrom, NUMS } from '../mockups/house.js';
 import { numbers, newSeed, fingerprint } from '../mockups/fair.js';
 import { IN_PER_DOLLAR, POOL_RULES, canPull, pull } from '../mockups/slots.js';
@@ -10,10 +10,10 @@ import { SPIN_RULES, canSpin, spin, payback } from '../mockups/spin.js';
 const fresh = () => ({ ledger: newLedger(), pools: { spin: { pool: SPIN_RULES.start, prepaid: true }, slots: { pool: POOL_RULES.start, prepaid: true } } });
 const close = (a, b) => Math.abs(a - b) < 1e-6;
 
-// 1. Buying: only 1, 5 or 10 plays, only real games and sizes, each payment once; the money lands in that game's pool only.
+// 1. Buying: 1 to 100 plays (was only 1, 5 or 10 until Cody's custom box, 2026-10-01), only real games and sizes, each payment once; the money lands in that game's pool only.
 {
   const { ledger, pools } = fresh();
-  for (const n of [0, 2, 3, 11, 2.5, -1, NaN]) assert.equal(buyRun(ledger, pools, 'spin', 0.1, n, 'p' + n).ok, false, `bought ${n}`);
+  for (const n of [0, 101, 2.5, -1, NaN]) assert.equal(buyRun(ledger, pools, 'spin', 0.1, n, 'p' + n).ok, false, `bought ${n}`);
   assert.equal(buyRun(ledger, pools, 'nope', 1, 1, 'px').ok, false);
   assert.equal(buyRun(ledger, pools, 'spin', 0.37, 5, 'py').why, 'unknown size');
   assert.equal(buyRun(ledger, pools, 'big', 0.1, 5, 'pz').why, 'unknown size', 'Big Hat is $1 a pull only');
@@ -26,6 +26,11 @@ const close = (a, b) => Math.abs(a - b) < 1e-6;
   assert.ok(buyRun(ledger, pools, 'big', 1, 10, 'pay3').ok);
   assert.ok(close(pools.slots.pool - l0, 10 * IN_PER_DOLLAR), 'Big Hat pays the Slots pool');
   assert.deepEqual(RUN_SIZES, [1, 5, 10]); assert.equal(costOf(10, 0.1), 1); assert.equal(costOf(5, 1), 5);
+  // any run from 1 to 100 (Cody: the custom box; database 014 has the same limit), nothing else
+  assert.equal(MAX_RUN, 100);
+  assert.ok(buyRun(ledger, pools, 'drop', 0.1, 100, 'pay4').ok && buyRun(ledger, pools, 'big', 1, 37, 'pay5').ok, '100 and 37 plays are fine');
+  for (const n of [0, 101, 2.5, -1, '10', NaN]) assert.equal(buyRun(ledger, pools, 'drop', 0.1, n, 'bad' + n).ok, false, `a run of ${n} is refused`);
+  assert.equal(costOf(100, 1), 100); assert.equal(costOf(37, 0.1), 3.7);
   assert.deepEqual(audit(ledger), []);
 }
 
@@ -36,7 +41,7 @@ for (let session = 0; session < 40; session++) {
   const { ledger, pools } = fresh(); const house = createHouse(ledger, pools);
   for (let k = 0; k < 6; k++) {
     const kind = Object.keys(KINDS)[Math.floor(Math.random() * 3)], bet = SIZES[kind][Math.floor(Math.random() * SIZES[kind].length)];
-    const n = RUN_SIZES[Math.floor(Math.random() * 3)], g = KINDS[kind].game;
+    const n = Math.random() < 0.7 ? RUN_SIZES[Math.floor(Math.random() * 3)] : 1 + Math.floor(Math.random() * MAX_RUN), g = KINDS[kind].game; // the buttons, or any size
     const before = house.steps.length, sent0 = ledger.sent[g];
     const b = await house.buy(kind, bet, n, newSeed(8));
     assert.equal(b.plays.length, n, 'one locked play per play bought');
@@ -122,4 +127,4 @@ for (let session = 0; session < 40; session++) {
   assert.deepEqual(audit(ledger), []);
   console.log('failures mid-run give the price back: OK');
 }
-console.log(`OK: ${plays} plays in runs of 1/5/10, in Cody's order (paid → secrets locked → drawn → revealed), ${checked} re-checked; each run sent once at its end; refunds and books balanced`);
+console.log(`OK: ${plays} plays in runs of 1 to 100, in Cody's order (paid → secrets locked → drawn → revealed), ${checked} re-checked; each run sent once at its end; refunds and books balanced`);

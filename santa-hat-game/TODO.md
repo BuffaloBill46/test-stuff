@@ -75,6 +75,7 @@ existing bot (frozen/failed payouts, books ≠ wallet, top-off waiting, server d
 - [ ] More click games from the idea list (Hat Drop, Present Pick, Sleigh Climb, Advent Scratch, Naughty or Nice). Needs Cody's pick of game and its odds/payback first.
 
 ### Runs: buy 1, 5 or 10 plays that play straight away; winnings sent automatically (decided, Cody 2026-10-01)
+- [x] **Any run of 1–100 from a box with ▼ ▲ under the buttons + a "This visit" running total (Cody 2026-10-01): built** (`mockups/runpick.js`, `playcredits.js`, `tests/browser/runpick-test.mjs`). **Needs `supabase/014_run_sizes.sql` applied live before the deployed server takes a run over 10** (until then the database refuses it and the page says the server couldn't sell it).
 Replaces play credits (2026-09-30). Each game has Play 1 / 5 / 10 at the size picked on the card; one confirm and one payment,
 then the plays run; when the last one lands, the run's winnings are sent to the player's wallet in one transfer, with no claim
 button and no player signature. **We never hold a player balance.** Rules and why: DESIGN_NOTES → "No credits".

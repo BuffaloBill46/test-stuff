@@ -36,7 +36,7 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
     await waitDone(); await p.waitForTimeout(200);
     return dlg;
   };
-  check(await p.locator('#dropOdds li').count() === 6, `${label}: odds list (5 prizes + payback line)`);
+  check(await p.textContent('#dropOdds') === '1 in 14.2 to hit a 5× or 10×', `${label}: the one odds line (Cody): ${await p.textContent('#dropOdds')}`);
   check(await p.textContent('#drop [data-run="10"] small') === '$1', `${label}: Drop 10 at 10¢ costs $1`);
   await p.screenshot({ path: `${OUT}/${label}-1-board.png` });
 

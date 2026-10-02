@@ -142,7 +142,7 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   // 7) "How to win" panel: rules, 7 examples with prizes from the real rules, and the win table
   await p.evaluate(() => document.querySelector('#howBtn').click()); await p.waitForTimeout(500);
   const how = await p.evaluate(() => ({ open: document.querySelector('#howDlg').open, examples: [...document.querySelectorAll('#howExamples .example h4')].map((h) => h.textContent.replace(/\s+/g, ' ').trim()), tableRows: document.querySelectorAll('#howTable tbody tr').length }));
-  const want = ['3 in a row · $1.05', 'Santa Hat is wild · $3.56', 'Diagonals count too · $3.00', 'Two lines at once · $2.45', 'Hat bonus · $0.18', 'Top line prize: 100× · $100.30'];
+  const want = ['3 in a row · $1.05', 'Santa Hat is wild · $3.56', 'Diagonals count too · $3.00', 'Two lines at once · $2.45', 'Hat bonus · $0.18', 'Top Line JackPot: 100× · $100.30'];
   check(how.open, `${label}: How to win panel should open`);
   want.forEach((w, i) => check(how.examples[i] === w, `${label}: example ${i + 1} should read "${w}", got "${how.examples[i]}"`));
   check(/^Pool jackpot · 25% of the pool/.test(how.examples[6] || ''), `${label}: jackpot example`);

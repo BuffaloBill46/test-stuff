@@ -263,6 +263,7 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
 .jp .amt { font: 700 26px/1 var(--digits); color: var(--lamp); font-variant-numeric: tabular-nums; text-shadow: 0 0 10px rgba(255,190,92,.45); }
 .machine canvas { width: 100%; aspect-ratio: 1 / 1; display: block; cursor: pointer; margin: 4px 0; }
 .machine .pull { flex: none; }
+@media (max-width: 600px) { #slots.block, #drop.block { padding: 12px 8px 14px; } .machine { padding: 10px 6px 12px; } } /* phones: room for bigger reels (Cody) */
 .machine .screen { position: relative; }
 .machine .flash { position: absolute; left: 0; right: 0; top: 4%; text-align: center; font: 800 46px/1 var(--display); color: var(--brim); pointer-events: none; opacity: 0;
   text-shadow: 3px 3px 0 var(--ink), -2px -2px 0 var(--ink), 2px -2px 0 var(--ink), -2px 2px 0 var(--ink); transform: rotate(-4deg); }
@@ -283,7 +284,7 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
 .machine.jackpot .jp { animation: jpflash .35s steps(2) 10; }
 @keyframes jpflash { 50% { background: var(--hat); } }
 @media (min-width: 821px) { /* the machine on the left, its readouts on the right */
-  .machine { display: grid; grid-template-columns: minmax(0, 500px) minmax(0, 1fr); grid-template-rows: auto auto auto auto 1fr; column-gap: 24px; align-items: start; }
+  .machine { display: grid; grid-template-columns: minmax(0, 600px) minmax(0, 1fr); /* the reels bigger (Cody) */ grid-template-rows: auto auto auto auto 1fr; column-gap: 24px; align-items: start; }
   .machine .screen { grid-column: 1; grid-row: 1 / span 5; }
   .machine canvas { margin: 0; }
   .machine header, .machine .jp, .machine .facts, .machine .pullrow { grid-column: 2; }
@@ -366,11 +367,14 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
 .history li { min-width: 34px; padding: 5px 6px; text-align: center; font: 700 12px/1 var(--digits); border: 2px solid var(--ink); border-radius: 3px; }
 .history li.empty { border: 0; min-width: 0; font: 400 13px/1.4 var(--body); color: var(--dim); padding: 0; }
 .oddsbox h4, .history h4 { margin: 14px 0 0; }
+/* Snowball Drop's one odds line (Cody, 2026-10-01: in place of the presents list) */
+.dropodds { margin: 12px 0 0; padding: 8px 10px; background: var(--ink); border: 2px solid #c98a1b; border-radius: 3px; font-size: 15px; color: #d6ddf0; }
+.dropodds b { font: 700 18px/1 var(--digits); color: var(--lamp); margin-right: 4px; }
 @media (min-width: 821px) {
   .wheelcard { grid-template-rows: auto auto auto auto auto 1fr; }
   .wheelcard .screen { grid-row: 1 / span 6; }
   .wheelcard .bets { grid-column: 2; grid-row: 2; } .wheelcard .pullrow { grid-column: 2; grid-row: 3; align-self: start; margin: 14px 0 0; }
-  .wheelcard .oddsbox { grid-column: 2; grid-row: 4; } .wheelcard .history { grid-column: 2; grid-row: 5; }
+  .wheelcard .oddsbox, .wheelcard .dropodds { grid-column: 2; grid-row: 4; } .wheelcard .dropodds { align-self: start; } .wheelcard .history { grid-column: 2; grid-row: 5; }
 }
 .paytable { margin-top: 14px; }
 .paytable summary { cursor: pointer; font: 800 22px/1.2 var(--display); color: var(--brim); }
@@ -540,6 +544,24 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
 .runbtns .go { flex: 1 1 0; min-width: 84px; display: grid; justify-items: center; gap: 2px; padding: 8px 10px 14px; }
 .runbtns .go b { font: 800 22px/1 var(--display); } .runbtns .go small { font: 700 12px/1 var(--digits); color: var(--brim); opacity: .9; }
 .runbtns .go:disabled { opacity: .5; }
+/* The run counter between the game and its buy buttons: plays done of this run and what they have won (Cody, 2026-10-01). */
+.runcount { flex: 1 1 100%; display: flex; align-items: baseline; gap: 12px; padding: 7px 10px; background: var(--ink); border: 2px solid #3a4570; border-radius: 3px; }
+.runcount i { font: 700 10px/1 var(--digits); letter-spacing: 1px; text-transform: uppercase; font-style: normal; color: var(--dim); }
+.runcount b { font: 700 18px/1 var(--digits); font-variant-numeric: tabular-nums; color: var(--brim); }
+.runcount span { margin-left: auto; font: 700 16px/1 var(--digits); font-variant-numeric: tabular-nums; color: var(--lamp); }
+.runcount i, .runcount b, .runcount span { white-space: nowrap; }
+@media (max-width: 480px) { .runcount { gap: 8px; padding: 6px 8px; } .runcount b { font-size: 15px; } .runcount span { font-size: 13px; } }
+@media (max-width: 360px) { .runcount i { display: none; } }
+/* Any run from 1 to 100 under the quick buttons (Cody, 2026-10-01): ▼ [number] ▲, then its Play button. */
+.runpick { display: flex; gap: 6px; align-items: stretch; flex: 1 1 100%; flex-wrap: wrap; }
+.runpick .lbl { align-self: center; font: 700 11px/1 var(--digits); letter-spacing: 1px; text-transform: uppercase; color: var(--dim); margin-right: 2px; }
+.runpick .stepper { display: flex; gap: 6px; flex: 0 0 auto; } /* ▼ number ▲ never split across lines */
+.runpick [data-step] { min-width: 44px; padding: 0 10px; font-size: 20px; line-height: 1; }
+.runpick input { width: 72px; text-align: center; font: 700 20px/1 var(--digits); font-variant-numeric: tabular-nums; padding: 6px 4px; -moz-appearance: textfield; appearance: textfield; }
+.runpick input::-webkit-inner-spin-button, .runpick input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.runpick .go { flex: 1 1 0; min-width: 96px; display: grid; justify-items: center; gap: 2px; padding: 8px 10px 14px; }
+.runpick .go b { font: 800 22px/1 var(--display); } .runpick .go small { font: 700 12px/1 var(--digits); color: var(--brim); opacity: .9; }
+.runpick :disabled { opacity: .5; }
 .runbtns .go b, .runbtns .go small { white-space: nowrap; }
 @media (max-width: 420px) { .runbtns .go { min-width: 0; padding: 8px 4px 12px; } .runbtns .go b { font-size: 19px; } }
 .runstat { font-size: 14px; color: #d6ddf0; } .runstat b { font: 700 16px/1 var(--digits); color: var(--lamp); }
@@ -687,11 +709,12 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
         <header><h3>Big Hat</h3><em>$1.00 a pull · 5×5 · 11 lines</em>
           <button class="sec fsbtn" id="fsBtn" aria-pressed="false" title="Full screen"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M1 5V1h4M11 1h4v4M15 11v4h-4M5 15H1v-4" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Full screen</span></button></header>
         <div class="jp"><span>Pool jackpot<small><b class="pct">25%</b> of the pool · 25 Santa Hats</small></span><b class="amt" id="jpAmt">$125.00</b></div>
-        <div class="jp topline"><span>Top line prize<small>5 Santa Hats in a row on a line</small></span><b id="topAmt">$100.00</b></div>
+        <div class="jp topline"><span>Top Line JackPot<small>5 Santa Hats in a row on a line</small></span><b id="topAmt">$100.00</b></div>
         <div class="screen"><canvas aria-label="Big Hat slot machine, 5 by 5 reels"></canvas><div class="flash" aria-hidden="true"></div>
           <button class="sec howbtn" id="howBtn" type="button">How to win · examples &amp; win table</button></div>
-        <div class="pullrow"><div class="runbtns" role="group" aria-label="Buy and play"><button class="go pull" data-run="1"><b>Pull 1</b><small>$1</small></button><button class="go" data-run="5"><b>Pull 5</b><small>$5</small></button><button class="go" data-run="10"><b>Pull 10</b><small>$10</small></button></div>
-          <output class="res" aria-live="polite">Pick 1, 5 or 10 pulls: they play straight away, and anything you win is sent to your wallet at the end.</output>
+        <div class="pullrow"><div class="runcount" data-runcount="big" aria-live="polite"><i>This run</i><b>–</b><span>won $0.00</span></div><div class="runbtns" role="group" aria-label="Buy and play"><button class="go pull" data-run="1"><b>Pull 1</b><small>$1</small></button><button class="go" data-run="5"><b>Pull 5</b><small>$5</small></button><button class="go" data-run="10"><b>Pull 10</b><small>$10</small></button></div>
+          <div class="runpick" role="group" aria-label="Or pick how many pulls"><span class="lbl">Or pick</span><span class="stepper"><button type="button" class="sec" data-step="-1" aria-label="One less">▼</button><input type="number" inputmode="numeric" min="1" max="100" step="1" value="20" aria-label="How many pulls, 1 to 100"><button type="button" class="sec" data-step="1" aria-label="One more">▲</button></span><button class="go" data-run="20"><b>Pull 20</b><small>$20</small></button></div>
+          <output class="res" aria-live="polite">Pick 1, 5, 10, or any number up to 100 pulls: they play straight away, and anything you win is sent to your wallet at the end.</output>
           <div class="credrow"><span class="cred runstat" id="runBig"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="big" hidden>Check last result</button></div></div>
         <ul class="facts"></ul>
       </article>
@@ -732,10 +755,11 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
           <button role="radio" aria-checked="false" data-dbet="1"><b>$1</b><small>win up to $10</small></button>
         </div>
         <div class="screen"><canvas aria-label="Snowball Drop board: tap to drop a snowball"></canvas><div class="flash" aria-hidden="true"></div></div>
-        <div class="pullrow"><div class="runbtns" role="group" aria-label="Buy and play"><button class="go dropbtn" data-run="1"><b>Drop 1</b><small>10¢</small></button><button class="go" data-run="5"><b>Drop 5</b><small>50¢</small></button><button class="go" data-run="10"><b>Drop 10</b><small>$1</small></button></div>
-          <output class="res" aria-live="polite">Pick 10¢ or $1, then 1, 5 or 10 snowballs: they drop straight away, and anything you win is sent to your wallet at the end.</output>
+        <div class="pullrow"><div class="runcount" data-runcount="drop" aria-live="polite"><i>This run</i><b>–</b><span>won $0.00</span></div><div class="runbtns" role="group" aria-label="Buy and play"><button class="go dropbtn" data-run="1"><b>Drop 1</b><small>10¢</small></button><button class="go" data-run="5"><b>Drop 5</b><small>50¢</small></button><button class="go" data-run="10"><b>Drop 10</b><small>$1</small></button></div>
+          <div class="runpick" role="group" aria-label="Or pick how many drops"><span class="lbl">Or pick</span><span class="stepper"><button type="button" class="sec" data-step="-1" aria-label="One less">▼</button><input type="number" inputmode="numeric" min="1" max="100" step="1" value="20" aria-label="How many drops, 1 to 100"><button type="button" class="sec" data-step="1" aria-label="One more">▲</button></span><button class="go" data-run="20"><b>Drop 20</b><small>$2</small></button></div>
+          <output class="res" aria-live="polite">Pick 10¢ or $1, then 1, 5, 10, or up to 100 snowballs: they drop straight away, and anything you win is sent to your wallet at the end.</output>
           <div class="credrow"><span class="cred runstat" id="runDrop"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="drop" hidden>Check last result</button></div></div>
-        <div class="oddsbox"><h4>What's in the presents</h4><ul class="oddslist" id="dropOdds"></ul></div>
+        <p class="dropodds" id="dropOdds"></p>
         <div class="history"><h4>Your last drops</h4><ol id="dropHistory"></ol></div>
       </article>
     </section>

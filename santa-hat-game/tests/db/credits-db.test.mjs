@@ -1,5 +1,5 @@
 // Runs the real database files (001–005) on real Postgres (PGlite) with small stand-ins for Supabase's auth, then tries to
-// break the run and play rules (runs of 1/5/10 plays, Cody 2026-10-01). 005 is NOT applied to the live project; this is how it gets checked before it is.
+// break the run and play rules (runs of 1 to 100 plays, Cody 2026-10-01). 005 is NOT applied to the live project; this is how it gets checked before it is.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
@@ -18,7 +18,7 @@ await db.exec(`
   create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
   ${SUPABASE_GRANTS}
 `);
-for (const f of ['001_profiles.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '009_lock_my_plays.sql']) {
+for (const f of ['001_profiles.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '009_lock_my_plays.sql', '014_run_sizes.sql']) {
   try { await db.exec(SQL(f)); } catch (e) { throw new Error(`${f}: ${e.message}`); }
 }
 const one = async (q, p) => (await db.query(q, p)).rows[0];
@@ -41,7 +41,8 @@ await fails(`select public.buy_run($1, 'sig1', 1, 1, 1)`, [q], 'a used quote can
 await fails(`select public.buy_run($1, 'sig1', 1, 1, 1)`, [await Q('big', 1, 1)], 'a used signature can\'t buy again');
 assert.equal(+(await one(`select santa_raw from public.pools where game = 'spin'`)).santa_raw, 58767000000 + 5147000000, 'the SANTA that arrived reaches the Spin pool');
 assert.equal(+(await one(`select santa_raw from public.pools where game = 'slots'`)).santa_raw, 587670000000, 'and not the Slots pool');
-for (const n of [2, 3, 11]) await fails(`insert into public.quotes (profile_id, kind, n, bet, usd, santa_raw, price_usd) values ($1, 'big', $2, 1, $2, 1, 1)`, [uid, n], `a run of ${n} is refused (1, 5 or 10 only)`);
+for (const n of [0, 101]) await fails(`insert into public.quotes (profile_id, kind, n, bet, usd, santa_raw, price_usd) values ($1, 'big', $2, 1, $2, 1, 1)`, [uid, n], `a run of ${n} is refused (1 to 100 only, 014)`);
+for (const t of ['quotes', 'payments', 'runs']) assert.match((await one(`select pg_get_constraintdef(oid) as d from pg_constraint where conname = $1`, [t + '_n_check'])).d, /n >= 1\) AND \(n <= 100\)/, `${t}: 1 to 100`);
 await fails(`insert into public.quotes (profile_id, kind, n, bet, usd, santa_raw, price_usd) values ($1, 'big', 5, 1, 4, 1, 1)`, [uid], 'the price must be n × the size');
 
 // The order: lock → settle, per play. No skipping steps, no settling twice; settling sends nothing on its own.
@@ -99,4 +100,4 @@ assert.equal((await db.query(`select secret from public.plays`)).rows.length, 0,
 assert.equal((await db.query(`select * from public.payments`)).rows.length, 0, 'nor payments');
 await db.query(`reset role`);
 assert.ok(+(await one(`select count(*) as n from public.plays`)).n >= 7, 'the plays really exist (the empty result above is row security, not an empty table)');
-console.log('OK: 001–005 apply on real Postgres; runs of 1/5/10 only, bought once; the play order is enforced by the database; a run pays ONE payout, once, only when done; refunds come back with it; the website can only read');
+console.log('OK: 001–005 apply on real Postgres; runs of 1 to 100 only (014), bought once; the play order is enforced by the database; a run pays ONE payout, once, only when done; refunds come back with it; the website can only read');
