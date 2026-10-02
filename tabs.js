@@ -1,6 +1,8 @@
 // Site tabs: Play / Store / Avatar / Ranks, wallet sign-in, avatar editor, leaderboard.
 import { THREE, character, lights, toon, part, build, hatGeo, giftGeo, C } from './kit.js';
 import { GEAR_SLOTS } from './catalog.js';
+import { shopBuy, resumeShop } from './shopui.js';
+import { forSale } from './shoprules.js';
 import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS } from './gear.js';
 import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable } from './catalog.js';
 import { SPECIALS } from './specials.js';
@@ -72,7 +74,7 @@ export function renderProgress(profile) {
   el.querySelector('#pgPts').textContent = profile ? String(profile.rank_points ?? 0) : '—';
   const buy = el.querySelector('#pgBuy');
   buy.hidden = price === null; // levels above 5 are earned, not bought
-  if (price !== null) buy.textContent = `Buy level ${pl.level + 1} · $${price.toFixed(2)} · payments open soon`;
+  if (price !== null) { buy.textContent = `Buy level ${pl.level + 1} · $${price.toFixed(2)}`; buy.disabled = false; }
   // the free way to the same level, with the count so far (Auto match top-3 finishes; guests: sign in to count them)
   const or = el.querySelector('#pgOr'); or.hidden = price === null;
   if (price !== null) { or.firstChild.textContent = `or win ${pl.need} matches top 3 or better `; el.querySelector('#pgOrN').textContent = `${pl.xp} / ${pl.need}`; }
@@ -119,12 +121,15 @@ export function initTabs(app) {
     btn.textContent = p ? p.name : 'Sign in'; btn.classList.toggle('in', !!p);
     btn.title = p ? (p.wallet ? `Signed in with wallet ${p.wallet}` : 'Signed in with email') : 'Sign in with a wallet or email';
   }
+  async function reloadMine() { try { const p = await app.accounts.profile(); if (p) await afterSignIn(p); } catch {} }
   async function afterSignIn(p) {
     app.profile = p; app.setIdentity(p.name, cleanAvatar(p.avatar)); renderProgress(p);
     try { state.owned = new Set(await app.accounts.inventory()); } catch { state.owned = new Set(); }
     renderWho(); if (state.tab === 'avatar') { state.draft = { name: p.name, a: cleanAvatar(p.avatar) }; renderAvatar(); }
     if (state.tab === 'ranks') renderRanks();
     if (state.tab === 'store') renderStore(true);
+    // a purchase paid but not yet accepted (tab closed, network dropped) finishes now
+    resumeShop().then((r) => { if (r && !r.error) reloadMine(); }).catch(() => {});
   }
   // ---------- sign-in sheet: wallet (can buy) or email (plays and ranks, can't buy); link both to one account
   const acctMsg = (t) => { $('#acctMsg').textContent = t; };
@@ -241,6 +246,7 @@ export function initTabs(app) {
 
   // ---------- store
   let storeDrawn = false;
+  const buyBtn = (i) => (state.owned.has(i.id) ? `<span class="ok" data-owned="${i.id}">Owned</span>` : forSale(i) ? `<button class="go" data-buyitem="${i.id}">Buy</button>` : '');
   function status(item) {
     const lvl = app.profile ? app.profile.level : 1;
     if (usable(item, lvl, state.owned)) return '<span class="ok">Unlocked</span>';
@@ -257,13 +263,21 @@ export function initTabs(app) {
       const sbs = ITEMS.filter((i) => i.slot === 'sball' && i.id !== 'sb_none'), gear = ITEMS.filter((i) => i.slot === 'gear' && i.id !== 'gear_none');
       box.innerHTML = `<div class="shop"><div class="shophead"><h3>1. Special Snowballs</h3><p class="rule"><b>Yours forever</b> Buy one once and keep it. Put it in a special slot (SB1–SB3) on the Avatar screen; a throw uses that many snowballs from your counter.</p></div>
         <div class="shopgrid">${sbs.map((i) => { const S = SPECIALS[i.special];
-          return `<div class="shopitem"><img alt="" src="${thumbnail(i)}"><div><b>${esc(i.name)}</b><span class="uses">${S.cost === 'all' ? 'uses all' : 'uses ' + S.cost}${S.minLevel ? ' · level ' + S.minLevel + '+' : ''}</span><p>${esc(S.note)}</p>${status(i)}</div><button class="sec" data-try="${i.id}">Try it</button></div>`; }).join('')}</div></div>
+          return `<div class="shopitem"><img alt="" src="${thumbnail(i)}"><div><b>${esc(i.name)}</b><span class="uses">${S.cost === 'all' ? 'uses all' : 'uses ' + S.cost}${S.minLevel ? ' · level ' + S.minLevel + '+' : ''}</span><p>${esc(S.note)}</p>${status(i)}</div><div class="shopbtns"><button class="sec" data-try="${i.id}">Try it</button>${buyBtn(i)}</div><p class="shopnote" aria-live="polite"></p></div>`; }).join('')}</div></div>
         <div class="shop"><div class="shophead"><h3>2. Special Gear</h3><p class="rule"><b>Lasts ${WEAR_DAYS} days</b> The clock starts at your first match wearing it and keeps running; then it wears out. You can take it off and put it back on until then.</p>
           <p class="rule"><b>No stacking</b> ${esc(NO_STACK_NOTE)} One gear slot, two from level 8.</p></div>
         <div class="shopgrid">${gear.map((i) => { const G = GEAR[i.gear];
-          return `<div class="shopitem"><img alt="" src="${thumbnail(i)}"><div><b>${esc(i.name)}</b><span class="uses">${G.minLevel ? 'level ' + G.minLevel + '+' : statName(i.gear)}</span><p>${esc(G.note)}</p>${status(i)}</div><button class="sec" data-try="${i.id}">Try it</button></div>`; }).join('')}</div></div>`;
+          return `<div class="shopitem"><img alt="" src="${thumbnail(i)}"><div><b>${esc(i.name)}</b><span class="uses">${G.minLevel ? 'level ' + G.minLevel + '+' : statName(i.gear)}</span><p>${esc(G.note)}</p>${status(i)}</div><div class="shopbtns"><button class="sec" data-try="${i.id}">Try it</button>${buyBtn(i)}</div><p class="shopnote" aria-live="polite"></p></div>`; }).join('')}</div></div>`;
     });
   }
+  // Buy (Cody, 2026-10-02: every button reaches its end): the one shop path (shopui.js), then what the player owns is reloaded.
+  $('#carousels').addEventListener('click', async (e) => {
+    const bb = e.target.closest('[data-buyitem]'); if (!bb) return;
+    const note = bb.closest('.shopitem').querySelector('.shopnote'), say = (t) => { note.textContent = t; };
+    if (!app.profile) return say('Sign in with your wallet first: purchases are paid from it.');
+    bb.disabled = true; const r = await shopBuy({ kind: 'item', id: bb.dataset.buyitem }, say); bb.disabled = false;
+    if (r) { await reloadMine(); const t = note.textContent; renderStore(true); requestAnimationFrame(() => { const n = document.querySelector(`[data-buyitem="${bb.dataset.buyitem}"], [data-owned="${bb.dataset.buyitem}"]`)?.closest('.shopitem')?.querySelector('.shopnote'); if (n) n.textContent = t; }); }
+  });
   $('#carousels').addEventListener('click', (e) => {
     const b = e.target.closest('[data-try]'); if (!b) return;
     const it = BY_ID.get(b.dataset.try); state.slot = it.slot;
@@ -305,6 +319,9 @@ export function initTabs(app) {
     save.disabled = blocked.length > 0;
     save.textContent = app.profile ? 'Save look' : 'Save on this device';
     if (blocked.length) $('#avmsg').textContent = `Previewing: ${blocked.map((i) => i.name).join(', ')} isn't unlocked yet.`;
+    // buy what's being previewed, right here (looks are bought on the Avatar screen; Cody)
+    const sale = blocked.find((i) => forSale(i)), ab = $('#avbuy'); ab.hidden = !sale;
+    if (sale) { ab.dataset.item = sale.id; ab.textContent = `Buy ${sale.name} · $${sale.price.toFixed(2)}`; }
     renderThemes();
     app.preview(d.a);
   }
@@ -323,6 +340,18 @@ export function initTabs(app) {
   $('#avsb').addEventListener('click', (e) => { const b = e.target.closest('[data-sbslot], [data-gslot]'); if (!b || b.disabled) return;
     if (b.dataset.gslot) state.gSlot = b.dataset.gslot; else state.sbSlot = b.dataset.sbslot; renderAvatar(); });
   $('#avname').addEventListener('input', (e) => { state.draft.name = e.target.value; });
+  $('#avbuy').addEventListener('click', async (e) => { const b = e.currentTarget, say = (t) => { $('#avmsg').textContent = t; };
+    if (!app.profile) return say('Sign in with your wallet first: purchases are paid from it.');
+    b.disabled = true; const r = await shopBuy({ kind: 'item', id: b.dataset.item }, say); b.disabled = false;
+    if (r) { const t = $('#avmsg').textContent; await reloadMine(); renderAvatar(); $('#avmsg').textContent = t; } });
+  // Buy level (the Progress box) and extra ranked tickets (the Store)
+  $('#pgBuy').addEventListener('click', async (e) => { const b = e.currentTarget, say = (t) => { $('#pgNote').textContent = t; };
+    if (!app.profile) return say('Sign in with your wallet first: levels are paid from it.');
+    b.disabled = true; const r = await shopBuy({ kind: 'level' }, say); b.disabled = false; if (r) { const t = $('#pgNote').textContent; await reloadMine(); $('#pgNote').textContent = t; } });
+  document.querySelector('.packs')?.addEventListener('click', async (e) => { const b = e.target.closest('[data-tix]'); if (!b) return;
+    const say = (t) => { $('#tixNote').textContent = t; };
+    if (!app.profile) return say('Sign in with your wallet first: tickets are paid from it.');
+    b.disabled = true; await shopBuy({ kind: 'tickets', n: +b.dataset.tix }, say); b.disabled = false; });
   $('#avsave').addEventListener('click', async () => {
     const d = state.draft, msg = $('#avmsg'), btn = $('#avsave');
     const name = d.name.trim().slice(0, 14) || app.me.n;

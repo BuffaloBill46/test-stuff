@@ -54,6 +54,12 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
       <span class="dim" id="lotMode"></span>
       <button type="button" class="sec" id="lotAuto">Switch to automatic</button><button type="button" class="sec" id="lotManual">Switch to manual</button></div>
     <div id="lotOwed" class="dim">Not loaded yet.</div></section>
+  <section class="plaque" id="shopBox"><h2>Shop: refunds owed</h2>
+    <p class="dim">Purchases that were paid but couldn't be granted (for example the player's level changed between the price and the
+      payment). The player is owed the FULL amount back from the treasury. Send it from the treasury wallet, then paste that
+      transaction here: it's checked on the chain before it's recorded.</p>
+    <div class="row"><button type="button" id="shopLoad">Show refunds owed</button></div>
+    <div id="shopOwed" class="dim">Not loaded yet.</div></section>
   <section class="plaque" id="botsBox"><h2>Possible bots</h2>
     <p class="dim">Players whose timing over the last 24 hours looks scripted: how fast and how evenly they start the next run after one
       ends. <b>Signals only:</b> nothing happens to anyone automatically, and a dedicated player can trip the weaker ones. Private to
