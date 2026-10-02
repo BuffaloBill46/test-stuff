@@ -195,10 +195,11 @@ between two devices has never been tested from here. Cody and friends testing on
 0. **Your other project "Green Life Game" is using most of the free game-server calls** (found 2026-10-02): the Supabase account
    has 500,000 a month; it was at 155,000 after 4 days (Santa Hat itself: about 200 a day). If the account runs out, Supabase
    pauses BOTH games (requests answer 402). Have that game's Claude look at what's calling it so often, or upgrade the plan.
-1. **Email sign-in for real players:** the domain exists now (santahatgames.com). Make a free Resend account (resend.com),
-   add the domain there, then tell Claude: the DNS records Resend lists go into GoDaddy (Claude can do that in your Chrome, as
-   with the game's records) and Claude connects Resend to Supabase (Auth → Emails → SMTP; the SMTP password is yours to paste).
-   Until then: wallet sign-in works; email sign-in only reaches your own Supabase team address.
+1. ~~Email sign-in for real players~~ **DONE 2026-10-02:** Resend (domain santahatgames.com verified; DNS records resend._domainkey TXT,
+   send + rsend CNAMEs added at GoDaddy by Claude; click/open tracking off) → Supabase custom SMTP (smtp.resend.com:465, user resend,
+   sender Santa Hat Legends <signin@santahatgames.com>; the API key pasted by Cody). Cody tested: the sign-in email arrived and worked.
+   Supabase allows 30 auth emails an hour to start (Auth → Rate Limits). Email text is still Supabase's default (Claude offered a
+   game-voiced version).
 2. **Try a real wallet on devnet (Phantom):** set Phantom to devnet, then open
    https://santahatgames.com/?server=https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games
    and sign in with the wallet. Send Claude your Phantom devnet address and Claude will send it test SANTA + devnet SOL, so you can
