@@ -97,6 +97,14 @@ export function toon(geo, outline = 0.035) {
   return m;
 }
 
+// Frees what a removed prop group owns (plaza themes swap at runtime). TOON and the outline materials are shared with every
+// character and prop still on screen, so they are never disposed. (A material's dispose leaves its texture alone, so the
+// shared glow and snow-dot textures survive; the plaza frees its own sky texture itself.)
+export function disposeTree(root) {
+  const shared = new Set([TOON, ...hullCache.values()]);
+  root.traverse((o) => { o.geometry?.dispose(); for (const m of [].concat(o.material || [])) if (!shared.has(m)) m.dispose(); });
+}
+
 export function toonInstanced(geo, count, outline = 0.035) {
   const m = new THREE.InstancedMesh(geo, TOON, count);
   m.frustumCulled = false;
@@ -283,14 +291,15 @@ export function cottage(seed = 1, o = {}) {
     part(new G.BoxGeometry(w + 0.3, 0.35, d + 0.3), C.stoneDark, { pos: [0, 0.17, 0], jit: 0.05, seed }),
     part(new G.BoxGeometry(w, h, d), wall, { pos: [0, h / 2 + 0.2, 0], jit: 0.04, seed: seed + 1 }),
     part(prismGeo(w + 0.5, d + 0.7, 1.5), C.woodDark, { pos: [0, h + 0.2, 0], jit: 0.04, seed: seed + 2 }),
-    part(prismGeo(w + 0.6, d + 0.55, 1.4), C.snow, { pos: [0, h + 0.33, 0], jit: 0.06, seed: seed + 3 }),
+    // o.roof: what covers the roof and chimney top (snow by default; plaza themes)
+    part(prismGeo(w + 0.6, d + 0.55, 1.4), o.roof ?? C.snow, { pos: [0, h + 0.33, 0], jit: 0.06, seed: seed + 3 }),
     part(new G.BoxGeometry(0.7, 1.3, 0.12), C.wood, { pos: [0, 0.85, d / 2 + 0.04], jit: 0.02, seed: seed + 4 }),
   ];
   for (const x of [-w / 2 + 0.06, w / 2 - 0.06]) ps.push(part(new G.BoxGeometry(0.16, h, 0.16), C.woodDark, { pos: [x, h / 2 + 0.2, d / 2 + 0.02] }));
   ps.push(part(new G.BoxGeometry(w, 0.14, 0.16), C.woodDark, { pos: [0, h * 0.62, d / 2 + 0.03] }));
   const cx = w * 0.28, cy = h + 1.35;
   ps.push(part(new G.BoxGeometry(0.55, 1.3, 0.55), C.stone, { pos: [cx, cy, 0.1], jit: 0.04, seed: seed + 5 }));
-  ps.push(part(new G.BoxGeometry(0.7, 0.18, 0.7), C.snow, { pos: [cx, cy + 0.7, 0.1], jit: 0.05, seed: seed + 6 }));
+  ps.push(part(new G.BoxGeometry(0.7, 0.18, 0.7), o.roof ?? C.snow, { pos: [cx, cy + 0.7, 0.1], jit: 0.05, seed: seed + 6 }));
   const win = [];
   for (const x of [-w * 0.3, w * 0.3]) win.push(part(new G.BoxGeometry(0.5, 0.55, 0.08), C.glass, { pos: [x, h * 0.45 + 0.3, d / 2 + 0.03] }));
   win.push(part(new G.BoxGeometry(0.08, 0.5, 0.45), C.glass, { pos: [w / 2 + 0.03, h * 0.5 + 0.3, 0] }));

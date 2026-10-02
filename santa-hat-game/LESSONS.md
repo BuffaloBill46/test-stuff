@@ -315,3 +315,8 @@ Elf Hat (half-size player) was first built by halving the hit distance. The gear
 host's 1/20 s step a snowball moves 0.9, more than a half-size player is wide, so checking only where the ball ENDED a step
 let it fly straight through. The referee now measures to the path the ball took that step. Whenever a target shrinks or a
 ball speeds up (a Fire Ball moves 1.8 a step), check the worst frame rate, not the test's tidy one.
+
+## A "reload" to the same URL with a new hash isn't a reload (2026-10-01)
+The plaza theme test checked "still Halloween after a reload" and passed, but nothing had reloaded: the Avatar tab rewrites the
+hash to `#avatar`, so the test's `goto('…#play')` was a same-page hash change and the old page answered. Caught only because the
+storage-throws case ("Christmas again after a reload") failed. A test that means reload calls `page.reload()`.

@@ -4,6 +4,7 @@ import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar,
 import { SPECIALS } from './specials.js';
 import { settingsReady } from './gameserver.js';
 import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js';
+import { THEMES, THEME_IDS } from './themes.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -255,8 +256,14 @@ export function initTabs(app) {
     save.disabled = blocked.length > 0;
     save.textContent = app.profile ? 'Save look' : 'Save on this device';
     if (blocked.length) $('#avmsg').textContent = `Previewing: ${blocked.map((i) => i.name).join(', ')} isn't unlocked yet.`;
+    renderThemes();
     app.preview(d.a);
   }
+  // Plaza theme: applies straight away (no Save needed) and only on this player's screen.
+  function renderThemes() {
+    $('#avtheme').innerHTML = THEME_IDS.map((id) => `<button type="button" data-theme="${id}" aria-pressed="${id === app.theme}"><i style="background: linear-gradient(${THEMES[id].sky.join(', ')})"></i>${esc(THEMES[id].name)}</button>`).join('');
+  }
+  $('#avtheme').addEventListener('click', (e) => { const b = e.target.closest('[data-theme]'); if (!b) return; app.setTheme(b.dataset.theme); renderThemes(); });
   $('#avslots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (b) { state.slot = b.dataset.slot; $('#avmsg').textContent = ''; renderAvatar(); } });
   $('#avgrid').addEventListener('click', (e) => { const b = e.target.closest('[data-pick]'); if (!b) return; const it = BY_ID.get(b.dataset.pick);
     if (it.slot === 'sball') withSpecial(state.draft.a, state.sbSlot, it.id); else state.draft.a[it.slot] = it.id; $('#avmsg').textContent = ''; renderAvatar(); });
