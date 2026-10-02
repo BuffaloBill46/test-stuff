@@ -42,5 +42,5 @@ for (const s of settingsList) {
   }
 }
 // And the cap is not loose for Spin and Drop: it's exactly their top prize.
-assert.equal(maxPerPlay(build(DEFAULT_SETTINGS), 'spin', 1), 5); assert.equal(maxPerPlay(build(DEFAULT_SETTINGS), 'drop', 1), 10);
+assert.equal(maxPerPlay(build(DEFAULT_SETTINGS), 'spin', 1), 5); assert.equal(maxPerPlay(build(DEFAULT_SETTINGS), 'drop', 1), 100); // board 2: the 100× centre
 console.log(`OK: payout cap never freezes a real win: ${checked.toLocaleString()} results checked across today's and bigger-prize settings (worst grid reaches ${(closest * 100).toFixed(0)}% of the cap); $1 Big Hat cap per pull $${maxPerPlay(build(DEFAULT_SETTINGS), 'big', 1)}`);

@@ -36,21 +36,25 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
     await waitDone(); await p.waitForTimeout(200);
     return dlg;
   };
-  check(await p.textContent('#dropOdds') === '1 in 14.2 to hit a 5× or 10×', `${label}: the one odds line (Cody): ${await p.textContent('#dropOdds')}`);
+  check(await p.textContent('#dropOdds') === '1 in 5,000 to hit the 100× · 1 in 4.4 to win 2× or more', `${label}: the one odds line (Cody): ${await p.textContent('#dropOdds')}`);
   check(await p.textContent('#drop [data-run="10"] small') === '$1', `${label}: Drop 10 at 10¢ costs $1`);
   await p.screenshot({ path: `${OUT}/${label}-1-board.png` });
 
   // 1. Drop 5 at 10¢: the confirm dialog, then five snowballs; the run's winnings arrive together at the end.
-  const L = [0, 0, 0, 0, 0, 0, 0, 0], MID = [1, 0, 1, 0, 1, 0, 1, 0], ONE = [1, 1, 0, 0, 0, 0, 0, 0]; // 10×, 0×, 1×
+  // board 2 (16 rows, 17 presents): all left = present 1 (25×); one right = present 2 (0×); six rights = present 7 (2×)
+  const L = Array(16).fill(0), MID = [1, ...Array(15).fill(0)], ONE = [1, 1, 1, 1, 1, 1, ...Array(10).fill(0)]; // 25×, 0×, 2×
   let b0 = await bal(), pool0 = await pool();
   const d = await run(5, 0.1, [L, MID, ONE, MID, MID]);
   check(d.title === 'Play 5 drops' && d.what === '5 × 10¢ = $0.50' && d.go === 'Pay $0.50 & play', `${label}: confirm dialog ${JSON.stringify(d)}`);
-  const won = 1 + 0.1; // 10× + 1× on 10¢
-  check(Math.abs((await bal()) - (b0 - 0.5 + won * 0.97)) < 1e-9, `${label}: demo money: −$0.50, then +$1.10 less 3% at the end (${await bal()})`);
-  check(Math.abs((await pool()) - (pool0 + 0.5 * IN - won)) < 1e-9, `${label}: the Spin pool got the $0.50 (after burn and tax) and paid $1.10`);
+  const won = 2.5 + 0.2; // 25× + 2× on 10¢
+  check(Math.abs((await bal()) - (b0 - 0.5 + won * 0.97)) < 1e-9, `${label}: demo money: −$0.50, then +$2.70 less 3% at the end (${await bal()})`);
+  check(Math.abs((await pool()) - (pool0 + 0.5 * IN - won)) < 1e-9, `${label}: the Spin pool got the $0.50 (after burn and tax) and paid $2.70`);
   check(await p.textContent('#dropPool') === await p.textContent('#spinPool'), `${label}: both cards show the same shared pool`);
-  check(/5 drops: \$1\.10 back/.test(await p.textContent('#drop .res')), `${label}: run summary: ${await p.textContent('#drop .res')}`);
+  check(/5 drops: \$2\.70 back/.test(await p.textContent('#drop .res')), `${label}: run summary: ${await p.textContent('#drop .res')}`);
   check((await p.locator('#dropHistory li:not(.empty)').count()) === 5, `${label}: last drops strip has the 5`);
+  // the 25× in Recent winners, checked now (board 2 wins about 1 drop in 4, so later runs push it off the short list)
+  const winners1 = await p.evaluate(() => [...document.querySelectorAll('#winList li')].map((li) => li.textContent.replace(/\s+/g, ' ')));
+  check(winners1.some((w) => /Snowball Drop 10¢/.test(w) && /\+2,?400%/.test(w)), `${label}: the 25× is in Recent winners: ${JSON.stringify(winners1.slice(0, 2))}`);
   await p.screenshot({ path: `${OUT}/${label}-2-run.png` });
 
   // 2. Drop 1 at $1, no win: nothing to send.
@@ -74,10 +78,10 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   check(/10 drops/.test(await p.textContent('#drop .res')), `${label}: 10-drop run finished: ${await p.textContent('#drop .res')}`);
   await p.evaluate(() => document.querySelector('[data-proof="drop"]').click()); await p.evaluate(() => document.querySelector('#proofCheck').click());
   await p.waitForFunction(() => /atch/.test(document.querySelector('#proofOut').textContent), null, { timeout: 15000 });
-  check(/^Matches\..*bounces [LR ]+.*present \d of 9/.test(await p.textContent('#proofOut')), `${label}: a real drop re-checks: ${(await p.textContent('#proofOut')).slice(0, 160)}`);
+  check(/^Matches\..*present \d+ of 17 .*bounces [LR ]+/.test(await p.textContent('#proofOut')), `${label}: a real drop re-checks: ${(await p.textContent('#proofOut')).slice(0, 160)}`);
   await p.evaluate(() => document.querySelector('#proofClose').click());
   const winners = await p.evaluate(() => [...document.querySelectorAll('#winList li')].map((li) => li.textContent.replace(/\s+/g, ' ')));
-  check(winners.some((w) => /Snowball Drop 10¢/.test(w) && /\+900%/.test(w)), `${label}: the 10× is in Recent winners: ${JSON.stringify(winners.slice(0, 2))}`);
+  check(winners.some((w) => /Snowball Drop 10¢/.test(w)), `${label}: drop wins keep reaching Recent winners: ${JSON.stringify(winners.slice(0, 2))}`);
   check(!(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth)), `${label}: nothing wider than the screen`);
   await p.evaluate(() => document.querySelector('#drop .dropcard').scrollIntoView({ block: 'center' })); await p.waitForTimeout(300);
   await p.screenshot({ path: `${OUT}/${label}-3-after.png` });

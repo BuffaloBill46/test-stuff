@@ -27,7 +27,7 @@ const POOLS = { spin: 'SPINpoo1wa11et11111111111111111111111111111', slots: 'SLO
 const FEE = { bps: 300, max: 1e15 }; let PRICE = 0.0008508; // changes mid-test: the pools float with it
 const mk = async (wallet) => { const id = (await one('insert into auth.users default values returning id')).id; await db.query(`insert into public.profiles (id, wallet, name, avatar) values ($1, $2, 'P', '{}')`, [id, wallet]); return id; };
 const me = await mk(PLAYER), them = await mk(OTHER);
-const START = { spin: Math.round(50 / PRICE * 1e6), slots: Math.round(500 / PRICE * 1e6) }; // $50 / $500 of SANTA at today's price
+const START = { spin: Math.round(300 / PRICE * 1e6), slots: Math.round(500 / PRICE * 1e6) }; // $300 (Drop board 2 start) / $500 of SANTA at today's price
 await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', $1, '{}'), ('slots', $2, '{}')`, [START.spin, START.slots]);
 
 // Finalized transactions the stand-in chain returns (shaped like Solana's getTransaction jsonParsed).

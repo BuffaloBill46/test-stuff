@@ -304,6 +304,21 @@ emergency stop); a drop only starts if the pool covers its top prize (10×). Sim
 about $10, treasury about $650–700 per 20,000 plays. Guard rail: Spin's top-off must cover Drop's top prize ($10).
 Logic `mockups/plinko.js` (`play`, `canPlay`), test `tests/plinko.test.mjs`.
 
+**Snowball Drop board 2 (decided, Cody 2026-10-02: "more fun with bigger prizes and more risks").** His sketch: 17 presents,
+mirror-image, edges to middle 25× · 0 · 10× · 0 · 5× · 0 · 2× · 0 · **100× centre**. On a real 50/50 peg board the centre is
+the MOST likely present (about 1 drop in 5), so the odds come from a published table (like the slot reels): one fair number
+picks the present, 16 more draw the path to it (every path to a present equally likely); "Check this result" re-runs both.
+Options weighed (`tests/drop-redesign.mjs`, all at 78% payback): A 100× 1 in 10,000 · **B 100× 1 in 5,000 (picked)** · C B with
+rarer small wins. Mix B: 100× 1 in 5,000 · 25× 1 in 250 · 10× 1 in 83.3 · 5× 1 in 25 · 2× 1 in 5.9; pays back exactly 78.0%;
+a real win 1 in 4.4 (was 1 in 14.2), nothing back 77% (was 27%), about twice as swingy. Presents drawn a little narrower the
+rarer they are (Cody: "sized similar but with visible size difference", not a sliver): 0× 1.12 · 2× 1.04 · 5× 0.96 · 10× 0.9 ·
+25× 0.84 · 100× 0.76 (widest ÷ narrowest under 1.5); the width pictures the odds, the table decides. Coal (0×) presents get a
+small grey 0 so the prize labels stay readable on a phone. Odds line: "1 in 5,000 to hit the 100× · 1 in 4.4 to win 2× or more".
+**The shared pool, for a $1 drop's $100 prize (Cody):** starts $300 (he said $300–500; Claude took the low end, his money),
+$25 skim at $1,025, top-off below $100 back to $300; both sizes play the same board. 6 million mixed plays: 0 refused, 2–3
+top-offs, lowest $112. Drops played on board 1 (8 rows, 50/50 bounces, 10× · 5× · 1× · 0.4× · 0×) carry no board number and
+still re-check on board 1; new results carry `board: 2`.
+
 **No credits: buy a RUN of 1, 5 or 10 plays that plays straight away; winnings are sent automatically (Cody, 2026-10-01;
 replaces every credit design below).** "Remove the credit system. Leave the 3 options to buy 1, 5, 10 on each game. Whatever
 they buy auto plays ... This way we don't really hold player funds." Then: "I'm ok with us sending the winnings to the player

@@ -2,7 +2,7 @@
 // Spin pool readout, odds, last drops. Every drop runs in the house's order (paid → secret locked → drawn → revealed;
 // playcredits.js / house.js), on the Spin pool (shared, Cody); the run's winnings are sent at the end. The board only
 // animates the path the draw already decided. DEMO: the same demo balance as Slots.
-import { realWin } from './plinko.js';
+import { realWin, jackpotOdds } from './plinko.js';
 import { createBoard } from './plinkoboard.js';
 import { playRun, short } from './playcredits.js';
 import { runSummary } from './runui.js';
@@ -13,17 +13,17 @@ import { play as sfx } from './sfx.js';
 const $ = (s, el = document) => el.querySelector(s);
 const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);
 const MAX_HISTORY = 16;
-const STYLE = (m) => (m >= 10 ? ['#cf3128', '#f5f1e8'] : m >= 2 ? ['#c98a1b', '#0c0f1a'] : m >= 1 ? ['#6f8fd0', '#0c0f1a'] : m > 0 ? ['#2e3a6e', '#b9cdf2'] : ['#151a30', '#6f7ba8']);
+const STYLE = (m) => (m >= 100 ? ['#ffbe5c', '#7a1414'] : m >= 10 ? ['#cf3128', '#f5f1e8'] : m >= 5 ? ['#c98a1b', '#0c0f1a'] : m >= 1 ? ['#6f8fd0', '#0c0f1a'] : m > 0 ? ['#2e3a6e', '#b9cdf2'] : ['#151a30', '#6f7ba8']);
 let board = null, bet = 0.1, wallet = null, addWinner = () => {}, pool = () => 0, onPool = () => {}, opening = false, flying = 0, fast = false;
-const history = [], test = { run: undefined }; // tests only: the next run's paths, one per drop (8 × 0/1)
+const history = [], test = { run: undefined }; // tests only: the next run's paths, one per drop (16 × 0/1)
 
 function render() {
   $('#dropPool').textContent = money(pool());
   $('#dropHistory').innerHTML = history.length ? history.map((m) => { const [bg, fg] = STYLE(m); return `<li style="background:${bg};color:${fg}">${m}×</li>`; }).join('')
     : '<li class="empty">No drops yet.</li>';
 }
-// One odds line (Cody, 2026-10-01: in place of the list of presents): how often a drop wins 5× or 10×, from the board's real odds.
-function odds() { $('#dropOdds').innerHTML = `<b>1 in ${(1 / realWin()).toFixed(1)}</b> to hit a 5× or 10×`; }
+// One odds line (Cody, 2026-10-01: in place of the list of presents), from the board's real odds table (board 2, 2026-10-02).
+function odds() { $('#dropOdds').innerHTML = `<b>1 in ${Math.round(1 / jackpotOdds()).toLocaleString('en-US')}</b> to hit the 100× · <b>1 in ${(1 / realWin()).toFixed(1)}</b> to win 2× or more`; }
 function stamp(text) { const fl = $('#drop .flash'); fl.textContent = text; fl.classList.remove('show'); void fl.offsetWidth; fl.classList.add('show'); }
 function setBet(b) {
   bet = b; document.querySelectorAll('#drop .bets button').forEach((x) => x.setAttribute('aria-checked', String(+x.dataset.dbet === b)));
@@ -59,7 +59,7 @@ function landed(r, p) {
   history.unshift(r.mult); history.length = Math.min(history.length, MAX_HISTORY);
   card.classList.remove('won', 'jackpot');
   if (r.ahead) {
-    sfx(r.mult >= 10 ? 'bigWin' : 'smallWin'); card.classList.add(r.mult >= 10 ? 'jackpot' : 'won'); stamp(`${r.mult}× WIN`);
+    sfx(r.mult >= 10 ? 'bigWin' : 'smallWin'); card.classList.add(r.mult >= 10 ? 'jackpot' : 'won'); stamp(r.mult >= 100 ? '100× JACKPOT' : `${r.mult}× WIN`);
     res.innerHTML = `<b>${r.mult}× win!</b> ${money(r.pay)}`;
     addWinner(r.bet >= 1 ? 'drop100' : 'drop10', r.pay, r.bet, `${r.mult}×`);
   } else if (r.mult === 1) res.innerHTML = `<span class="dim">Money back: ${money(r.pay)}.</span>`;

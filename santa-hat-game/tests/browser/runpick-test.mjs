@@ -25,7 +25,8 @@ async function open(vp) {
 const btn = (p, s) => p.evaluate((s) => { const b = document.querySelector(s); return b.querySelector('b').textContent + ' ' + b.querySelector('small').textContent; }, s);
 const txt = (p, s) => p.evaluate((s) => document.querySelector(s)?.textContent.replace(/\s+/g, ' ').trim(), s);
 const counter = (k) => p.evaluate((k) => [...document.querySelector(`[data-runcount="${k}"]`).children].map((x) => x.textContent).join(' '), k);
-const MID = [1, 0, 1, 0, 1, 0, 1, 0], ONE = [1, 1, 0, 0, 0, 0, 0, 0]; // drop paths: 0×, 1×
+// drop paths on board 2 (16 rows, 17 presents): one right = present 2 (0×); six rights = present 7 (2×)
+const MID = [1, ...Array(15).fill(0)], ONE = [1, 1, 1, 1, 1, 1, ...Array(10).fill(0)]; // 0×, 2×
 
 console.log('1. The box: starts at 20; arrows step; typing settles into 1–100; the price follows the size');
 const { p, ctx, errors } = await open({ width: 1280, height: 900 });
@@ -53,7 +54,7 @@ check(await counter('drop') === 'This run – won $0.00' && await counter('big')
 const facts = await p.evaluate(() => [...document.querySelectorAll('#slots .facts li')].map((li) => [...li.children].map((c) => c.textContent).join(': ')));
 check(JSON.stringify(facts) === JSON.stringify(['Jackpot odds (Top Line or Pool): about 1 in 7,665', 'Every Santa Hat on the grid: +6¢']), 'Big Hat facts: ' + facts.join(' | '));
 check(/^Top Line JackPot/.test(await txt(p, '#slots .jp.topline span')), 'the box says Top Line JackPot');
-check(await txt(p, '#dropOdds') === '1 in 14.2 to hit a 5× or 10×', 'Drop: ' + await txt(p, '#dropOdds'));
+check(await txt(p, '#dropOdds') === '1 in 5,000 to hit the 100× · 1 in 4.4 to win 2× or more', 'Drop: ' + await txt(p, '#dropOdds'));
 await p.evaluate(() => document.querySelector('#drop').scrollIntoView({ block: 'start' })); await p.screenshot({ path: `${OUT}/desk-box.png` });
 
 console.log('2. A run of 23 drops from the box: the counter above the buttons counts it, to the cent');
@@ -62,7 +63,7 @@ const bal = () => p.evaluate(() => window.__slots.state.bal);
 const between = (k) => p.evaluate((k) => { const el = document.querySelector(`[data-runcount="${k}"]`), c = el.getBoundingClientRect(), b = el.parentElement.querySelector('.runbtns').getBoundingClientRect(), s = el.closest('.machine').querySelector('canvas').getBoundingClientRect();
   const oneColumn = s.right > b.left; return c.bottom <= b.top + 1 && b.top - c.bottom < 24 && (!oneColumn || c.top >= s.bottom - 1); }, k);
 let b0 = await bal();
-await p.evaluate((paths) => { window.__drop.test.run = paths; document.querySelector('#drop .runpick [data-run]').click(); }, [ONE, ONE, ...Array(21).fill(MID)]);
+await p.evaluate((paths) => { window.__drop.test.run = paths; document.querySelector('#drop .runpick [data-run]').click(); }, [ONE, MID, ...Array(21).fill(MID)]); // one 2× win: $0.20 back
 await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
 check(await txt(p, '#buyTitle') === 'Play 23 drops' && await txt(p, '#buyWhat') === '23 × 10¢ = $2.30', `dialog: ${await txt(p, '#buyTitle')} · ${await txt(p, '#buyWhat')}`);
 await p.evaluate(() => document.querySelector('#buyGo').click());
@@ -71,7 +72,7 @@ check(await p.evaluate(() => document.querySelector('#drop .runpick input').disa
 check(await p.waitForFunction(() => /^[1-9]\d* \/ 23$/.test(document.querySelector('[data-runcount="drop"] b')?.textContent || ''), null, { timeout: 30000 }).then(() => true, () => false), 'the counter counts while it plays: ' + await counter('drop'));
 check(await between('drop'), 'the counter sits between the game and the buy buttons');
 await p.click('#drop .skip').catch(() => {});
-await p.waitForFunction(() => !window.__drop.opening && window.__drop.flying === 0, null, { timeout: 300000 }); await p.waitForTimeout(300);
+await p.waitForFunction(() => !window.__drop.opening && window.__drop.flying === 0, null, { timeout: 600000 }); // 17 hops a snowball at ~3 frames a second here await p.waitForTimeout(300);
 check(await counter('drop') === 'This run 23 / 23 won $0.20', 'after the run it stays: ' + await counter('drop'));
 check(Math.abs((b0 - await bal()) - (2.3 - 0.2 * 0.97)) < 1e-9, `the demo money agrees: lost ${(b0 - await bal()).toFixed(4)} = $2.30 − $0.20 × 0.97`);
 await p.evaluate(() => document.querySelector('#drop').scrollIntoView({ block: 'start' })); await p.screenshot({ path: `${OUT}/desk-drop-counter.png` });
@@ -97,7 +98,7 @@ await p.evaluate((paths) => { window.__drop.test.run = paths; document.querySele
 await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 }); await p.evaluate(() => document.querySelector('#buyGo').click());
 await p.waitForFunction(() => window.__drop.opening, null, { timeout: 5000 }).catch(() => {});
 await p.waitForFunction(() => !window.__drop.opening && window.__drop.flying === 0, null, { timeout: 120000 }); await p.waitForTimeout(300);
-check(await counter('drop') === 'This run 1 / 1 won $0.10', 'a new run of 1 starts it again: ' + await counter('drop'));
+check(await counter('drop') === 'This run 1 / 1 won $0.20', 'a new run of 1 starts it again: ' + await counter('drop'));
 check(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : '')); await ctx.close();
 
 console.log('5. Phones: the box fits; the counter sits between the game and the buttons, and its biggest numbers fit');

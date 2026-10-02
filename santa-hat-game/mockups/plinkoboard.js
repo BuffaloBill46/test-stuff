@@ -1,15 +1,20 @@
 // Snowball Drop board (canvas): the hat, the pegs, the presents and their prizes, snowballs hopping along a path the RULES
 // already decided (plinko.js / the fair draw). Used by the Games tab (dropui.js) and the preview page (plinko-page.js).
 // createBoard(canvas) → { launch(path, bin) → Promise (resolves when that snowball lands), setActive(on), hurry(), flying() }
-import { ROWS, BINS, PAYS } from './plinko.js';
+import { ROWS, BINS, PAYS, WIDTHS } from './plinko.js';
 
-const W = 500, H = 560, CX = W / 2, GAP = 54, TOP = 100, ROW_H = 44, PEG_R = 6, BALL_R = 11;
-const BIN_Y = TOP + (ROWS - 1) * ROW_H + 36, BIN_H = 58, LABEL_Y = BIN_Y + BIN_H + 26; // prize labels sit on the snow bank
-const pegX = (i, j) => CX + (j - i / 2) * GAP, pegY = (i) => TOP + i * ROW_H, binX = (k) => CX + (k - (BINS - 1) / 2) * GAP;
+// Board 2 (2026-10-02): 16 rows of pegs over 17 presents. Presents are drawn a little narrower the rarer they are (plinko.js
+// WIDTHS: similar sizes, Cody), spread over the same width as the bottom row of pegs.
+const W = 680, H = 680, CX = W / 2, GAP = 38, TOP = 92, ROW_H = 30, PEG_R = 4.5, BALL_R = 8.5;
+const BIN_Y = TOP + (ROWS - 1) * ROW_H + 30, BIN_H = 50, LABEL_Y = BIN_Y + BIN_H + 24; // prize labels sit on the snow bank
+const SPAN = BINS * GAP, UNIT = SPAN / WIDTHS.reduce((a, b) => a + b, 0);
+const BIN_L = WIDTHS.reduce((a, w, k) => (a.push(k ? a[k - 1] + WIDTHS[k - 1] * UNIT : CX - SPAN / 2), a), []);
+const pegX = (i, j) => CX + (j - i / 2) * GAP, pegY = (i) => TOP + i * ROW_H, binW = (k) => WIDTHS[k] * UNIT, binX = (k) => BIN_L[k] + binW(k) / 2;
 export const ASPECT = H / W;
-// Colours per prize: the rare 10× presents are Santa-hat red with a white brim; 5× gold; 1× frost; 0.4× plaque; 0× coal.
-const TIER = (m) => (m >= 10 ? { box: '#cf3128', rib: '#f5f1e8' } : m >= 2 ? { box: '#c98a1b', rib: '#fff6c8' } : m === 0 ? { box: '#151a30', rib: '#26305a' }
-  : m >= 1 ? { box: '#6f8fd0', rib: '#f5f1e8' } : { box: '#2e3a6e', rib: '#b9cdf2' });
+// Colours per prize: the 100× centre gold with a red ribbon; 25× and 10× Santa-hat red with a white brim; 5× gold; 2× frost;
+// 0× coal.
+const TIER = (m) => (m >= 100 ? { box: '#ffbe5c', rib: '#cf3128' } : m >= 10 ? { box: '#cf3128', rib: '#f5f1e8' } : m >= 5 ? { box: '#c98a1b', rib: '#fff6c8' }
+  : m >= 2 ? { box: '#6f8fd0', rib: '#f5f1e8' } : { box: '#151a30', rib: '#26305a' });
 
 export function createBoard(cv) {
   const ctx = cv.getContext('2d'), reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -40,16 +45,19 @@ export function createBoard(cv) {
 }
   function present(k, now) {
   const m = PAYS[k], c = TIER(m), since = (now - binHit[k]) / 1000, pop = since < 0.5 ? Math.sin((since / 0.5) * Math.PI) * 8 : 0;
-  const w = GAP - 6, x = binX(k) - w / 2, y = BIN_Y - pop;
+  const w = binW(k) - 5, x = binX(k) - w / 2, y = BIN_Y - pop;
   ctx.fillStyle = '#0c0f1a'; ctx.fillRect(x + 3, y + 3, w, BIN_H);
   ctx.fillStyle = c.box; ctx.fillRect(x, y, w, BIN_H);
-  ctx.fillStyle = c.rib; ctx.fillRect(binX(k) - 4, y, 8, BIN_H);                      // ribbon
-  if (m >= 10) { ctx.fillStyle = '#f5f1e8'; ctx.fillRect(x, y, w, 12); ctx.fillStyle = '#d9d2c2'; ctx.fillRect(x, y + 9, w, 3); } // the hat's brim
+  ctx.fillStyle = c.rib; ctx.fillRect(binX(k) - 3, y, 6, BIN_H);                      // ribbon
+  if (m >= 10 && m < 100) { ctx.fillStyle = '#f5f1e8'; ctx.fillRect(x, y, w, 12); ctx.fillStyle = '#d9d2c2'; ctx.fillRect(x, y + 9, w, 3); } // the hat's brim
   ctx.lineWidth = 2; ctx.strokeStyle = '#0c0f1a'; ctx.strokeRect(x, y, w, BIN_H);
   if (since < 0.9) { ctx.fillStyle = `rgba(255,226,168,${0.5 * (1 - since / 0.9)})`; ctx.fillRect(x, y, w, BIN_H); }
-  // the prize, big and dark on the snow bank under its present (readable at phone size)
-  ctx.font = `800 ${m >= 10 ? 26 : 22}px 'Alegreya Sans', sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = m >= 10 ? '#cf3128' : m >= 2 ? '#9a6510' : m >= 1 ? '#34539a' : '#5a6485';
+  // the prize, big and dark on the snow bank under its present (readable at phone size). Prizes only: each sits between two
+  // coal presents, which get a small grey 0, so 17 labels never crowd each other.
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (m === 0) { ctx.font = "700 15px 'Alegreya Sans', sans-serif"; ctx.fillStyle = '#8a93b3'; ctx.fillText('0', binX(k), LABEL_Y); return; }
+  ctx.font = `800 ${m >= 100 ? 27 : m >= 10 ? 25 : 22}px 'Alegreya Sans', sans-serif`;
+  ctx.fillStyle = m >= 10 ? '#cf3128' : m >= 5 ? '#9a6510' : '#34539a';
   ctx.fillText(`${m}×`, binX(k), LABEL_Y - (since < 0.5 ? pop : 0));
 }
   function draw(now, dt) {
@@ -63,20 +71,20 @@ export function createBoard(cv) {
   ctx.fillStyle = '#eef2fb'; for (let x = -10; x < W; x += 26) { ctx.beginPath(); ctx.arc(x, BIN_Y + BIN_H - 2, 14, Math.PI, 0); ctx.fill(); }
   if (hat.complete && hat.naturalWidth) ctx.drawImage(hat, CX - 30, 6, 60, 60 * (hat.naturalHeight / hat.naturalWidth));
   for (let i = 0; i < ROWS; i++) for (let j = -1; j <= i + 1; j++) {
-    const x = pegX(i, j); if (x < 12 || x > W - 12) continue;
+    const x = pegX(i, j); if (x < 8 || x > W - 8) continue;
     const hit = pegHit.get(`${i}:${j}`), lit = hit ? Math.max(0, 1 - (now - hit) / 400) : 0; peg(x, pegY(i), lit);
   }
   for (let k = 0; k < BINS; k++) present(k, now);
   // balls: hop from peg to peg along the decided path
   for (let n = balls.length - 1; n >= 0; n--) {
-    const b = balls[n], from = b.pts[b.leg], to = b.pts[b.leg + 1], dur = b.leg === 0 ? 0.22 : to.bin !== undefined ? 0.26 : 0.15;
+    const b = balls[n], from = b.pts[b.leg], to = b.pts[b.leg + 1], dur = b.leg === 0 ? 0.22 : to.bin !== undefined ? 0.26 : 0.11;
     b.t += (dt * speed) / (reduce ? dur / 3 : dur);
     if (b.t >= 1) {
       b.t = 0; b.leg++;
       if (to.peg) pegHit.set(to.peg, now);
       if (b.leg >= b.pts.length - 1) { binHit[b.bin] = now; balls.splice(n, 1); b.done(); continue; }
     }
-    const p = b.pts[b.leg], q = b.pts[b.leg + 1], t = b.t, arc = b.leg === 0 ? 0 : 12;
+    const p = b.pts[b.leg], q = b.pts[b.leg + 1], t = b.t, arc = b.leg === 0 ? 0 : 8;
     const x = p.x + (q.x - p.x) * t, y = p.y + (q.y - p.y) * t * t - arc * Math.sin(Math.PI * t) * (1 - t);
     snowball(x, y, b.spin + (b.leg + t) * (q.x > p.x ? 0.9 : -0.9), t < 0.12 && b.leg > 0 ? 0.12 * (1 - t / 0.12) : 0);
   }

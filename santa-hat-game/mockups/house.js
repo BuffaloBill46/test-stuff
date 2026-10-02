@@ -11,12 +11,13 @@
 import { KINDS, buyRun, credit, payRun } from './credits.js';
 import { spin, STAR, DEFAULT_WHEEL } from './spin.js';
 import { pull, MACHINES } from './slots.js';
-import { play as dropPlay, PAYS as DROP_PAYS, ROWS as DROP_ROWS } from './plinko.js';
+import { play as dropPlay, outcome as dropOutcome, BOARD as DROP_BOARD } from './plinko.js';
 import * as fair from './fair.js';
 import { randFrom } from './fair.js';
 
-export const NUMS = 8; // numbers drawn per play (Slots uses 6: the jackpot draw + 5 reel stops; Spin 1, or 2 on a bonus star;
-                        // Snowball Drop 8: one bounce per row of pegs)
+export const NUMS = 17; // numbers drawn per play (Slots uses 6: the jackpot draw + 5 reel stops; Spin 1, or 2 on a bonus star;
+                         // Snowball Drop board 2: 17 = the present + one per row of pegs; board 1 used 8). The numbers come
+                         // out in a fixed order, so asking for more never changes the first ones: old plays re-check the same.
 
 // `f` swaps the fair functions (tests only, to make them fail).
 export function createHouse(ledger, pools, f = fair) {
@@ -64,7 +65,7 @@ export function createHouse(ledger, pools, f = fair) {
     t.run.played++;
     if (r.pay > 0) credit(t.run, r.pay);
     steps.push('revealed');
-    return done({ r, proof: { kind: t.kind, bet: t.bet, commit: t.commit, secret: t.secret, playerSeed, playNo: t.playNo, forced: forced !== undefined } });
+    return done({ r, proof: { kind: t.kind, bet: t.bet, commit: t.commit, secret: t.secret, playerSeed, playNo: t.playNo, forced: forced !== undefined, ...(t.kind === 'drop' ? { board: r.board || DROP_BOARD } : {}) } });
   }
   return { buy, settle, steps, pending: () => open_.size };
 }
@@ -73,10 +74,9 @@ export function createHouse(ledger, pools, f = fair) {
 // cfg (optional): the settings the play ran on (settings.js build()); without it, the built-in game.
 export function outcomeFrom(kind, nums, cfg = null) {
   const K = KINDS[kind];
-  if (kind === 'drop') { // one number per row of pegs: under ½ bounces left, otherwise right; the bin is how many rights
-    const path = nums.slice(0, DROP_ROWS).map((x) => (x < 0.5 ? 0 : 1)), bin = path.reduce((a, b) => a + b, 0);
-    return { path, bin, mult: DROP_PAYS[bin] };
-  }
+  // Snowball Drop, on the board the drop was played on (cfg.board from the proof; none = board 1, the 8-row 50/50 board):
+  // board 2: the first number picks the present from the published table, the next 16 draw the path to it (plinko.js)
+  if (kind === 'drop') return dropOutcome(nums, cfg?.board ?? 1);
   if (K.game === 'spin') { // the first number picks the main segment; on a star, the second picks the bonus segment
     const W = cfg?.wheel || DEFAULT_WHEEL, slice = Math.floor(nums[0] * W.main.length);
     if (W.main[slice] !== STAR) return { slice, mult: W.main[slice] };
@@ -90,5 +90,5 @@ export function outcomeFrom(kind, nums, cfg = null) {
 export async function check(proof, cfg = null) {
   const matches = (await fair.fingerprint(proof.secret)) === proof.commit;
   const nums = await fair.numbers(proof.secret, proof.playerSeed, proof.playNo, NUMS);
-  return { matches, outcome: outcomeFrom(proof.kind, nums, cfg) };
+  return { matches, outcome: outcomeFrom(proof.kind, nums, proof.kind === 'drop' ? { ...(cfg || {}), board: proof.board ?? 1 } : cfg) };
 }
