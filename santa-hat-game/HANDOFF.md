@@ -199,6 +199,14 @@ branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from
   guests): `PUBLIC_ACTIONS` in gameserver.js, `tests/public-actions.test.mjs` keeps it equal to server/http.js.
 - **controls-test.mjs takes ~16 minutes** in the WSL test browser (the zoom section waits for the camera); give it no time
   limit (a 590/900 s limit killed it and looked like a crash).
+- **2026-10-02 state (all PUBLISHED):** special gear is fully live: Special Gear tab (replaced Backpacks), Store sells only
+  Special Snowballs + Special Gear with rules (looks are bought on the Avatar screen), gear works in matches, 015 applied live
+  (hash-checked), 7-day clock started by the server on counted finishes. Gear is DRAWN on characters and special snowballs have
+  bold tracers (`.claude/agents/santa-visuals.md` = the visuals agent brief). Cody's answers: hat pops off only when stunned;
+  Elf Hat + gear still 2 hits; Present Box may pick Elf Hat; no stacking the same stat. Lottery restyled like Cody's other
+  game; DAILY lotteries switched off (`off: true` in lottery.js). Demo balance $100. Skip ahead toggles with "Normal speed".
+  Admin editor prices specials + gear + looks. Open for Cody: team colours under full-body gear; Santa Costume cap vs the real
+  hat at a glance; Halloween snow patch colour.
 - **Special gear: RULES BUILT, page NOT built** (agent-built on Cody's OK to use agents, reviewed line by line and merged):
   `mockups/gear.js` (GEAR table with one stat each, gearIn, effectsOf, resolvePresent, heldWith, snapshot mask), gear items in
   `catalog.js` (g1/g2 slots; old backpacks stay as looks, owners also get the gear), referee effects in `sim.js` behind
