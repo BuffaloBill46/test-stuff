@@ -74,6 +74,8 @@ existing bot (frozen/failed payouts, books ≠ wallet, top-off waiting, server d
 - [ ] **Simulate a million spins** to prove the payback % before launch. (Slots: exact payback from the reel math plus `tests/payout-ranges.mjs`, 5 million pulls. Re-run both after any change.)
 - [ ] More click games from the idea list (Hat Drop, Present Pick, Sleigh Climb, Advent Scratch, Naughty or Nice). Needs Cody's pick of game and its odds/payback first.
 
+- [ ] **Live token-tax lookup fails on the published site (found 2026-10-01, not new):** the page reads SANTA's transfer fee from public mainnet RPCs; `api.mainnet-beta.solana.com` answers 403 to browsers and `solana-rpc.publicnode.com` failed SSL, so the page falls back to 3% (the right number today). Fix with the game server: the page should take the fee from the server's quote/settings (it already reads it server-side), or use an RPC that allows browsers.
+
 ### Runs: buy 1, 5 or 10 plays that play straight away; winnings sent automatically (decided, Cody 2026-10-01)
 - [x] **Any run of 1–100 from a box with ▼ ▲ under the buttons + a "This visit" running total (Cody 2026-10-01): built** (`mockups/runpick.js`, `playcredits.js`, `tests/browser/runpick-test.mjs`). 014 applied live 2026-10-01.
 Replaces play credits (2026-09-30). Each game has Play 1 / 5 / 10 at the size picked on the card; one confirm and one payment,
