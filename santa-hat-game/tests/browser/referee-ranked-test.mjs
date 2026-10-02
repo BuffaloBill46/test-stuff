@@ -30,7 +30,7 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 async function open(tok) {
   const ctx = await browser.newContext({ viewport: { width: 1100, height: 760 } }), p = await ctx.newPage(), errors = []; p.on('pageerror', (e) => errors.push(e.message));
   // ?server= on localhost only so the page hands the test sign-in (?token=) to the referee (mockups/gameserver.js token())
-  await p.goto(`http://localhost:${WEB}/online.html?net=local&ref=${encodeURIComponent('ws://localhost:' + REFPORT)}&server=${encodeURIComponent(`http://localhost:${WEB}/api`)}&token=${tok}`, { timeout: 90000, waitUntil: 'domcontentloaded' });
+  await p.goto(`http://localhost:${WEB}/online.html?ref=${encodeURIComponent('ws://localhost:' + REFPORT)}&server=${encodeURIComponent(`http://localhost:${WEB}/api`)}&token=${tok}`, { timeout: 90000, waitUntil: 'domcontentloaded' });
   await p.waitForFunction(() => window.__sq, null, { timeout: 90000 });
   return { p, errors };
 }
@@ -41,9 +41,13 @@ try {
   const A = await open('tok-ann');
   await A.p.evaluate(() => document.querySelector('#playRanked').click());
   check(await until(A.p, () => { const q = document.querySelector('#quick'); return q && !q.disabled && /1 ticket/.test(q.textContent); }), 'Auto match is open: "Auto match · 1 ticket"');
-  console.log('2. Ann searches alone: waits for a 2nd real player');
+  // Normal / Special gear ticks show in ranked too (Cody 2026-10-02); FFA / TEAM don't (ranked is FFA)
+  check(await A.p.evaluate(() => !document.querySelector('#autoStyles').hidden && document.querySelector('#autoModes').hidden), 'ranked lobby: Normal / Special gear ticks shown, FFA / TEAM hidden');
+  await A.p.evaluate(() => document.querySelector('[data-astyle="gear"]').click()); // Ann: Normal play only
+  console.log('2. Ann searches alone (Normal play only): waits for a 2nd real player');
   await A.p.evaluate(() => document.querySelector('#quick').click());
-  check(await until(A.p, () => window.__sq.room?.kind === 'server' && /^PR\d/.test(window.__sq.room.code())), 'the server put her in a ranked room');
+  check(await until(A.p, () => window.__sq.room?.kind === 'server' && /^PRN\d/.test(window.__sq.room.code())), 'the server put her in a NORMAL ranked room');
+  check(await until(A.p, () => /Ranked · FFA · Normal play/.test(document.querySelector('#panel')?.textContent || '')), 'the panel says "Ranked · FFA · Normal play"');
   check(await until(A.p, () => /Looking for another real player/.test(document.querySelector('#panel')?.textContent || '')), 'the panel says it is waiting for another real player');
   check(store.tickets === 1, 'one ticket held');
   console.log('3. Ben searches: same room; it starts; the server runs it');

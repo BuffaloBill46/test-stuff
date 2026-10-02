@@ -120,12 +120,16 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
         if (!who) return err('Ranked needs you signed in.');
         if ([...rooms.values()].some((r) => r.ranked && [...r.conns.values()].some((c) => c.me.pid === who.pid))) return err('you are already in a ranked game in another tab');
         const rp = Number(who.rp) || 0, avg = (r) => { const ps = players(r); return ps.reduce((a, x) => a + (x.rp || 0), 0) / (ps.length || 1); };
-        const open = [...rooms.values()].filter((r) => r.ranked && !r.started && r.sim.S.phase === 'lobby' && players(r).length < K.MAX_HUMANS)
+        // the play styles the player ticked (Cody 2026-10-02: ranked has the same Normal / Special gear choice as Auto match)
+        const kinds = (Array.isArray(m.styles) ? m.styles : []).filter((x) => x === 'normal' || x === 'gear');
+        if (!kinds.length) kinds.push('gear');
+        const open = [...rooms.values()].filter((r) => r.ranked && kinds.includes(r.style) && !r.started && r.sim.S.phase === 'lobby' && players(r).length < K.MAX_HUMANS)
           .sort((a, b) => Math.abs(avg(a) - rp) - Math.abs(avg(b) - rp));
         let r = open[0];
         if (!r) {
           if (rooms.size >= MAX_ROOMS) return err('the server is full right now; try again soon');
-          let code; do code = 'PR' + ((rankedSeq++ % 99) + 1); while (rooms.has(code));
+          const letter = kinds.includes('gear') ? 'G' : 'N';
+          let code; do code = 'PR' + letter + ((rankedSeq++ % 99) + 1); while (rooms.has(code));
           r = makeRoom(code);
         }
         let held;
@@ -139,7 +143,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
         if (held !== 'free' && held !== 'extra') { drop(); return err('Something went wrong holding your ticket. Try again.'); }
         const a = cleanAvatar(who.a);
         if (!rankedSpecials) for (const s of SB_SLOTS) a[s] = DEFAULT_AVATAR[s];
-        me = { id: p.id, n: cleanName(who.n) || 'Player', j: now(), a, w: false, l: clampLevel(who.l), pid: who.pid, rp };
+        me = { id: p.id, n: cleanName(who.n) || 'Player', j: now(), a: r.style === 'normal' ? guestLook(a) : a, w: false, l: clampLevel(who.l), pid: who.pid, rp };
         seat(r);
       } finally { joining = false; }
     }

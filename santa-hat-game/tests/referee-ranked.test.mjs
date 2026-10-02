@@ -43,7 +43,7 @@ assert.equal(ref.rooms.size, 0, 'refused searches leave no empty rooms behind');
 // --- Ann searches: a new ranked room, waiting for a 2nd real player (no countdown)
 const a = conn(); a.say({ t: 'ranked', token: 'ann', me: me('anne0001') }); await settle();
 const code = [...ref.rooms.keys()][0];
-assert.match(code, /^PR\d+$/); assert.equal(tickets.get(P(1)), 9, 'one ticket held');
+assert.match(code, /^PRG\d+$/, 'no style sent (an older page): a special-gear room'); assert.equal(tickets.get(P(1)), 9, 'one ticket held');
 assert.deepEqual([a.last('peers').ps[0].n, a.last('peers').ps[0].l], ['Ann', 3], 'her saved name and level, not what the page claimed');
 tick(30); let s = a.last('snap').d;
 assert.deepEqual([PHASES[s.ph], s.rk, s.wait, s.cd], ['lobby', 1, 1, 0], 'alone: waiting, no countdown, even after 30 s');
@@ -86,4 +86,16 @@ assert.ok([...ref.rooms.values()].some((r) => r.ranked && r.conns.has('anne0001'
 assert.equal(tickets.get(P(1)), 8, 'with a fresh ticket');
 // board: ranked rooms listed as ranked
 const l = conn(); l.say({ t: 'board' }); assert.ok(l.last('board').games.some((x) => x.ranked === 1 && /^PR/.test(x.code)));
-console.log('OK: ranked on the referee: sign-in + tickets, the server picks the room, 2 real players to start, tickets spent at the start and back if you leave before, ranked.js points once (quitters −5), levels too, room closes after, code-join refused, watching ok, restart cleanup');
+// --- play styles (Cody 2026-10-02): ranked has the same Normal / Special gear ticks; the server only pairs matching rooms
+const ref2 = createReferee({ now: () => t, identify: async (tok) => people[tok] || null, ranked });
+const conn2 = () => { const c = { got: [], send: (x) => c.got.push(JSON.parse(x)) }; c.h = ref2.connect(c); c.say = (m) => c.h.message(JSON.stringify(m)); return c; };
+const roomOf = (id) => [...ref2.rooms.values()].find((r) => r.conns.has(id));
+conn2().say({ t: 'ranked', token: 'ann', styles: ['normal'], me: me('anne0009') }); await settle();
+conn2().say({ t: 'ranked', token: 'ben', styles: ['gear'], me: me('benn0009') }); await settle();
+assert.match(roomOf('anne0009').code, /^PRN\d+$/, 'normal only: a normal ranked room');
+assert.match(roomOf('benn0009').code, /^PRG\d+$/, 'special gear only: a gear ranked room, not hers');
+assert.equal(roomOf('anne0009').conns.get('anne0009').me.a.sb1, 'sb_none', 'normal ranked: her special snowball does not count');
+conn2().say({ t: 'ranked', token: 'cat', styles: ['normal', 'gear'], me: me('catt0009') }); await settle();
+assert.equal(roomOf('catt0009'), roomOf('anne0009'), 'both ticked: either style, closest rank points first (Ann 0 vs Ben 500; Cat 20)');
+const l2 = conn2(); l2.say({ t: 'board' }); assert.deepEqual(l2.got.at(-1).games.map((x) => x.style).sort(), ['gear', 'normal'], "the games list shows each ranked room's style");
+console.log('OK: ranked on the referee: Normal / Special gear choice (paired by style, normal strips specials), sign-in + tickets, the server picks the room, 2 real players to start, tickets spent at the start and back if you leave before, ranked.js points once (quitters −5), levels too, room closes after, code-join refused, watching ok, restart cleanup');

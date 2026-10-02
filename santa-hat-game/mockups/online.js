@@ -164,7 +164,7 @@ async function enterRoom(code, quick, opts = {}) {
     const c = serverPicks ? '' : tries[attempt];
     me.j = Date.now();
     let r;
-    try { r = await openRoom(c.toLowerCase(), me, { local: LOCAL, referee: REFEREE, token: REFEREE ? await signInToken() : null, ranked: !!opts.ranked, auto: serverPicks ? { modes: autoModes, styles: autoStyles } : null }); }
+    try { r = await openRoom(c.toLowerCase(), me, { local: LOCAL, referee: REFEREE, token: REFEREE ? await signInToken() : null, ranked: !!opts.ranked, auto: serverPicks || opts.ranked ? { modes: autoModes, styles: autoStyles } : null }); }
     catch (e) {
       if (quick && !serverPicks && /full/.test(e.why || '')) continue; // this public room is full: try the next one
       status(e.why || "Couldn't reach the game server. Check your connection, or try Practice."); return;
@@ -529,7 +529,7 @@ function renderChrome() {
   let card = '';
   if (v.phase === 'lobby' && (v.pub || autoStart)) {
     const roster = humans.map((e) => `<li>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}${v.mode === 'team' ? ` <u class="t${e.team}">${TEAM_NAME[e.team]}</u>` : ''}</li>`).join('');
-    card = `<div class="eyebrow">${v.rk ? 'Ranked' : 'Auto match'} · ${v.mode === 'team' ? 'TEAM' : 'FFA'}${v.rk ? '' : styleOf(roomCode) === 'normal' ? ' · Normal play' : ' · Special gear'}${me.w ? ' · watching' : ''}</div><h2>${v.wait ? 'Looking for another real player…' : v.cd ? `Starting in ${Math.ceil(v.cd)}` : 'Finding players…'}</h2>
+    card = `<div class="eyebrow">${v.rk ? 'Ranked' : 'Auto match'} · ${v.mode === 'team' ? 'TEAM' : 'FFA'}${styleOf(roomCode) === 'normal' ? ' · Normal play' : ' · Special gear'}${me.w ? ' · watching' : ''}</div><h2>${v.wait ? 'Looking for another real player…' : v.cd ? `Starting in ${Math.ceil(v.cd)}` : 'Finding players…'}</h2>
       <ul class="roster">${roster}</ul><p class="dim">${v.rk ? 'Ranked needs 2 real players. Leave before it starts and your ticket comes back. ' : 'More players can still join. '}Bots fill any empty spots when it starts.</p>`;
   } else if (v.phase === 'lobby') {
     const share = practice ? '' : `<p class="share">Friends join with code <b>${esc(roomCode)}</b> or this link:<br><span class="link">${esc(location.origin + location.pathname + '?room=' + roomCode + REF_KEEP)}</span></p>`;
@@ -866,13 +866,13 @@ let lastGames = [];
 function renderGames(list = lastGames) {
   lastGames = list;
   const ranked = lobbyKind === 'ranked';
-  const games = list.filter((g) => (ranked ? g.ranked : !g.ranked && autoModes.includes(g.mode) && autoStyles.includes(g.style || 'gear')) && isPublic(cleanCode(g.code)))
+  const games = list.filter((g) => (ranked ? g.ranked : !g.ranked && autoModes.includes(g.mode)) && autoStyles.includes(g.style || 'gear') && isPublic(cleanCode(g.code)))
     .sort((a, b) => (b.watchers - a.watchers) || (b.humans - a.humans));
   const label = ranked ? 'ranked' : autoModes.length > 1 ? 'FFA or TEAM' : autoModes[0] === 'team' ? 'TEAM' : 'FFA';
   $('#gamesList').innerHTML = games.length ? games.map((g) => {
     const full = (Number(g.watchers) || 0) >= MAX_WATCHERS;
     const state = g.phase === 'lobby' || g.phase === 'intro' || g.phase === 'count' ? 'Starting soon' : g.phase === 'end' ? 'Final scores' : `Round ${Number(g.round) || 1}/3 · ${Number(g.time) || 0}s`;
-    return `<div class="game"><div><b>${g.mode === 'team' ? 'TEAM' : 'FFA'}${g.ranked ? '' : (g.style || 'gear') === 'normal' ? ' · Normal' : ' · Gear'}</b><span>${Number(g.humans) || 0}/8 players${g.watchers ? ` · ${Number(g.watchers)} watching` : ''}</span></div>
+    return `<div class="game"><div><b>${g.mode === 'team' ? 'TEAM' : 'FFA'}${(g.style || 'gear') === 'normal' ? ' · Normal' : ' · Gear'}</b><span>${Number(g.humans) || 0}/8 players${g.watchers ? ` · ${Number(g.watchers)} watching` : ''}</span></div>
       <div><span>${esc(state)}</span>${g.leader ? `<span>Leader: ${esc(String(g.leader).slice(0, 14))} · ${Number(g.lscore) || 0}</span>` : ''}</div>
       <button class="sec" data-watch="${esc(cleanCode(g.code))}" ${full ? 'disabled' : ''}>${full ? 'Watchers full' : 'Watch now'}</button></div>`;
   }).join('') : `<p class="dim">No ${label} games right now.${ranked && !REFEREE ? ' Ranked opens soon.' : ' Start one with Auto match.'}</p>`;

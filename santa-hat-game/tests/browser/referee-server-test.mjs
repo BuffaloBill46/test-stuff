@@ -23,7 +23,7 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 async function open(name, room = '') {
   const ctx = await browser.newContext({ viewport: { width: 1100, height: 760 } });
   const p = await ctx.newPage(), errors = []; p.on('pageerror', (e) => errors.push(e.message));
-  await p.goto(`http://localhost:${WEB}/online.html?net=local&ref=` + encodeURIComponent(REF), { timeout: 90000, waitUntil: 'domcontentloaded' }); // fonts from the internet can hold 'load' for long
+  await p.goto(`http://localhost:${WEB}/online.html?ref=` +encodeURIComponent(REF), { timeout: 90000, waitUntil: 'domcontentloaded' }); // fonts from the internet can hold 'load' for long
   await p.waitForFunction(() => window.__sq, null, { timeout: 90000 }).catch((e) => { console.error('page errors:', errors); throw e; });
   await p.evaluate((n) => { window.__sq.me.n = n; }, name);
   if (room) await p.evaluate((c) => window.__sq.enterRoom(c, false), room);
