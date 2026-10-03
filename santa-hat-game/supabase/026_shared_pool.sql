@@ -1,4 +1,4 @@
--- NOT APPLIED. ONE GAME POOL (Cody, 2026-10-02): Big Hat ('big'), Snowball Drop ('drop') and Stocking Stuffer ('stocking')
+-- APPLIED live 2026-10-03 (nothing in flight first: no unsettled Big Hat plays, payouts or transfers; checked after: all three route to spin only). ONE GAME POOL (Cody, 2026-10-02): Big Hat ('big'), Snowball Drop ('drop') and Stocking Stuffer ('stocking')
 -- all pay into and out of ONE shared pool, the existing 'spin' row (shown to players as "Game pool"). Until now 005's
 -- buy_run / settle_play / refund_play sent kind 'big' to the 'slots' row and every other kind to 'spin'. This file makes
 -- every kind use 'spin'. Nothing else changes: same function names, arguments, results and rights.
