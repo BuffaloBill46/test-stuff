@@ -1,7 +1,10 @@
 // SERVER: the SANTA price the game uses = the middle value (median) of the last 10 minutes of samples (audit 2026-09-30).
 // A sample is taken at most once a minute. One live reading can't move it much: to shift the median, a manipulated price
 // has to hold for about 5 minutes, which costs far more than it could win.
-export const WINDOW_MIN = 10, SAMPLE_EVERY_S = 60;
+// At least MIN_SAMPLES in the window, or no price (no plays priced): a quiet spell used to leave ONE fresh reading as the whole
+// "median" (security review 2026-10-03). The game server also samples once a minute on its own (worker/games.mjs), so the
+// window stays full whether anyone plays or not.
+export const WINDOW_MIN = 10, SAMPLE_EVERY_S = 60, MIN_SAMPLES = 5;
 
 export function makePrice({ db, livePrice, now = () => Date.now() }) {
   return async function price() {
@@ -11,7 +14,7 @@ export function makePrice({ db, livePrice, now = () => Date.now() }) {
       catch (e) { if (!last) throw e; } // no fresh reading: keep using recent samples
     }
     const rows = await db.query(`select usd from public.price_samples where at > $1 order by usd`, [new Date(now() - WINDOW_MIN * 60_000).toISOString()]);
-    if (!rows.length) throw new Error('no recent SANTA price');
+    if (rows.length < MIN_SAMPLES) throw new Error('no recent SANTA price');
     const v = rows.map((r) => +r.usd), mid = v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2;
     return { usd: mid, samples: v.length };
   };

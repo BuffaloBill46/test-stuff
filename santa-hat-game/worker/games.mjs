@@ -68,6 +68,8 @@ const poolWallets = { spin: env('SPIN_POOL_WALLET') || null, slots: env('SLOTS_P
 const feeOfMint = keptFee(() => liveFee(env('SANTA_MINT') || undefined, [rpcUrl])); // remembered a minute (market.js keptFee)
 const cluster = env('SOLANA_CLUSTER') || (/devnet/.test(rpcUrl) ? 'devnet' : 'mainnet');
 const price = makePrice({ db, livePrice });
+setInterval(() => price().catch(() => {}), 61_000); // a price sample every minute even when nobody plays (server/price.js MIN_SAMPLES)
+price().catch(() => {});
 const server = createGameServer({ db, chain, livePrice: price, liveFee: feeOfMint, poolWallets, ...mintOpt, cluster });
 
 // Alerts to Cody's Telegram (server/alerts.js; supabase/021): pool wallets read on the chain for the books check.

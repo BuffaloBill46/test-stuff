@@ -10,12 +10,13 @@
 --   payments / quotes / runs / plays                         : test plays (and the winners list built from them)
 -- Also reset for a fair start: everything test purchases granted (items, levels, extra tickets), and the test matches'
 -- standings (levels from finishes, rank points, match stats). Kept: accounts and their logins, the item catalogue, settings
--- (lottery payout mode, alerts), tester feedback, speed-limit counters.
+-- (lottery payout mode, alerts), tester feedback, speed-limit counters, and the price samples (the REAL SANTA price from
+-- DexScreener even on devnet; the server needs 5 recent ones to price a play, server/price.js).
 begin;
 
 truncate table
   public.payouts, public.plays, public.runs, public.payments, public.quotes,
-  public.pool_transfers, public.pool_log, public.price_samples,
+  public.pool_transfers, public.pool_log,
   public.lottery_payouts, public.lottery_buys, public.lottery_quotes, public.lottery_draws,
   public.shop_refunds, public.shop_quotes, public.item_purchases, public.level_purchases, public.ticket_purchases, public.ticket_holds,
   public.reward_sweeps, public.reward_claims,
