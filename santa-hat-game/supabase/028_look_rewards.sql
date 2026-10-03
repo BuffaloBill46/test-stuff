@@ -1,3 +1,4 @@
+-- APPLIED live 2026-10-02 (checked after: the live items table equals catalog.js, all 74 rows).
 -- 028: LOOKS ARE LEVEL REWARDS (Cody, 2026-10-02). Skin tones free; only three faces are sold (Snowman $1.00, Panda $1.50,
 -- Gorilla $2.00); every other look unlocks at levels 2, 3, 4, 6, 7, 8 and 9 (3–4 each); levels 5 and 10 each unlock a
 -- matching costume (added by its own file). Special snowballs and gear are unchanged (still sold). mockups/catalog.js is the

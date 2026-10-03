@@ -1,5 +1,5 @@
 -- 029: COSTUMES (Cody, 2026-10-02: "make a special level 5 and a level 10 costume, build 1 for each slot that matches itself for
--- each level. Make them stand out and different from everything else. They will be free."). NOT APPLIED yet: apply it when the
+-- each level. Make them stand out and different from everything else. They will be free."). APPLIED live 2026-10-02 with the
 -- page that draws them is published (and the match server runs the same catalog.js); a page that doesn't know an item draws
 -- that slot plain, so nothing breaks either way.
 -- Twelve new look items, one per look slot (shirt, pants, face, hat, pack, snow; skin tones stay free and aren't costume
