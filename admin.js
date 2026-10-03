@@ -1,12 +1,13 @@
 // The escrow admin screen (admin.html): pool status, Stop / Resume, settings. Every action is a message Cody's wallet signs
 // (adminmsg.js); the server checks it (server/admin.js). Open with ?server=<the games Edge Function address>.
-import { adminMessage } from './adminmsg.js?v=2335b0c955';
-import { LOTTERIES } from './lottery.js?v=2335b0c955';
-import { POOL_RULES } from './slots.js?v=2335b0c955';
-import { SPIN_RULES, MAIN_SLICES, BONUS_SLICES } from './spin.js?v=2335b0c955';
-import { DEFAULT_SETTINGS, check, itemsWith } from './settings.js?v=2335b0c955';
-import { ITEMS, SLOTS } from './catalog.js?v=2335b0c955';
-import { SYMBOLS } from './slots.js?v=2335b0c955';
+import { adminMessage } from './adminmsg.js?v=02ed8fec10';
+import { VARIANTS } from './weekly.js?v=02ed8fec10';
+import { LOTTERIES } from './lottery.js?v=02ed8fec10';
+import { POOL_RULES } from './slots.js?v=02ed8fec10';
+import { SPIN_RULES, MAIN_SLICES, BONUS_SLICES } from './spin.js?v=02ed8fec10';
+import { DEFAULT_SETTINGS, check, itemsWith } from './settings.js?v=02ed8fec10';
+import { ITEMS, SLOTS } from './catalog.js?v=02ed8fec10';
+import { SYMBOLS } from './slots.js?v=02ed8fec10';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; };
@@ -42,6 +43,12 @@ async function load() {
     return owed ? `<p><b>${esc(p.game)} pool:</b> send <b>${Math.ceil(owed / 0.97 / 1e6).toLocaleString()} SANTA</b> (${Math.ceil(owed / 1e6).toLocaleString()} arrives after the 3% tax) to <code>${esc(p.wallet || 'the pool wallet (address not set on the server yet)')}</code></p>` : ''; }).join('');
   $('#log').innerHTML = state.log.length ? `<table><tr><th>When</th><th>Pool</th><th>Action</th><th>By</th></tr>${state.log.map((l) => `<tr><td>${esc(new Date(l.at).toLocaleString())}</td><td>${esc(l.game)}</td><td>${esc(l.what)}</td><td>${esc(String(l.by).slice(0, 6))}…</td></tr>`).join('')}</table>` : 'No changes yet.';
   fields();
+  // weekly modes: each one's switch (supabase/034), this week's marked
+  const wk = await post({ action: 'weekly' }).catch(() => null);
+  $('#weekly').innerHTML = wk?.modes ? wk.modes.map((m) => { const V = VARIANTS[m.id] || { name: m.id, short: '' };
+    return `<div class="wk"><span><b>${esc(V.name)}</b>${wk.now === m.id ? '<span class="now">this week</span>' : ''}</span><span class="state ${m.on ? 'on' : 'off'}">${m.on ? 'On' : 'Off'}</span>
+      ${!m.built ? '<button type="button" disabled>Not built yet</button>' : `<button type="button" class="${m.on ? 'stop' : ''}" data-weekly="${esc(m.id)}" data-on="${m.on ? '0' : '1'}">${m.on ? 'Switch off' : 'Switch on'}</button>`}
+      <small>${esc(V.short)}</small></div>`; }).join('') : '<p class="dim">Could not read the weekly modes (is supabase/034 applied?).</p>';
 }
 function fields() {
   const g = $('#game').value, p = state?.pools.find((x) => x.game === g), R = { ...DEFAULTS[g], ...(p?.rules || {}) };
@@ -104,6 +111,7 @@ function owedList(r) {
   $('#lotOwed').innerHTML = r.owed.length ? `<table><tr><th>Player</th><th>Send to</th><th>For</th><th>Send</th><th>Transaction</th></tr>${r.owed.map((o) => `<tr><td>${esc(o.name || 'player')}</td><td><code>${esc(o.wallet)}</code></td><td>${esc(LOTTERIES[o.lottery]?.name || o.lottery)} · ${esc(new Date(o.drawsAt).toLocaleDateString())} · ${what(o)}</td><td><b>${(o.raw / 1e6).toLocaleString(undefined, { maximumFractionDigits: 6 })} SANTA</b></td><td><input type="text" placeholder="paste the signature" data-lottx="${o.id}"><button type="button" data-lotpaid="${o.id}">Record</button></td></tr>`).join('')}</table>` : 'Nobody waiting.';
 }
 $('#lotLoad').addEventListener('click', () => act('lottery-owed', 'lottery'));
+$('#weekly').addEventListener('click', (e) => { const x = e.target.closest('[data-weekly]'); if (x) act('weekly-mode', 'weekly', { mode: x.dataset.weekly, on: x.dataset.on === '1' }); });
 $('#lotAuto').addEventListener('click', () => act('lottery-mode', 'lottery', { mode: 'auto' }));
 $('#lotManual').addEventListener('click', () => act('lottery-mode', 'lottery', { mode: 'manual' }));
 $('#lotOwed').addEventListener('click', (e) => { const b = e.target.closest('[data-lotpaid]'); if (!b) return;

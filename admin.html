@@ -35,6 +35,10 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
 .preview { background: #0e1328; margin-top: 12px; } .preview .bad { color: var(--warn); } .preview b { font-family: var(--digits); color: var(--lamp); }
 .pays { display: grid; grid-template-columns: 1fr repeat(3, minmax(60px, 90px)); gap: 6px; align-items: center; margin: 8px 0; }
 .items td input { min-height: 36px; padding: 4px 6px; } .swatch { display: inline-block; width: 14px; height: 14px; border: 1px solid var(--ink); vertical-align: -2px; }
+.wk { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 2px 12px; align-items: center; padding: 10px 0; border-top: 1px solid rgba(185,205,242,.15); }
+.wk > span:first-child { grid-column: 1; grid-row: 1; } .wk b { font-size: 17px; } .wk small { grid-column: 1; grid-row: 2; color: #9aa6c7; }
+.wk .state { grid-column: 2; grid-row: 1 / 3; width: auto; display: inline-block; margin: 0; } .wk button { grid-column: 3; grid-row: 1 / 3; margin: 0; }
+.wk .now { color: #ffbe5c; font-weight: 700; margin-left: 8px; }
 </style></head>
 <body><main>
   <div><div class="eyebrow">Santa Hat Arcade · escrow controls</div><h1>Pool Controls</h1>
@@ -45,6 +49,12 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
     <p class="dim">A winner is never frozen. A run's payout is frozen only if it's more than that run could possibly win from the prize
       table (a bug or a break-in, not luck). Check it, then Release sends it to the player's wallet on the next payout pass.</p>
     <div id="frozen" class="dim">None frozen.</div></section>
+  <!-- Weekly modes (Cody, 2026-10-03): a switch for each; all off to start. admin.js renders the rows. -->
+  <section class="plaque" id="weeklyBox"><h2>Weekly modes</h2>
+    <p class="dim">One weekly mode runs a game week (from Sunday 9 PM Indiana time), taking turns among the ones switched <b>on</b>.
+      All off: no weekly mode, everyone plays normal Free-for-all. A change reaches new games within a minute. Each switch is signed
+      by your wallet and written to the public log.</p>
+    <div id="weekly" class="dim">Loading…</div></section>
   <section class="plaque" id="lotteryBox"><h2>Lottery: winners to pay</h2>
     <p class="dim">While lottery payouts are <b>manual</b> (your call, 2026-10-01), you send each winner their SANTA <b>from the lottery wallet</b>,
       then paste the transaction here. The server checks it on the chain (the full amount left the lottery wallet and arrived at the
@@ -106,5 +116,5 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
       <button type="button" id="depSave">Record deposit</button></div></section>
   <section class="plaque"><h2>Change log</h2><div id="log" class="dim">No changes yet.</div></section>
 </main>
-<script type="module" src="admin.js?v=2335b0c955"></script>
+<script type="module" src="admin.js?v=02ed8fec10"></script>
 </body></html>

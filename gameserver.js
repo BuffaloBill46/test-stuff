@@ -2,7 +2,7 @@
 // otherwise the Games tab runs the in-browser demo (house.js). Same steps, same order: the server does the work.
 // Buying needs a wallet to sign the payment: `window.santaPay(quote)` must return the finalized transaction signature.
 // That wallet step can't be built or tested in this workspace (FOR_MAIN_CLAUDE.md); until it exists, buying says so.
-import { accounts } from './net.js?v=2335b0c955';
+import { accounts } from './net.js?v=02ed8fec10';
 
 const params = new URLSearchParams(location.search);
 // LAUNCHED (Cody's GO, mainnet): the public site itself plays through the game server, no ?server= needed, and the demo is gone.
@@ -12,7 +12,7 @@ const PUBLIC_SITE = /(^|\.)santahatgames\.com$|^buffalobill46\.github\.io$/.test
 export const SERVER = params.get('server') || (LAUNCHED && PUBLIC_SITE ? 'https://api.santahatgames.com' : null);
 const testToken = params.get('token'); // tests only, and only against a local server
 // The wallet step (window.santaPay): loaded only in server mode, so the demo never fetches the Solana libraries.
-export const walletReady = SERVER ? import('./wallet.js?v=2335b0c955').catch((e) => { console.warn('wallet step unavailable:', e); }) : Promise.resolve();
+export const walletReady = SERVER ? import('./wallet.js?v=02ed8fec10').catch((e) => { console.warn('wallet step unavailable:', e); }) : Promise.resolve();
 
 export async function token() {
   if (testToken && /^http:\/\/localhost[:/]/.test(SERVER || '')) return testToken;
@@ -20,12 +20,12 @@ export async function token() {
 }
 // Server mode: the published game settings, applied to the page before anything is drawn (settings.js → applyToGame).
 export const settingsReady = SERVER ? (async () => {
-  try { const r = await call('settings'); if (r?.settings) { const { applyToGame } = await import('./settings.js?v=2335b0c955'); applyToGame(r.settings); return r; } } catch {}
+  try { const r = await call('settings'); if (r?.settings) { const { applyToGame } = await import('./settings.js?v=02ed8fec10'); applyToGame(r.settings); return r; } } catch {}
   return null;
 })() : Promise.resolve(null);
 // The actions anyone may call without signing in: must match the server's public ones (server/http.js; tests/public-actions.test.mjs).
 // (It once listed only three, so guests' lottery cards and draw re-checks never asked the server.)
-export const PUBLIC_ACTIONS = ['pools', 'settings', 'stats', 'lottery-tickets', 'lottery', 'winners', 'market', 'burned'];
+export const PUBLIC_ACTIONS = ['pools', 'settings', 'stats', 'lottery-tickets', 'lottery', 'winners', 'market', 'burned', 'weekly'];
 // What a player reads when a payment didn't happen (button audit 2026-10-02: a failed wallet-library download showed
 // "Failed to fetch dynamically imported module: https://cdn…"). Says "nothing was charged" only where that's certain: the
 // player cancelled, or the wallet step never loaded (wallet.js never throws once a payment is sent, except for a payment the
@@ -52,9 +52,10 @@ export function forPlayer(err, closeDialog) {
 // server either way: the test link's ?server=, else the live one.
 const LIVE_GAMES = 'https://api.santahatgames.com';
 // read-only actions that always reach the live game server (my tickets, my season: the match server records them there)
-const READ_LIVE = ['tickets', 'season', 'burned', 'wallet', 'winners'];
+const READ_LIVE = ['tickets', 'season', 'burned', 'wallet', 'winners', 'weekly'];
 export async function call(action, body = {}) {
-  const t = await token();
+  // public answers need no sign-in: don't wait for the sign-in lookup (a slow one held back every public line on the page)
+  const t = PUBLIC_ACTIONS.includes(action) ? null : await token();
   if (!t && !PUBLIC_ACTIONS.includes(action)) return { error: 'sign in first' };
   const r = await fetch(READ_LIVE.includes(action) ? SERVER || LIVE_GAMES : SERVER, { method: 'POST', headers: { 'content-type': 'application/json', ...(t ? { authorization: 'Bearer ' + t } : {}) }, body: JSON.stringify({ action, ...body }) });
   try { return await r.json(); } catch { return { error: `the game server answered ${r.status}` }; }

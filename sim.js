@@ -1,8 +1,9 @@
 // Snowball Square match referee. Runs only on the host's browser; everyone else renders its snapshots.
 // Pure game logic, no rendering, so it can be tested headless.
-import { levelInfo } from './levels.js?v=2335b0c955';
-import { SPECIALS, SPECIAL_KINDS, DROP_HIT_RADIUS, cantThrow, costOf } from './specials.js?v=2335b0c955';
-import { effectsOf, gearAllowed, resolvePresent, heldWith, gearMask, gearOfMask } from './gear.js?v=2335b0c955';
+import { levelInfo } from './levels.js?v=02ed8fec10';
+import { VARIANTS, VARIANT_IDS } from './weekly.js?v=02ed8fec10';
+import { SPECIALS, SPECIAL_KINDS, DROP_HIT_RADIUS, cantThrow, costOf } from './specials.js?v=02ed8fec10';
+import { effectsOf, gearAllowed, resolvePresent, heldWith, gearMask, gearOfMask } from './gear.js?v=02ed8fec10';
 // Ball kinds in snapshots (B[9]): 0 normal, 1 ice, 2 split (before it splits), 3 giant, 4 fire, 5 a split piece.
 const BALL_KIND = { '': 0, ice: 1, split: 2, giant: 3, fire: 4, piece: 5 }, DROP_KIND = { sky: 1, rain: 2 };
 export const KIND_OF = ['', 'ice', 'split', 'giant', 'fire', 'piece'], DROP_OF = ['', 'sky', 'rain']; // the page reads snapshots with these
@@ -41,7 +42,8 @@ export function constrain(p) {
 // gearOf(ent) → the special gear that player wears (gear.js kinds, e.g. catalog/gear.js gearIn); default none; bots never get
 // gear. Read ONCE when a match starts (or when they join one): a Present Box is turned into its gear then, with this sim's
 // rand, and the result (e.gear) travels in snapshots, so a new host keeps it instead of re-rolling.
-export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = () => levelInfo(1).start, specialsOf = () => [], levelOf = () => 1, gearOf = () => [] } = {}) {
+// variant: a weekly mode id (weekly.js VARIANTS: 'hothat', 'gazebo', 'blizzard'), fixed for this sim's life (one room); none = plain rules.
+export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = () => levelInfo(1).start, specialsOf = () => [], levelOf = () => 1, gearOf = () => [], variant = null } = {}) {
   // the level's count, times a held bonus (Santa Bag, Backpack; rounded up). e.fx must be set first (load() sets it before this).
   const startCount = (e) => (e.bot ? 4 : heldWith(Math.min(20, Math.max(1, Math.floor(Number(startOf(e))) || levelInfo(1).start)), e.fx));
   // Put on a player's gear for this match: what they wear that their level allows, Present Box resolved now. Extra hits full.
@@ -52,7 +54,9 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     nextId: 1, nextBall: 1, team: [0, 0], result: null,
     hat: { st: 'ped', x: 0, y: K.PED_TOP, z: 0, vx: 0, vy: 0, vz: 0, holder: -1, last: -1, cool: 0, bounces: 0, rest: 0, acc: 0 },
     landing: { x: 0, z: 0 },
+    variant: VARIANTS[variant] ? variant : null, zoneAcc: 0, // the weekly mode, and King of the Gazebo's 1-second clock
   };
+  const V = () => VARIANTS[S.variant] || {}; // this room's weekly mode rules ({} = plain)
 
   const byId = (id) => S.ents.find((e) => e.id === id);
   const ev = (...a) => { S.ev.push([++S.evId, ...a]); if (S.ev.length > 12) S.ev.shift(); };
@@ -136,7 +140,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
   function resetRound() {
     S.ents.forEach((e, i) => { spawn(e, i, S.ents.length); e.max = startCount(e); e.ammo = e.max; // a level-up shows from the next round
       e.cool = e.bot ? 0.8 + rand() : 0; e.regen = 0; e.xh = e.fx.extraHits; }); // every round starts with all extra hits
-    Object.assign(S.hat, { st: 'ped', holder: -1, last: -1, x: 0, y: K.PED_TOP, z: 0, vx: 0, vy: 0, vz: 0, acc: 0 });
+    Object.assign(S.hat, { st: 'ped', holder: -1, last: -1, x: 0, y: K.PED_TOP, z: 0, vx: 0, vy: 0, vz: 0, acc: 0, melt: 0 }); S.zoneAcc = 0;
     S.balls = []; S.drops = []; S.gh = {};
   }
   // Set up a new match: mode, match id, teams, scores to 0, everyone on their spawn spot with a full counter.
@@ -285,7 +289,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     for (const e of S.ents) {
       e.wob += dt * 0.7; e.cool -= dt; if (e.chat > 0) e.chat -= dt; e.throwT = Math.max(0, e.throwT - dt * 3.5);
       const pile = nearestPile(e);
-      e.regen += dt * (hyp(pile[0] - e.x, pile[1] - e.z) < 1.6 ? 9 : 1) * e.fx.refillMult; // Elf Satchel: 25% faster, piles too
+      e.regen += dt * (hyp(pile[0] - e.x, pile[1] - e.z) < 1.6 ? 9 : 1) * e.fx.refillMult * (V().refillMult || 1); // Elf Satchel: 25% faster, piles too; Blizzard: 2×
       if (e.regen > (e.bot ? 3 : 2.2) && e.ammo < e.max) { e.ammo++; e.regen = 0; }
       if (e.immune > 0) e.immune -= dt;
       if (e.stun > 0) { e.stun -= dt; const f = 1 - Math.min(1, dt * 4); e.vx *= f; e.vz *= f; }
@@ -333,6 +337,12 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
       for (const e of S.ents) if (hittable(e, p.owner) && hyp(e.x - p.x, e.z - p.z) < DROP_HIT_RADIUS * e.fx.size) hit(e, { owner: p.owner, x: p.x, y: 1, z: p.z, vx: e.x - p.x || 0.01, vz: e.z - p.z, sm: 1 });
     }
 
+    // King of the Gazebo: each second, the ONE player standing in the ring round the gazebo scores (shared = nobody does)
+    if (V().zonePts && scoring()) {
+      S.zoneAcc += dt;
+      if (S.zoneAcc >= 1) { S.zoneAcc -= 1; const inZone = S.ents.filter((e) => e.stun <= 0 && hyp(e.x, e.z) <= V().zoneOut);
+        if (inZone.length === 1) { addScore(inZone[0], V().zonePts); ev('zone', inZone[0].id, V().zonePts); } }
+    }
     if (h.st === 'ped') {
       h.x = 0; h.y = K.PED_TOP; h.z = 0;
       if (moving()) for (const e of S.ents) if (e.stun <= 0 && hyp(e.x, e.z) < 2.05) { giveHat(e, false); break; }
@@ -341,7 +351,9 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
       if (!e) { h.st = 'ped'; h.holder = -1; }
       else {
         h.x = e.x; h.y = K.HEAD_Y; h.z = e.z; h.acc += dt;
-        if (h.acc >= 1) { h.acc -= 1; if (scoring()) { addScore(e, PTS.hatSec); tally(e, 'hatSec'); ev('pts', e.id, PTS.hatSec); } }
+        // Hot Hat: the hat scores double (hatMult) and melts a snowball every meltEvery seconds worn
+        if (h.acc >= 1) { h.acc -= 1; if (scoring()) { const p = PTS.hatSec * (V().hatMult || 1); addScore(e, p); tally(e, 'hatSec'); ev('pts', e.id, p); } }
+        if (V().meltEvery && scoring()) { h.melt = (h.melt || 0) + dt; if (h.melt >= V().meltEvery) { h.melt -= V().meltEvery; e.ammo = Math.max(0, e.ammo - 1); } }
       }
     } else if (h.st === 'air') {
       h.cool -= dt; h.vy -= K.HAT_G * dt; h.x += h.vx * dt; h.y += h.vy * dt; h.z += h.vz * dt;
@@ -376,7 +388,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
   function snapshot() {
     const h = S.hat;
     return {
-      s: ++S.seq, ph: PHASES.indexOf(S.phase), md: S.mode === 'team' ? 1 : 0, rd: S.round, tm: Math.round(S.time * 10) / 10, ts: S.team.slice(),
+      s: ++S.seq, ph: PHASES.indexOf(S.phase), md: S.mode === 'team' ? 1 : 0, vr: S.variant ? VARIANT_IDS.indexOf(S.variant) + 1 : 0, rd: S.round, tm: Math.round(S.time * 10) / 10, ts: S.team.slice(),
       E: S.ents.map((e) => [e.id, e.peer || 0, e.bot ? 1 : 0, e.team, r2(e.x), r2(e.z), r2(e.vx), r2(e.vz), r2(e.face), e.stun > 0 ? 1 : 0, e.ammo, e.score, e.throwT > 0.5 ? 1 : 0, e.ep, e.immune > 0 ? 1 : 0,
         // only a player wearing gear adds 2 numbers: their gear (gear.js gearMask, Present Box already resolved) and extra hits left
         ...(e.gear.length ? [gearMask(e.gear), e.xh] : [])]),
@@ -394,7 +406,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
   // A new host picks up where the old one left off.
   function load(snap) {
     if (!snap || !Array.isArray(snap.E)) return false;
-    S.phase = PHASES[snap.ph] || 'lobby'; S.mode = snap.md ? 'team' : 'ffa'; S.round = num(snap.rd); S.time = num(snap.tm);
+    S.phase = PHASES[snap.ph] || 'lobby'; S.mode = snap.md ? 'team' : 'ffa'; S.variant = VARIANT_IDS[num(snap.vr) - 1] || S.variant; S.round = num(snap.rd); S.time = num(snap.tm);
     S.team = Array.isArray(snap.ts) ? [num(snap.ts[0]), num(snap.ts[1])] : [0, 0]; S.seq = num(snap.s); S.mid = /^[0-9a-f]{8,64}$/.test(String(snap.mid)) ? snap.mid : '';
     S.ents = snap.E.map((r) => ({ ...mkEnt(r[1] || null, !!r[2], num(r[3])), id: num(r[0]), x: num(r[4]), z: num(r[5]), vx: num(r[6]), vz: num(r[7]), face: num(r[8]), stun: r[9] ? 0.5 : 0, ammo: num(r[10]), score: num(r[11]), throwT: r[12] ? 0.6 : 0, ep: num(r[13]), immune: r[14] ? 1 : 0 }));
     // gear first (the old host's pick, never re-rolled), THEN the maximum: the level's count with the gear's held bonus

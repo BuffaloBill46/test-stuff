@@ -1,8 +1,8 @@
 // The referee's per-player lookups and timings, shared by the page's referee (online.js) and the server referee
 // (server/referee.mjs), so the two can never run different rules. Pure logic: no page, no network.
-import { SLOTS, BY_ID, cleanAvatar, ballRules, specialsIn } from './catalog.js?v=2335b0c955';
-import { levelInfo, clampLevel } from './levels.js?v=2335b0c955';
-import { gearIn } from './gear.js?v=2335b0c955';
+import { SLOTS, BY_ID, cleanAvatar, ballRules, specialsIn } from './catalog.js?v=02ed8fec10';
+import { levelInfo, clampLevel } from './levels.js?v=02ed8fec10';
+import { gearIn } from './gear.js?v=02ed8fec10';
 
 // Free-plan budget is 100 messages/second and every receiver counts, so fuller rooms send snapshots less often.
 export const snapMs = (humans) => (humans <= 4 ? 125 : humans <= 6 ? 170 : 220);
@@ -16,7 +16,9 @@ export const autoStartMs = (humans) => (humans >= 2 ? 15000 : 25000);
 // TEAM PLAY PAUSED (Cody, 2026-10-03): no Nice vs Naughty anywhere (Auto match, private rooms, the match server). Set false to bring it back.
 export const TEAM_PAUSED = true;
 export const modeAllowed = (m) => m === 'ffa' || (m === 'team' && !TEAM_PAUSED);
-export const isPublic = (c) => /^P(?:[FT][NG]?[1-5]|R[NG]?[1-9]\d?)$/.test(c);
+// PW[N|G]1-5: this week's mode (weekly.js; Cody 2026-10-03), public Auto match rooms like PF, played as Free-for-all
+export const isPublic = (c) => /^P(?:[FTW][NG]?[1-5]|R[NG]?[1-9]\d?)$/.test(c);
+export const isWeekly = (c) => isPublic(c) && c[1] === 'W';
 export const styleOf = (c) => (isPublic(c) && c[2] === 'N' ? 'normal' : 'gear');
 
 // Bots look and sound like players so nobody can pick them out and farm them.
