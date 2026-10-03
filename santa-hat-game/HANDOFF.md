@@ -165,9 +165,13 @@ between two devices has never been tested from here. Cody and friends testing on
   Play again · 1 ticket, friends' rooms Leave; guest top-3 sign-in nudge (`results-test`).
 - First-match tips (`coach.js`): Move / Throw / Get the hat, done by doing, once per browser, Skip; taps pass through (`coach-test`).
 - Games tab: jump buttons, Good to know fold (`games-tidy-test`). Guide's team line follows TEAM_PAUSED.
-- IN PROGRESS: a helper agent is adding skeletons, black cats and zombies to the Halloween plaza (`plaza.js halloweenProps`) in
-  its own worktree; Claude reviews and lands it.
-- Still next: Snowball Square call-outs/MVP highlights, weekly modes, party join; share-a-win, biggest wins, jackpot banner.
+- Spooky Halloween plaza LIVE (helper agent, reviewed): 3 skeletons, 2 black cats, 3 zombies, a cobweb (`plaza.js
+  halloweenFolk`); outside the ring, never between camera and field; Christmas pixel-identical (`theme-christmas-same.mjs <old
+  mockups folder>`), `halloween-spooky-shots`.
+- Match call-outs + end highlights LIVE (`callouts.js`, `callouts-test`).
+- My wallet under every game's play buttons LIVE (`walletline.js`; game server `wallet` action reads the player's own linked
+  wallet via Helius, 10 s memory; `wallet-line-test`, shop-db). Checked on the Droplet against a real devnet account.
+- Still next: weekly modes, party join for Auto match; share-a-win image, biggest wins of the week, pool jackpot banner.
 
 ### 2026-10-03 late night: HOME PAGE + MONEY STRIPS LIVE
 - The site opens on **Home** (intro, Player Progress, the season calendar); Home's Play now → the **Play** page (match types).
