@@ -56,16 +56,11 @@ function howTo() {
   $('#stockHow .body').innerHTML = `<ol class="howrules">
       <li><b>${STOCKINGS} stockings</b> hang on the mantel: <b>${GIFTS} hide a gift</b>, the other ${STOCKINGS - GIFTS} hide a lump of coal (the Naughty List).</li>
       <li><b>Tap the stockings</b> to open them, one at a time, up to ${MAX_OPEN}. <b>The first coal ends the turn.</b></li>
-      <li><b>Which stocking you tap doesn't change your chances.</b> Your turn is decided before your first tap: its fair numbers fix what the 1st, 2nd, 3rd… stocking you open holds, wherever you tap.</li>
       <li>You're paid by <b>how many gifts you find before the coal</b>. Each of the ${MAX_OPEN} slots under the mantel shows what stopping there pays. <b>${MAX_OPEN} gifts in a row win the pool jackpot</b>: ${+(JP.pct * 100).toFixed(2)}% of the Game pool at that moment, times your turn's size (a $1 turn wins ${+(JP.pct * 100).toFixed(2)}% of the pool, a 10¢ turn a tenth of that).</li>
       <li>1 gift pays back half the turn: less than it cost, so it isn't a win. <b>2 gifts or more</b> pay more than the turn.</li></ol>
     <table class="pays"><thead><tr><th>Gifts before the coal</th><th>Pays</th><th>10¢ turn</th><th>$1 turn</th></tr></thead><tbody>${rows}</tbody></table>
     <p><b>3% SANTA tax:</b> winnings are paid in SANTA and arrive 3% lighter. The token does that, not this game; winners absorb it.</p>
-    <p class="dim"><b>Check it yourself:</b> after a turn, tap <b>Check last result</b>. Your turn's 38 fair numbers come from the revealed secret (see that panel).
-      The first 19 shuffle the ${GIFTS} gifts and ${STOCKINGS - GIFTS} coals into stockings 1–${STOCKINGS} (top row 1–${ROW} left to right, bottom row ${ROW + 1}–${STOCKINGS}):
-      for place ${STOCKINGS} down to 2, swap it with place ⌊number × place⌋ + 1, one number per swap (a Fisher–Yates shuffle). The next 19 shuffle the
-      ${STOCKINGS} stockings the same way into the turn's order: the 1st stocking you tap holds what's first in that order, the 2nd what's second, and so on.
-      The panel re-runs both, shows that order, and lays it out on the stockings you tapped.</p>`;
+    <p class="dim"><b>Check it yourself:</b> after a turn, tap <b>Check last result</b> to re-run it from the revealed secret.</p>`;
 }
 function stamp(text) { const fl = $('#stocking .flash'); fl.textContent = text; fl.classList.remove('show'); void fl.offsetWidth; fl.classList.add('show'); }
 function setBet(b) {
@@ -99,7 +94,7 @@ async function showTurn(r, p) {
   // TAP TO OPEN (Cody): the player taps each stocking. The turn's SEQUENCE is fixed already (r.opened's contents, in order);
   // the k-th tap shows the k-th item, wherever they tap (stocking.js asTapped), so a pick can't change the result.
   const taps = []; if (p.proof) p.proof.taps = taps; live.current.taps = taps; // for Check last result (it shows the turn as tapped)
-  res.textContent = `Tap a stocking! Result locked (${short(p.proof.commit)}): where you tap doesn't change it.`;
+  res.textContent = 'Tap a stocking to open it!'; // (Cody 2026-10-03: no wording about taps not mattering or the result being set)
   let found = 0;
   for (const [i, s0] of r.opened.entries()) {
     if (i) res.innerHTML = `<span><b>${found} gift${found === 1 ? '' : 's'}…</b> tap another stocking</span>`;
