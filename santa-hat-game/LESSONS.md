@@ -433,3 +433,30 @@ Rules:
 - Check page code as a module: `node --input-type=module --check < file.js`.
 - deploy-pages.sh now runs this on every file and refuses to publish if one fails.
 - Put notes on their own line, or at the very end of a line (the third time this exact slip has bitten).
+
+## 2026-10-03: GitHub's 10-minute cache can serve a MIX of old and new code after a publish
+Right after publishing the season card, the live page showed the NEW card with the OLD item list ("a costume piece" for every
+Pumpkin King piece): the browser fetched the new seasonui.js but reused its cached catalog.js. Worse is possible: new code
+importing something an old cached file doesn't export stops the whole page loading, for up to 10 minutes per player.
+Rules:
+- deploy-pages.sh stamps every file reference with `?v=<build>` and the page + buildcheck.js with the same id (old page meeting
+  new code reloads once). Never publish by copying files by hand; never import a page file in a way the stamp doesn't cover
+  (`from './x.js'`, `import('./x.js')`, `import './x.js'`, `<script type="module" src>` are covered; the script refuses others).
+- Check a publish on a NORMAL visit of a browser that had the old site open, not only a hard refresh.
+
+## 2026-10-03: a script that stops on any error also stops on a grep that finds nothing
+deploy-pages.sh runs with stop-on-error; `left=$(grep … )` for "anything left unstamped?" finds nothing in the GOOD case, grep
+returns 1, and the script quietly stopped before publishing (no message). Rule: a grep whose "no match" is success gets `|| true`.
+
+## 2026-10-03: a duplicate-key error is not always a reused payment
+shop_buy re-raises "duplicate key" as "payment already used" (nothing owed). A second $5 pass for the same season hit the
+season_passes primary key, so a REAL second payment would have been treated as reused and never refunded. Rule: anything a
+purchase can refuse (already owned, already has the pass) is checked by name and raised in words, never left to a unique key.
+
+## 2026-10-03: new UI code must never be able to stop the page loading
+The season card read the calendar's first day wrongly (an object, not its date); the error ran during start-up and the whole
+game page failed to load (season-test caught it). Rule: an optional card renders inside try/catch and hides itself on error.
+
+## 2026-10-03: `$'` in a JavaScript replace string inserts the rest of the text
+`s.replace(x, "...$'...")`: `$'` means "everything after the match", so a quote-dollar in the new text pasted the rest of tabs.js
+into itself. Rule: edit files with the Edit tool; in a replace string, write `$$` for a literal `$`, or pass a function.

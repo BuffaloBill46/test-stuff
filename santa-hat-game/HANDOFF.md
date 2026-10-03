@@ -160,12 +160,28 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
-### 2026-10-03 evening (NEWEST): MAINNET LAUNCH PREP. Cody's target: ~01:00 UTC 10-04. LAUNCH_CHECKLIST.md is the plan.
+### 2026-10-03 night (NEWEST): SEASONS LIVE (Halloween calendar + $5 Pumpkin King pass), big Play button, safe publishing
+- **Seasons** (rules in `mockups/seasons.js`, ONE place): Halloween Oct 1–31, Thanksgiving Nov, Christmas Dec 1–Jan 1 (the last
+  two have no rewards yet: `free: {}`, `gold: []`, the pass says "opens soon"). 3 tasks a day (game day 9 PM–9 PM Indiana); all 3
+  open the day's door. Free track: 5 Halloween looks (doors 2, 5, 9, 14, 20), +1 level step on every other door, +1 every 7 days
+  in a row. Gold ($5 pass, Store kind 'pass'): the Pumpkin King, a piece every 3 doors (3…18), backdated.
+  Progress ONLY from referee-run public Auto matches (`levels.finishByReferee` → `season_record`). Live: 032 + 033 applied,
+  Droplet on the new code (santa-games, santa-referee), site published. Tests: `tests/db/seasons-db`, `browser/season-test`.
+- **Pumpkin King costume** merged (helper agent, reviewed); the Pumpkin Costume gear is RETIRED (not sold, does nothing; one test
+  account still owns it and its saved slot still counts as "+1 hit" in the database, so they'd remove it to add a Kevlar Vest).
+- **Big "Play now"** on the Play page's first screen → free Auto match (`playbtn-test`).
+- **Publishing now stamps a build id** on every file (`?v=<build>`) + `buildcheck.js`: no more old/new code mix for the 10
+  minutes GitHub caches files (it showed live as the season card with the old item list; worst case the page wouldn't load).
+  `DRY_RUN=1 KEEP_DIR=<dir> bash deploy-pages.sh` builds without publishing; `browser/build-stamp-test` checks a build.
+- **Next (Cody's list):** first-match coaching tips, Play again on results, sign-in prompt after a guest's top 3, tidier Games
+  tab; Snowball Square call-outs/MVP, weekly modes, party join; share-a-win image, biggest wins, pool jackpot banner + Telegram.
+  Thanksgiving and Christmas costumes later. Mainnet GO still waits on Cody (fund wallets, his Phantom address, GO).
+
+### 2026-10-03 evening: MAINNET LAUNCH PREP. Cody's target: ~01:00 UTC 10-04. LAUNCH_CHECKLIST.md is the plan.
 - **Mainnet wallets made on the Droplet:** `/etc/santa/keys-mainnet`; public addresses in `mainnet.json`. Checked: each loads,
   derives its address and signs.
-- **Mainnet settings staged:** `/etc/santa/games.env.mainnet`, `worker.env.mainnet`. Two blanks remain: `__HELIUS_MAINNET_URL__`
-  (Cody saves it as `C:\santa-devnet-keys\helius-mainnet.txt`; Claude copies it in without printing it) and
-  `__CODY_PHANTOM_ADDRESS__`.
+- **Mainnet settings staged:** `/etc/santa/games.env.mainnet`, `worker.env.mainnet`. Helius is filled in (checked on
+  the Droplet 2026-10-03 night: no `__HELIUS_MAINNET_URL__` left). ONE blank remains: `__CODY_PHANTOM_ADDRESS__` (games.env.mainnet).
 - **THE SWITCH** is `worker/go-mainnet.mjs`, run as root on the Droplet. Default is check-only; `--go` refuses unless every
   check passes. In order it:
   1. stops the services;
