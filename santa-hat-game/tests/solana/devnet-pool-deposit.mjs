@@ -16,7 +16,7 @@ const [game, dollarsArg] = process.argv.slice(2), dollars = Number(dollarsArg);
 if (!['spin', 'slots'].includes(game) || !(dollars > 0 && dollars <= 2000)) throw new Error('usage: node devnet-pool-deposit.mjs <spin|slots> <dollars, up to 2000>');
 const cfg = JSON.parse(readFileSync(new URL('../../devnet.json', import.meta.url), 'utf8'));
 const RPC = cfg.rpc; if (!/devnet/.test(RPC)) throw new Error('devnet only');
-const SERVER = process.env.SERVER || 'https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games';
+const SERVER = process.env.SERVER || 'https://api.santahatgames.com';
 const KEYS = process.env.SANTA_KEYS || 'C:\\santa-devnet-keys';
 const keyOf = (n) => createKeyPairSignerFromBytes(new Uint8Array(JSON.parse(readFileSync(join(KEYS, n + '.json'), 'utf8'))));
 const rpc = createSolanaRpc(RPC), confirm = sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions: createSolanaRpcSubscriptions(RPC.replace(/^http/, 'ws')) });

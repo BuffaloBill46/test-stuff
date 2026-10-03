@@ -39,7 +39,7 @@ async function send1(payer, ixs) {
 }
 const funder = await load(join(KEYS, 'funder.json')), admin = await load(join(KEYS, 'admin.json')), mint = cfg.mint;
 // the price the game uses (the server's own reading), so "$100" means what the game means by it
-const price = (await (await fetch('https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"action":"market"}' })).json()).usd;
+const price = (await (await fetch('https://api.santahatgames.com', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"action":"market"}' })).json()).usd;
 if (!(price > 0)) throw new Error('no SANTA price from the game server');
 const wantRaw = BigInt(Math.round((USD_EACH / price) * 1e6));
 const ata = async (o) => (await T22.findAssociatedTokenPda({ owner: o, tokenProgram: T22.TOKEN_2022_PROGRAM_ADDRESS, mint }))[0];

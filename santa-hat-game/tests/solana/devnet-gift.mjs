@@ -29,7 +29,7 @@ async function send(payer, ixs) {
   });
 }
 const funder = await load('funder'), admin = await load('admin'), mint = cfg.mint, owner = address(to);
-const price = (await (await fetch('https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"action":"market"}' })).json()).usd;
+const price = (await (await fetch('https://api.santahatgames.com', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"action":"market"}' })).json()).usd;
 const raw = BigInt(Math.round((usd / price) * 1e6));
 const ata = (await T22.findAssociatedTokenPda({ owner, tokenProgram: T22.TOKEN_2022_PROGRAM_ADDRESS, mint }))[0];
 await send(funder, [getTransferSolInstruction({ source: funder, destination: owner, amount: lamports(BigInt(Math.round(sol * 1e9))) })]);

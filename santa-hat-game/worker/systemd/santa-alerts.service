@@ -4,5 +4,5 @@ Description=Santa Hat Legends: every 5 minutes, run any lottery draw whose time 
 Type=oneshot
 User=santa
 # lottery first, and a slow or failed step never stops the other (the leading '-')
-ExecStart=-/usr/bin/curl -s -m 120 -o /dev/null -w 'lottery draws checked: %{http_code} in %{time_total}s\n' -X POST https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games -H 'content-type: application/json' -d '{"action":"lottery"}'
-ExecStart=-/usr/bin/curl -s -m 120 -w '\n' -X POST https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games -H 'content-type: application/json' -d '{"action":"alerts"}'
+ExecStart=-/usr/bin/curl -s -m 120 -o /dev/null -w 'lottery draws checked: %{http_code} in %{time_total}s\n' -X POST https://api.santahatgames.com -H 'content-type: application/json' -d '{"action":"lottery"}'
+ExecStart=-/usr/bin/curl -s -m 120 -w '\n' -X POST https://api.santahatgames.com -H 'content-type: application/json' -d '{"action":"alerts"}'

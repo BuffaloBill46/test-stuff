@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import * as kit from '@solana/kit';
 import { adminMessage } from '../../server/admin.js';
-const KEYS = process.env.SANTA_KEYS || 'C:/santa-devnet-keys', SERVER = 'https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games';
+const KEYS = process.env.SANTA_KEYS || 'C:/santa-devnet-keys', SERVER = 'https://api.santahatgames.com';
 const keys = await kit.createKeyPairFromBytes(new Uint8Array(JSON.parse(readFileSync(path.join(KEYS, 'codyAdmin.json'), 'utf8'))));
 const wallet = await kit.getAddressFromPublicKey(keys.publicKey);
 const call = async (action, settings = {}) => {

@@ -12,7 +12,7 @@ import { adminMessage } from '../../server/admin.js';
 
 const cfg = JSON.parse(readFileSync(new URL('../../devnet.json', import.meta.url), 'utf8')), RPC = cfg.rpc;
 if (!/devnet/.test(RPC)) throw new Error('devnet only');
-const SERVER = 'https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games', KEYS = process.env.SANTA_KEYS || 'C:\\santa-devnet-keys';
+const SERVER = 'https://api.santahatgames.com', KEYS = process.env.SANTA_KEYS || 'C:\\santa-devnet-keys';
 const bytes = (n) => new Uint8Array(JSON.parse(readFileSync(path.join(KEYS, n + '.json'), 'utf8')));
 const funder = await kit.createKeyPairSignerFromBytes(bytes('funder')), codyKeys = await kit.createKeyPairFromBytes(bytes('codyAdmin'));
 const cody = await kit.getAddressFromPublicKey(codyKeys.publicKey);
