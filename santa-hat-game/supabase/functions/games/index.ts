@@ -79,7 +79,8 @@ const limiter = makeLimiter({ store: dbStore(db) });
 async function walletRaw(game: string) {
   const owner = poolWallets[game as 'spin' | 'slots']; if (!owner) return null;
   const r = await fetch(rpcUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getTokenAccountsByOwner',
-    params: [owner, { mint: env('SANTA_MINT') || '3c7mmVSyEH8jfZXgxvpLsETtko1Y16DyRJ5XYB4snhGt' }, { encoding: 'jsonParsed', commitment: 'finalized' }] }) });
+    params: [owner, { mint: env('SANTA_MINT') || '3c7mmVSyEH8jfZXgxvpLsETtko1Y16DyRJ5XYB4snhGt' }, { encoding: 'jsonParsed', commitment: 'finalized' }] }),
+    signal: AbortSignal.timeout(15000) }); // a stalled network answer must not hold the 5-minute alert run (it once took 75 s on devnet)
   const j = await r.json(); if (!j.result) throw new Error('no balance from the network');
   return (j.result.value || []).reduce((a: number, x: any) => a + Number(x.account.data.parsed.info.tokenAmount.amount), 0);
 }

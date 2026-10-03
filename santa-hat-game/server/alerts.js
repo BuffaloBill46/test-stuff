@@ -64,6 +64,7 @@ export function createAlerts({ db, telegram, walletRaw, refereeHealth, games = [
 
 // Telegram: the bot token from the environment; the chat is TELEGRAM_CHAT_ID if set, else the chat that last sent the bot a
 // message (Cody sends his new bot /start once), remembered in public.alert_settings. fetchFn: fetch (tests pass a stand-in).
+/** @param {{ token?: string | null, chatId?: string | null, db: any, fetchFn?: typeof fetch }} opts */
 export function makeTelegram({ token, chatId = null, db, fetchFn = fetch }) {
   if (!token) return null;
   const api = (method, body) => fetchFn(`https://api.telegram.org/bot${token}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) }).then((r) => r.json());
