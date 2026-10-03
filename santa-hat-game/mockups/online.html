@@ -50,6 +50,10 @@ header.bar { position: fixed; left: 0; right: 0; top: 0; z-index: 5; display: fl
 .sbrow button { display: inline-flex; align-items: center; } .sbrow .sbpic { width: 24px; height: 24px; margin-right: 4px; border-radius: 2px; flex: none; }
 .sbrow button[aria-pressed="true"] { background: var(--lamp); outline: 2px solid var(--hat); }
 .sbrow button:disabled { opacity: .45; cursor: default; }
+/* locked special (double tap): a gold double ring and a LOCKED tag; still tappable when it cannot be thrown right now */
+.sbrow button[data-locked] { outline: 3px double var(--lamp); outline-offset: 1px; } .sbrow button[aria-disabled="true"] { opacity: .55; }
+.sbrow .sblock { font: 700 9px/1 var(--digits); font-style: normal; letter-spacing: .5px; text-transform: uppercase; color: var(--brim); background: var(--hat); border-radius: 2px; padding: 3px 4px 2px; margin-left: 5px; }
+.sbrow button { touch-action: manipulation; } /* a double tap locks, never zooms the page */
 #hud { position: fixed; z-index: 4; left: 16px; top: calc(env(safe-area-inset-top, 0px) + 64px); display: flex; gap: 8px; flex-wrap: wrap; pointer-events: none; max-width: calc(100% - 32px); }
 .stat { padding: 6px 10px 5px; min-width: 70px; }
 .stat i { display: block; font: 700 11px/1 var(--body); text-transform: uppercase; letter-spacing: 1.4px; color: var(--dim); font-style: normal; margin-bottom: 4px; }

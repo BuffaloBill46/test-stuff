@@ -156,6 +156,7 @@ function election(now) {
 
 // ---------- rooms
 async function enterRoom(code, quick, opts = {}) {
+  endTrial(); // a tried-on ball never goes into a real room
   status(opts.watch ? 'Joining as a watcher…' : 'Connecting…');
   if (!profile) { me.n = cleanName($('#name')?.value) || me.n; store.set('sq_name', me.n); }
   me.w = !!opts.watch;
@@ -203,7 +204,26 @@ function startPractice() {
   roomMode = null; autoStart = false; sim.S.mode = lobbyMode; closeLobby(); renderChrome();
 }
 
+// TRY IT IN PRACTICE (Cody, 2026-10-03): the Store's "Try it" on a special snowball opens a solo practice match with that ball in
+// SB1, locked on, so the player throws it for real before buying. Practice runs only in this browser (no match server, no levels,
+// no money). The borrowed ball and level are put back the moment practice ends, and before any real room: endTrial runs in
+// enterRoom, leaveRoom and setIdentity, so a ball the player doesn't own can never reach a real match.
+let trial = null; // { kind, a, l }: the real look and level to put back
+function endTrial() { if (!trial) return; me.a = trial.a; me.l = trial.l; trial = null; locked = armed = ''; ui.lastHud = ''; }
+function tryInPractice(kind) {
+  if (!SPECIALS[kind]) return;
+  if (inRoom()) leaveRoom(); else endTrial();
+  trial = { kind, a: me.a, l: me.l };
+  const a = { ...cleanAvatar(me.a) };
+  for (const s of SB_SLOTS) if (a[s] === 'sb_' + kind) a[s] = 'sb_none';
+  a.sb1 = 'sb_' + kind; me.a = a;
+  if (SPECIALS[kind].minLevel && (me.l || 1) < SPECIALS[kind].minLevel) me.l = SPECIALS[kind].minLevel; // Rain needs level 5
+  startPractice(); locked = armed = kind; ui.lastHud = '';
+  banner(`Trying the ${SPECIALS[kind].name}: practice only`);
+}
+
 function leaveRoom(reason) {
+  endTrial();
   const was = roomCode;
   if (isHost) board.unpublish();
   room?.leave(); room = null; practice = false; isHost = false; sim = null; snaps = []; lastRaw = null; curHost = null; me.w = false; roomMode = null; autoStart = false;
@@ -263,7 +283,7 @@ function tryThrow(tx, tz) {
   const v = currentView, e = myEnt(v);
   if (!e || e.stun || ctl.cool > 0 || e.ammo <= 0 || !(v.phase === 'lobby' || v.phase === 'play')) return;
   if (armed && cantThrow(armed, { ammo: e.ammo, max: maxOf(e), level: me.l || 1 })) armed = ''; // not enough snowballs any more: a plain throw
-  ctl.sp = armed; armed = ''; ui.lastHud = '';
+  ctl.sp = armed; armed = locked; ui.lastHud = ''; // a locked special stays armed for the next throw
   ctl.t++; ctl.ax = tx; ctl.az = tz; ctl.cool = K.HUMAN_COOL; ctl.throwT = 1; ctl.dirty = true; sfx('throw');
   const dx = tx - ctl.x, dz = tz - ctl.z, l = Math.hypot(dx, dz) || 1; ctl.face = Math.atan2(dx, dz);
   if (!isHost && !ctl.sp) { // show my own plain snowball instantly; the referee's copy of it is hidden on my screen (specials: the referee's)
@@ -274,10 +294,22 @@ function tryThrow(tx, tz) {
 
 function report() { return { q: ++ctl.q, ep: ctl.ep, x: +ctl.x.toFixed(2), z: +ctl.z.toFixed(2), vx: +ctl.vx.toFixed(2), vz: +ctl.vz.toFixed(2), f: +ctl.face.toFixed(2), t: ctl.t, ax: +ctl.ax.toFixed(2), az: +ctl.az.toFixed(2), sp: ctl.sp || '' }; }
 // SB1–SB3 (Cody: buttons under the snowball counter; keys Q, E, R on a computer): arms a special for the next throw.
-let armed = '';
+// LOCK (Cody, 2026-10-03: "it's hard to click special then throw over and over"): a DOUBLE tap (or a quick double press of
+// Q/E/R) locks that special on, so every throw uses it; a double tap again goes back to the normal ball. A single tap is the
+// one-throw arm, as before, and clears a lock. Not enough snowballs for the locked one: that throw is plain, the lock stays.
+let armed = '', locked = '', lastTap = { i: -1, t: 0, lockedBefore: '' };
+const DOUBLE_MS = 350;
 function arm(i) {
   const kind = mySlots().find((x) => x.n === i + 1)?.kind; if (!kind) return; // i: 0 = SB1 (key Q), 1 = SB2 (E), 2 = SB3 (R)
-  armed = armed === kind ? '' : kind; ui.lastHud = '';
+  const now = performance.now();
+  if (lastTap.i === i && now - lastTap.t < DOUBLE_MS) { // the second tap of a double: lock it, or unlock if it was locked
+    if (lastTap.lockedBefore === kind) { locked = ''; armed = ''; } else { locked = kind; armed = kind; }
+    lastTap = { i: -1, t: 0, lockedBefore: '' };
+  } else {
+    lastTap = { i, t: now, lockedBefore: locked };
+    locked = ''; armed = armed === kind ? '' : kind;
+  }
+  ui.lastHud = '';
 }
 
 // ---------- what to draw this frame
@@ -405,7 +437,9 @@ function sbRow(m) {
   const list = mySlots(); if (!list.length) return '';
   const level = me.l || 1, max = maxOf(m);
   return `<div class="sbrow">${list.map(({ n, kind: k }) => { const S = SPECIALS[k], why = cantThrow(k, { ammo: m.ammo, max, level });
-    return `<button type="button" data-sb="${n - 1}" aria-pressed="${armed === k}" ${why ? 'disabled' : ''} title="${S.note}${why ? ' (' + why + ')' : ''}"><img class="sbpic" alt="SB${n}" src="${thumbnail(BY_ID.get('sb_' + k))}"> ${S.name} <small>${S.cost === 'all' ? 'all' : S.cost}</small></button>`; }).join('')}</div>`;
+    // a locked one stays tappable even when it can't be thrown right now (a disabled button ignores taps: no way to unlock it)
+    const lock = locked === k, off = why ? (lock ? 'aria-disabled="true"' : 'disabled') : '';
+    return `<button type="button" data-sb="${n - 1}" aria-pressed="${armed === k}" ${lock ? 'data-locked="true"' : ''} ${off} title="${S.note}${why ? ' (' + why + ')' : ''}. Tap: next throw. Double-tap: lock it on${lock ? ' (double-tap again for normal snowballs)' : ''}."><img class="sbpic" alt="SB${n}" src="${thumbnail(BY_ID.get('sb_' + k))}"> ${S.name} <small>${S.cost === 'all' ? 'all' : S.cost}</small>${lock ? '<em class="sblock">Locked</em>' : ''}</button>`; }).join('')}</div>`;
 }
 const { avatarOf } = REF;
 const ballMats = new Map();
@@ -518,7 +552,7 @@ function renderChrome() {
   preview.visible = !inRoom() && tabs?.tab === 'avatar';
   if (inRoom()) {
     const count = practice ? 1 : room.peers().filter((p) => !p.w).length, watchers = practice ? 0 : room.peers().filter((p) => p.w).length;
-    $('#roomchip').innerHTML = practice ? '<i>Practice</i><b>vs bots</b>'
+    $('#roomchip').innerHTML = practice ? (trial ? `<i>Trying</i><b>${esc(SPECIALS[trial.kind].name)}</b>` : '<i>Practice</i><b>vs bots</b>')
       : `<i>${me.w ? 'Watching' : autoStart ? 'Auto match' : 'Room'}</i><b>${esc(autoStart ? (roomMode === 'team' ? 'TEAM' : 'FFA') : roomCode)}</b><span>${idleLeft ? `<em class="idle">Still there? Leaving in ${idleLeft}s</em>` : `${count} playing${watchers ? ` · ${watchers} watching` : ''}${isHost ? ' · you referee' : ''}`}</span>`;
   }
   const cnt = inRoom() && v && v.phase === 'count' ? Math.max(1, Math.ceil(v.time)) : 0;
@@ -565,6 +599,7 @@ function renderChrome() {
   // HUD
   if (v.phase === 'play' || v.phase === 'break') {
     if (armed && !mySpecials().includes(armed)) armed = '';
+    if (locked && !mySpecials().includes(locked)) locked = '';
     setHud(`<div class="stat plaque"><i>Round</i><b>${v.round}/${K.ROUNDS}</b></div>
       <div class="stat plaque ${v.time < 10 && v.phase === 'play' ? 'warn' : ''}"><i>${v.phase === 'break' ? 'Next round' : 'Time'}</i><b>${Math.ceil(v.time)}</b></div>
       ${m ? `<div class="stat plaque nice"><i>You${hitsLeft(m)}</i><b>${m.score}</b></div>` : ''}
@@ -862,8 +897,9 @@ const app = {
   me, accounts: acct,
   hasWallet: () => LOCAL || !!findWallet(),
   get profile() { return profile; }, set profile(p) { profile = p; },
-  setIdentity(name, a) { me.n = cleanName(name) || me.n; me.a = cleanAvatar(a); me.l = clampLevel(profile?.level); me.pid = profile?.id || null; $('#name').value = me.n; $('#name').readOnly = !!profile; setPreview(me.a); },
+  setIdentity(name, a) { trial = null; locked = armed = ''; me.n = cleanName(name) || me.n; me.a = cleanAvatar(a); me.l = clampLevel(profile?.level); me.pid = profile?.id || null; $('#name').value = me.n; $('#name').readOnly = !!profile; setPreview(me.a); },
   preview: (a) => setPreview(a),
+  tryInPractice, // the Store's Try it on a special snowball (tabs.js)
   get theme() { return theme; }, setTheme,
   onTab: (tab) => {
     ui.lastBoard = '';
@@ -877,7 +913,7 @@ initLottery(); // the Store's Santa Lottery (lotteryui.js)
 $('#loading')?.remove();
 frame();
 
-window.__sq = { get armed() { return armed; }, throwAt: (x, z) => tryThrow(x, z), drawn: () => ({ drops: drawDrops.filter((m) => m.visible).length }), camDist: () => camera.position.distanceTo(camTarget), setZoom, get zoom() { return zoom; },
+window.__sq = { get armed() { return armed; }, get locked() { return locked; }, get trial() { return trial && trial.kind; }, get myLook() { return { ...me.a }; }, throwAt: (x, z) => tryThrow(x, z), drawn: () => ({ drops: drawDrops.filter((m) => m.visible).length }), camDist: () => camera.position.distanceTo(camTarget), setZoom, get zoom() { return zoom; },
   // tests: where the ring's outer wall lands on screen (-1..1 = inside the view), all the way round, at the ground and wall top
   ringFit: (r = 15.0) => { let x0 = 9, x1 = -9, y0 = 9, y1 = -9; for (let i = 0; i < 72; i++) for (const y of [0, 1]) { const a = (i / 72) * Math.PI * 2, p = new V3(Math.cos(a) * r, y, Math.sin(a) * r).project(camera); x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); } return { x0, x1, y0, y1 }; }, get room() { return room; }, get isHost() { return isHost; }, get sim() { return sim; }, get view() { return currentView; }, me, ctl, enterRoom, leaveRoom, startPractice, idleFor: (ms) => { lastInput = performance.now() - ms; },
   // tests: the plaza theme, and what's on the GPU / in the scene (a theme swap must not leave the old plaza behind)
