@@ -1,6 +1,9 @@
 // Avatar item catalog. The database's `items` table is seeded from this file (see tests/catalog-sql.mjs),
 // so the game, the store and the server always agree on what exists and how it unlocks.
 // Each item unlocks at a level OR is sold in the store (price in USD, paid in SANTA) — never both.
+// LOOKS (Cody, 2026-10-02): skin tones free; only three faces are sold (Snowman $1.00, Panda $1.50, Gorilla $2.00); every
+// other look is a LEVEL REWARD, levels 2–10, at least 2 per level, the flashiest last (no look moved to a higher level than
+// before, so nobody loses one). Special snowballs and gear are still sold: they change play.
 export const SLOTS = ['shirt', 'pants', 'face', 'skin', 'hat', 'pack', 'snow'];
 export const SLOT_NAMES = { shirt: 'Shirts', pants: 'Pants', face: 'Faces', skin: 'Skin', hat: 'Hats', pack: 'Backpacks', snow: 'Snowballs', sball: 'Special Snowballs', gear: 'Special Gear' };
 // SPECIAL SNOWBALLS (Cody, 2026-10-01): items of slot 'sball' (specials.js says what each does), kept forever once owned, put in the
@@ -25,15 +28,15 @@ export const ITEMS = [
   { id: 'shirt_teal', slot: 'shirt', name: 'Ice Teal', color: 0x2f8f8a, level: 4 },
   { id: 'shirt_pink', slot: 'shirt', name: 'Candy Pink', color: 0xd76aa0, level: 5 },
   { id: 'shirt_snow', slot: 'shirt', name: 'Snowdrift', color: 0xf0ede4, level: 6 },
-  { id: 'shirt_coal', slot: 'shirt', name: 'Coal', color: 0x2a2a35, price: 0.25 },
-  { id: 'shirt_ember', slot: 'shirt', name: 'Ember', color: 0xe8612c, price: 0.25 },
+  { id: 'shirt_coal', slot: 'shirt', name: 'Coal', color: 0x2a2a35, level: 7 },
+  { id: 'shirt_ember', slot: 'shirt', name: 'Ember', color: 0xe8612c, level: 9 },
 
   { id: 'pants_navy', slot: 'pants', name: 'Night Navy', color: 0x2d3a63, level: 1 },
   { id: 'pants_brown', slot: 'pants', name: 'Bark', color: 0x5a3b24, level: 1 },
   { id: 'pants_grey', slot: 'pants', name: 'Stone', color: 0x6f6a73, level: 2 },
   { id: 'pants_green', slot: 'pants', name: 'Fir', color: 0x2a5a3f, level: 3 },
   { id: 'pants_red', slot: 'pants', name: 'Berry', color: 0x8f1712, level: 5 },
-  { id: 'pants_snow', slot: 'pants', name: 'Frost', color: 0xe6ecf5, price: 0.15 },
+  { id: 'pants_snow', slot: 'pants', name: 'Frost', color: 0xe6ecf5, level: 7 },
 
   { id: 'face_dots', slot: 'face', name: 'Classic', face: 'dots', level: 1 },
   { id: 'face_smile', slot: 'face', name: 'Grin', face: 'smile', level: 1 },
@@ -41,10 +44,10 @@ export const ITEMS = [
   { id: 'face_wink', slot: 'face', name: 'Wink', face: 'wink', level: 2 },
   { id: 'face_shades', slot: 'face', name: 'Shades', face: 'shades', level: 4 },
   { id: 'face_beard', slot: 'face', name: 'Big Beard', face: 'beard', level: 6 },
-  { id: 'face_mask', slot: 'face', name: 'Scarf Mask', face: 'mask', price: 0.30 },
-  { id: 'face_gorilla', slot: 'face', name: 'Gorilla', face: 'gorilla', price: 0.50 },
-  { id: 'face_snowman', slot: 'face', name: 'Snowman', face: 'snowman', price: 0.50 },
-  { id: 'face_panda', slot: 'face', name: 'Panda', face: 'panda', price: 0.50 },
+  { id: 'face_mask', slot: 'face', name: 'Scarf Mask', face: 'mask', level: 8 },
+  { id: 'face_gorilla', slot: 'face', name: 'Gorilla', face: 'gorilla', price: 2.00 },
+  { id: 'face_snowman', slot: 'face', name: 'Snowman', face: 'snowman', price: 1.00 },
+  { id: 'face_panda', slot: 'face', name: 'Panda', face: 'panda', price: 1.50 },
 
   { id: 'skin_1', slot: 'skin', name: 'Tone 1', color: 0xf0c7a0, level: 1 },
   { id: 'skin_2', slot: 'skin', name: 'Tone 2', color: 0xe8b894, level: 1 },
@@ -56,17 +59,17 @@ export const ITEMS = [
   { id: 'snow_ice', slot: 'snow', name: 'Glacier', color: 0x9fd8ff, level: 2 },
   { id: 'snow_pink', slot: 'snow', name: 'Sugarplum', color: 0xff9ccf, level: 3 },
   { id: 'snow_green', slot: 'snow', name: 'Mint', color: 0x9dffb0, level: 4 },
-  { id: 'snow_ember', slot: 'snow', name: 'Ember', color: 0xff7a3a, price: 0.25 },
+  { id: 'snow_ember', slot: 'snow', name: 'Ember', color: 0xff7a3a, level: 8 },
   // The first special snowball (Cody's example): stuns 50% longer than normal. Bought in the Store for now (Cody); levels later.
   // (The colour-slot Ice Ball prototype became the Ice Ball special below, 2026-10-01. A colour can still carry `rules`.)
 
-  // Hats and backpacks are bought in the Store for now (Cody, 2026-10-01; he'll set levels later); prices are Claude's placeholders.
+  // Hats and backpacks: level rewards since 2026-10-02 (Cody; they were sold in the Store before).
   // Hats (2026-10-01): worn on the head, hidden while that player wears the Santa hat (the prize must always be seen).
   { id: 'hat_none', slot: 'hat', name: 'No hat', hat: 'none', level: 1 },
-  { id: 'hat_beanie', slot: 'hat', name: 'Knit Beanie', hat: 'beanie', color: 0x3d6fb8, price: 0.25 },
-  { id: 'hat_earmuffs', slot: 'hat', name: 'Earmuffs', hat: 'earmuffs', color: 0xd76aa0, price: 0.25 },
-  { id: 'hat_antlers', slot: 'hat', name: 'Reindeer Antlers', hat: 'antlers', color: 0x8a5a33, price: 0.50 },
-  { id: 'hat_tophat', slot: 'hat', name: 'Snowman Top Hat', hat: 'tophat', color: 0x2a2a35, price: 0.25 },
+  { id: 'hat_beanie', slot: 'hat', name: 'Knit Beanie', hat: 'beanie', color: 0x3d6fb8, level: 5 },
+  { id: 'hat_earmuffs', slot: 'hat', name: 'Earmuffs', hat: 'earmuffs', color: 0xd76aa0, level: 6 },
+  { id: 'hat_antlers', slot: 'hat', name: 'Reindeer Antlers', hat: 'antlers', color: 0x8a5a33, level: 10 },
+  { id: 'hat_tophat', slot: 'hat', name: 'Snowman Top Hat', hat: 'tophat', color: 0x2a2a35, level: 10 },
   // Special snowballs (2026-10-01). Prices and order (= their spot on the Store and Avatar pages): Cody's sheet, 2026-10-02.
   { id: 'sb_none', slot: 'sball', name: 'Empty slot', level: 1 },
   { id: 'sb_ice', slot: 'sball', name: 'Ice Ball', special: 'ice', color: 0xbfeaff, price: 1.00 },
@@ -78,9 +81,9 @@ export const ITEMS = [
 
   // Backpacks (2026-10-01).
   { id: 'pack_none', slot: 'pack', name: 'No backpack', pack: 'none', level: 1 },
-  { id: 'pack_satchel', slot: 'pack', name: 'Elf Satchel', pack: 'satchel', color: 0x3f9a66, price: 0.25 },
-  { id: 'pack_sack', slot: 'pack', name: 'Toy Sack', pack: 'sack', color: 0xcf3128, price: 0.50 },
-  { id: 'pack_gift', slot: 'pack', name: 'Gift Box', pack: 'gift', color: 0x7a4fa3, price: 0.25 },
+  { id: 'pack_satchel', slot: 'pack', name: 'Elf Satchel', pack: 'satchel', color: 0x3f9a66, level: 7 },
+  { id: 'pack_sack', slot: 'pack', name: 'Toy Sack', pack: 'sack', color: 0xcf3128, level: 9 },
+  { id: 'pack_gift', slot: 'pack', name: 'Gift Box', pack: 'gift', color: 0x7a4fa3, level: 8 },
 
   // Special gear (2026-10-01). Cody: existing items become gear and keep their names: Toy Sack = Santa Bag, Gift Box =
   // Present Box, Elf Satchel keeps its name. They are NEW items (gear_sack, gear_gift, gear_satchel) next to the backpacks
