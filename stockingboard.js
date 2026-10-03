@@ -3,7 +3,11 @@
 // gift) jiggles stocking s, then pops a wrapped present (gold sparkle) or a lump of coal (soot puff).
 // Drawn like the Snowball Drop board: flat low-poly shapes with ink outlines, night blue + hat red + lantern gold.
 // Glow (LESSONS): ONE soft warm wash from the fire, low alpha, painted (not added light), checked with all 20 stockings open.
-// createStockings(canvas) → { open(s, gift) → Promise (resolves as the item pops), reset(), setActive(on), hurry(), normal() }
+// TAP TO OPEN (Cody, 2026-10-02): pick() waits for the player to tap an unopened stocking (or press Enter / Space: the next
+// unopened one) and resolves with its number; while it waits the unopened stockings sway a little more. What pops out was
+// already decided (stocking.js asTapped): the tap only chooses where.
+// createStockings(canvas) → { pick() → Promise(s), open(s, gift) → Promise (resolves as the item pops), reset(), setActive(on),
+//   hurry(), normal(), centerOf(s) (tests: where to tap, in CSS pixels on the canvas) }
 import { ROW, STOCKINGS } from './stocking.js';
 
 const W = 680, H = 600, SLOT = 63, X0 = (W - SLOT * ROW) / 2;
@@ -22,7 +26,7 @@ export function createStockings(cv) {
   const ctx = cv.getContext('2d'), reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const st = Array.from({ length: STOCKINGS }, () => ({ jig: -1, pop: -1, gift: null }));
   let fx = [], active = false, raf = 0, last = performance.now(), clock = 0, speed = 1, pending = [];
-  let bg = null;
+  let bg = null, waiting = null; // waiting: pick()'s resolve while it waits for a tap
   function fit() {
     const dpr = Math.min(3, devicePixelRatio || 1), w = cv.clientWidth || 300;
     cv.width = Math.round(w * dpr); cv.height = Math.round(w * ASPECT * dpr); bg = null;
@@ -93,7 +97,7 @@ export function createStockings(cv) {
   // ---- one stocking (and what popped out of it) ----
   function stocking(s, t) {
     const { x, y } = hookOf(s), S = st[s], [body, stripe, patch] = KNITS[(s * 7 + Math.floor(s / ROW)) % KNITS.length];
-    const jig = S.jig >= 0 ? Math.min(1, (clock - S.jig) / 0.52) : 1, a = S.jig >= 0 && jig < 1 ? Math.sin(jig * Math.PI * 7) * 0.2 * (1 - jig) : reduce ? 0 : Math.sin(t * 1.2 + s * 1.9) * 0.012;
+    const jig = S.jig >= 0 ? Math.min(1, (clock - S.jig) / 0.52) : 1, a = S.jig >= 0 && jig < 1 ? Math.sin(jig * Math.PI * 7) * 0.2 * (1 - jig) : reduce ? 0 : Math.sin(t * (waiting && S.jig < 0 ? 2.4 : 1.2) + s * 1.9) * (waiting && S.jig < 0 ? 0.045 : 0.012);
     ctx.save(); ctx.translate(x, y); ctx.rotate(a);
     ctx.strokeStyle = BRIM; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(-4, 9); ctx.quadraticCurveTo(0, -4, 4, 9); ctx.stroke(); // the hanging loop
     const boot = [[-18, 28], [16, 28], [16, 80], [32, 88], [40, 100], [36, 110], [18, 115], [-6, 115], [-18, 104]];
@@ -169,9 +173,18 @@ export function createStockings(cv) {
   function open(s, gift) {
     return new Promise((done) => { st[s].jig = clock; st[s].pop = -1; st[s].gift = gift; pending.push({ s, gift, done }); wake(); });
   }
+  // which unopened stocking is at (x, y) in board units (the boot and its cuff), or -1
+  function hit(x, y) { for (let s = 0; s < STOCKINGS; s++) { if (st[s].jig >= 0) continue; const h = hookOf(s); if (x >= h.x - 24 && x <= h.x + 40 && y >= h.y + 4 && y <= h.y + 116) return s; } return -1; }
+  function take(s) { const w = waiting; waiting = null; cv.style.cursor = ''; w(s); }
+  cv.addEventListener('pointerdown', (e) => { if (!waiting) return; const r = cv.getBoundingClientRect(), s = hit((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H);
+    if (s >= 0) { e.preventDefault(); take(s); } });
+  cv.tabIndex = 0; cv.setAttribute('aria-label', 'The mantel: tap a stocking to open it (Enter or Space opens the next one)');
+  cv.addEventListener('keydown', (e) => { if (!waiting || !(e.key === 'Enter' || e.key === ' ')) return; e.preventDefault(); const s = st.findIndex((S) => S.jig < 0); if (s >= 0) take(s); });
+  function pick() { return new Promise((res) => { waiting = res; cv.style.cursor = 'pointer'; wake(); }); }
+  const centerOf = (s) => { const h = hookOf(s); return { x: (h.x + 6) / W * cv.clientWidth, y: (h.y + 70) / H * cv.clientHeight }; };
   function reset() { for (const S of st) { S.jig = -1; S.pop = -1; S.gift = null; } fx = []; wake(); if (!raf) draw(performance.now(), 0); }
   fit();
-  return { open, reset, setActive: (on) => { visible = on; wake(); }, hurry: () => { speed = 6; }, normal: () => { speed = 1; },
+  return { pick, centerOf, get waiting() { return !!waiting; }, open, reset, setActive: (on) => { visible = on; wake(); }, hurry: () => { speed = 6; }, normal: () => { speed = 1; },
     get opened() { return st.map((S) => (S.pop >= 0 ? (S.gift ? 'gift' : 'coal') : null)); } };
 }
 

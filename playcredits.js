@@ -8,6 +8,7 @@ import { createHouse, check } from './house.js';
 import { newSeed } from './fair.js';
 import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js';
 import { FEE } from './slots.js';
+import { asTapped } from './stocking.js';
 import { play as sfx } from './sfx.js';
 import { SERVER, call, walletReady, payError, forPlayer } from './gameserver.js';
 import { withSlowDown } from './slowdown.js';
@@ -141,7 +142,7 @@ export async function playRun(kind, bet, n, onPlay, forced = []) {
     if (!b) return null;
     closeBuy(true); onChange();
     runCounter(kind, 0, n, 0); // a new run: the counter starts again
-    const results = []; let won = 0, sent = b.sent ?? null, held = !!b.held;
+    const results = []; let won = 0, sent = b.sent ?? null, held = !!b.held, counted = 0, wonShown = 0;
     for (const [i, p] of b.plays.entries()) {
       let s;
       try { s = serverMode ? await withSlowDown(() => call('settle', { ticket: p.ticket, seed: newSeed(16) })) : await house.settle(p.ticket, newSeed(16), forced[i]); }
@@ -149,10 +150,13 @@ export async function playRun(kind, bet, n, onPlay, forced = []) {
       if (s.r && s.proof && s.proof.commit !== p.commit) s = { failed: true, why: 'the server changed its locked fingerprint' }; // never trust, check
       if (s.proof) last[kind] = s.proof;
       if (s.r) won += s.r.pay;
-      runCounter(kind, i + 1, n, won);
       if (s.sent !== undefined) { sent = s.sent; held = !!s.held; }
       results.push(s); refresh(); onChange();
-      await onPlay(s, i, n);
+      // The run counter moves when the PLAYER SEES the result (Cody 2026-10-02: the Drop's total ran ~1 s ahead of its balls;
+      // and it must never give away a Stocking Stuffer turn before its stockings are tapped): after the game's own animation, or,
+      // for a game that keeps going while one plays out (Snowball Drop: balls in flight), when the result it returns has landed.
+      const shown = await onPlay(s, i, n), pay = s.r ? s.r.pay : 0, count = () => runCounter(kind, ++counted, n, (wonShown += pay));
+      if (shown?.landed) shown.landed.then(count, count); else count();
     }
     // demo: the house "sends" the run's winnings to the demo balance, 3% lighter (SANTA's tax), all at once
     if (!serverMode && sent) wallet.add(sent * (1 - FEE));
@@ -183,10 +187,12 @@ async function recheck() {
   const p = shown; if (!p) return;
   const c = await check(p, await cfgForProof(p)), K = KINDS[p.kind];
   let what, map = '';
-  if (p.kind === 'stocking') { // the two shuffles: where the coal was, and the order Santa opened (stockings 1–10 top row, 11–20 bottom)
-    const o = c.outcome, n = (s) => s + 1;
-    what = `coal in stockings ${o.coal.map(n).join(', ')}; Santa opened ${o.opened.map(n).join(', ')} (${o.opened.map((s) => (o.gifts[s] ? 'gift' : 'coal')).join(', ')}): ${o.found} gift${o.found === 1 ? '' : 's'} before ${o.found === 8 ? 'he ran out of gifts' : 'the coal'}, a ${o.mult}× result`;
-    map = `<span class="stockmap" aria-label="Where the gifts (gold) and coal (black) were; opened stockings are outlined and numbered in the order opened">${o.gifts.map((g, s) => { const at = o.opened.indexOf(s);
+  if (p.kind === 'stocking') { // the turn's SEQUENCE from the two shuffles, laid out on the stockings the player tapped (stocking.js asTapped)
+    const o = c.outcome, n = (s) => s + 1, seq = o.opened.map((s) => (o.gifts[s] ? 'gift' : 'coal')).join(', ');
+    // tap to open (Cody 2026-10-02): the k-th stocking tapped held the k-th item; without taps (a turn from before), Santa's own order
+    const taps = Array.isArray(p.taps) && p.taps.length === o.opened.length ? p.taps : o.opened, shown = taps === o.opened ? o.gifts : asTapped(o, taps);
+    what = `the sequence ${seq}: ${o.found} gift${o.found === 1 ? '' : 's'} before ${o.found === 8 ? 'running out of gifts' : 'the coal'}, a ${o.mult}× result. You opened stockings ${taps.map(n).join(', ')}, in that order`;
+    map = `<span class="stockmap" aria-label="The turn laid out on the stockings you opened: gifts gold, coal black; the ones you opened are outlined and numbered in the order you opened them">${shown.map((g, s) => { const at = taps.indexOf(s);
       return `<span class="${g ? 'g' : 'c'}${at >= 0 ? ' o' : ''}">${at >= 0 ? `<small>${at + 1}</small>` : ''}${n(s)}</span>`; }).join('')}</span>`;
   } else if (p.kind === 'drop') what = c.outcome.board === 1 ? `the bounces ${c.outcome.path.map((x) => (x ? 'R' : 'L')).join(' ')} (one per row of pegs), present ${c.outcome.bin + 1} of 9: a ${c.outcome.mult}× result`
     : `present ${c.outcome.bin + 1} of 17 from the published odds table (a ${c.outcome.mult}× result), reached by the bounces ${c.outcome.path.map((x) => (x ? 'R' : 'L')).join(' ')}`;

@@ -56,6 +56,19 @@ function settleOrder(gifts, order, pays) {
   for (const s of order) { opened.push(s); if (!gifts[s]) break; if (++found === GIFTS) break; }
   return { gifts, order, opened, found, mult: pays[found], coal: gifts.flatMap((g, s) => (g ? [] : [s])) };
 }
+// TAP TO OPEN (Cody, 2026-10-02): the player taps the stockings. The turn is still decided before the first tap: the fair
+// numbers fix the SEQUENCE (what the 1st, 2nd, 3rd… stocking opened holds: o.order's contents); the tap only picks WHERE each
+// one appears, so the chances and payback are exactly the same. asTapped(o, taps) lays the turn out as played: the k-th
+// stocking tapped holds the k-th item of the sequence, the ones never tapped hold the rest of it in order (left to right,
+// top row first). Still exactly 8 gifts and 12 coals (it only moves the fair contents around). taps: stocking numbers 0–19.
+export function asTapped(o, taps) {
+  if (taps.length !== o.opened.length || new Set(taps).size !== taps.length || taps.some((d) => !(Number.isInteger(d) && d >= 0 && d < STOCKINGS)))
+    throw new Error('taps must be one different stocking per stocking opened');
+  const show = Array(STOCKINGS).fill(null), rest = o.order.slice(taps.length).map((s) => o.gifts[s]);
+  taps.forEach((d, i) => { show[d] = o.gifts[o.opened[i]]; });
+  for (let d = 0, k = 0; d < STOCKINGS; d++) if (show[d] === null) show[d] = rest[k++];
+  return show;
+}
 // One turn. `rand` gives uniform numbers in [0,1) (the fair numbers in the real version): 38 of them.
 export function deal(bet, rand = Math.random, pays = PAYS) {
   if (!BETS.includes(bet)) throw new Error('unknown bet ' + bet);

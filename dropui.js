@@ -33,7 +33,7 @@ function setBet(b) {
 // A run of n drops at the chosen size: pay once, then the snowballs drop one after another; winnings are sent at the end.
 async function startRun(n) {
   if (opening) return;
-  opening = true; fast = false; setButtons(false);
+  opening = true; fast = false; setButtons(false); landedWon = 0;
   const res = $('#drop .res'), forced = test.run || [], landings = [];
   test.run = undefined;
   try {
@@ -41,9 +41,10 @@ async function startRun(n) {
       $('#runDrop').innerHTML = `Drop <b>${i + 1}</b> of <b>${n}</b>`;
       if (!p.r) { res.textContent = p.refunded ? `Drop ${i + 1} couldn't play (${p.stopped ? 'Snowball Drop is paused' : p.why || 'the pool is refilling'}): its price comes back with your winnings.` : `Couldn't drop (${p.why}).`; return; }
       flying++; res.textContent = `Dropping… result locked (${short(p.proof.commit)}).`;
-      landings.push(board.launch(p.r.path, p.r.bin).then(() => landed(p.r, p)));
+      const landing = board.launch(p.r.path, p.r.bin).then(() => landed(p.r, p)); landings.push(landing);
       if (fast) board.hurry();
       if (!fast) await new Promise((x) => setTimeout(x, 380)); // snowballs a moment apart
+      return { landed: landing }; // the run counter adds this drop when it lands, not when it was drawn
     }, forced);
     await Promise.all(landings);
     if (out) { res.innerHTML = runSummary(out, 'drop', 'drops'); showResult(res); }
@@ -52,8 +53,9 @@ async function startRun(n) {
 function setButtons(on) { document.querySelectorAll('#drop [data-run], #drop .bets button, #drop .runpick input, #drop .runpick [data-step]').forEach((b) => { b.disabled = !on; }); $('#drop .skip').hidden = on; skipLabel($('#drop .skip')); }
 // Skip ahead is a toggle (Cody): pressed, the run goes fast and the button says "Normal speed"; pressed again, back to normal.
 const skipLabel = (b) => { b.textContent = fast ? 'Normal speed' : 'Skip ahead'; b.setAttribute('aria-pressed', String(fast)); };
+let landedWon = 0; // tests: what the balls that have LANDED this run won (the run counter must never show more)
 function landed(r, p) {
-  flying--; if (!flying) wake();
+  flying--; if (!flying) wake(); landedWon += r.pay;
   const res = $('#drop .res'), card = $('#drop .dropcard');
   onPool(p.poolUsd);
   history.unshift(r.mult); history.length = Math.min(history.length, MAX_HISTORY);
@@ -78,7 +80,7 @@ export function initDrop(opts) {
   $('#drop .skip').addEventListener('click', (e) => { fast = !fast; if (fast) board.hurry(); else board.normal(); skipLabel(e.currentTarget); });
   document.querySelectorAll('#drop .bets button').forEach((b) => b.addEventListener('click', () => setBet(+b.dataset.dbet)));
   setBet(0.1); odds(); render();
-  window.__drop = { test, get opening() { return opening; }, get flying() { return flying; }, history, get bet() { return bet; }, get fast() { return fast; } };
+  window.__drop = { test, get opening() { return opening; }, get flying() { return flying; }, get landedWon() { return landedWon; }, history, get bet() { return bet; }, get fast() { return fast; } };
 }
 // The board draws (falling snow, snowballs) only while it's on screen, or while snowballs are still falling: three game
 // canvases drawing at once is heavy for a phone, and nobody sees snow that's scrolled away.
