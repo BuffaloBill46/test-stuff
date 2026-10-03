@@ -49,7 +49,10 @@
 - [x] **5. Backup** (2026-10-03, Cody's yes on the price): DigitalOcean live snapshot `santa-before-mainnet-2026-10-03`,
   2.56 GB, about $0.15/month. It includes the mainnet keys in `/etc/santa/keys-mainnet`. The site stayed up while it was taken.
   **Take another snapshot after GO**, so the backup holds the switched settings too.
-- [ ] 1. Fund the wallets.  - [ ] 2. Cody's Phantom address.  - [ ] 4. Telegram (recommended).  - [ ] 6. GO.
+- [x] **4. Telegram** (2026-10-03): new bot "Santa Hat Alerts" (@santahatgames_alerts_bot), created in BotFather on Cody's say-so.
+  Cody saved the token; Claude installed it on the Droplet without displaying it (games.env and games.env.mainnet).
+  The chat is remembered in alert_settings, which the reset keeps. A test alert arrived. Alerts now go to Telegram every 5 min.
+- [ ] 1. Fund the wallets.  - [ ] 2. Cody's Phantom address.  - [ ] 6. GO.
 
 ## Done since the checklist was written (all live on the test network, tested)
 - **Security review done**, every finding checked by Claude before acting on it. Fixed:
