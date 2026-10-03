@@ -8,6 +8,7 @@ import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable
 import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js';
 import { initSeason, refreshSeason } from './seasonui.js';
 import { initMoneyStrips, refreshBurned } from './moneystrip.js';
+import { createCoach } from './coach.js';
 import { TICKET_MAX } from './ranked.js';
 import { levelInfo, clampLevel } from './levels.js';
 import { SERVER, call, token as signInToken } from './gameserver.js';
@@ -311,7 +312,7 @@ function tryThrow(tx, tz) {
   if (!e || e.stun || ctl.cool > 0 || e.ammo <= 0 || !(v.phase === 'lobby' || v.phase === 'play')) return;
   if (armed && cantThrow(armed, { ammo: e.ammo, max: maxOf(e), level: me.l || 1 })) armed = ''; // not enough snowballs any more: a plain throw
   ctl.sp = armed; armed = locked; ui.lastHud = ''; // a locked special stays armed for the next throw
-  ctl.t++; ctl.ax = tx; ctl.az = tz; ctl.cool = K.HUMAN_COOL; ctl.throwT = 1; ctl.dirty = true; sfx('throw');
+  ctl.t++; ctl.ax = tx; ctl.az = tz; ctl.cool = K.HUMAN_COOL; ctl.throwT = 1; ctl.dirty = true; sfx('throw'); coach.thrown(); // first-match tips (coach.js)
   const dx = tx - ctl.x, dz = tz - ctl.z, l = Math.hypot(dx, dz) || 1; ctl.face = Math.atan2(dx, dz);
   if (!isHost && !ctl.sp) { // show my own plain snowball instantly; the referee's copy of it is hidden on my screen (specials: the referee's)
     const dist = Math.max(1.5, l), tt = dist / K.BALL_SPEED, mesh = toon(ballGeo, 0.02); mesh.material = ballMat(BY_ID.get(me.a.snow).color); scene.add(mesh);
@@ -501,6 +502,7 @@ const joy = { x: 0, y: 0, id: null, ox: 0, oy: 0, taps: [], moving: false, holdT
 const JOY_TAPS_MS = 700, JOY_HOLD_MS = 350;
 const JOY_MAX = 42, JOY_GRAB = 72; // knob travel; how near its centre a touch must start to steer
 const touchUI = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+const coach = createCoach({ touch: touchUI, el: $('#coach') }); // first-match tips (coach.js)
 function joyHome() { // remembered as a share of the screen, so it survives turning the phone
   let p = null; try { p = JSON.parse(store.get('sh_joy') || 'null'); } catch {}
   const x = p ? p.fx * W : 84, y = p ? p.fy * H : H - (H < 480 ? 84 : 176); // default: bottom left (above the emotes when they span the bottom)
@@ -585,8 +587,9 @@ function renderChrome() {
   const cnt = inRoom() && v && v.phase === 'count' ? Math.max(1, Math.ceil(v.time)) : 0;
   if (cnt !== ui.lastCount) { ui.lastCount = cnt; const c = $('#count'); c.hidden = !cnt; if (cnt) { c.textContent = cnt; c.classList.remove('show'); void c.offsetWidth; c.classList.add('show'); sfx('tick'); } }
   // Out of a match: clear the scoreboard too (it used to linger after Leave, showing over the Avatar tab on Cody's phone).
-  if (!inRoom() || !v) { if (ui.lastCard) { $('#panel').hidden = true; ui.lastCard = ''; } setHud(''); ui.lastBoard = ''; $('#board').hidden = true; return; }
+  if (!inRoom() || !v) { coach.update(null); if (ui.lastCard) { $('#panel').hidden = true; ui.lastCard = ''; } setHud(''); ui.lastBoard = ''; $('#board').hidden = true; return; }
   const m = myEnt(v);
+  coach.update(v, me.w ? null : m); // first-match tips: move, throw, get the hat (coach.js)
   const humans = v.ents.filter((e) => !e.bot);
   // lobby / results panel
   let card = '';

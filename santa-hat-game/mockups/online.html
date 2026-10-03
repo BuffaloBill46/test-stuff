@@ -82,6 +82,12 @@ h1, h2 { font: 800 38px/1 var(--display); margin: 6px 0 8px; color: var(--brim);
 #panel .endacts .go { font-size: 22px; padding: 8px 20px; }
 #panel .nudge { margin-top: 10px; padding: 10px 12px; background: rgba(255,190,92,.12); border: 1px solid var(--lamp); font-size: 14px; line-height: 1.35; }
 #panel .nudge b { color: var(--lamp); } #panel .nudge button { display: block; margin-top: 8px; }
+/* first-match tips (coach.js): top centre, clear of the joystick, the results card and the special buttons */
+#coach { position: fixed; z-index: 7; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 70px); width: min(440px, calc(100% - 32px)); box-sizing: border-box; padding: 10px 14px 12px; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; border-color: var(--lamp); }
+#coach i { grid-column: 1 / -1; font: 700 10px/1.3 var(--digits); letter-spacing: 1px; text-transform: uppercase; font-style: normal; color: var(--frost); }
+#coach b { font: 400 24px/1.1 var(--display); color: var(--lamp); } #coach span { grid-column: 1; font-size: 15px; line-height: 1.3; }
+#coach button { grid-column: 2; grid-row: 2 / 4; align-self: center; background: none; border: 1px solid rgba(185,205,242,.4); color: var(--dim); font: 600 13px var(--body); padding: 6px 10px; cursor: pointer; }
+@media (max-width: 600px) { #coach { top: calc(env(safe-area-inset-top, 0px) + 58px); } #coach b { font-size: 20px; } #coach span { font-size: 14px; } }
 .dim { color: var(--dim) !important; font-size: 14px; }
 label { display: block; font: 700 11px/1 var(--body); text-transform: uppercase; letter-spacing: 1.4px; color: var(--dim); margin: 10px 0 5px; }
 input[type=text], input[type=number] { width: 100%; font: 500 17px/1.2 var(--body); color: var(--text); background: #0e1328; border: 2px solid var(--ink); box-shadow: inset 0 0 0 1px rgba(185,205,242,.2); border-radius: 3px; padding: 9px 10px; -webkit-user-select: text; user-select: text; }
@@ -1212,6 +1218,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
   <div id="gamesList"><p class="dim">Loading…</p></div>
 </section>
 <section id="panel" class="plaque" hidden></section>
+<div id="coach" class="plaque" hidden aria-live="polite"></div>
 <div id="emotes" hidden></div>
 <div id="joy" hidden></div>
 <div id="zoom" hidden><button id="zoomIn" aria-label="Zoom in">+</button><button id="zoomOut" aria-label="Zoom out">−</button></div>
