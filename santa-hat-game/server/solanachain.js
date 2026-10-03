@@ -16,14 +16,24 @@ const memo = (text) => ({ programAddress: MEMO, accounts: [], data: new TextEnco
 
 // keyFor(row) → the signer of the pool wallet that pays this row; to(row) → the destination wallet address;
 // feeOf() → { bps, max } of the token now (server: liveFee(mint, [rpcUrl])); label(row) → the unique memo text.
-export function makeSolanaChain({ kit, T22, rpcUrl, mint, decimals = 6, keyFor, to, feeOf, label }) {
-  const rpc = kit.createSolanaRpc(rpcUrl);
+// RENT-DRAIN GUARD (security review, 2026-10-03): a winner's token account is opened by the pool AT MOST ONCE A DAY per wallet.
+// Anyone who paid us already had one (they paid from it), so a missing one means they closed it, and closing returns its rent to
+// them: open → win → close → win again would drain the pool's SOL. A second opening for the same wallet within a day (for a
+// different payout) is not signed: sign() answers { hold } and the worker parks that ONE payout as 'held' for Cody (alert;
+// admin release), so nothing else waits. Re-signing the SAME payout (an expired try) is never held. now: tests only.
+export function makeSolanaChain({ kit, T22, rpcUrl, mint, decimals = 6, keyFor, to, feeOf, label, now = () => Date.now(), rpc: rpcIn = null }) {
+  const rpc = rpcIn || kit.createSolanaRpc(rpcUrl), openedFor = new Map(); // wallet → { at, row } (this worker's memory)
   const ata = async (owner) => (await T22.findAssociatedTokenPda({ owner, tokenProgram: T22.TOKEN_2022_PROGRAM_ADDRESS, mint }))[0];
   return {
     async sign(row) {
       const from = await keyFor(row), dest = await to(row), amount = BigInt(row.amount_raw), fee = await feeOf();
       const feeRaw = BigInt(Math.min(Math.ceil((Number(amount) * fee.bps) / 10000), fee.max)); // the token's own rounding (market.js feeOn)
       const [source, destination] = [await ata(from.address), await ata(dest)];
+      if (!(await rpc.getAccountInfo(destination, { encoding: 'base64', commitment: 'confirmed' }).send()).value) {
+        const last = openedFor.get(String(dest));
+        if (last && last.row !== row.id && now() - last.at < 86_400_000) return { hold: 'the winner closed their SANTA account again within a day (rent-drain guard)' };
+        if (!last || last.row !== row.id) openedFor.set(String(dest), { at: now(), row: row.id });
+      }
       const { value: bh } = await rpc.getLatestBlockhash({ commitment: 'confirmed' }).send();
       const m = kit.pipe(kit.createTransactionMessage({ version: 0 }), (x) => kit.setTransactionMessageFeePayerSigner(from, x),
         (x) => kit.setTransactionMessageLifetimeUsingBlockhash(bh, x),

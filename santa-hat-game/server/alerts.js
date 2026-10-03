@@ -16,7 +16,7 @@ const POOL = (g) => (g === 'spin' ? 'Game' : g === 'slots' ? 'old Slots' : g);
 export function createAlerts({ db, telegram, walletRaw, refereeHealth, games = ['spin', 'slots'], now = () => Date.now() }) {
   async function findings() {
     const out = [], add = (key, text) => out.push({ key, text });
-    for (const p of await db.query(`select id, amount_usd from public.payouts where status = 'held' order by id`)) add(`held:${p.id}`, `A payout was FROZEN by the safety cap: payout #${p.id}, $${(+p.amount_usd).toFixed(2)}. Look at it in the admin screen (Release if it's real).`);
+    for (const p of await db.query(`select id, amount_usd from public.payouts where status = 'held' order by id`)) add(`held:${p.id}`, `A payout is HELD for you: payout #${p.id}, $${(+p.amount_usd).toFixed(2)} (the safety cap froze it, or the winner closed their SANTA account again within a day; the server log says which). Look at it in the admin screen (Release if it's real).`);
     for (const t of ['payouts', 'pool_transfers', 'lottery_payouts']) {
       for (const p of await db.query(`select id from public.${t} where status = 'failed' order by id`)) add(`failed:${t}:${p.id}`, `A send FAILED 5 times: ${t} #${p.id}. It needs a look (wallet empty? network down?).`);
       const [s] = await db.query(`select count(*)::int as n from public.${t} where status in ('queued', 'sending') and created_at < now() - make_interval(mins => $1)`, [STUCK_MINUTES]);

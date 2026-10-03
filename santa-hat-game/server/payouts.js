@@ -41,6 +41,11 @@ export async function runPayouts({ db, chain, limit = 20, table = 'payouts' }) {
   async function signAndSend(p) {
     if (p.attempts >= MAX_ATTEMPTS) { await db.query(`update ${T} set status = 'failed' where id = $1`, [p.id]); report.failed++; return; }
     const s = await chain.sign(p);
+    // the adapter refused to sign this one (solanachain.js rent-drain guard): park it for Cody, never block the others
+    // (each table's own "waits for Cody" status: winnings 'held' (admin release), lottery prizes 'manual' (paid by hand), anything
+    // else 'failed' (an alert); reward sweeps never hold)
+    if (s?.hold) { const parked = { payouts: 'held', lottery_payouts: 'manual' }[table] || 'failed';
+      await db.query(`update ${T} set status = '${parked}' where id = $1 and status = 'sending'`, [p.id]); console.error(`payout ${table} #${p.id} ${parked}: ${s.hold}`); report.held = (report.held || 0) + 1; return; }
     // every money table that exists here (the lottery's only once supabase/011 is applied): one transaction, one row, anywhere
     const tables = (await db.query(`select t from unnest(array['public.payouts', 'public.pool_transfers', 'public.lottery_payouts', 'public.reward_sweeps']) t where to_regclass(t) is not null`)).map((r) => r.t);
     const clash = await db.query(tables.map((t) => `select 1 from ${t} where tx = $1`).join(' union all '), [s.signature]);

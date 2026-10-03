@@ -32,7 +32,7 @@ const expectSpin = bookSpin + heldRaw - 300000000 + 25000, walletRaw = async (g)
 const alerts = createAlerts({ db, telegram, walletRaw, refereeHealth: async () => { if (!refereeUp) throw new Error('connection refused'); }, now: () => t });
 let r = await alerts.run();
 const has = (re) => sent.some((x) => re.test(x));
-assert.ok(has(/FROZEN.*payout #/), 'held payout'); assert.ok(has(/FAILED 5 times: pool_transfers/), 'failed send');
+assert.ok(has(/HELD for you: payout #/), 'held payout'); assert.ok(has(/FAILED 5 times: pool_transfers/), 'failed send');
 assert.ok(has(/waiting over 10 minutes: is the payout worker running/), 'stuck queue'); assert.ok(has(/TOP-OFF of 300 SANTA/), 'top-off waiting');
 assert.ok(has(/EMERGENCY STOP is on for the old Slots pool/), 'emergency stop'); assert.ok(has(/MATCH SERVER isn't answering/), 'match server down');
 assert.ok(has(/BOOKS DON'T MATCH the Game pool wallet: the wallet has 7 SANTA MORE/), 'drift found, with direction and size: ' + sent.filter((x) => /BOOKS/.test(x)));

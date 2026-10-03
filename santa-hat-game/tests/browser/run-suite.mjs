@@ -3,9 +3,10 @@
 // Run: PW=<folder with node_modules/playwright> node run-suite.mjs [how many at once=4] [only these tests…]
 // Logs: out/suite/<test>.log; a test passes when it exits 0 and prints no ✗ / FAILED / error.
 import { spawn } from 'child_process'; import { mkdirSync, createWriteStream, readFileSync } from 'fs';
+// spin-test.mjs is not in the list: Spin was retired (the page hides it; games.js RETIRED)
 const TESTS = ['admin-test', 'controls-test', 'costumes-test', 'drop-test', 'finish-test', 'games-test', 'joystick-test', 'link-test', 'loadout-test',
   'lobby-test', 'lottery-test', 'match-intro-test', 'plinko-test', 'progress-or-test', 'referee-ranked-test', 'referee-server-test', 'runpick-test',
-  'server-mode-test', 'settings-mode-test', 'sfx-test', 'shop-test', 'skip-toggle-test', 'spin-test', 'stocking-test', 'store-gear-test', 'tabs-test',
+  'server-mode-test', 'settings-mode-test', 'sfx-test', 'shop-test', 'skip-toggle-test', 'stocking-test', 'store-gear-test', 'tabs-test',
   'theme-test', 'visuals-gear-test', 'button-audit', 'specials-play', 'gear-play'];
 // the fixed local port each one opens (two tests with the same port wait for each other)
 const PORTS = { 'admin-test': 8788, 'shop-test': 8788, 'settings-mode-test': 8787, 'server-mode-test': 8787, 'button-audit': 8787, 'finish-test': 8794,

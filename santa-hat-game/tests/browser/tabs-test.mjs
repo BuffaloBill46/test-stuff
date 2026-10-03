@@ -43,6 +43,9 @@ for (const [label, vw, vh] of [['desk', 1280, 800], ['phone', 390, 844]]) {
   await page.locator('[data-try="sb_ice"]').click(); await wait(1500);
   console.log(label, 'gorilla save disabled:', await page.isDisabled('#avsave'), '|', await page.textContent('#avmsg'));
   await page.screenshot({ path: `${OUT}-${label}-3-tryon-gorilla.png` });
+  // the tried-on ball isn't owned, so Save stays off while it's in the look: start again from the saved look (a reload), then
+  // pick free level-1 things (since 028 most looks unlock by level, so the test uses ones every level-1 player has)
+  await page.reload(); await page.waitForFunction(() => window.__sq, null, { timeout: 60000 }); await wait(1500); await tap('#t-avatar'); await wait(500);
   await page.click('[data-slot="face"]'); await wait(300); await page.click('[data-pick="face_smile"]');
   await page.click('[data-slot="shirt"]'); await wait(300); await page.click('[data-pick="shirt_blue"]');
   await page.fill('#avname', 'Cody'); await page.click('#avsave'); await wait(800);

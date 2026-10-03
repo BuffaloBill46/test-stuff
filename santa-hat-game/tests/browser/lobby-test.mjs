@@ -25,7 +25,7 @@ await A.click('#playRanked'); await wait(600);
 console.log('ranked lobby:', JSON.stringify({ title: await A.textContent('#lobbyTitle'), tourneyVisible: await A.isVisible('#tourney'), tourneyDisabled: await A.isDisabled('#tourney'), auto: await A.textContent('#quick'), autoDisabled: await A.isDisabled('#quick'), list: (await A.textContent('#gamesList')).trim() }));
 await A.screenshot({ path: 'out/lobby-1-ranked.png' });
 await A.click('#homeClose'); await A.click('#playUnranked'); await wait(400);
-await A.fill('#name', 'Ava'); await A.click('[data-lmode="ffa"]'); await A.click('#quick');
+await A.fill('#name', 'Ava'); await A.click('#quick'); // (the mode picker went: FFA is the only mode)
 await A.waitForFunction(() => window.__sq.room, null, { timeout: 30000 }); await wait(3500);
 console.log('Ava after auto match:', JSON.stringify(await st(A)), '| chip', (await A.textContent('#roomchip')).trim());
 const B = await open(); await B.click('#playUnranked'); await wait(4500);
