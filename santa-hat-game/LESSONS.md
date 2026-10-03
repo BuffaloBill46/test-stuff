@@ -460,3 +460,12 @@ game page failed to load (season-test caught it). Rule: an optional card renders
 ## 2026-10-03: `$'` in a JavaScript replace string inserts the rest of the text
 `s.replace(x, "...$'...")`: `$'` means "everything after the match", so a quote-dollar in the new text pasted the rest of tabs.js
 into itself. Rule: edit files with the Edit tool; in a replace string, write `$$` for a literal `$`, or pass a function.
+
+## 2026-10-03: "doesn't block the camera" can be a check, and a ray test on a merged mesh is too slow for it
+The Halloween folk (skeletons, cats, zombies) are merged into one mesh that spans the whole plaza, so casting rays at it tested
+every triangle for every ray: the first version ran over 10 minutes and never finished. The check now works per vertex: from
+every match camera (player and watcher; computer, phone upright and sideways; zoom 0.6 to 4; following a player anywhere on the
+field), does the line through any new-prop vertex carry on INTO the field (inside 13.2, below hat height)? About 77 million lines
+in seconds. Broken on purpose (a zombie moved onto the field), it went red. Also learned: the match camera looks down so steeply
+that even a figure right outside the south wall can't hide the field, so "keep the south side clear" is a safety margin, not
+the reason nothing blocks. (tests/browser/halloween-spooky-shots.mjs)
