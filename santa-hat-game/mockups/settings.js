@@ -5,10 +5,16 @@
 import { MACHINES, SYMBOLS, SYM, stats, POOL_RULES, pull } from './slots.js';
 import { MAIN, BONUS, MAIN_SLICES, BONUS_SLICES, MAIN_COUNTS, BONUS_COUNTS, SPIN_RULES, layout, odds as spinOdds, payback as spinPaybackOf, topMult } from './spin.js';
 import { ITEMS, SLOTS, BY_ID } from './catalog.js';
-import { MAX_MULT as DROP_TOP, BETS as DROP_BETS } from './plinko.js'; // Snowball Drop shares the Spin pool (Cody, 2026-09-30)
+// ONE GAME POOL (Cody, 2026-10-02): Big Hat, Snowball Drop and Stocking Stuffer all play from the shared pool (rules.spin), and
+// each has a pool jackpot (a % of that pool, scaled by the play's size). Their payback depends on the pool, so it is reported
+// as fixed prizes + the jackpot at a stated pool size, and the guard rails check it at BOTH ends of the pool's normal range:
+// the top-off point (topOffBelow, $200: a play never starts below it) and the skim point (skimAt, $1,025: the pool never stays
+// at or above it). The headline figure is at the pool's start (start, $500).
+import { MAX_MULT as DROP_TOP, BETS as DROP_BETS, JP as DROP_JP, paybackAt as dropPaybackAt, payback as dropFixedPayback, jackpotOdds as dropJackpotOdds, realWin as dropWinOf } from './plinko.js';
 import { KINDS, SIZES } from './credits.js';
-// Stocking Stuffer plays from the same pool too (Cody, 2026-10-02); its pay table (× the turn price, by gifts 0–8) is editable
-import { DEFAULT_PAYS as STOCK_PAYS, PAYS as STOCK_LIVE, BETS as STOCK_BETS, GIFTS as STOCK_GIFTS, payback as stockPaybackOf, realWin as stockWinOf, topMult as stockTopOf } from './stocking.js';
+// Stocking Stuffer (Cody, 2026-10-02): its pay table (× the turn price, by gifts 0–7; 8 gifts = the pool jackpot) is editable
+import { DEFAULT_PAYS as STOCK_PAYS, BOARD1_PAYS, PAYS as STOCK_LIVE, JP as STOCK_JP, BETS as STOCK_BETS, MAX_OPEN as STOCK_OPEN, payback as stockPaybackOf, paybackAt as stockPaybackAt, jackpotOdds as stockJackpotOdds, realWin as stockWinOf, topMult as stockTopOf } from './stocking.js';
+import { JACKPOT_PCT } from './slots.js';
 
 const big = MACHINES.big;
 // The built-in items, captured before applyToGame() can change the shared ones.
@@ -20,17 +26,28 @@ export const DEFAULT_SETTINGS = Object.freeze({
   spin: { main: { ...MAIN_COUNTS }, bonus: { ...BONUS_COUNTS } },  // how many of the 40 main / 12 bonus segments show each result
   big: { counts: { ...big.counts }, pays: structuredClone(big.pays), hatBonus: big.hatBonus, jackpotPct: big.jackpotPct, jackpotOdds: 1 / big.poolJackpotOdds },
   store: { items: [] },                                                   // additions / changes on top of catalog.js
-  stocking: { pays: [...STOCK_PAYS] },                                    // Stocking Stuffer: × the turn price for 0–8 gifts
+  stocking: { pays: [...BOARD1_PAYS] },                                   // Stocking Stuffer BOARD 1 (8 gifts; old turns re-check on it)
+  stocking2: { pays: [...STOCK_PAYS], jackpotPct: JACKPOT_PCT },          // Stocking Stuffer board 2: × the turn price for 0–7 gifts; 8 = jackpot
+  drop: { jackpotPct: JACKPOT_PCT },                                      // Snowball Drop board 3: the centre present's share of the pool
 });
-// Settings published before Stocking Stuffer existed have no `stocking`: their plays (and re-checks) use Cody's built-in table.
-export const stockPays = (s) => s.stocking?.pays || [...STOCK_PAYS];
+// Settings published before Stocking Stuffer existed have no `stocking`: their (board 1) re-checks use Cody's board-1 table.
+export const stockPays = (s) => s.stocking?.pays || [...BOARD1_PAYS];
+// Settings published before 2026-10-02's shared pool have no `stocking2` / `drop`: new plays on them use Cody's tables and 25%.
+export const stock2Of = (s) => ({ pays: s.stocking2?.pays || [...STOCK_PAYS], jackpotPct: s.stocking2?.jackpotPct ?? JACKPOT_PCT });
+export const dropOf = (s) => ({ jackpotPct: s.drop?.jackpotPct ?? JACKPOT_PCT });
 
 // The machine and wheel the rules use, from a settings record.
 export function build(s) {
   const m = { ...big, bet: s.prices.big, counts: s.big.counts, pays: s.big.pays, hatBonus: s.big.hatBonus, jackpotPct: s.big.jackpotPct, poolJackpotOdds: 1 / s.big.jackpotOdds };
   m.strips = Array.from({ length: m.reels }, (_, i) => spreadStrip(m.counts, 1000 * m.reels + 17 * i + 3));
   m.stripLen = m.strips[0].length; m.lineBet = m.bet / m.lines.length;
-  return { machine: m, wheel: wheelFrom(s.spin), prices: s.prices, stocking: { pays: stockPays(s) } };
+  return { machine: m, wheel: wheelFrom(s.spin), prices: s.prices, stocking: { pays: stockPays(s) }, stocking2: stock2Of(s), drop: dropOf(s) };
+}
+// Payback of each Game-pool game at a given pool size (dollars): fixed prizes + its pool jackpot (pct × pool, × the play's size
+// for Drop and Stocking, whose jackpot share of what's played is the same at any size; Big Hat is $1 a pull: pct × pool ÷ price).
+export function paybacksAt(b, pool, bigFixed = stats(b.machine).payback) {
+  const m = b.machine;
+  return { big: bigFixed + m.poolJackpotOdds * m.jackpotPct * pool / m.bet, drop: dropPaybackAt(pool, b.drop.jackpotPct), stocking: stockPaybackAt(pool, b.stocking2.jackpotPct, b.stocking2.pays) };
 }
 // Same spreading as slots.js (so version 0 gives the identical strips): deterministic shuffle, no symbol twice in a row.
 // Symbols go in the game's fixed symbol order, NOT the order the counts happen to be listed in: the database stores settings
@@ -69,33 +86,47 @@ export function check(s, rules = { spin: SPIN_RULES, slots: POOL_RULES }) {
   if (!num(s.big?.jackpotPct) || s.big.jackpotPct < LIMITS.jackpotPct[0] || s.big.jackpotPct > LIMITS.jackpotPct[1]) p.push('pool jackpot must be 1%–50% of the pool');
   if (!num(s.big?.jackpotOdds) || s.big.jackpotOdds < LIMITS.jackpotOdds[0] || s.big.jackpotOdds > LIMITS.jackpotOdds[1]) p.push('pool jackpot odds must be 1 in 1,000 to 1 in 10,000,000');
   for (const it of s.store?.items || []) p.push(...checkItem(it));
-  // Stocking Stuffer's pay table: 9 prizes (0 to 8 gifts), each 0–1000×, and finding more gifts never pays less
-  const sp = stockPays(s);
-  if (!Array.isArray(sp) || sp.length !== STOCK_GIFTS + 1 || sp.some((x) => !num(x) || x < 0 || x > 1000)) p.push(`Stocking Stuffer needs ${STOCK_GIFTS + 1} prizes (0 to ${STOCK_GIFTS} gifts), each 0–1000×`);
+  // Stocking Stuffer board 1's table (old turns re-check on it; no longer played): 9 prizes (0 to 8 gifts), never less for more
+  const sp1 = stockPays(s);
+  if (!Array.isArray(sp1) || sp1.length !== STOCK_OPEN + 1 || sp1.some((x) => !num(x) || x < 0 || x > 1000)) p.push(`Stocking Stuffer's old (8-gift) table needs ${STOCK_OPEN + 1} prizes, each 0–1000×`);
+  else if (sp1.some((x, k) => k > 0 && x < sp1[k - 1])) p.push('Stocking Stuffer\'s old (8-gift) table: more gifts must never pay less than fewer gifts');
+  // Stocking Stuffer (board 2, played now): 8 fixed prizes (0 to 7 gifts), each 0–1000×, never less for more; 8 gifts = jackpot
+  const s2 = stock2Of(s), sp = s2.pays;
+  if (!Array.isArray(sp) || sp.length !== STOCK_OPEN || sp.some((x) => !num(x) || x < 0 || x > 1000)) p.push(`Stocking Stuffer needs ${STOCK_OPEN} prizes (0 to ${STOCK_OPEN - 1} gifts; ${STOCK_OPEN} gifts is the pool jackpot), each 0–1000×`);
   else if (sp.some((x, k) => k > 0 && x < sp[k - 1])) p.push('Stocking Stuffer: more gifts must never pay less than fewer gifts');
+  const pctOk = (v) => num(v) && v >= LIMITS.jackpotPct[0] && v <= LIMITS.jackpotPct[1];
+  if (!pctOk(s2.jackpotPct)) p.push('Stocking Stuffer\'s pool jackpot must be 1%–50% of the pool');
+  if (!pctOk(dropOf(s).jackpotPct)) p.push('Snowball Drop\'s pool jackpot must be 1%–50% of the pool');
   if (p.length) return { ok: false, problems: p };
-  const { machine: m, wheel } = build(s), st = stats(m);
+  const b = build(s), { machine: m, wheel } = b, st = stats(m), G = rules.spin; // G: the shared Game pool's rules
   const spinPayback = spinPaybackOf(wheel), spinWin = Object.entries(spinOdds(wheel)).reduce((a, [x, q]) => a + (x >= 2 ? q : 0), 0);
   const maxMult = topMult(wheel), topFixed = Math.max(...Object.values(m.pays).flatMap((q) => Object.values(q))) * m.bet;
-  if (spinPayback < LIMITS.payback[0] || spinPayback > LIMITS.payback[1]) p.push(`Spin would pay back ${(spinPayback * 100).toFixed(1)}% (allowed ${LIMITS.payback.map((x) => x * 100 + '%').join('–')}; over 100% drains the pool)`);
-  if (st.payback < LIMITS.payback[0] || st.payback > LIMITS.payback[1]) p.push(`Big Hat would pay back ${(st.payback * 100).toFixed(1)}% (allowed ${LIMITS.payback.map((x) => x * 100 + '%').join('–')})`);
-  // a pool must be able to cover its biggest fixed prize after a top-off, or the game locks itself (LESSONS)
-  if (rules.slots.topOffTo < topFixed) p.push(`the Slots top-off ($${rules.slots.topOffTo}) must cover the top prize ($${topFixed}), or the game can lock`);
-  if (rules.spin.topOffTo < maxMult * s.prices.spin100) p.push(`the Spin top-off ($${rules.spin.topOffTo}) must cover the top prize ($${maxMult * s.prices.spin100})`);
-  const dropTop = DROP_TOP * Math.max(...DROP_BETS); // Snowball Drop pays from the same pool
-  if (rules.spin.topOffTo < dropTop) p.push(`the Spin top-off ($${rules.spin.topOffTo}) must cover Snowball Drop's top prize ($${dropTop}): they share the pool`);
-  // Stocking Stuffer: the same payback limits as the other games, and the shared pool's top-off must cover its top prize
-  const stockPayback = stockPaybackOf(sp), stockTop = stockTopOf(sp) * Math.max(...STOCK_BETS);
-  if (stockPayback < LIMITS.payback[0] || stockPayback > LIMITS.payback[1]) p.push(`Stocking Stuffer would pay back ${(stockPayback * 100).toFixed(1)}% (allowed ${LIMITS.payback.map((x) => x * 100 + '%').join('–')})`);
-  if (rules.spin.topOffTo < stockTop) p.push(`the Drop pool top-off ($${rules.spin.topOffTo}) must cover Stocking Stuffer's top prize ($${stockTop}): they share the pool`);
+  const allowed = LIMITS.payback.map((x) => x * 100 + '%').join('–'), pc = (x) => (x * 100).toFixed(1) + '%';
+  if (spinPayback < LIMITS.payback[0] || spinPayback > LIMITS.payback[1]) p.push(`Spin would pay back ${pc(spinPayback)} (allowed ${allowed}; over 100% drains the pool)`);
+  // Payback of the three Game-pool games, fixed prizes + pool jackpot, at the LOW end (the top-off point) and the HIGH end (the
+  // skim point) of the pool: both must be inside the limits, so no pool size in between can break them (the payback rises
+  // steadily with the pool). Reported at the start ($500) as the headline.
+  const lo = G.topOffBelow, hi = G.skimAt, at = { lo: paybacksAt(b, lo, st.payback), start: paybacksAt(b, G.start ?? G.topOffTo, st.payback), hi: paybacksAt(b, hi, st.payback) };
+  for (const [k, name] of [['big', 'Big Hat'], ['drop', 'Snowball Drop'], ['stocking', 'Stocking Stuffer']]) {
+    for (const [end, pool] of [['lo', lo], ['hi', hi]]) if (!(at[end][k] >= LIMITS.payback[0] && at[end][k] <= LIMITS.payback[1])) p.push(`${name} would pay back ${pc(at[end][k])} with the jackpot at a $${pool} Game pool (allowed ${allowed})`);
+  }
+  // a pool must be able to cover every game's biggest FIXED prize after a top-off, or a game locks itself (LESSONS). One pool.
+  if (G.topOffTo < topFixed) p.push(`the Game pool top-off ($${G.topOffTo}) must cover Big Hat's top prize ($${topFixed}), or the game can lock`);
+  if (G.topOffTo < maxMult * s.prices.spin100) p.push(`the Game pool top-off ($${G.topOffTo}) must cover Spin's top prize ($${maxMult * s.prices.spin100})`);
+  const dropTop = DROP_TOP * Math.max(...DROP_BETS);
+  if (G.topOffTo < dropTop) p.push(`the Game pool top-off ($${G.topOffTo}) must cover Snowball Drop's top prize ($${dropTop})`);
+  const stockTop = stockTopOf(sp) * Math.max(...STOCK_BETS);
+  if (G.topOffTo < stockTop) p.push(`the Game pool top-off ($${G.topOffTo}) must cover Stocking Stuffer's top fixed prize ($${stockTop})`);
   // real-win rate for Big Hat: simulated (lines interact), 20,000 pulls on a throwaway pool
   let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647); let ahead = 0; const pool = { pool: 1e9, prepaid: true };
   for (let i = 0; i < 20000; i++) if (pull(pool, m, rnd).ahead) ahead++;
+  const range = (k) => ({ payback: at.start[k], at: G.start ?? G.topOffTo, low: at.lo[k], lowPool: lo, high: at.hi[k], highPool: hi });
   const report = {
     spin: { payback: spinPayback, realWin: spinWin, top: maxMult, stars: s.spin.main.star || 0 },
-    big: { payback: st.payback, realWin: ahead / 20000, topPrize: topFixed, top100: st.each['hat:5'] ? 1 / (st.each['hat:5'] * st.lines) : null, jackpot: `${Math.round(s.big.jackpotPct * 100)}% of the pool, 1 in ${Math.round(s.big.jackpotOdds).toLocaleString()}` },
+    big: { ...range('big'), fixed: st.payback, realWin: ahead / 20000, topPrize: topFixed, top100: st.each['hat:5'] ? 1 / (st.each['hat:5'] * st.lines) : null, jackpot: `${Math.round(s.big.jackpotPct * 100)}% of the pool, 1 in ${Math.round(s.big.jackpotOdds).toLocaleString()}` },
+    drop: { ...range('drop'), fixed: dropFixedPayback(), realWin: dropWinOf(), top: DROP_TOP, jackpot: `${+(b.drop.jackpotPct * 100).toFixed(2)}% of the pool × the drop's size, 1 in ${Math.round(1 / dropJackpotOdds()).toLocaleString()}` },
     prices: s.prices,
-    stocking: { payback: stockPayback, realWin: stockWinOf(sp), top: stockTopOf(sp) },
+    stocking: { ...range('stocking'), fixed: stockPaybackOf(sp), realWin: stockWinOf(sp), top: stockTopOf(sp), jackpot: `${+(s2.jackpotPct * 100).toFixed(2)}% of the pool × the turn's size, 1 in ${Math.round(1 / stockJackpotOdds()).toLocaleString()}` },
   };
   return p.length ? { ok: false, problems: p, report } : { ok: true, problems: [], report };
 }
@@ -141,7 +172,8 @@ export function applyToGame(s) {
   MAIN.splice(0, MAIN.length, ...b.wheel.main); BONUS.splice(0, BONUS.length, ...b.wheel.bonus);
   for (const k of Object.keys(KINDS)) if (s.prices[k]) KINDS[k].bet = s.prices[k];
   SIZES.spin.splice(0, SIZES.spin.length, s.prices.spin10, s.prices.spin100); // the Spin balance plays these two sizes
-  STOCK_LIVE.splice(0, STOCK_LIVE.length, ...b.stocking.pays); // Stocking Stuffer's pay table as published
+  STOCK_LIVE.splice(0, STOCK_LIVE.length, ...b.stocking2.pays); // Stocking Stuffer's pay table as published (board 2)
+  STOCK_JP.pct = b.stocking2.jackpotPct; DROP_JP.pct = b.drop.jackpotPct; // the pool jackpots' shares as published
   const items = itemsWith(s); ITEMS.splice(0, ITEMS.length, ...items); BY_ID.clear(); for (const i of items) BY_ID.set(i.id, i);
   return b;
 }

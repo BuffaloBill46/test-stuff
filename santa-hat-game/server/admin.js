@@ -15,7 +15,7 @@
 // NOT here (needs the pool key; FOR_MAIN_CLAUDE.md): the emergency withdrawal transfer itself.
 import { POOL_RULES } from '../mockups/slots.js';
 import { SPIN_RULES } from '../mockups/spin.js';
-import { check as checkSettings } from '../mockups/settings.js';
+import { check as checkSettings, DEFAULT_SETTINGS } from '../mockups/settings.js';
 import { MINT } from '../mockups/market.js';
 import { botSignals, BOT_RULES } from './bots.js';
 
@@ -53,13 +53,13 @@ export async function signatureOk(wallet, message, sigHex) {
 // Sane settings only. Money thresholds are dollars (pools are valued at the live SANTA price).
 export function checkRules(game, rules) {
   const base = game === 'spin' ? SPIN_RULES : POOL_RULES, R = { ...base, ...rules }, bad = [];
-  const allowed = new Set([...Object.keys(base).filter((k) => k !== 'paused'), ...(game === 'slots' ? ['jackpotPct'] : [])]);
+  const allowed = new Set([...Object.keys(base).filter((k) => k !== 'paused'), 'jackpotPct']);
   for (const k of Object.keys(rules)) if (!allowed.has(k)) bad.push(`${k} can't be set here`);
   for (const k of ['start', 'skimAt', 'skim', 'topOffBelow', 'topOffTo']) if (!(Number.isFinite(R[k]) && R[k] >= 0 && R[k] <= 100000)) bad.push(`${k} must be 0–100,000`);
   if (!(R.skim < R.skimAt)) bad.push('the skim must be smaller than the skim point');
   if (!(R.topOffBelow < R.topOffTo)) bad.push('top-off must fill above where it starts');
   if (!(R.topOffTo < R.skimAt - R.skim)) bad.push('a top-off must not trigger a skim straight away');
-  if (game === 'slots' && 'jackpotPct' in R && !(R.jackpotPct > 0 && R.jackpotPct <= 0.5)) bad.push('jackpot % must be above 0 and at most 50%');
+  if ('jackpotPct' in R && !(R.jackpotPct > 0 && R.jackpotPct <= 0.5)) bad.push('jackpot % must be above 0 and at most 50%');
   return bad;
 }
 
@@ -84,6 +84,14 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
     if (!ACTIONS.includes(m.action) || !gameOk) return { error: 'unknown action or game' };
     if (!/^[0-9a-f]{16,64}$/.test(m.nonce)) return { error: 'bad one-time number' };
     if (m.action === 'set-rules') { const bad = checkRules(m.game, m.settings); if (bad.length) return { error: bad.join('; ') }; }
+    // The shared Game pool's thresholds change every game's payback (the pool jackpots are a share of the pool) and what its
+    // top-off must cover: the newest game settings must still pass their guard rails under the new rules (settings.js check).
+    if (m.action === 'set-rules' && m.game === 'spin') {
+      const [cur] = await db.query('select rules from public.pools where game = $1', ['spin']);
+      const [v] = await db.query('select settings from public.game_settings order by version desc limit 1');
+      const R = { ...SPIN_RULES, ...(cur?.rules || {}), ...m.settings }, c = checkSettings(v?.settings || DEFAULT_SETTINGS, { spin: R, slots: R });
+      if (!c.ok) return { error: c.problems.join('; ') };
+    }
     if (m.action === 'set-settings') return saveSettings(m, wallet, message, signature);
     if (m.action === 'record-deposit') return recordDeposit(m, wallet, message, signature);
     if (m.action === 'release-payout') return releasePayout(m, wallet, message, signature);
@@ -115,7 +123,8 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
   async function saveSettings(m, wallet, message, signature) {
     const pools = Object.fromEntries((await db.query('select game, rules from public.pools')).map((p) => [p.game, p.rules || {}]));
     const s = { ...m.settings, version: undefined };
-    const c = checkSettings(s, { spin: { ...SPIN_RULES, ...(pools.spin || {}) }, slots: { ...POOL_RULES, ...(pools.slots || {}) } });
+    // one shared Game pool (the 'spin' row) for every game since 2026-10-02: its rules are the ones every guard rail checks
+    const G = { ...SPIN_RULES, ...(pools.spin || {}) }, c = checkSettings(s, { spin: G, slots: G });
     if (!c.ok) return { error: c.problems.join('; ') };
     return db.tx(async (t) => {
       if ((await t.query('select 1 from public.pool_log where nonce = $1 union all select 1 from public.game_settings where nonce = $1', [m.nonce])).length) return { error: 'this signed message was already used' };
@@ -167,7 +176,7 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
       const [po] = await t.query(`select po.id, po.status, po.amount_usd, po.amount_raw, po.to_wallet, r.kind from public.payouts po join public.runs r on r.id = po.run_id where po.id = $1 for update of po`, [id]);
       if (!po) return { error: 'no such payout' };
       if (po.status !== 'held') return { error: 'that payout isn\'t frozen (it\'s ' + po.status + ')' };
-      const game = po.kind === 'big' ? 'slots' : 'spin';
+      const game = 'spin'; // every run is paid from the shared Game pool (Cody, 2026-10-02; 026)
       if (game !== m.game) return { error: 'that payout is paid from the ' + game + ' pool' };
       await t.query(`update public.payouts set status = 'queued' where id = $1`, [po.id]);
       await t.query(`insert into public.pool_log (game, what, by_wallet, nonce, details) values ($1, 'release payout', $2, $3, $4)`,

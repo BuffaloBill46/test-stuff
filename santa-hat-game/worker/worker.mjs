@@ -2,7 +2,7 @@
 // it sends what the game server queued, with the right wallet's key, using the tested worker (../server/payouts.js: never pays twice,
 // a transaction saved BEFORE it's sent, an expired one re-signed only after its blockhash can no longer land) and the live chain
 // adapter (server/solanachain.js: Token-2022 with the 3% fee, a unique memo per payout).
-//   payouts           a run's winnings → from that game's pool (Big Hat: Slots pool; Snowball Drop / Spin: the Spin pool)
+//   payouts           a run's winnings → from the shared Game pool (key 'spin'; every game since 2026-10-02)
 //   pool_transfers    a skim → from the game's pool to the treasury; a top-off → from the treasury to the pool
 //   lottery_payouts   only when Cody switched lottery payouts to automatic (manual ones wait for him on the admin screen)
 //   reward_sweeps     Cody's "Claim rewards": every NON-SANTA token in the three pools → the treasury (server/rewards.js; 024)
@@ -36,8 +36,10 @@ const signer = async (name) => { const f = path.join(KEYS, name + '.json'); if (
 const keys = { spin: await signer('spinPool'), slots: await signer('slotsPool'), lottery: await signer('lotteryPool'), treasury: await signer('treasury') };
 const feeOf = () => liveFee(mint, [rpcUrl]);
 
-// which game a run's payout comes from (runs.kind: big → slots; spin, drop → the Spin pool)
-const gameOfRun = async (runId) => { const [r] = await db.query('select kind from public.runs where id = $1', [runId]); return r?.kind === 'big' ? 'slots' : 'spin'; };
+// which pool a run's payout comes from: since 2026-10-02 (Cody: ONE Game pool) every game's, Big Hat's too, is the shared pool
+// 'spin' (supabase/026_shared_pool.sql books every kind there). The old Slots pool key stays loaded for skims/rewards already
+// queued on it, but no run is paid from it.
+const gameOfRun = async () => 'spin';
 const missing = (what) => { throw new Error(`no key for ${what} in ${KEYS}`); };
 function adapter(table) {
   return makeSolanaChain({ kit, T22, rpcUrl, mint, feeOf, label: (row) => `Santa Hat ${table} #${row.id}`,

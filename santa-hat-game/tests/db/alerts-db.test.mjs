@@ -7,7 +7,7 @@ import { createAlerts, makeTelegram, REPEAT_HOURS } from '../../server/alerts.js
 
 const ALL = ['001_profiles.sql', '002_items_seed.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '006_ranked_tickets.sql', '007_rate_limits.sql',
   '008_hats_backpacks.sql', '009_lock_my_plays.sql', '010_levels.sql', '011_lottery.sql', '012_special_snowballs.sql', '013_match_stats.sql', '014_run_sizes.sql',
-  '015_special_gear.sql', '016_shop.sql', '017_referee_role.sql', '018_ranked_results.sql', '019_ranked_board.sql', '020_worker_role.sql', '021_alerts.sql'];
+  '015_special_gear.sql', '016_shop.sql', '017_referee_role.sql', '018_ranked_results.sql', '019_ranked_board.sql', '020_worker_role.sql', '021_alerts.sql', '026_shared_pool.sql'];
 const db = await makeDb(ALL);
 const PLAYER = 'ALwa11etAAAA'.padEnd(44, '1');
 const uid = (await db.query('insert into auth.users default values returning id'))[0].id;
