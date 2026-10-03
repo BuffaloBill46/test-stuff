@@ -160,7 +160,16 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
-### 2026-10-03 late night (NEWEST): HOME PAGE + MONEY STRIPS LIVE
+### 2026-10-04 early (NEWEST): INTERFACE GROUP LIVE
+- Results card next step (`online.js endActions`): practice Play again (instant), Auto match "starts by itself" + Leave, ranked
+  Play again · 1 ticket, friends' rooms Leave; guest top-3 sign-in nudge (`results-test`).
+- First-match tips (`coach.js`): Move / Throw / Get the hat, done by doing, once per browser, Skip; taps pass through (`coach-test`).
+- Games tab: jump buttons, Good to know fold (`games-tidy-test`). Guide's team line follows TEAM_PAUSED.
+- IN PROGRESS: a helper agent is adding skeletons, black cats and zombies to the Halloween plaza (`plaza.js halloweenProps`) in
+  its own worktree; Claude reviews and lands it.
+- Still next: Snowball Square call-outs/MVP highlights, weekly modes, party join; share-a-win, biggest wins, jackpot banner.
+
+### 2026-10-03 late night: HOME PAGE + MONEY STRIPS LIVE
 - The site opens on **Home** (intro, Player Progress, the season calendar); Home's Play now → the **Play** page (match types).
   Player Progress is ONE box (`#progress`) that `tabs.js show()` moves to the top of Home or Play. Old `#play` links still work.
 - **Money strips** (`mockups/moneystrip.js`) at the top of Games (10% burned / 90% Game pool, the pool and its jackpots, burned so
