@@ -100,17 +100,17 @@ for (const vp of [{ width: 1280, height: 800, tag: 'desk' }, { width: 384, heigh
   await p.click('#t-store'); await p.waitForFunction(() => document.querySelectorAll('#carousels .shopitem').length > 0, null, { timeout: 30000 });
   const shop = await p.evaluate(() => { const items = [...document.querySelectorAll('#carousels .shopitem')].filter((x) => x.querySelector('button[data-try^="gear_"]')); return { n: items.length, img: items.filter((x) => x.querySelector('img')?.src.startsWith('data:image/png')).length, chip: items.filter((x) => x.querySelector('.chip')).length }; });
   // 9 gear since the Heated Coat was retired (Cody's price sheet, 2026-10-02: not sold or worn)
-  check(shop.n === 9 && shop.img === 9 && !shop.chip, `Store: all 9 gear show a picture (${JSON.stringify(shop)})`);
+  check(shop.n === 8 && shop.img === 8 && !shop.chip, `Store: all 8 gear show a picture (retired ones not sold) (${JSON.stringify(shop)})`);
   await p.evaluate(() => [...document.querySelectorAll('#carousels .shopitem')].find((x) => x.querySelector('button[data-try^="gear_"]'))?.scrollIntoView({ block: 'start' })); await p.waitForTimeout(300);
   await p.screenshot({ path: `${OUT}/${vp.tag}-store-gear.png` });
   await p.click('#t-avatar'); await p.waitForTimeout(500); await p.click('[data-slot="gear"]'); await p.waitForTimeout(300);
-  const av = await p.evaluate(() => { const b = [...document.querySelectorAll('#avgrid [data-pick^="gear_"]')]; return { n: b.length, img: b.filter((x) => x.querySelector('img')).length, chip: b.filter((x) => x.querySelector('.chip')).map((x) => x.dataset.pick) }; });
-  check(av.n === 10 && av.img === 9 && av.chip.join() === 'gear_none', `Avatar Special Gear: 9 pictures + the empty slot's chip (${JSON.stringify(av)})`);
+  const av = await p.evaluate(() => { const b = [...document.querySelectorAll('#avgrid [data-pick^="gear_"]')]; return { n: b.length, img: b.filter((x) => x.querySelector('img')).length, chip: b.filter((x) => x.querySelector('.chip')).map((x) => x.dataset.pick), pumpkin: b.some((x) => x.dataset.pick === 'gear_pumpkin') }; });
+  check(av.n === 9 && av.img === 8 && !av.pumpkin && av.chip.join() === 'gear_none', `Avatar Special Gear: 8 pictures + the empty slot's chip (retired gear not listed) (${JSON.stringify(av)})`);
   // the Avatar preview wears the slots: Santa Costume in G1
   await p.click('#avsb [data-gslot="g1"]'); await p.waitForTimeout(150); await p.click('#avgrid [data-pick="gear_santa"]'); await p.waitForTimeout(800);
   await p.screenshot({ path: `${OUT}/${vp.tag}-avatar-santa.png` });
-  await p.click('#avgrid [data-pick="gear_pumpkin"]'); await p.waitForTimeout(800);
-  await p.screenshot({ path: `${OUT}/${vp.tag}-avatar-pumpkin.png` });
+  await p.click('#avgrid [data-pick="gear_kevlar"]'); await p.waitForTimeout(800);
+  await p.screenshot({ path: `${OUT}/${vp.tag}-avatar-kevlar.png` });
   check(!errors.length, 'no page errors (Store, Avatar)' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await ctx.close();
 }

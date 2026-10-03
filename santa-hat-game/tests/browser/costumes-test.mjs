@@ -31,9 +31,10 @@ async function open(vp) {
 }
 const noErrors = (errors, where) => check(!errors.length, `no page errors (${where})` + (errors.length ? ': ' + errors.join(' | ') : ''));
 // a local stand-in account at a level (the page's ?net=local accounts keep their database in localStorage)
-async function signInAt(p, level) {
+// (owns: item ids the account owns, e.g. the Halloween pass's Pumpkin King pieces, as the pass would grant them)
+async function signInAt(p, level, owns = []) {
   await p.click('#signin'); await p.waitForTimeout(400); await p.fill('#email', `lvl${level}@example.com`); await p.click('#emailBtn'); await p.waitForTimeout(900); await p.click('#acctClose').catch(() => {});
-  await p.evaluate((level) => { const d = JSON.parse(localStorage.getItem('sq-local-db')); for (const l of Object.values(d.logins)) d.profiles[l.pid].level = level; localStorage.setItem('sq-local-db', JSON.stringify(d)); }, level);
+  await p.evaluate(([level, owns]) => { const d = JSON.parse(localStorage.getItem('sq-local-db')); for (const l of Object.values(d.logins)) { d.profiles[l.pid].level = level; d.inv[l.pid] = [...(d.inv[l.pid] || []), ...owns]; } localStorage.setItem('sq-local-db', JSON.stringify(d)); }, [level, owns]);
   await p.reload(); await p.waitForFunction(() => window.__sq, null, { timeout: 90000 }); await p.waitForTimeout(1000);
 }
 const avatarTab = async (p, slot) => { await p.click('#t-avatar'); await p.waitForTimeout(500); await p.click(`#avslots [data-slot="${slot}"]`); await p.waitForTimeout(400); };
@@ -73,9 +74,12 @@ for (const vp of [{ width: 1280, height: 860, tag: 'desk' }, { width: 390, heigh
   const tabs = await p.evaluate(() => [...document.querySelectorAll('#avslots [data-slot]')].map((b) => b.textContent));
   check(tabs.includes('Costumes') && !tabs.includes('Backpacks'), `${vp.tag}: tabs ${tabs.join(', ')}`);
   const cards = await p.evaluate(() => [...document.querySelectorAll('#avgrid [data-costume]')].map((b) => ({ set: b.dataset.costume, locked: b.classList.contains('locked'), text: b.textContent, img: b.querySelector('img')?.src.startsWith('data:image/png') })));
-  check(cards.length === 2 && cards.every((c) => c.locked && c.img) && /Level 5 costume/.test(cards[0].text) && /Level 10 costume/.test(cards[1].text), `${vp.tag} guest: two costume cards, locked, each with a picture (${cards.map((c) => c.set).join(', ')})`);
-  const backs = await p.evaluate(() => [...document.querySelectorAll('#avgrid [data-pick]')].map((b) => b.dataset.pick));
-  check(backs.join() === 'pack_none,pack_drum,pack_icewings', `${vp.tag}: back pieces to put on or take off: ${backs.join(', ')}`);
+  check(cards.length === 3 && cards.every((c) => c.locked && c.img) && /Level 5 costume/.test(cards[0].text) && /Level 10 costume/.test(cards[1].text) && /Halloween pass/.test(cards[2].text) && !/Level/.test(cards[2].text),
+    `${vp.tag} guest: three costume cards (the Pumpkin King tagged "Halloween pass"), locked, each with a picture (${cards.map((c) => c.set).join(', ')})`);
+  const rule = await p.evaluate(() => document.querySelector('#avsb').textContent);
+  check(/Halloween pass/.test(rule) && /Pumpkin King/.test(rule), `${vp.tag}: the Costumes rule line names the Halloween pass (${rule.slice(0, 90)})`);
+  const backs = await p.evaluate(() => [...document.querySelectorAll('#avgrid [data-pick]')].map((b) => b.dataset.pick + '=' + b.querySelectorAll('small')[1]?.textContent));
+  check(backs.join() === 'pack_none=Unlocked,pack_drum=Level 5,pack_icewings=Level 10,pack_pumpkinking=Halloween pass', `${vp.tag}: back pieces to put on or take off: ${backs.join(', ')}`);
   check(!(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth)), `${vp.tag}: the Costumes tab fits (no sideways scroll)`);
   await p.screenshot({ path: `${OUT}/${vp.tag}-avatar-costumes-tab.png` });
   // tap the Nutcracker as a guest: previewed (every piece), not savable
@@ -85,16 +89,17 @@ for (const vp of [{ width: 1280, height: 860, tag: 'desk' }, { width: 390, heigh
   // the tags on each piece's own tab
   await p.click('#avslots [data-slot="shirt"]'); await p.waitForTimeout(400);
   const tags = await p.evaluate(() => [...document.querySelectorAll('#avgrid [data-pick]')].filter((b) => b.querySelector('.settag')).map((b) => b.dataset.pick + '=' + b.querySelector('.settag').textContent));
-  check(tags.join() === 'shirt_nutcracker=Level 5 costume,shirt_frostking=Level 10 costume', `${vp.tag}: Shirts tab tags only the costume coats: ${tags.join(', ')}`);
+  check(tags.join() === 'shirt_nutcracker=Level 5 costume,shirt_frostking=Level 10 costume,shirt_pumpkinking=Halloween pass', `${vp.tag}: Shirts tab tags only the costume coats: ${tags.join(', ')}`);
   if (vp.tag === 'phone') { await p.evaluate(() => document.querySelector('#avgrid').scrollIntoView({ block: 'start' })); await p.waitForTimeout(300); }
   await p.screenshot({ path: `${OUT}/${vp.tag}-avatar-shirts-tags.png` });
   noErrors(errors, vp.tag + ' avatar'); await ctx.close();
 }
 
-console.log('3. Level 4 can\'t save the Nutcracker; level 5 can (Frost King still locked); level 10 saves the Frost King');
-for (const [level, set, savable] of [[4, 'nutcracker', false], [5, 'nutcracker', true], [5, 'frostking', false], [10, 'frostking', true]]) {
+console.log('3. Level 4 can\'t save the Nutcracker; level 5 can (Frost King still locked); level 10 saves the Frost King; the Pumpkin King only once owned');
+const PK = ['shirt_pumpkinking', 'pants_pumpkinking', 'face_pumpkinking', 'hat_pumpkinking', 'pack_pumpkinking', 'snow_pumpkinking'];
+for (const [level, set, savable, owns] of [[4, 'nutcracker', false], [5, 'nutcracker', true], [5, 'frostking', false], [10, 'frostking', true], [10, 'pumpkinking', false], [1, 'pumpkinking', true, PK]]) {
   const { p, ctx, errors } = await open({ width: 1280, height: 860 });
-  await signInAt(p, level); await avatarTab(p, 'costume');
+  await signInAt(p, level, owns); await avatarTab(p, 'costume');
   await p.click(`#avgrid [data-costume="${set}"]`); await p.waitForTimeout(900);
   const off = await p.isDisabled('#avsave');
   let saved = null;
@@ -102,12 +107,12 @@ for (const [level, set, savable] of [[4, 'nutcracker', false], [5, 'nutcracker',
     saved = await p.evaluate(() => { const d = JSON.parse(localStorage.getItem('sq-local-db')); return Object.values(d.profiles)[0].avatar; }); }
   const want = await p.evaluate(async (set) => Object.fromEntries((await import('./catalog.js')).costumeItems(set).map((i) => [i.slot, i.id])), set);
   const all = saved && Object.entries(want).every(([s, id]) => saved[s] === id);
-  check(savable ? !off && all : off, `level ${level}, ${set}: ${savable ? 'saved, every piece (' + Object.values(want).join(', ') + ')' : 'Save stays off'}`);
+  check(savable ? !off && all : off, `level ${level}${owns ? ' (owns it)' : ''}, ${set}: ${savable ? 'saved, every piece (' + Object.values(want).join(', ') + ')' : 'Save stays off'}`);
   if (savable) { await p.waitForTimeout(1500); await p.screenshot({ path: `${OUT}/desk-avatar-${set}-front.png` }); }
   noErrors(errors, `level ${level} ${set}`); await ctx.close();
 }
 // phone Avatar view of each costume (front)
-for (const set of ['nutcracker', 'frostking']) {
+for (const set of ['nutcracker', 'frostking', 'pumpkinking']) {
   const { p, ctx, errors } = await open({ width: 390, height: 844 });
   await avatarTab(p, 'costume'); await p.click(`#avgrid [data-costume="${set}"]`); await p.waitForTimeout(1500);
   await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(300); await p.screenshot({ path: `${OUT}/phone-avatar-${set}.png` });
@@ -115,7 +120,7 @@ for (const set of ['nutcracker', 'frostking']) {
 }
 
 console.log('4. In a practice match at night: 8 players in costume, front and back; the Santa hat; maxed out');
-const COST = async (p) => p.evaluate(async () => { const { costumeItems } = await import('./catalog.js'); return Object.fromEntries(['nutcracker', 'frostking'].map((s) => [s, Object.fromEntries(costumeItems(s).map((i) => [i.slot, i.id]))])); });
+const COST = async (p) => p.evaluate(async () => { const { costumeItems } = await import('./catalog.js'); return Object.fromEntries(['nutcracker', 'frostking', 'pumpkinking'].map((s) => [s, Object.fromEntries(costumeItems(s).map((i) => [i.slot, i.id]))])); });
 for (const vp of [{ width: 1280, height: 800, tag: 'desk' }, { width: 390, height: 844, tag: 'phone' }]) {
   const { p, ctx, errors } = await open({ width: vp.width, height: vp.height });
   const C = await COST(p);
@@ -125,7 +130,7 @@ for (const vp of [{ width: 1280, height: 800, tag: 'desk' }, { width: 390, heigh
   await p.waitForFunction(() => { const s = window.__sq; if (/^(intro|count)$/.test(s.sim?.S.phase)) s.sim.S.time = 0; return s.view?.phase === 'play'; }, null, { timeout: 60000 });
   await p.evaluate(async ([C]) => { const { botAvatar } = await import('./refcore.js'), s = window.__sq, sim = s.sim, step = sim.step;
     window.__pin = { face: 0, gear: [[], [], ['backpack'], [], ['satchel'], ['elfhat'], [], []], balls: false, santa: false };
-    sim.S.ents.filter((e) => e.bot).forEach((e, i) => Object.assign(botAvatar(e.id), i % 2 ? C.nutcracker : C.frostking));
+    sim.S.ents.filter((e) => e.bot).forEach((e, i) => Object.assign(botAvatar(e.id), [C.frostking, C.nutcracker, C.pumpkinking][i % 3]));
     sim.step = (dt) => { step(dt); const P = window.__pin, S = sim.S, me = S.ents.find((e) => e.peer === s.me.id), row = [me, ...S.ents.filter((e) => e !== me)];
       row.forEach((e, i) => { const x = -4.2 + i * 1.2; if (e === me) { s.ctl.x = x; s.ctl.z = 3.5; s.ctl.vx = s.ctl.vz = 0; s.ctl.face = P.face; }
         e.x = x; e.z = 3.5; e.vx = e.vz = 0; e.face = P.face; if (e.bot) { e.ammo = 0; e.cool = 99; } e.gear = P.gear[i] || []; });
@@ -151,7 +156,7 @@ for (const vp of [{ width: 1280, height: 800, tag: 'desk' }, { width: 390, heigh
   check(before === true && shown.me === false && shown.others.filter((x) => x === true).length >= 5, `${vp.tag}: my costume hat shows (${before}), then hides under the Santa hat (${shown.me}); others keep theirs (${shown.others.join(',')})`);
   await p.screenshot({ path: `${OUT}/${vp.tag}-match-santa-hat.png` });
   // maxed out: every body in costume, gear mixed in, 14 gold/crystal snowballs in the air
-  await p.evaluate(() => { const P = window.__pin; P.santa = false; P.gear = [['santa'], ['kevlar'], ['backpack'], ['bag'], ['satchel', 'shoes'], ['elfhat'], ['pumpkin'], []]; P.balls = true; });
+  await p.evaluate(() => { const P = window.__pin; P.santa = false; P.gear = [['santa'], ['kevlar'], ['backpack'], ['bag'], ['satchel', 'shoes'], ['elfhat'], ['present'], []]; P.balls = true; });
   await p.waitForFunction(() => window.__sq.view.balls.length >= 10, null, { timeout: 30000 }); await p.waitForTimeout(1500);
   await p.screenshot({ path: `${OUT}/${vp.tag}-match-max.png` });
   const fr = await p.evaluate(() => new Promise((done) => { let n = 0; const t0 = performance.now(); const f = () => { n++; if (performance.now() - t0 < 3000) requestAnimationFrame(f); else done(n); }; requestAnimationFrame(f); }));
@@ -164,7 +169,7 @@ console.log('5. Turnarounds: each costume front, side and back (the game\'s own 
   const shots = await p.evaluate(async () => {
     const { avatarCharacter } = await import('./tabs.js'), { THREE, lights } = await import('./kit.js'), { DEFAULT_AVATAR, costumeItems } = await import('./catalog.js');
     const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setSize(1200, 520, false); const out = {};
-    for (const set of ['nutcracker', 'frostking']) {
+    for (const set of ['nutcracker', 'frostking', 'pumpkinking']) {
       const scene = new THREE.Scene(); scene.background = new THREE.Color(0x141b36); lights(scene, { hemi: 1.7, moonI: 1.6 });
       const a = { ...DEFAULT_AVATAR }; for (const i of costumeItems(set)) a[i.slot] = i.id;
       [0, Math.PI / 2, Math.PI].forEach((ry, k) => { const ch = avatarCharacter(a); ch.rotation.y = ry - 0.3; ch.position.x = (k - 1) * 2.2; scene.add(ch); });
@@ -172,7 +177,7 @@ console.log('5. Turnarounds: each costume front, side and back (the game\'s own 
       r.render(scene, cam); out[set] = r.domElement.toDataURL('image/png'); }
     return out; });
   for (const [set, url] of Object.entries(shots)) writeFileSync(`${OUT}/turnaround-${set}.png`, Buffer.from(url.split(',')[1], 'base64'));
-  check(Object.keys(shots).length === 2, 'turnarounds drawn: ' + Object.keys(shots).map((s) => `${OUT}/turnaround-${s}.png`).join(', '));
+  check(Object.keys(shots).length === 3, 'turnarounds drawn: ' + Object.keys(shots).map((s) => `${OUT}/turnaround-${s}.png`).join(', '));
   noErrors(errors, 'turnarounds'); await ctx.close(); }
 
 await browser.close();

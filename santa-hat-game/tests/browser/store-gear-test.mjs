@@ -31,7 +31,7 @@ console.log('1. The Store: only Special Snowballs and Special Gear, each saying 
     rules: [...document.querySelectorAll('#carousels .rule')].map((r) => r.textContent.replace(/\s+/g, ' ')), old: document.querySelectorAll('#carousels .carousel, #carousels [data-try^="shirt_"], #carousels [data-try^="hat_"], #carousels [data-try^="pack_"]').length }));
   check(JSON.stringify(s.heads) === JSON.stringify(['1. Special Snowballs', '2. Special Gear']), 'two sections: ' + s.heads.join(', '));
   check(s.old === 0, 'no look items (shirts, hats, backpacks) in the Store');
-  check(s.items.length === 15 && s.items.every((x) => x.split(' | ')[1].length > 5), `15 items (6 snowballs + 9 gear; the Heated Coat was removed 2026-10-02), each saying what it does (e.g. "${s.items[0]}", "${s.items[6]}")`);
+  check(s.items.length === 14 && !s.items.some((x) => /Pumpkin/.test(x)) && s.items.every((x) => x.split(' | ')[1].length > 5), `14 items (6 snowballs + 8 gear; the Heated Coat was removed 2026-10-02, the Pumpkin Costume retired 2026-10-03), each saying what it does (e.g. "${s.items[0]}", "${s.items[6]}")`);
   check(s.rules.some((r) => /Yours forever/.test(r)) && s.rules.some((r) => /Lasts 7 days/.test(r) && /first match wearing it/.test(r)) && s.rules.some((r) => /No stacking/.test(r) && /same stat/.test(r)), 'rules shown: snowballs forever, gear 7 days, no stacking');
   await p.evaluate(() => document.querySelector('#carousels').scrollIntoView({ block: 'start' })); await p.screenshot({ path: `${OUT}/desk-store.png` });
 
@@ -44,7 +44,7 @@ console.log('1. The Store: only Special Snowballs and Special Gear, each saying 
   check(sbNotes.filter((t) => t.length > 12).length >= 6 && (await p.textContent('#avsb')).includes('Yours forever'), 'Special Snowballs: what each does, and "Yours forever"');
   await p.click('[data-slot="gear"]'); await p.waitForTimeout(300);
   const g = await p.evaluate(() => ({ slots: [...document.querySelectorAll('#avsb [data-gslot]')].map((b) => b.textContent + (b.disabled ? ' (locked)' : '')), rule: document.querySelector('#avsb .avrule')?.textContent, n: document.querySelectorAll('#avgrid .pick').length }));
-  check(JSON.stringify(g.slots) === JSON.stringify(['G1Empty', 'G2Opens at level 8 (locked)']) && /7 days/.test(g.rule) && /same stat/.test(g.rule) && g.n === 10, `level 1: ${g.slots.join(' | ')}; rules; ${g.n} picks`);
+  check(JSON.stringify(g.slots) === JSON.stringify(['G1Empty', 'G2Opens at level 8 (locked)']) && /7 days/.test(g.rule) && /same stat/.test(g.rule) && g.n === 9 && !(await p.$('#avgrid [data-pick="gear_pumpkin"]')), `level 1 (8 gear + empty, no retired Pumpkin Costume): ${g.slots.join(' | ')}; rules; ${g.n} picks`);
   await p.screenshot({ path: `${OUT}/desk-avatar-gear.png` });
   check(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : '')); await ctx.close(); }
 

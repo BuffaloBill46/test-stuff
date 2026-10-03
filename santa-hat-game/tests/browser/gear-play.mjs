@@ -65,14 +65,14 @@ let plain;
   check(fast.ref > 7.5, `and the referee takes it (its speed for me ${fast.ref.toFixed(2)}, not clipped to 6.4)`);
   check(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : '')); await ctx.close(); }
 
-console.log('2. Pumpkin Costume in a real practice match: the 1st hit takes the extra hit, the 2nd knocks me down, then it comes back');
-{ const { p, errors, ctx } = await practice(1, { g1: 'gear_pumpkin' });
+console.log('2. I.C.E. Kevlar Vest (the Pumpkin Costume is retired, 2026-10-03) in a real practice match: the 1st hit takes the extra hit, the 2nd knocks me down, then it comes back');
+{ const { p, errors, ctx } = await practice(1, { g1: 'gear_kevlar' });
   // a bot's snowball, thrown at me from 1.5 away by the referee's own rules (the bots themselves are disarmed)
   const hitMe = async () => { const before = await p.evaluate(() => window.__sq.sim.S.ev.filter((v) => v[1] === 'hit').length);
     await p.evaluate(() => { const S = window.__sq.sim.S, e = S.ents.find((x) => x.peer === window.__sq.me.id), b = S.ents.find((x) => x.bot);
       const dx = 0.6, dz = 0.8; S.balls.push({ id: S.nextBall++, owner: b.id, sm: 1, kind: '', r: 1, stunSec: 0, g: 0, age: 0, x: e.x - dx * 1.5, y: 1.15, z: e.z - dz * 1.5, vx: dx * 18, vy: 0, vz: dz * 18, life: 2 }); });
     return p.waitForFunction((n) => { const S = window.__sq.sim.S; return !S.balls.length && S.ev.filter((v) => v[1] === 'hit').length > n; }, before, { timeout: 15000 }).then(() => true, () => false); };
-  const m0 = await me(p); check(m0.gear.join() === 'pumpkin' && m0.xh === 1, `wearing it: 1 extra hit (${JSON.stringify(m0)})`);
+  const m0 = await me(p); check(m0.gear.join() === 'kevlar' && m0.xh === 1, `wearing it: 1 extra hit (${JSON.stringify(m0)})`);
   check(await p.waitForFunction(() => /You · \+1 hit(?!s)/.test(document.querySelector('#hud')?.textContent || ''), null, { timeout: 10000 }).then(() => true, () => false), 'my score plaque says +1 hit');
   check(await hitMe(), 'hit 1 landed'); const m1 = await me(p);
   check(m1.stun <= 0 && m1.xh === 0, `hit 1: still standing, extra hit used (${JSON.stringify(m1)})`);
