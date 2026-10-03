@@ -160,7 +160,47 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
-### 2026-10-03 (newest): game server on the Droplet, shared pool live, fake-player money test
+### 2026-10-03 evening (NEWEST): MAINNET LAUNCH PREP. Cody's target: ~01:00 UTC 10-04. LAUNCH_CHECKLIST.md is the plan.
+- **Mainnet wallets made on the Droplet:** `/etc/santa/keys-mainnet`; public addresses in `mainnet.json`. Checked: each loads,
+  derives its address and signs.
+- **Mainnet settings staged:** `/etc/santa/games.env.mainnet`, `worker.env.mainnet`. Two blanks remain: `__HELIUS_MAINNET_URL__`
+  (Cody saves it as `C:\santa-devnet-keys\helius-mainnet.txt`; Claude copies it in without printing it) and
+  `__CODY_PHANTOM_ADDRESS__`.
+- **THE SWITCH** is `worker/go-mainnet.mjs`, run as root on the Droplet. Default is check-only; `--go` refuses unless every
+  check passes. In order it:
+  1. stops the services;
+  2. backs up to `/var/backups/santa`;
+  3. runs `supabase/ops/mainnet_reset.sql` (rehearsed by `tests/db/mainnet-reset.test.mjs` on a copy of the live data;
+     backup in `C:\santa-devnet-keys\backups`);
+  4. swaps the settings (`*.env.devnet` kept);
+  5. starts everything, opens the wallets' SANTA accounts (`worker/open-accounts.mjs`) and verifies.
+
+  Then:
+  1. Cody records his deposit on the admin screen;
+  2. set `LAUNCHED = true` in `mockups/gameserver.js` and publish;
+  3. Cody's 10¢ dry run.
+- **Security review (helper agent + Claude's check), fixed and live:**
+  - the old Supabase `games` and `ping` functions are now a 410 stand-in (`supabase/functions/retired`). **NEVER redeploy the
+    old games function with test settings: it shares the database with mainnet;**
+  - no new runs while a top-off waits for Cody;
+  - rent-drain guard: a winner's account is opened at most once a day; a repeat is held;
+  - the price is sampled every minute and needs 5 samples;
+  - "expired" is re-checked after 2 s before re-sending;
+  - no ranked ticket sales while ranked is paused;
+  - alerts log their findings even without Telegram.
+
+  Left for after launch: see LAUNCH_CHECKLIST "Known, smaller".
+- **Christmas lottery** now draws Dec 23 at 9 PM Indiana (02:00 UTC Dec 24); open draw #3 moved in the database.
+- **Tests:**
+  - The browser suite runs on Windows Chrome: `PW=… node tests/browser/run-suite.mjs [n at once]`, with `win-chrome.mjs`
+    adapting the WSL-era tests. 30 tests, ~15–35 min.
+  - All pass except games-test, whose only complaint is a blocked download inside its fake network.
+  - spin-test is retired.
+  - New live tests: live-shop-test, live-match-test, live-ranked-paused, tests/solana/live-admin-check and payout-memos
+    (on-chain exactly-once count).
+  - Droplet worker crash test: killed mid-send twice; each payout went out exactly once.
+
+### 2026-10-03: game server on the Droplet, shared pool live, fake-player money test
 - **Game server moved to the Droplet.** Fake players now play through https://api.santahatgames.com: `worker/games.mjs`,
   systemd `santa-games` on 127.0.0.1:8082, behind Caddy. Its settings are in /etc/santa/games.env. It uses its own DB login,
   `santa_games` (031, applied). The tester link is `?server=https://api.santahatgames.com`.
