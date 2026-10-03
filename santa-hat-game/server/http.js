@@ -94,6 +94,8 @@ export function makeHandler(deps) {
         case 'shop-owned': if (!deps.shop) return reply(origin, 400, { error: 'unknown action' }); out = await deps.shop.owned(profile); break;
         case 'tickets': if (!deps.shop) return reply(origin, 400, { error: 'unknown action' }); out = await deps.shop.tickets(profile); break;
         case 'finish': if (!deps.levels) return reply(origin, 400, { error: 'unknown action' }); out = await deps.levels.finish(profile, body.match); break;
+        // the season (server/seasons.js): my daily tasks, doors, streak, pass and rewards
+        case 'season': if (!deps.seasons) return reply(origin, 400, { error: 'unknown action' }); out = await deps.seasons.state(profile); break;
         default: return reply(origin, 400, { error: 'unknown action' });
       }
       return reply(origin, out?.error ? 400 : 200, out);

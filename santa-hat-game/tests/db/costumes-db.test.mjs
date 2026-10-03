@@ -16,8 +16,8 @@ await run('029_costumes.sql'); // twice: safe to re-run
 
 // 1. The database's items = catalog.js, every row (id, slot, name, unlock level, price)
 const rows = await db.query('select id, slot, name, unlock_level, price_usd::float8 as price from public.items order by id');
-const want = ITEMS.map((i) => ({ id: i.id, slot: i.slot, name: i.name, unlock_level: i.level ?? null, price: i.price ?? null })).sort((a, b) => (a.id < b.id ? -1 : 1));
-assert.deepEqual(rows, want, 'every items row equals catalog.js after 029');
+const want = ITEMS.filter((i) => !i.season).map((i) => ({ id: i.id, slot: i.slot, name: i.name, unlock_level: i.level ?? null, price: i.price ?? null })).sort((a, b) => (a.id < b.id ? -1 : 1));
+assert.deepEqual(rows, want, 'every items row equals catalog.js after 029 (season rewards come with 033: seasons-db.test checks those)');
 
 // 2. Each costume: one piece per look slot, all at the costume's level, none priced, none for sale
 for (const [set, c] of Object.entries(COSTUMES)) {

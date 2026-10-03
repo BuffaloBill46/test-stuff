@@ -95,6 +95,10 @@ bad.h.message('not json'); assert.match(bad.last('err').why, /JSON/);
   assert.equal(finishes.length, 1, 'recorded once per match');
   assert.deepEqual([finishes[0].auto, finishes[0].places.length >= 4, finishes[0].places.filter(Boolean).sort()], [true, true, [PID, PID2].sort()], 'every place, accounts by id (bots and guests as empty places)');
   assert.equal(finishes[0].id, real.last('snap').d.mid);
+  // the season's daily tasks (levels.js seasonProgress): each signed-in place carries that player's match counts, bots none
+  const f0 = finishes[0];
+  assert.equal(f0.stats?.length, f0.places.length, 'one stats entry per place');
+  f0.places.forEach((p, i) => assert.ok(p ? ['hits', 'hatSec', 'steals', 'catches', 'specials'].every((k) => Number.isFinite(f0.stats[i][k])) : true, `place ${i + 1}: counts sent (${JSON.stringify(f0.stats[i])})`));
   assert.deepEqual(real.last('counted')?.d, { place: finishes[0].places.indexOf(PID) + 1, level: 7, xp: 3, up: false }, 'the counted player is told');
   assert.equal(cheat.last('counted'), undefined, 'nobody else is');
   // a private room counts nothing

@@ -247,7 +247,9 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
     const places = order.map((e) => (e.bot ? null : room.conns.get(e.peer)?.me.pid || null));
     if (room.ranked && ranked) rankedPoints(room, order);
     if (!places.some(Boolean) || !finish) return; // nobody signed in: nothing to record
-    Promise.resolve(finish({ id: mid, auto: true, places })).then((r) => {
+    // each player's match counts (sim.js tally: hits, hat seconds, steals, catches, specials) for the season's daily tasks
+    const stats = order.map((e) => (e.bot ? null : { ...(e.st || {}) }));
+    Promise.resolve(finish({ id: mid, auto: true, places, stats })).then((r) => {
       for (const c of r?.counted || []) {
         const pid = places[c.place - 1], conn = [...room.conns.values()].find((x) => x.me.pid === pid);
         if (conn) conn.send(JSON.stringify({ t: 'counted', d: { place: c.place, level: c.level, xp: c.xp, up: c.up } }));

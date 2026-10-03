@@ -12,6 +12,7 @@ import { BOUGHT_MAX } from '../mockups/ranked.js';
 import { SHOP_BURN_BPS, TICKET_PACKS, forSale } from '../mockups/shoprules.js';
 import { MINT, QUOTE_SECONDS, CUSHION } from '../mockups/market.js';
 import { verifyPayment } from './verify.js';
+import { seasonAt, PASS_PRICE } from '../mockups/seasons.js';
 
 const DEC = 1e6, QUOTES_PER_HOUR = 60, isSignature = (s) => /^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(String(s));
 
@@ -53,10 +54,19 @@ export function createShop({ db, chain, livePrice, liveFee, treasury, mint = MIN
       const have = await row('select extra from public.ticket_status($1)', [profile]).catch(() => null), room = BOUGHT_MAX - (have?.extra ?? 0);
       if (have && n > room) return { error: `you can hold at most ${BOUGHT_MAX} bought ranked tickets; room for ${Math.max(0, room)} more` };
       usd = TICKET_PACKS[n]; cols = { n };
+    } else if (what.kind === 'pass') {
+      // the season pass (Cody 2026-10-03; seasons.js, supabase/033): the running season's gold track, one per player per season
+      const s = seasonAt(); if (!s) return { error: 'no season is running right now' };
+      if (!s.gold.length) return { error: `the ${s.name} pass isn't on sale yet` };
+      if (await row('select 1 from public.season_passes where profile_id = $1 and season = $2', [profile, s.id])) return { error: `you already have the ${s.name} pass` };
+      usd = PASS_PRICE; cols = { season: s.id };
     } else return { error: 'buy what?' };
     const price = await livePrice(), santaRaw = Math.round((usd / price.usd) * DEC);
-    const q = await row(`insert into public.shop_quotes (profile_id, kind, item_id, to_level, n, usd, santa_raw, price_usd) values ($1, $2, $3, $4, $5, $6, $7, $8) returning id, created_at`,
-      [profile, what.kind, cols.item_id ?? null, cols.to_level ?? null, cols.n ?? null, usd, santaRaw, price.usd]);
+    // the season column only for a pass: every other purchase keeps working on a database without supabase/033 yet
+    const q = cols.season
+      ? await row(`insert into public.shop_quotes (profile_id, kind, usd, santa_raw, price_usd, season) values ($1, $2, $3, $4, $5, $6) returning id, created_at`, [profile, what.kind, usd, santaRaw, price.usd, cols.season])
+      : await row(`insert into public.shop_quotes (profile_id, kind, item_id, to_level, n, usd, santa_raw, price_usd) values ($1, $2, $3, $4, $5, $6, $7, $8) returning id, created_at`,
+        [profile, what.kind, cols.item_id ?? null, cols.to_level ?? null, cols.n ?? null, usd, santaRaw, price.usd]);
     const fee = await liveFee();
     // the page pays exactly like a game run (mockups/pay.js): the burn and the treasury transfer in one transaction
     return { id: q.id, kind: what.kind, ...cols, usd, santaRaw, price: price.usd, expiresAt: new Date(q.created_at).getTime() + QUOTE_SECONDS * 1000,

@@ -404,7 +404,7 @@ export function initTabs(app) {
       // look items are bought here on the Avatar screen, not in the Store (Cody, 2026-10-01)
       // a costume piece wears a small tag saying which costume it belongs to (e.g. "Level 5 costume")
       const tag = i.set && COSTUMES[i.set] ? `<em class="settag" data-set="${i.set}" title="${esc(COSTUMES[i.set].name)}">Level ${COSTUMES[i.set].level} costume</em>` : '';
-      return `<button class="pick ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}"><img alt="" src="${thumbnail(i)}">${tag}${esc(i.name)}<small>${ok ? 'Unlocked' : i.price != null ? '$' + i.price.toFixed(2) : 'Level ' + i.level}</small></button>`;
+      return `<button class="pick ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}"><img alt="" src="${thumbnail(i)}">${tag}${esc(i.name)}<small>${ok ? 'Unlocked' : i.season ? i.season[0].toUpperCase() + i.season.slice(1) + (i.set ? ' pass' : ' reward') : i.price != null ? '$' + i.price.toFixed(2) : 'Level ' + i.level}</small></button>`;
     }).join('');
     $('#avgrid').classList.toggle('list', sb || gr || co); // special snowballs, gear and costumes: a list, so what each is can be read
     const blocked = [...SLOTS, ...SB_SLOTS, ...GEAR_SLOTS].map((s) => BY_ID.get(d.a[s] || (GEAR_SLOTS.includes(s) ? 'gear_none' : 'sb_none'))).filter((i) => !usable(i, lvl, state.owned));

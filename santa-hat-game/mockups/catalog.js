@@ -60,6 +60,12 @@ export const ITEMS = [
   { id: 'snow_pink', slot: 'snow', name: 'Sugarplum', color: 0xff9ccf, level: 4 },
   { id: 'snow_green', slot: 'snow', name: 'Mint', color: 0x9dffb0, level: 6 },
   { id: 'snow_ember', slot: 'snow', name: 'Ember', color: 0xff7a3a, level: 8 },
+  // HALLOWEEN SEASON free-track looks (seasons.js; supabase/033): earned by opening doors, never sold, no level (season items)
+  { id: 'snow_candycorn', slot: 'snow', name: 'Candy Corn', color: 0xffb02e, season: 'halloween' },
+  { id: 'shirt_jackolantern', slot: 'shirt', name: 'Jack-o\'-Lantern Orange', color: 0xf07a12, season: 'halloween' },
+  { id: 'pants_midnight', slot: 'pants', name: 'Midnight Purple', color: 0x3b1f5c, season: 'halloween' },
+  { id: 'snow_ghostly', slot: 'snow', name: 'Ghostly Glow', color: 0xc8ffd8, season: 'halloween' },
+  { id: 'pants_pumpkin', slot: 'pants', name: 'Pumpkin Patch', color: 0xd9661c, season: 'halloween' },
   // The first special snowball (Cody's example): stuns 50% longer than normal. Bought in the Store for now (Cody); levels later.
   // (The colour-slot Ice Ball prototype became the Ice Ball special below, 2026-10-01. A colour can still carry `rules`.)
 

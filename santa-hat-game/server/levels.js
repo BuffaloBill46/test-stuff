@@ -13,6 +13,7 @@
 import { levelInfo, progressLine, countsForLevels } from '../mockups/levels.js';
 import { GEAR_SLOTS, BY_ID } from '../mockups/catalog.js';
 import { gearIn } from '../mockups/gear.js';
+import { seasonAt, dayKey, tasksFor, STATS } from '../mockups/seasons.js';
 
 const MATCH_ID = /^[A-Za-z0-9_-]{8,80}$/;
 const UUID = /^[0-9a-f-]{36}$/;
@@ -44,7 +45,24 @@ export function createLevels({ db }) {
       if (r) counted.push({ place: i + 1, level: r.level, xp: r.xp, up: r.up, ...(p === host ? { you: true } : {}) });
     }
     await wearClock(places);
-    return { counted };
+    const season = byReferee ? await seasonProgress(match, places) : []; // daily tasks: only from matches the match server ran
+    return { counted, season };
+  }
+  // SEASON daily tasks (seasons.js, supabase/033): each signed-in player's counts from this match go to season_record, which
+  // opens the day's door when every task is met and grants what it earned. Only the match server's own counts (match.stats),
+  // never a page's. A failure here is logged and never costs anyone their level.
+  async function seasonProgress(match, places) {
+    const s = seasonAt(); if (!s) return [];
+    const day = dayKey(), tasks = tasksFor(day).map((t) => ({ id: t.id, stat: t.stat, need: t.need })), out = [];
+    const stats = Array.isArray(match.stats) ? match.stats : [];
+    for (let i = 0; i < places.length; i++) {
+      const p = places[i]; if (!p || !UUID.test(String(p))) continue;
+      const st = stats[i] || {}, delta = { games: 1, top3: i < 3 ? 1 : 0 };
+      for (const k of STATS) if (k !== 'games' && k !== 'top3' && Number.isFinite(+st[k])) delta[k] = Math.max(0, Math.min(500, Math.floor(+st[k])));
+      try { const r = (await db.query('select public.season_record($1, $2, $3, $4, $5) as r', [p, s.id, day, JSON.stringify(tasks), JSON.stringify(delta)]))[0]?.r; out.push({ place: i + 1, ...(r || {}) }); }
+      catch (e) { console.error('levels.finish: season progress failed (is supabase/033 applied?):', e.message); }
+    }
+    return out;
   }
   // Special gear wears out 7 days after the first match wearing it (Cody). The referee is the host's browser, which reads saved
   // avatars, so the server keeps the clock here, at the end of a counted Auto match (practice and private rooms start nothing,

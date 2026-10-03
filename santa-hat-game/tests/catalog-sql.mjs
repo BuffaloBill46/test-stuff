@@ -8,7 +8,8 @@ const ids = new Set();
 for (const it of ITEMS) {
   if (ids.has(it.id)) fail('duplicate id ' + it.id); ids.add(it.id);
   if (!ITEM_SLOTS.includes(it.slot)) fail('bad slot ' + it.id);
-  if ((it.level == null) === (it.price == null)) fail(it.id + ' must have exactly one of level or price');
+  if (it.season) { if (it.level != null || it.price != null) fail(it.id + ' is a season reward: no level, no price (supabase/033 items_check)'); }
+  else if ((it.level == null) === (it.price == null)) fail(it.id + ' must have exactly one of level or price');
   if (!/^[a-z0-9_]{3,40}$/.test(it.id)) fail('bad id ' + it.id);
 }
 // every hat and backpack names the shape the character draws (a scripted edit once stripped the backpacks' `pack` shapes)
@@ -29,12 +30,12 @@ for (const [set, c] of Object.entries(COSTUMES)) {
 if (ITEMS.some((i) => i.set && i.slot === 'skin')) fail('skin tones are never costume pieces');
 // bots stay plain: no bot ever wears a costume piece (refcore.js botAvatar), checked over 5,000 bot ids
 { const { botAvatar } = await import('../mockups/refcore.js'), BY = new Map(ITEMS.map((i) => [i.id, i]));
-  for (let id = 0; id < 5000; id++) for (const v of Object.values(botAvatar(id))) if (BY.get(v)?.set) fail(`bot ${id} wears costume piece ${v}`); }
+  for (let id = 0; id < 5000; id++) for (const v of Object.values(botAvatar(id))) if (BY.get(v)?.set || BY.get(v)?.season) fail(`bot ${id} wears costume or season piece ${v}`); }
 for (const [s, id] of Object.entries(DEFAULT_AVATAR)) { const it = ITEMS.find((i) => i.id === id), want = /^sb[1-3]$/.test(s) ? 'sball' : /^g[12]$/.test(s) ? 'gear' : s; if (!it || it.slot !== want || it.level !== 1) fail('default ' + id + ' must be a level-1 ' + want); }
 
 const q = (v) => (v == null ? 'null' : typeof v === 'number' ? String(v) : `'${String(v).replace(/'/g, "''")}'`);
-const rows = ITEMS.map((i) => `(${q(i.id)}, ${q(i.slot)}, ${q(i.name)}, ${q(i.level ?? null)}, ${q(i.price ?? null)})`).join(',\n  ');
-console.log(`insert into public.items (id, slot, name, unlock_level, price_usd) values
+const rows = ITEMS.map((i) => `(${q(i.id)}, ${q(i.slot)}, ${q(i.name)}, ${q(i.level ?? null)}, ${q(i.price ?? null)}, ${q(i.season ?? null)})`).join(',\n  ');
+console.log(`insert into public.items (id, slot, name, unlock_level, price_usd, season) values
   ${rows}
-on conflict (id) do update set slot = excluded.slot, name = excluded.name, unlock_level = excluded.unlock_level, price_usd = excluded.price_usd;
+on conflict (id) do update set slot = excluded.slot, name = excluded.name, unlock_level = excluded.unlock_level, price_usd = excluded.price_usd, season = excluded.season;
 delete from public.items where id not in (${ITEMS.map((i) => q(i.id)).join(', ')});`);

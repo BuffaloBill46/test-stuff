@@ -23,6 +23,7 @@ import { makeLimiter, memoryStore } from '../server/ratelimit.js';
 import { createLevels } from '../server/levels.js';
 import { createLottery } from '../server/lottery.js';
 import { createShop } from '../server/shop.js';
+import { createSeasons } from '../server/seasons.js';
 import { createAlerts, makeTelegram } from '../server/alerts.js';
 import { livePrice, liveFee, keptFee } from '../mockups/market.js';
 import { existsSync } from 'fs';
@@ -100,6 +101,7 @@ const handle = makeHandler({
   alerts, server,
   limiter: makeLimiter({ store: memoryStore() }),
   levels: createLevels({ db }),
+  seasons: createSeasons({ db }), // my season: daily tasks, doors, pass (server/seasons.js)
   shop: createShop({ db, chain, livePrice: price, liveFee: feeOfMint, treasury: env('TREASURY_WALLET') || null, ...mintOpt, cluster,
     rankedPaused: () => existsSync(env('RANKED_PAUSE_FILE') || '/etc/santa/ranked-paused') }), // no ticket sales while ranked is paused
   lottery: createLottery({ db, chain: { ...chain, latestBlock }, livePrice: price, liveFee: feeOfMint, wallet: env('LOTTERY_WALLET') || null, ...mintOpt, cluster }),
