@@ -10,7 +10,7 @@ import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js';
 import { FEE } from './slots.js';
 import { asTapped } from './stocking.js';
 import { play as sfx } from './sfx.js';
-import { SERVER, call, walletReady, payError, forPlayer } from './gameserver.js';
+import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js';
 import { withSlowDown } from './slowdown.js';
 export const serverMode = !!SERVER; // ?server=<address>: plays come from the game server
 
@@ -76,7 +76,7 @@ async function payOnServer(kind, bet, n) {
   if (q.refused) { note.textContent = q.stopped ? 'This game is paused right now. Nothing was charged.' : 'The prize pool is refilling. Try again soon; nothing was charged.'; $('#buyGo').disabled = false; return null; }
   if (q.error) { note.textContent = forPlayer(q.error, () => $('#buyDlg').close()); $('#buyGo').disabled = false; return null; }
   await walletReady;
-  if (typeof window.santaPay !== 'function') { note.textContent = 'Wallet payments aren\'t connected yet.'; $('#buyGo').disabled = false; return null; }
+  if (typeof window.santaPay !== 'function') { note.textContent = WALLET_LOAD_FAILED; $('#buyGo').disabled = false; return null; }
   let signature; try { note.textContent = 'Approve the payment in your wallet…'; signature = await window.santaPay(q); }
   catch (e) { note.textContent = payError(e); $('#buyGo').disabled = false; return null; }
   note.textContent = 'Confirming the payment…';

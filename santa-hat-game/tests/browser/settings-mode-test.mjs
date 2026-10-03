@@ -134,8 +134,8 @@ await p.evaluate(() => document.querySelector('#proofClose').click());
 // With no wallet connected, buying says so plainly (and nothing is charged).
 await p.evaluate(() => { delete window.santaPay; document.querySelector('#slots [data-run="1"]').click(); }); await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
 await p.evaluate(() => document.querySelector('#buyGo').click());
-await p.waitForFunction(() => /connected yet/.test(document.querySelector('#buyNote').textContent), null, { timeout: 15000 }).catch(() => {});
-check(/Wallet payments aren't connected yet/.test(await p.textContent('#buyNote')), `buy without a wallet: "${await p.textContent('#buyNote')}"`);
+await p.waitForFunction(() => /Reload the page/.test(document.querySelector('#buyNote').textContent), null, { timeout: 15000 }).catch(() => {});
+check(/Couldn't load the wallet step. Reload the page, then try again. Nothing was charged./.test(await p.textContent('#buyNote')), `buy with no wallet step (says reload): "${await p.textContent('#buyNote')}"`);
 const quotes = await db.query('select count(*)::int as n from public.quotes where used_by is null');
 check(quotes[0].n === 1, 'the server made a quote, and nothing was bought');
 await p.screenshot({ path: 'out/settings-mode.png' });

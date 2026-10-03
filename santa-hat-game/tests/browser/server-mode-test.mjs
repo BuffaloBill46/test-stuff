@@ -89,7 +89,7 @@ check(await p.waitForFunction(() => [...document.querySelectorAll('.testnote')].
 check(await p.waitForFunction(() => /^\d+\/25/.test(document.querySelector('#tixchip b')?.textContent || ''), null, { timeout: 15000 }).then(() => true, () => false), 'the ticket chip shows my tickets: ' + await p.evaluate(() => document.querySelector('#tixchip b')?.textContent));
 await p.evaluate(() => { window.__sq.startPractice(); window.__sq.leaveRoom(); });
 check(/server=/.test(await p.evaluate(() => location.search)), 'leaving a match keeps ?server= in the address: ' + await p.evaluate(() => location.search));
-check(await p.evaluate(async () => (await import('./gameserver.js')).payError(new Error('Failed to fetch dynamically imported module: https://cdn.jsdelivr.net/x'))) === "Couldn't load the wallet step. Check your connection and try again. Nothing was charged.", 'a wallet step that cannot load: plain English');
+check(await p.evaluate(async () => (await import('./gameserver.js')).payError(new Error('Failed to fetch dynamically imported module: https://cdn.jsdelivr.net/x'))) === "Couldn't load the wallet step. Reload the page, then try again. Nothing was charged.", 'a wallet step that cannot load: plain English');
 const winText = (await p.textContent('#winList')).replace(/\s+/g, ' ');
 check(/Rudolph/.test(winText) && /\$5\.00/.test(winText) && /5×/.test(winText), `another player's win shows in the shared list: "${winText.slice(0, 120)}"`);
 check(!/wa11et/.test(winText), 'no wallet addresses on the page');
@@ -139,8 +139,8 @@ errors.splice(errs0); // the two 500 answers were on purpose
 await p.evaluate(() => { delete window.santaPay; document.querySelector('#slots [data-run="1"]').click(); });
 await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
 await p.evaluate(() => document.querySelector('#buyGo').click());
-await p.waitForFunction(() => /connected yet/.test(document.querySelector('#buyNote').textContent), null, { timeout: 15000 }).catch(() => {});
-check(/Wallet payments aren't connected yet/.test(await p.textContent('#buyNote')), `buy without a wallet: "${await p.textContent('#buyNote')}"`);
+await p.waitForFunction(() => /Reload the page/.test(document.querySelector('#buyNote').textContent), null, { timeout: 15000 }).catch(() => {});
+check(/Couldn't load the wallet step. Reload the page, then try again. Nothing was charged./.test(await p.textContent('#buyNote')), `buy with no wallet step (says reload): "${await p.textContent('#buyNote')}"`);
 const quotes = await db.query('select count(*)::int as n from public.quotes where used_by is null');
 check(quotes[0].n === 1, 'the server made a quote, and nothing was bought');
 await p.evaluate(() => document.querySelector('#buyCancel').click());
