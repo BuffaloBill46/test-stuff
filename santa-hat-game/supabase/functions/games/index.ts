@@ -45,7 +45,9 @@ function dbUrl(): string {
 // 2026-10-03 timing 20 requests in a row). connect_timeout: a stuck connect fails in 10 s instead of hanging a play.
 const sql = postgres(dbUrl(), { prepare: false, max: 3, idle_timeout: 5, connect_timeout: 10 });
 const db = {
-  query: (q: string, p: unknown[] = []) => sql.unsafe(q, p as never[]),
+  // TEMPORARY (2026-10-03, finding the ~75 s requests): log any database call slower than 2 s
+  query: async (q: string, p: unknown[] = []) => { const t0 = Date.now(); try { return await sql.unsafe(q, p as never[]); }
+    finally { const ms = Date.now() - t0; if (ms > 2000) console.warn('SLOW DB ' + ms + ' ms: ' + q.replace(/\s+/g, ' ').slice(0, 90)); } },
   tx: (fn: (t: { query: (q: string, p?: unknown[]) => Promise<unknown[]> }) => Promise<unknown>) =>
     sql.begin((t) => fn({ query: (q: string, p: unknown[] = []) => t.unsafe(q, p as never[]) })),
 };
