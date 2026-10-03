@@ -103,7 +103,33 @@ export const ITEMS = [
   { id: 'gear_shoes', slot: 'gear', name: 'Elf Shoes', gear: 'shoes', color: 0x3f9a66, price: 2.00 },
   { id: 'gear_elfhat', slot: 'gear', name: 'Elf Hat', gear: 'elfhat', color: 0x3f9a66, price: 0.50 },
   { id: 'gear_gift', slot: 'gear', name: 'Gift Box', gear: 'present', color: 0x7a4fa3, price: 1.00 },
+
+  // COSTUMES (Cody, 2026-10-02: "make a special level 5 and a level 10 costume, build 1 for each slot that matches itself for
+  // each level. Make them stand out and different from everything else. They will be free."). One item per look slot except
+  // skin (skin tones stay free), all FREE: unlocked by level, never sold. `set` ties the pieces together (the Avatar screen's
+  // Costumes tab wears the whole set in one tap; bots never wear them: refcore.js). Shapes and colours used nowhere else:
+  // `trim` on a shirt or pants draws the uniform's extra pieces (kit.js COSTUME_TRIMS); the faces, hats and packs are new
+  // shapes in kit.js. supabase/029_costumes.sql is the database's copy.
+  // Level 5: the Nutcracker Soldier (red and gold coat, white trousers, painted wooden face, tall shako, toy drum, gold snowballs).
+  { id: 'shirt_nutcracker', slot: 'shirt', name: 'Nutcracker Coat', color: 0xc4161c, trim: 'nutcracker', set: 'nutcracker', level: 5 },
+  { id: 'pants_nutcracker', slot: 'pants', name: 'Nutcracker Trousers', color: 0xf4f1e8, trim: 'nutcracker', set: 'nutcracker', level: 5 },
+  { id: 'face_nutcracker', slot: 'face', name: 'Nutcracker', face: 'nutcracker', set: 'nutcracker', level: 5 },
+  { id: 'hat_nutcracker', slot: 'hat', name: 'Nutcracker Shako', hat: 'shako', color: 0x17171f, set: 'nutcracker', level: 5 },
+  { id: 'pack_drum', slot: 'pack', name: 'Toy Drum', pack: 'drum', color: 0xc4161c, set: 'nutcracker', level: 5 },
+  { id: 'snow_nutcracker', slot: 'snow', name: 'Nutcracker Gold', color: 0xf0b323, set: 'nutcracker', level: 5 },
+  // Level 10: the Frost King (ice-white robe, silver trousers, frosted face, crown of ice shards, ice wings, crystal snowballs).
+  { id: 'shirt_frostking', slot: 'shirt', name: 'Frost King Robe', color: 0xd3eafc, trim: 'frostking', set: 'frostking', level: 10 },
+  { id: 'pants_frostking', slot: 'pants', name: 'Frost King Trousers', color: 0xa9b6c8, trim: 'frostking', set: 'frostking', level: 10 },
+  { id: 'face_frostking', slot: 'face', name: 'Frost King', face: 'frostking', set: 'frostking', level: 10 },
+  { id: 'hat_icecrown', slot: 'hat', name: 'Ice Crown', hat: 'icecrown', color: 0x9fd8ff, set: 'frostking', level: 10 },
+  { id: 'pack_icewings', slot: 'pack', name: 'Ice Wings', pack: 'icewings', color: 0xbfe6ff, set: 'frostking', level: 10 },
+  { id: 'snow_crystal', slot: 'snow', name: 'Crystal', color: 0x2f9bff, set: 'frostking', level: 10 },
 ];
+// The two costumes (above): what each is called and the level that unlocks every piece. COSTUME_SLOTS: one piece in each.
+export const COSTUMES = { nutcracker: { name: 'Nutcracker Soldier', level: 5 }, frostking: { name: 'Frost King', level: 10 } };
+export const COSTUME_SLOTS = ['shirt', 'pants', 'face', 'hat', 'pack', 'snow'];
+// A costume's pieces, read from ITEMS each time (the admin's published store settings can replace ITEMS in place)
+export const costumeItems = (set) => ITEMS.filter((i) => i.set === set);
 
 export const BY_ID = new Map(ITEMS.map((i) => [i.id, i]));
 export const DEFAULT_AVATAR = { shirt: 'shirt_red', pants: 'pants_navy', face: 'face_dots', skin: 'skin_2', hat: 'hat_none', pack: 'pack_none', snow: 'snow_white', sb1: 'sb_none', sb2: 'sb_none', sb3: 'sb_none', g1: 'gear_none', g2: 'gear_none' };
