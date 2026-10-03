@@ -267,6 +267,22 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   }
   // Called when Cody publishes new settings, so the very next play uses them (no 15-second wait).
   const settingsChanged = () => { latest = { at: 0, version: 0 }; };
+  // My wallet's SANTA (Cody 2026-10-03: shown under each game's play buttons, so a player can see it without leaving the game).
+  // Only the signed-in player's OWN linked wallet; read on chain by this server (chain.tokenBalance), remembered 10 s per wallet
+  // so a busy page costs at most one network read per wallet every 10 s. No wallet linked (an email account): says so.
+  const walletKept = new Map();
+  async function wallet(profile) {
+    const w = (await row('select wallet from public.profiles where id = $1', [profile]))?.wallet;
+    if (!w) return { wallet: null };
+    if (!chain.tokenBalance) return { wallet: w, error: 'wallet balance isn\'t available here' };
+    let k = walletKept.get(w);
+    if (!k || Date.now() - k.at > 10_000) {
+      k = { at: Date.now(), raw: await chain.tokenBalance(w, mint) }; walletKept.set(w, k);
+      if (walletKept.size > 5000) walletKept.delete(walletKept.keys().next().value); // never grows without end
+    }
+    const price = await livePrice().catch(() => null);
+    return { wallet: w, santaRaw: k.raw, usd: price ? (k.raw / 1e6) * price.usd : null, cluster };
+  }
   // Public: SANTA burned by the game so far (the Store and Games pages' money strip, Cody 2026-10-03). Game runs and lottery
   // tickets: the burn checked on chain at purchase (payments / lottery_buys burned_raw). Store purchases: the 50% share of every
   // paid quote (verify.js refuses a payment that burned less; a refund doesn't un-burn). Kept a minute: one query per minute at most.
@@ -281,5 +297,5 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     burnKept = { at: Date.now(), v: { gamesRaw: games, lotteryRaw: lottery, storeRaw: store, totalRaw: games + lottery + store } };
     return burnKept.v;
   }
-  return { quote, buy, settle, tidy, winners, pools, settings, market, burned, settingsChanged };
+  return { quote, buy, settle, tidy, winners, pools, settings, market, burned, wallet, settingsChanged };
 }

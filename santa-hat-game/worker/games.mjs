@@ -56,6 +56,7 @@ const rpcUrl = env('SOLANA_RPC_URL', 'https://solana-rpc.publicnode.com');
 const rpc = async (method, params, ms = 20000) => (await (await fetch(rpcUrl, { method: 'POST', headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }), signal: AbortSignal.timeout(ms) })).json());
 const chain = {
+  tokenBalance: (owner) => tokenRaw(owner, 'confirmed'), // a player's own wallet, under the games (server/games.js wallet)
   async getTransaction(signature) {
     return (await rpc('getTransaction', [signature, { encoding: 'jsonParsed', commitment: 'finalized', maxSupportedTransactionVersion: 0 }])).result ?? null; // null until finalized
   },
@@ -74,11 +75,15 @@ price().catch(() => {});
 const server = createGameServer({ db, chain, livePrice: price, liveFee: feeOfMint, poolWallets, ...mintOpt, cluster });
 
 // Alerts to Cody's Telegram (server/alerts.js; supabase/021): pool wallets read on the chain for the books check.
-async function walletRaw(game) {
-  const owner = poolWallets[game]; if (!owner) return null;
-  const j = await rpc('getTokenAccountsByOwner', [owner, { mint: env('SANTA_MINT') || '3c7mmVSyEH8jfZXgxvpLsETtko1Y16DyRJ5XYB4snhGt' }, { encoding: 'jsonParsed', commitment: 'finalized' }], 15000);
+// The SANTA (smallest units) a wallet holds, across its token accounts. finalized: the books check; confirmed: what a player sees.
+async function tokenRaw(owner, commitment = 'finalized') {
+  const j = await rpc('getTokenAccountsByOwner', [owner, { mint: env('SANTA_MINT') || '3c7mmVSyEH8jfZXgxvpLsETtko1Y16DyRJ5XYB4snhGt' }, { encoding: 'jsonParsed', commitment }], 15000);
   if (!j.result) throw new Error('no balance from the network');
   return (j.result.value || []).reduce((a, x) => a + Number(x.account.data.parsed.info.tokenAmount.amount), 0);
+}
+async function walletRaw(game) {
+  const owner = poolWallets[game]; if (!owner) return null;
+  return tokenRaw(owner);
 }
 async function refereeHealth() {
   const r = await fetch(env('REFEREE_HEALTH_URL', 'https://play.santahatgames.com/health'), { signal: AbortSignal.timeout(8000) });

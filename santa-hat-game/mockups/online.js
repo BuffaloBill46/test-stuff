@@ -8,6 +8,7 @@ import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable
 import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js';
 import { initSeason, refreshSeason } from './seasonui.js';
 import { initMoneyStrips, refreshBurned } from './moneystrip.js';
+import { initWalletLines, refreshWallet } from './walletline.js';
 import { createCoach } from './coach.js';
 import { createCallouts } from './callouts.js';
 import { TICKET_MAX } from './ranked.js';
@@ -946,6 +947,7 @@ const app = {
   onTab: (tab) => {
     ui.lastBoard = '';
     if (tab === 'store' || tab === 'games') refreshBurned(); // the money strip's burned-so-far (kept a minute)
+    if (tab === 'games') refreshWallet(true); // my wallet under the games
     if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
   },
 };
@@ -953,6 +955,7 @@ let gamesMod = null; // Games tab code loads the first time it's opened
 const tabs = initTabs(app);
 initSeason({ thumbnail, onBought: () => tabs.reloadMine() }); // the Season card (seasonui.js); a bought pass reloads what I own
 initMoneyStrips(); // the Store and Games pages' money strip (moneystrip.js): burn, treasury, pool, burned so far
+initWalletLines(); // my wallet's SANTA under each game's play buttons (walletline.js)
 renderProgress(app.profile); // the Play page's Player Progress box (guests: level 1; updated on sign-in)
 initLottery(); // the Store's Santa Lottery (lotteryui.js)
 $('#loading')?.remove();

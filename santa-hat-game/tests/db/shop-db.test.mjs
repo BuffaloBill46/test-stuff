@@ -146,5 +146,22 @@ for (const role of ['anon', 'authenticated']) {
   await db.query(`update public.shop_quotes set santa_raw = santa_raw * 2 where used_by is not null`);
   assert.equal((await gs.burned()).storeRaw, b.storeRaw, 'kept a minute: no new database read for every visitor');
   await db.query(`update public.shop_quotes set santa_raw = santa_raw / 2 where used_by is not null`); }
+// My wallet under the games (server/games.js wallet, Cody 2026-10-03): only the asking player's OWN linked wallet is read,
+// remembered 10 s (one network read for many asks), dollars at the live price; an account with no wallet says so.
+{ const { createGameServer } = await import('../../server/games.js');
+  const reads = []; const held = { };
+  const gs = createGameServer({ retired: [], db, chain: { ...chain, tokenBalance: async (owner) => { reads.push(owner); return held[owner] ?? 0; } }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: {} });
+  const a = await mk('WalletAva'), b = await mk('WalletBen'); held[a.w] = 2_500_000 * 1e6; held[b.w] = 7 * 1e6;
+  const ra = await gs.wallet(a.id);
+  assert.deepEqual([ra.wallet, ra.santaRaw, +ra.usd.toFixed(4)], [a.w, 2_500_000 * 1e6, +(2_500_000 * PRICE).toFixed(4)], 'my wallet: its SANTA and dollars at the live price');
+  const rb = await gs.wallet(b.id);
+  assert.ok(rb.wallet === b.w && rb.santaRaw === 7e6 && reads.every((w) => w === a.w || w === b.w), 'each player gets only their own wallet');
+  await gs.wallet(a.id); await gs.wallet(a.id);
+  assert.equal(reads.filter((w) => w === a.w).length, 1, 'asked 3 times within 10 s: read from the network once');
+  const email = (await db.query('insert into auth.users default values returning id'))[0].id;
+  await db.query(`insert into public.profiles (id, wallet, name, avatar) values ($1, null, 'Emailer', '{}')`, [email]); // a real email account (003: no wallet)
+  const re = await gs.wallet(email);
+  assert.equal(re.wallet ?? null, null, 'an account with no wallet linked: says so (no read)'); }
+console.log('OK: my wallet under the games: own wallet only, read once per 10 s, dollars at the live price; no wallet → says so');
 console.log('OK: the money strip\'s burned-so-far: the Store\'s share of every paid buy (refunds included), games and lottery as recorded, kept a minute');
 console.log('OK: shop: items (special snowballs, gear, looks), a level and ranked tickets, each a checked payment (50% burned / 50% treasury) granted once; reused payments/quotes, short, wrong wallet refused; a paid-but-ungrantable purchase owed back in full; worn-out gear re-bought for a fresh 7 days; nothing unsellable quoted; the website kept out');

@@ -248,6 +248,10 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 .moneystrip .ms.lotto b { font: inherit; font-weight: 800; color: var(--lamp); }
 @media (max-width: 900px) { .moneystrip { grid-template-columns: repeat(2, minmax(0, 1fr)); } .moneystrip .ms:nth-child(3) { border-left: 0; } .moneystrip .ms:nth-child(n+3) { border-top: 2px solid var(--ink); } }
 @media (max-width: 420px) { .moneystrip .ms.total b { font-size: 15px; } .moneystrip .ms { padding: 8px 10px; gap: 8px; } .moneystrip .ms > b { font-size: 20px; } .moneystrip .ms span { font-size: 13px; } }
+/* the player's own wallet under each game's play buttons (walletline.js) */
+.walletline { margin: 6px 0 0; font-size: 14px; color: var(--dim); display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.walletline b { font: 700 15px/1.2 var(--digits); color: var(--lamp); font-variant-numeric: tabular-nums; } .walletline em { font-style: normal; color: var(--text); }
+.walletline button { background: none; border: 0; padding: 0; color: var(--frost); text-decoration: underline; font: inherit; cursor: pointer; }
 /* Games tab: jump buttons and the folded notes */
 .jumps { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
 .jumps button { font: 700 14px var(--body); color: var(--text); background: var(--plaque); border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); padding: 6px 12px; cursor: pointer; }
@@ -1016,7 +1020,8 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
         <div class="pullrow"><div class="runcount" data-runcount="big" aria-live="polite"><i>This run</i><b>–</b><span>won $0.00</span></div><div class="runbtns" role="group" aria-label="Buy and play"><button class="go pull" data-run="1"><b>Pull 1</b><small>$1</small></button><button class="go" data-run="5"><b>Pull 5</b><small>$5</small></button><button class="go" data-run="10"><b>Pull 10</b><small>$10</small></button></div>
           <div class="runpick" role="group" aria-label="Or pick how many pulls"><span class="lbl">Or pick</span><span class="stepper"><button type="button" class="sec" data-step="-1" aria-label="One less">▼</button><input type="number" inputmode="numeric" min="1" max="100" step="1" value="20" aria-label="How many pulls, 1 to 100"><button type="button" class="sec" data-step="1" aria-label="One more">▲</button></span><button class="go" data-run="20"><b>Pull 20</b><small>$20</small></button></div>
           <output class="res" aria-live="polite">Pick 1, 5, 10, or any number up to 100 pulls: they play straight away, and anything you win is sent to your wallet at the end.</output>
-          <div class="credrow"><span class="cred runstat" id="runBig"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="big" hidden>Check last result</button></div></div>
+          <div class="credrow"><span class="cred runstat" id="runBig"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="big" hidden>Check last result</button></div>
+          <p class="walletline" data-wallet aria-live="polite"></p></div>
         <ul class="facts"></ul>
       </article>
       <!-- the payout table (Cody, 2026-10-03: what each symbol and line earns, no odds; a click opens it) -->
@@ -1040,7 +1045,8 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
         <div class="screen"><canvas aria-label="Santa Hat prize wheel"></canvas><div class="flash" aria-hidden="true"></div></div>
         <div class="pullrow"><div class="runbtns" role="group" aria-label="Buy and play"><button class="go spinbtn" data-run="1"><b>Spin 1</b><small>10¢</small></button><button class="go" data-run="5"><b>Spin 5</b><small>50¢</small></button><button class="go" data-run="10"><b>Spin 10</b><small>$1</small></button></div>
           <output class="res" aria-live="polite">Pick 10¢ or $1, then 1, 5 or 10 spins: they play straight away, and anything you win is sent to your wallet at the end.</output>
-          <div class="credrow"><span class="cred runstat" id="runSpin"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="spin" hidden>Check last result</button></div></div>
+          <div class="credrow"><span class="cred runstat" id="runSpin"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="spin" hidden>Check last result</button></div>
+          <p class="walletline" data-wallet aria-live="polite"></p></div>
         <div class="oddsbox"><h4>What's on the wheel</h4><ul class="oddslist" id="oddsList"></ul></div>
         <div class="history"><h4>Your last spins</h4><ol id="spinHistory"></ol></div>
       </article>
@@ -1060,7 +1066,8 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
         <div class="pullrow"><div class="runcount" data-runcount="drop" aria-live="polite"><i>This run</i><b>–</b><span>won $0.00</span></div><div class="runbtns" role="group" aria-label="Buy and play"><button class="go dropbtn" data-run="1"><b>Drop 1</b><small>10¢</small></button><button class="go" data-run="5"><b>Drop 5</b><small>50¢</small></button><button class="go" data-run="10"><b>Drop 10</b><small>$1</small></button></div>
           <div class="runpick" role="group" aria-label="Or pick how many drops"><span class="lbl">Or pick</span><span class="stepper"><button type="button" class="sec" data-step="-1" aria-label="One less">▼</button><input type="number" inputmode="numeric" min="1" max="100" step="1" value="20" aria-label="How many drops, 1 to 100"><button type="button" class="sec" data-step="1" aria-label="One more">▲</button></span><button class="go" data-run="20"><b>Drop 20</b><small>$2</small></button></div>
           <output class="res" aria-live="polite">Pick 10¢ or $1, then 1, 5, 10, or up to 100 snowballs: they drop straight away, and anything you win is sent to your wallet at the end.</output>
-          <div class="credrow"><span class="cred runstat" id="runDrop"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="drop" hidden>Check last result</button></div></div>
+          <div class="credrow"><span class="cred runstat" id="runDrop"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="drop" hidden>Check last result</button></div>
+          <p class="walletline" data-wallet aria-live="polite"></p></div>
         <p class="dropodds" id="dropOdds"></p>
         <details class="paytable stockhow" id="dropHow"><summary>How to play &amp; win</summary><div class="body"></div></details>
         <div class="history"><h4>Your last drops</h4><ol id="dropHistory"></ol></div>
@@ -1084,7 +1091,8 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
         <div class="pullrow"><div class="runcount" data-runcount="stocking" aria-live="polite"><i>This run</i><b>–</b><span>won $0.00</span></div><div class="runbtns" role="group" aria-label="Buy and play"><button class="go stockbtn" data-run="1"><b>Play 1</b><small>10¢</small></button><button class="go" data-run="5"><b>Play 5</b><small>50¢</small></button><button class="go" data-run="10"><b>Play 10</b><small>$1</small></button></div>
           <div class="runpick" role="group" aria-label="Or pick how many turns"><span class="lbl">Or pick</span><span class="stepper"><button type="button" class="sec" data-step="-1" aria-label="One less">▼</button><input type="number" inputmode="numeric" min="1" max="100" step="1" value="20" aria-label="How many turns, 1 to 100"><button type="button" class="sec" data-step="1" aria-label="One more">▲</button></span><button class="go" data-run="20"><b>Play 20</b><small>$2</small></button></div>
           <output class="res" aria-live="polite">Pick 10¢ or $1, then 1, 5, 10, or up to 100 turns: they play straight away, and anything you win is sent to your wallet at the end.</output>
-          <div class="credrow"><span class="cred runstat" id="runStock"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="stocking" hidden>Check last result</button></div></div>
+          <div class="credrow"><span class="cred runstat" id="runStock"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="stocking" hidden>Check last result</button></div>
+          <p class="walletline" data-wallet aria-live="polite"></p></div>
         <p class="dropodds" id="stockOdds"></p>
         <details class="paytable stockhow" id="stockHow"><summary>How to play &amp; win</summary><div class="body"></div></details>
         <div class="history"><h4>Your last turns <span class="dim">(gifts found)</span></h4><ol id="stockHistory"></ol></div>

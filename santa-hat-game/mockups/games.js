@@ -13,6 +13,7 @@ import { livePrice, liveFee, santaFor, fmtSanta } from './market.js';
 import { FEE } from './slots.js';
 import { play as sfx } from './sfx.js';
 import { SERVER, call, settingsReady } from './gameserver.js';
+import { refreshWallet } from './walletline.js';
 import { KINDS, SIZES } from './credits.js';
 import { initRunPick, priceLabel } from './runpick.js';
 import { topMult } from './spin.js';
@@ -241,7 +242,7 @@ export async function initGames(opts = {}) {
   initDrop({ wallet, addWinner, pool: () => sp.pool, onPool: poolMoved });
   initStocking({ addWinner, pool: () => sp.pool, onPool: poolMoved });
   // Runs: buying moves the entry money into that game's pool straight away, so the pool readouts update on purchase.
-  initCredits({ wallet, pools: { slots: state, spin: spinState() }, onChange: () => { shownPool = shared().pool; store.set(state); render(); refreshSpin(); refreshDrop(); refreshStocking(); } });
+  initCredits({ wallet, pools: { slots: state, spin: spinState() }, onChange: () => { shownPool = shared().pool; store.set(state); render(); refreshSpin(); refreshDrop(); refreshStocking(); refreshWallet(); } }); // refreshWallet: my wallet under the games (at most every 8 s)
   refreshCredits();
   // A payment from an earlier visit the server never received (closed tab, dropped network): hand it over and play it now.
   if (SERVER) resumePaid().then((r) => { if (r) { console.info('finished a paid run from an earlier visit', r.run); refreshCredits(); } }).catch(() => {});
