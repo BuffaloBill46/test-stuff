@@ -108,7 +108,9 @@ try {
   const drop = p.locator('#drop [data-run="1"], #drop button:has-text("Drop 1")').first();
   if (await drop.isVisible().catch(() => false)) { await drop.scrollIntoViewIfNeeded(); await drop.click(); await p.waitForTimeout(400); if (await vis('#buyGo')) await tap('#buyGo'); await p.waitForTimeout(6000); await shot('12-drop'); ok(true, 'a Snowball Drop played'); }
   else ok(false, 'Snowball Drop button visible');
-  ok(await vis('text=to hit the 100×') || await vis('text=1 in 14.2'), 'Drop shows its odds line (board 2: "1 in 5,000 to hit the 100×"; the live site may still be on board 1)');
+  // since 026 (Cody, 2026-10-02) Drop's top prize is the pool jackpot, not a fixed 100×
+  const dropOdds = (await p.textContent('#dropOdds').catch(() => '')).replace(/\s+/g, ' ').trim();
+  ok(/^Pool jackpot \$[\d,.]+ on a .+ drop right now .*1 in 5,000 to hit it/.test(dropOdds), `Drop shows its jackpot odds line: "${dropOdds}"`);
   console.log('5. Store, Avatar, Ranks, Sign in');
   await tap('#t-store'); await p.waitForTimeout(1200); await shot('14-store');
   ok((await p.locator('#tab-store :text("Special Snowballs")').count()) > 0 && (await p.locator('#tab-store :text("Special Gear")').count()) > 0, 'Store: Special Snowballs and Special Gear sections');
