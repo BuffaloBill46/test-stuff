@@ -461,7 +461,7 @@ const HEADS = {
   // The Frost King: a pale frosted face with blue ice-crystal facets on the brow and cheeks, frosted white brows, ice-blue
   // glints in the eyes and a beard of short icicles. Icy hands.
   frostking: { hands: 0xc6e0f4, parts: () => [
-    part(new G.IcosahedronGeometry(0.3, 1), 0xd9ebf7, { pos: [0, 1.82, 0], jit: 0.02, seed: 111 }),
+    part(new G.IcosahedronGeometry(0.3, 1), 0xe8f4fb, { pos: [0, 1.82, 0], jit: 0.02, seed: 111 }),
     part(new G.OctahedronGeometry(0.06), 0x2f7fd8, { pos: [0, 2.0, 0.25], scale: [0.7, 1.3, 0.4] }),
     ...[-1, 1].flatMap((s) => [part(new G.OctahedronGeometry(0.05), 0x5fb0ee, { pos: [s * 0.17, 1.79, 0.225], scale: [0.6, 1.4, 0.4], rot: [0, s * 0.5, s * 0.3] }),
       part(new G.OctahedronGeometry(0.03), 0x2f7fd8, { pos: [s * 0.2, 1.71, 0.19], scale: [0.7, 1.2, 0.5], rot: [0, s * 0.6, 0] }),
@@ -500,7 +500,8 @@ function hatPieces(shape, color) {
     part(new G.OctahedronGeometry(0.09), C.gold, { pos: [0, 2.28, 0.3], scale: [1, 1.2, 0.4] }),
     part(new G.BoxGeometry(0.06, 0.06, 0.03), 0xc4161c, { pos: [0, 2.28, 0.33] }),
     part(new G.IcosahedronGeometry(0.075, 0), 0xc4161c, { pos: [0, 2.56, 0.12] }),
-    part(new G.ConeGeometry(0.08, 0.38, 6), 0xf6f3ea, { pos: [0, 2.77, 0.1], rot: [-0.15, 0, 0], jit: 0.015, seed: 103 })];
+    part(new G.IcosahedronGeometry(0.1, 0), 0xf6f3ea, { pos: [0, 2.72, 0.11], scale: [0.9, 1.9, 0.9], jit: 0.02, seed: 103 }),
+    part(new G.IcosahedronGeometry(0.07, 0), 0xe4ded2, { pos: [0.02, 2.9, 0.08], scale: [0.9, 1.6, 0.9], rot: [0, 0, -0.2], jit: 0.015, seed: 104 })];
   // The Frost King's crown: seven tall jagged ice shards round a blue band (tallest at the front, leaning outward), small
   // shards between them, alternating pale and deeper ice so it reads as clear crystal, and a deep blue gem at the front.
   if (shape === 'icecrown') {
@@ -726,9 +727,9 @@ const COSTUME_TRIMS = {
     // down the front with crystal clasps, a navy sash, frost streaks across the chest, and a tall collar of ice shards
     // standing up behind the head; flared ice cuffs
     shirt: () => ({ body: [
-      part(new G.CylinderGeometry(0.36, 0.45, 0.28, 8), 0xd3eafc, { pos: [0, 0.76, 0], jit: 0.012, seed: 121 }),
-      part(new G.CylinderGeometry(0.465, 0.465, 0.06, 8), 0x3f7cc8, { pos: [0, 0.63, 0] }),
-      part(new G.BoxGeometry(0.15, 0.68, 0.03), 0x3f7cc8, { pos: [0, 1.22, 0.2] }),
+      part(new G.CylinderGeometry(0.36, 0.45, 0.28, 8), 0x9fcff2, { pos: [0, 0.76, 0], jit: 0.012, seed: 121 }),
+      part(new G.CylinderGeometry(0.465, 0.465, 0.06, 8), 0x2559b0, { pos: [0, 0.63, 0] }),
+      part(new G.BoxGeometry(0.15, 0.68, 0.03), 0x2559b0, { pos: [0, 1.22, 0.2] }),
       ...[1.42, 1.26, 1.1].map((y) => part(new G.OctahedronGeometry(0.045), 0xf2fbff, { pos: [0, y, 0.222], scale: [1, 1.3, 0.6] })),
       part(new G.BoxGeometry(0.66, 0.11, 0.42), 0x274a80, { pos: [0, 0.9, 0] }),
       ...[-1, 1].map((s) => part(new G.BoxGeometry(0.03, 0.34, 0.02), 0xf6fcff, { pos: [s * 0.2, 1.32, 0.196], rot: [0, 0, s * 0.45] })),

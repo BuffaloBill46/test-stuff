@@ -117,9 +117,9 @@ export const ITEMS = [
   { id: 'hat_nutcracker', slot: 'hat', name: 'Nutcracker Shako', hat: 'shako', color: 0x17171f, set: 'nutcracker', level: 5 },
   { id: 'pack_drum', slot: 'pack', name: 'Toy Drum', pack: 'drum', color: 0xc4161c, set: 'nutcracker', level: 5 },
   { id: 'snow_nutcracker', slot: 'snow', name: 'Nutcracker Gold', color: 0xf0b323, set: 'nutcracker', level: 5 },
-  // Level 10: the Frost King (ice-white robe, silver trousers, frosted face, crown of ice shards, ice wings, crystal snowballs).
-  { id: 'shirt_frostking', slot: 'shirt', name: 'Frost King Robe', color: 0xd3eafc, trim: 'frostking', set: 'frostking', level: 10 },
-  { id: 'pants_frostking', slot: 'pants', name: 'Frost King Trousers', color: 0xa9b6c8, trim: 'frostking', set: 'frostking', level: 10 },
+  // Level 10: the Frost King (ice-blue robe, silver trousers, frosted face, crown of ice shards, ice wings, crystal snowballs).
+  { id: 'shirt_frostking', slot: 'shirt', name: 'Frost King Robe', color: 0x9fcff2, trim: 'frostking', set: 'frostking', level: 10 },
+  { id: 'pants_frostking', slot: 'pants', name: 'Frost King Trousers', color: 0xb9bec8, trim: 'frostking', set: 'frostking', level: 10 },
   { id: 'face_frostking', slot: 'face', name: 'Frost King', face: 'frostking', set: 'frostking', level: 10 },
   { id: 'hat_icecrown', slot: 'hat', name: 'Ice Crown', hat: 'icecrown', color: 0x9fd8ff, set: 'frostking', level: 10 },
   { id: 'pack_icewings', slot: 'pack', name: 'Ice Wings', pack: 'icewings', color: 0xbfe6ff, set: 'frostking', level: 10 },
