@@ -129,7 +129,7 @@
       <p><b>18+ and real money.</b> These games are played with SANTA on Solana. Only play with what you can afford to lose.</p>
       <p>Every entry: <b>10% is burned</b> and the rest goes into the <b>Game pool</b> that all three games pay from. Pick how many plays you want; the SANTA price is locked for the whole run, and everything the run wins is sent to your wallet at the end.</p>
       <p><b>3% SANTA tax:</b> winnings arrive 3% lighter. The SANTA token does that, not the game.</p>
-      <p><b>Provably fair:</b> every result is decided by a secret locked before you play. After a run, tap <b>Check last result</b> and re-run it yourself.</p>
+      <p><b>Provably fair:</b> after a run, tap <b>Check last result</b> to re-run it from the revealed secret and check it yourself.</p>
     </div>
     <h3>Big Hat · slots</h3>
     <p id="bigHow"></p>
@@ -233,7 +233,7 @@
   $('#dropTable').innerHTML = head(['Lands in', '10¢ drop', '$1 drop'], ['', 'n', 'n']) + '<tbody>' + mults.map((m) => row([`${m}× present`, money(m * 0.1), money(m)], ['', 'n', 'n'])).join('') + jpRow('Centre present', DROP.JP.pct, 'drop') + '</tbody>';
 
   // Stocking Stuffer
-  $('#stockHow').innerHTML = `10¢ or $1 a turn. ${STOCK.STOCKINGS} stockings: ${STOCK.GIFTS} hide a gift, the rest hide coal. Tap them open one at a time; the first coal ends the turn, and you're paid by how many gifts you found before it. Which stocking you tap doesn't change anything: the turn is decided before your first tap. <b>${STOCK.MAX_OPEN} gifts in a row win the pool jackpot:</b> ${pct(STOCK.JP.pct)} of the Game pool × your turn's size, ${oneIn(STOCK.WAYS[STOCK.MAX_OPEN] / STOCK.TOTAL)}.`;
+  $('#stockHow').innerHTML = `10¢ or $1 a turn. ${STOCK.STOCKINGS} stockings: ${STOCK.GIFTS} hide a gift, the rest hide coal. Tap them open one at a time; the first coal ends the turn, and you're paid by how many gifts you found before it. <b>${STOCK.MAX_OPEN} gifts in a row win the pool jackpot:</b> ${pct(STOCK.JP.pct)} of the Game pool × your turn's size, ${oneIn(STOCK.WAYS[STOCK.MAX_OPEN] / STOCK.TOTAL)}.`;
   $('#stockTable').innerHTML = head(['Gifts before the coal', '10¢ turn', '$1 turn'], ['', 'n', 'n']) + '<tbody>' + STOCK.PAYS.map((p, k) => (k === 0 ? '' : row([k + (p < 1 && p > 0 ? ' <span class="dim">(less than the turn)</span>' : ''), p ? money(p * 0.1) : '—', p ? money(p) : '—'], ['', 'n', 'n']))).join('') + jpRow(`${STOCK.MAX_OPEN} in a row`, STOCK.JP.pct, 'turn') + '</tbody>';
 
   // lottery
