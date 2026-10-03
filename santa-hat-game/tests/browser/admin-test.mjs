@@ -71,11 +71,11 @@ check((await db.query('select count(*)::int as n from public.pool_log'))[0].n ==
 await p.waitForFunction(() => /pays back/.test(document.querySelector('#gsPreview').textContent), null, { timeout: 15000 });
 check(/Spin pays back 80\.0%/.test(await p.textContent('#gsPreview')) && /Big Hat pays back 78\.1%/.test(await p.textContent('#gsPreview')), 'preview shows today\'s payback: ' + (await p.textContent('#gsPreview')).slice(0, 120));
 // Stocking Stuffer's pay table (2026-10-02): the preview shows its payback; a top prize the Drop pool's top-off can't cover is refused
-check(/Stocking Stuffer pays back 60\.5%/.test(await p.textContent('#gsPreview')) && /top prize 250×/.test(await p.textContent('#gsPreview')), 'preview shows Stocking Stuffer\'s 60.5% and 250×');
+check(/Stocking Stuffer pays back 78\.1%/.test(await p.textContent('#gsPreview')) && /top prize 250×/.test(await p.textContent('#gsPreview')), 'preview shows Stocking Stuffer\'s 78.1% and 250×');
 await p.fill('[data-gs="stock.8"]', '400'); await p.waitForTimeout(700);
 check(await p.evaluate(() => document.querySelector('#gsSave').disabled) && /must cover Stocking Stuffer's top prize \(\$400\)/.test(await p.textContent('#gsPreview')), 'a 400× Stocking Stuffer top prize (more than the Drop pool\'s top-off covers) can\'t be published');
 await p.fill('[data-gs="stock.8"]', '250'); await p.fill('[data-gs="stock.1"]', '0.6'); await p.waitForTimeout(700);
-check(/Stocking Stuffer pays back 63\.0%/.test(await p.textContent('#gsPreview')), 'a 0.6× one-gift prize previews 63.0%: ' + (await p.textContent('#gsPreview')).match(/Stocking Stuffer[^.]*\.\d%/)?.[0]);
+check(/Stocking Stuffer pays back 80\.7%/.test(await p.textContent('#gsPreview')), 'a 0.6× one-gift prize previews 80.7%: ' + (await p.textContent('#gsPreview')).match(/Stocking Stuffer[^.]*\.\d%/)?.[0]);
 await p.fill('[data-gs="main.0"]', '30'); await p.waitForTimeout(700);
 check(await p.evaluate(() => document.querySelector('#gsSave').disabled) && /exactly 40 segments/.test(await p.textContent('#gsPreview')), 'a main wheel that isn\'t 40 segments can\'t be published');
 await p.fill('[data-gs="main.0"]', '18'); await p.fill('[data-gs="main.2"]', '6'); await p.fill('[data-gs="main.star"]', '4');
@@ -90,7 +90,7 @@ await p.tap('#gsSave'); await p.waitForFunction(() => /Published settings versio
 const gsRow = (await db.query('select version, settings from public.game_settings order by version desc limit 1'))[0];
 check(gsRow?.version === 1 && gsRow.settings.big.jackpotOdds === 10000 && gsRow.settings.prices.spin100 === 2 && gsRow.settings.spin.main['0'] === 18 && gsRow.settings.spin.bonus['4'] === 3, 'settings v1 saved: ' + (await p.textContent('#msg')));
 check(gsRow?.settings.store.items.some((i) => i.id === 'shirt_mint' && i.price === 0.3), 'the new Mint shirt is in the store');
-check(JSON.stringify(gsRow?.settings.stocking?.pays) === '[0,0.6,1.75,4,8,16,40,90,250]', 'Stocking Stuffer\'s new pay table was signed and saved: ' + JSON.stringify(gsRow?.settings.stocking));
+check(JSON.stringify(gsRow?.settings.stocking?.pays) === '[0,0.6,2.5,6,10,20,40,90,250]', 'Stocking Stuffer\'s new pay table was signed and saved: ' + JSON.stringify(gsRow?.settings.stocking));
 await p.waitForFunction(() => /version 1/.test(document.querySelector('#gsVer').textContent), null, { timeout: 10000 }).catch(() => {});
 check(/version 1/.test(await p.textContent('#gsVer')), 'the editor shows version 1');
 // Frozen payouts: the player and amount are shown; Release (wallet-signed) puts it back in the payout queue.

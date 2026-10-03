@@ -321,10 +321,10 @@ still re-check on board 1; new results carry `board: 2`.
 
 **Stocking Stuffer (Cody's brief, 2026-10-02; BUILT on a branch, NOT published, 025 NOT applied).** A fireplace mantel with 20
 stockings in two rows of 10: 8 hide a gift, 12 hide coal. Each turn Santa opens stockings one at a time, up to 8; the first coal
-ends it; paid by gifts found before the coal: 0 → 0 · 1 → 0.5× · 2 → 1.75× · 3 → 4× · 4 → 8× · 5 → 16× · 6 → 40× · 7 → 90× ·
+ends it; paid by gifts found before the coal (raised to ~78% by Cody 2026-10-02; was 1.75×/4×/8×/16× at 60.519%): 0 → 0 · 1 → 0.5× · 2 → 2.5× · 3 → 6× · 4 → 10× · 5 → 20× · 6 → 40× · 7 → 90× ·
 all 8 → 250×. Chances are exact (P(at least k) = 8·…·(8−k+1) / 20·…·(20−k+1)): 60% · 1 in 4.0 · 10.2 · 28.8 · 92.3 · 346 ·
-1,615 · 10,498 · 125,970. **Pays back exactly 60.519%** (Cody's brief said 60.6%; the page shows the computed figure).
-- **Open for Cody: 60.5% is far below the ~80% every other game was set to** ("we lose 16% to fees"). Built as briefed.
+1,615 · 10,498 · 125,970. **Pays back exactly 78.146%** (first 60.519%; Cody raised it the same day; the page shows the computed figure).
+- ~~Open for Cody: 60.5% is far below the ~80% of the other games.~~ Decided: raised to 78.1% (Cody, 2026-10-02).
 - Runs (Play 1/5/10/any to 100), 10¢ or $1, same fair order. Fair numbers: 38 per turn; the first 19 shuffle the gifts and
   coal into the stockings (Fisher–Yates, one number per swap), the next 19 shuffle the opening order the same way (two shuffles,
   so different stockings open each turn; the chances are identical). The house now draws 38 numbers a play for every game

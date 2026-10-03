@@ -41,9 +41,9 @@ for (const [label, vp] of [['phone390', { width: 390, height: 844 }], ['phone320
   check(await txt('#stocking header em') === '10¢ or $1 a turn · up to 250×', `${label}: header: ${await txt('#stocking header em')}`);
   check(await txt('#stocking [data-sbet="1"] small') === 'win up to $250' && await txt('#stocking [data-sbet="0.1"] small') === 'win up to $25', `${label}: size chips say the top prize`);
   const steps = await p.evaluate(() => [...document.querySelectorAll('#stockLadder li b')].map((b) => b.textContent));
-  check(steps.join(' ') === '0.5× 1.75× 4× 8× 16× 40× 90× 250×', `${label}: 8 gift slots carry the pay table: ${steps.join(' ')}`);
+  check(steps.join(' ') === '0.5× 2.5× 6× 10× 20× 40× 90× 250×', `${label}: 8 gift slots carry the pay table: ${steps.join(' ')}`);
   const how = await p.evaluate(() => document.querySelector('#stockHow .body').textContent.replace(/\s+/g, ' '));
-  check(/Pays back 60\.5% /.test(how) && /3% SANTA tax/.test(how) && /Check it yourself/.test(how) && /1 in 125,970/.test(how) && /17\.5¢/.test(how), `${label}: How to win: payback 60.5% (computed), tax note, odds, check-it-yourself`);
+  check(/Pays back 78\.1% /.test(how) && /3% SANTA tax/.test(how) && /Check it yourself/.test(how) && /1 in 125,970/.test(how) && /25¢/.test(how), `${label}: How to win: payback 78.1% (computed), tax note, odds, check-it-yourself`);
   check(/3% lighter/.test(await txt('#stocking .stockdesc')), `${label}: the description says winners absorb the 3% tax`);
   check(await txt('#stocking [data-run="10"] small') === '$1' && await txt('#stocking [data-run="1"] b') === 'Play 1', `${label}: Play 1 / 5 / 10 at 10¢ ($1 for 10)`);
   await p.evaluate(() => document.querySelector('#stocking canvas').scrollIntoView({ block: 'start' })); await p.waitForTimeout(1500);
@@ -71,14 +71,14 @@ for (const [label, vp] of [['phone390', { width: 390, height: 844 }], ['phone320
   check(log.map((x) => x.found).join() === '0,1,2,3,8', `${label}: the five forced turns: ${log.map((x) => x.found)}`);
   check(/Coal first/.test(log[0].text) && !log[0].celebrated, `${label}: coal first: "${log[0].text}"`);
   check(/1 gift, then coal: 0\.5× back .*Less than the 10¢ turn/.test(log[1].text) && !log[1].celebrated, `${label}: 1 gift is a loss and said plainly, never celebrated: "${log[1].text}"`);
-  check(/2 gifts: 1\.75× back/.test(log[2].text) && !log[2].celebrated && /3% tax/.test(log[2].text), `${label}: 2 gifts: a light touch (no stamp): "${log[2].text}"`);
-  check(/3 gifts! 4× win/.test(log[3].text) && log[3].celebrated && /4× WIN/.test(log[3].stamp) && /after SANTA's 3% tax/.test(log[3].text), `${label}: 3 gifts celebrated, with the tax: "${log[3].text}" / ${log[3].stamp}`);
+  check(/2 gifts: 2\.5× back/.test(log[2].text) && !log[2].celebrated && /3% tax/.test(log[2].text), `${label}: 2 gifts: a light touch (no stamp): "${log[2].text}"`);
+  check(/3 gifts! 6× win/.test(log[3].text) && log[3].celebrated && /6× WIN/.test(log[3].stamp) && /after SANTA's 3% tax/.test(log[3].text), `${label}: 3 gifts celebrated, with the tax: "${log[3].text}" / ${log[3].stamp}`);
   check(/8 gifts! 250× win: \$25\.00/.test(log[4].text) && log[4].celebrated && /ALL 8! 250×/.test(log[4].stamp), `${label}: all 8 gifts: "${log[4].text}" / ${log[4].stamp}`);
-  const won = 0 + 0.05 + 0.175 + 0.4 + 25;
-  check(Math.abs((await bal()) - (b0 - 0.5 + won * 0.97)) < 1e-9, `${label}: demo money: −$0.50, then +$25.625 less 3% at the end (${await bal()})`);
-  check(Math.abs((await pool()) - (pool0 + 0.5 * IN - won)) < 1e-9, `${label}: the Drop pool got the $0.50 (after burn and tax) and paid $25.625`);
+  const won = 0 + 0.05 + 0.25 + 0.6 + 25; // 0, 1, 2, 3 and 8 gifts on 10¢ at Cody's table (raised to ~78%)
+  check(Math.abs((await bal()) - (b0 - 0.5 + won * 0.97)) < 1e-9, `${label}: demo money: −$0.50, then +$25.90 less 3% at the end (${await bal()})`);
+  check(Math.abs((await pool()) - (pool0 + 0.5 * IN - won)) < 1e-9, `${label}: the Drop pool got the $0.50 (after burn and tax) and paid $25.90`);
   check(await txt('#stockPool') === await txt('#dropPool'), `${label}: Stocking Stuffer and Snowball Drop show the same shared pool`);
-  check(/5 turns: \$25\.62 back/.test(await txt('#stocking .res')), `${label}: run summary: ${await txt('#stocking .res')}`);
+  check(/5 turns: \$25\.90 back/.test(await txt('#stocking .res')), `${label}: run summary: ${await txt('#stocking .res')}`);
   check(await p.locator('#stockLadder li.got').count() === 8 && await p.locator('#stockLadder li.now').count() === 1, `${label}: all 8 gift slots filled, the 250× step lit`);
   check((await p.locator('#stockHistory li:not(.empty)').count()) === 5, `${label}: last turns strip has the 5`);
   const winners = await p.evaluate(() => [...document.querySelectorAll('#winList li')].map((li) => li.textContent.replace(/\s+/g, ' ')));

@@ -5,7 +5,7 @@
 // THE ODDS ARE EXACT (no table, no rounding): with 8 gifts among 20 stockings,
 //   P(at least k gifts) = (8·7·…·(8−k+1)) / (20·19·…·(20−k+1)),   P(exactly k) = P(at least k) − P(at least k+1)
 // Over the common denominator 20·19·…·12 (9 stockings deep) every chance is a whole number of WAYS (out of TOTAL), so anyone can
-// check them with a calculator. Pays back exactly 60.519% (computed from the table below, never typed in as text).
+// check them with a calculator. Pays back exactly 78.146% (computed from the table below, never typed in as text).
 // FAIR NUMBERS (the house's order, house.js): 38 numbers per turn. The first 19 shuffle the 8 gifts and 12 coals into the
 // 20 stockings (Fisher–Yates, one fair number per swap); the next 19 shuffle the 20 stockings into the order Santa opens them
 // (the same way). Two shuffles so a different set of stockings opens each turn; the chances above are the same either way.
@@ -19,9 +19,11 @@ import { FEE, IN_PER_DOLLAR } from './slots.js';
 
 export const STOCKINGS = 20, ROW = 10, GIFTS = 8, COAL = STOCKINGS - GIFTS, MAX_OPEN = GIFTS;
 export const BETS = [0.10, 1.00];
-// What a turn pays (× its price) by gifts found before the coal: index = gifts. Cody's table. The admin settings can publish
+// What a turn pays (× its price) by gifts found before the coal: index = gifts. Cody's table; payback raised to ~78% (Cody,
+// 2026-10-02, from 60.5%): 2 gifts 1.75→2.5×, 3 gifts 4→6×, 4 gifts 8→10×, 5 gifts 16→20×; 1 gift stays 0.5× (an honest loss),
+// the top prize stays 250× (the pool-coverage question is unchanged). The admin settings can publish
 // another (settings.js `stocking.pays`, with guard rails); the page swaps it in place (applyToGame).
-export const DEFAULT_PAYS = Object.freeze([0, 0.5, 1.75, 4, 8, 16, 40, 90, 250]);
+export const DEFAULT_PAYS = Object.freeze([0, 0.5, 2.5, 6, 10, 20, 40, 90, 250]);
 export const PAYS = [...DEFAULT_PAYS];
 const fall = (n, k) => { let r = 1; for (let i = 0; i < k; i++) r *= n - i; return r; }; // n·(n−1)·…·(n−k+1)
 export const TOTAL = fall(STOCKINGS, GIFTS + 1); // 20·19·…·12 = 60,949,324,800
@@ -29,7 +31,7 @@ export const TOTAL = fall(STOCKINGS, GIFTS + 1); // 20·19·…·12 = 60,949,324
 export const WAYS = Array.from({ length: GIFTS + 1 }, (_, k) => (k < GIFTS ? fall(GIFTS, k) * COAL * fall(STOCKINGS - k - 1, GIFTS - k) : fall(GIFTS, GIFTS) * COAL));
 export const odds = (k) => WAYS[k] / TOTAL;
 export const atLeast = (k) => fall(GIFTS, k) / fall(STOCKINGS, k);
-export const payback = (pays = PAYS) => pays.reduce((a, p, k) => a + p * WAYS[k], 0) / TOTAL;   // 60.519% with Cody's table
+export const payback = (pays = PAYS) => pays.reduce((a, p, k) => a + p * WAYS[k], 0) / TOTAL;   // 78.146% with Cody's table
 export const realWin = (pays = PAYS) => pays.reduce((a, p, k) => a + (p > 1 ? WAYS[k] : 0), 0) / TOTAL; // more back than it cost
 export const topMult = (pays = PAYS) => Math.max(...pays);
 export const NUMS_USED = 2 * (STOCKINGS - 1); // 38

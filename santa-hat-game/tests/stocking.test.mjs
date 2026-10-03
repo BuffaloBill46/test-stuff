@@ -8,7 +8,7 @@ import { STOCKINGS, GIFTS, PAYS, DEFAULT_PAYS, WAYS, TOTAL, NUMS_USED, MAX_MULT,
 import { rng } from './rng.mjs';
 
 // 1. Cody's pay table, exactly (a stray mid-line comment once silently switched off a money setting: LESSONS).
-assert.deepEqual(PAYS, [0, 0.5, 1.75, 4, 8, 16, 40, 90, 250], "Cody's pay table, gifts 0 to 8");
+assert.deepEqual(PAYS, [0, 0.5, 2.5, 6, 10, 20, 40, 90, 250], "Cody's pay table (raised to ~78%), gifts 0 to 8");
 assert.deepEqual([...DEFAULT_PAYS], PAYS); assert.equal(MAX_MULT, 250); assert.equal(STOCKINGS, 20); assert.equal(GIFTS, 8);
 
 // 2. Every step's chance, from the brief's own formula, checked EXACTLY in whole numbers (BigInt, no floating point):
@@ -29,12 +29,13 @@ assert.equal(odds(0), 0.6, 'coal first: 60% exactly');
 assert.equal(Math.round(oneIn(1)), 4); assert.equal(oneIn(2).toFixed(1), '10.2'); assert.equal(oneIn(3).toFixed(1), '28.8'); assert.equal(oneIn(4).toFixed(1), '92.3');
 assert.equal(Math.round(oneIn(5)), 346); assert.equal(Math.round(oneIn(6)), 1615); assert.equal(Math.round(oneIn(7)), 10498); assert.equal(Math.round(oneIn(8)), 125970);
 
-// 3. THE PAYBACK, EXACTLY: sum of prize × chance as one fraction (prizes × 4 are whole numbers: 0.5 → 2, 1.75 → 7).
+// 3. THE PAYBACK, EXACTLY: sum of prize × chance as one fraction (prizes × 4 are whole numbers: 0.5 → 2, 2.5 → 10).
+// Cody raised it to ~78% (2026-10-02, from 60.5%): the window moved with it, just as tight.
 const num = PAYS.reduce((a, p, k) => a + B(p * 4) * B(WAYS[k]), 0n), den = 4n * B(TOTAL);
-assert.ok(num * 1000n >= 600n * den && num * 1000n <= 615n * den, `exact payback must stay within 60.0%–61.5% (is ${Number(num * 1000000n / den) / 10000}%)`);
+assert.ok(num * 1000n >= 775n * den && num * 1000n <= 785n * den, `exact payback must stay within 77.5%–78.5% (is ${Number(num * 1000000n / den) / 10000}%)`);
 assert.ok(Math.abs(payback() - Number(num) / Number(den)) < 1e-15, 'payback() is the exact fraction');
 const exactPct = (Number(num * 10n ** 9n / den) / 1e7).toFixed(3);
-assert.equal(exactPct, '60.519', 'Cody\'s table pays back 60.519%');
+assert.equal(exactPct, '78.146', 'Cody\'s table pays back 78.146%');
 console.log(`exact: pays back ${exactPct}% (${num}/${den}); a real win (2 gifts or more) 1 in ${(1 / realWin()).toFixed(2)}; chances 1 in ${WAYS.map((w) => (TOTAL / w).toFixed(1)).join(' · ')}`);
 
 // 4. The shuffle is a real permutation, and every stocking can hold anything.
@@ -64,7 +65,7 @@ for (const u of [0, 0.999999999]) { const p = shuffle([...Array(20).keys()], Arr
   const win = play(st, 1, Math.random, 8); assert.deepEqual([win.found, win.mult, win.pay, win.ahead, win.opened.length], [8, 250, 250, true, 8], 'all 8 gifts: 250×, after 8 stockings');
   assert.equal(st.pool, 750, 'the pool paid the $250');
   const one = play(st, 0.1, Math.random, 1); assert.ok(!one.ahead && Math.abs(one.pay - 0.05) < 1e-12, 'one gift = 0.5× back: a LOSS, never shown as a win');
-  const two = play(st, 0.1, Math.random, 2); assert.ok(two.ahead && Math.abs(two.pay - 0.175) < 1e-12, 'two gifts = 1.75× = 17.5¢, exact (not rounded)');
+  const two = play(st, 0.1, Math.random, 2); assert.ok(two.ahead && Math.abs(two.pay - 0.25) < 1e-12, 'two gifts = 2.5× = 25¢, exact');
   for (let k = 0; k <= 8; k++) { const x = play({ pool: 1000, prepaid: true }, 1, Math.random, k); assert.equal(x.found, k); assert.equal(x.mult, PAYS[k]); assert.equal(x.gifts.filter(Boolean).length, 8); }
   assert.throws(() => play({ pool: 1000, prepaid: true }, 1, Math.random, 9), /0–8/);
   assert.throws(() => deal(0.37), /unknown bet/); }

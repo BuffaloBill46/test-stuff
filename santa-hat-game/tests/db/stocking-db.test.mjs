@@ -131,7 +131,12 @@ await db.query(`update public.pools set rules = '{}' where game = 'spin'`);
 const w = (await server.winners()).filter((x) => /^stock/.test(x.game));
 assert.ok(w.every((x) => (x.game === 'stock10' || x.game === 'stock100') && / gifts · /.test(x.note) && x.gainPct > 0), JSON.stringify(w.slice(0, 2)));
 assert.ok(!JSON.stringify(w).includes('wa11et'));
-assert.ok(w.filter((x) => / 1\.75×/.test(x.note) && x.game === 'stock10').every((x) => Math.abs(x.amount - 0.175) < 1e-12 && Math.round(x.gainPct) === 75), '2 gifts on 10¢: the exact 17.5¢ (+75%), not the stored 18¢');
+// every winner is shown at its EXACT prize (multiple × the turn), not the database's rounded cents (half-cent prizes like
+// 1.75 × 10¢ = 17.5¢ under a published table); checked on every win, never on an empty list (it once filtered on a prize the
+// table no longer had, which passed with nothing checked)
+assert.ok(w.length > 0, 'there are stocking winners to check');
+for (const x of w) { const mult = +/ ([\d.]+)×/.exec(x.note)[1], bet = x.game === 'stock100' ? 1 : 0.1;
+  assert.ok(Math.abs(x.amount - mult * bet) < 1e-12 && Math.abs(x.gainPct - (mult - 1) * 100) < 1e-6, 'winner shown at the exact prize: ' + JSON.stringify(x)); }
 // every finished run paid exactly its plays' total
 const bad = await db.query(`select r.id from public.runs r left join public.payouts po on po.run_id = r.id
   where r.paid_at is not null and coalesce(po.amount_raw, 0) <> (select coalesce(sum(pay_raw), 0) from public.plays where run_id = r.id)`);
