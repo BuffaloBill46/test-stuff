@@ -4,7 +4,7 @@
 // is decided (and its fingerprint locked) before anything is shown; a few million turns land on the exact chances; and the
 // shared Drop pool stays safe with Stocking Stuffer playing from it.
 import assert from 'node:assert/strict';
-import { STOCKINGS, GIFTS, PAYS, DEFAULT_PAYS, WAYS, TOTAL, NUMS_USED, MAX_MULT, odds, atLeast, payback, realWin, shuffle, outcome, deal, play, canPlay } from '../mockups/stocking.js';
+import { STOCKINGS, GIFTS, PAYS, DEFAULT_PAYS, WAYS, TOTAL, NUMS_USED, MAX_MULT, odds, atLeast, payback, realWin, shuffle, outcome, deal, play, canPlay, asTapped } from '../mockups/stocking.js';
 import { rng } from './rng.mjs';
 
 // 1. Cody's pay table, exactly (a stray mid-line comment once silently switched off a money setting: LESSONS).
@@ -130,4 +130,24 @@ function KINDSOK(m) { return m.KINDS.stocking?.game === 'spin' && m.SIZES.stocki
   // the rule itself: $1 needs $250 in the pool (after any top-off); 10¢ needs $25
   assert.equal(canPlay({ pool: 249 }, 1).ok, false); assert.equal(canPlay({ pool: 250 }, 1).ok, true); assert.equal(canPlay({ pool: 99 }, 1).ok, true, 'below $100 a top-off to $300 comes first');
   assert.equal(canPlay({ pool: 120 }, 0.1).ok, true); assert.equal(canPlay({ pool: 400, rules: { paused: true } }, 0.1).ok, false, 'the emergency stop stops it too'); }
-console.log('OK: Stocking Stuffer: exact chances and payback from the math; forced loss and win; real permutations; re-check replays the same stockings; decided before the reveal; 3 million turns match; shared pool safe');
+// 9. TAP TO OPEN (Cody, 2026-10-02): wherever the player taps, the turn is the same. For thousands of turns and several random
+// tap orders each: the k-th stocking tapped shows the k-th item of the fair sequence, so the gifts found (and the prize) can't
+// change; the layout is still exactly 8 gifts and 12 coals; and a bad tap list (a repeat, too few, off the mantel) is refused.
+{ const R = rng(1225);
+  for (let t = 0; t < 3000; t++) {
+    const o = outcome(Array.from({ length: NUMS_USED }, () => R()));
+    const seq = o.opened.map((s) => o.gifts[s]);
+    for (let v = 0; v < 4; v++) {
+      const taps = shuffle(Array.from({ length: STOCKINGS }, (_, i) => i), Array.from({ length: STOCKINGS - 1 }, () => R())).slice(0, o.opened.length);
+      const shown = asTapped(o, taps);
+      assert.deepEqual(taps.map((d) => shown[d]), seq, 'the k-th tap shows the k-th item of the fair sequence');
+      assert.equal(shown.filter(Boolean).length, GIFTS, 'still exactly 8 gifts (and 12 coals)');
+      const found = seq.findIndex((g) => !g); assert.equal(found === -1 ? GIFTS : found, o.found, 'so the gifts found, and the prize, are the fair ones');
+    }
+  }
+  const o = outcome(Array.from({ length: NUMS_USED }, () => R())), ok = o.opened.map((_, i) => i);
+  assert.throws(() => asTapped(o, [...ok.slice(0, -1), ok[0]]), /one different stocking/, 'a repeated tap is refused');
+  if (ok.length > 1) assert.throws(() => asTapped(o, ok.slice(1)), /one different stocking/, 'too few taps are refused');
+  assert.throws(() => asTapped(o, [...ok.slice(0, -1), 20]), /one different stocking/, 'a tap off the mantel is refused');
+}
+console.log('OK: Stocking Stuffer: tap to open can never change a turn (3,000 turns × 4 tap orders); exact chances and payback from the math; forced loss and win; real permutations; re-check replays the same stockings; decided before the reveal; 3 million turns match; shared pool safe');

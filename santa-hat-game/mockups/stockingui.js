@@ -37,7 +37,8 @@ function howTo() {
   const pb = (payback() * 100).toFixed(1), rows = PAYS.map((p, k) => `<tr class="${p > 1 ? 'win' : ''}"><td>${k === 0 ? 'Coal first' : k === GIFTS ? 'All 8' : k}</td><td>${p ? mult(p) : '—'}${p > 0 && p < 1 ? ' <span class="dim">(less back than it cost)</span>' : ''}</td><td>${p ? amt(p * 0.1) : '—'}</td><td>${p ? amt(p) : '—'}</td><td>1 in ${(TOTAL / WAYS[k]).toLocaleString('en-US', { maximumFractionDigits: TOTAL / WAYS[k] < 100 ? 1 : 0 })}</td></tr>`).join('');
   $('#stockHow .body').innerHTML = `<ol class="howrules">
       <li><b>${STOCKINGS} stockings</b> hang on the mantel: <b>${GIFTS} hide a gift</b>, the other ${STOCKINGS - GIFTS} hide a lump of coal (the Naughty List).</li>
-      <li>Santa opens them <b>one at a time, up to ${GIFTS}</b>. <b>The first coal ends the turn.</b> Nothing to choose.</li>
+      <li><b>Tap the stockings</b> to open them, one at a time, up to ${GIFTS}. <b>The first coal ends the turn.</b></li>
+      <li><b>Which stocking you tap doesn't change your chances.</b> Your turn is decided before your first tap: its fair numbers fix what the 1st, 2nd, 3rd… stocking you open holds, wherever you tap.</li>
       <li>You're paid by <b>how many gifts he found before the coal</b>. Each of the ${GIFTS} slots under the mantel shows what stopping there pays.</li>
       <li>1 gift pays back half the turn: less than it cost, so it isn't a win. <b>2 gifts or more</b> pay more than the turn (1 in ${(1 / realWin()).toFixed(1)} turns).</li></ol>
     <table class="pays"><thead><tr><th>Gifts before the coal</th><th>Pays</th><th>10¢ turn</th><th>$1 turn</th><th>Chance</th></tr></thead><tbody>${rows}</tbody></table>
@@ -46,7 +47,8 @@ function howTo() {
     <p class="dim"><b>Check it yourself:</b> after a turn, tap <b>Check last result</b>. Your turn's 38 fair numbers come from the revealed secret (see that panel).
       The first 19 shuffle the ${GIFTS} gifts and ${STOCKINGS - GIFTS} coals into stockings 1–${STOCKINGS} (top row 1–${ROW} left to right, bottom row ${ROW + 1}–${STOCKINGS}):
       for place ${STOCKINGS} down to 2, swap it with place ⌊number × place⌋ + 1, one number per swap (a Fisher–Yates shuffle). The next 19 shuffle the
-      ${STOCKINGS} stockings the same way into the order Santa opens them. The panel re-runs both and shows where every lump of coal was.</p>`;
+      ${STOCKINGS} stockings the same way into the turn's order: the 1st stocking you tap holds what's first in that order, the 2nd what's second, and so on.
+      The panel re-runs both, shows that order, and lays it out on the stockings you tapped.</p>`;
 }
 function stamp(text) { const fl = $('#stocking .flash'); fl.textContent = text; fl.classList.remove('show'); void fl.offsetWidth; fl.classList.add('show'); }
 function setBet(b) {
@@ -76,14 +78,19 @@ async function showTurn(r, p) {
   const res = $('#stocking .res'), card = $('#stocking .stockcard');
   live.current = { found: r.found, opened: [...r.opened], mult: r.mult }; live.shown = 0; live.started++;
   card.classList.remove('won', 'jackpot'); board.reset(); ladder(0);
-  res.textContent = `Santa's opening stockings… result locked (${short(p.proof.commit)}).`;
+  // TAP TO OPEN (Cody): the player taps each stocking. The turn's SEQUENCE is fixed already (r.opened's contents, in order);
+  // the k-th tap shows the k-th item, wherever they tap (stocking.js asTapped), so a pick can't change the result.
+  const taps = []; if (p.proof) p.proof.taps = taps; live.current.taps = taps; // for Check last result (it shows the turn as tapped)
+  res.textContent = `Tap a stocking! Result locked (${short(p.proof.commit)}): where you tap doesn't change it.`;
   let found = 0;
-  for (const s of r.opened) {
+  for (const [i, s0] of r.opened.entries()) {
+    if (i) res.innerHTML = `<span><b>${found} gift${found === 1 ? '' : 's'}…</b> tap another stocking</span>`;
+    const s = await board.pick(); taps.push(s);
     sfx('jiggle');
-    const gift = r.gifts[s];
+    const gift = r.gifts[s0];
     await board.open(s, gift);
     live.shown++;
-    if (gift) { found++; sfx('gift'); ladder(found); res.innerHTML = `<span><b>${found} gift${found === 1 ? '' : 's'}…</b> ${found < GIFTS ? 'next stocking' : ''}</span>`; }
+    if (gift) { found++; sfx('gift'); ladder(found); res.innerHTML = `<span><b>${found} gift${found === 1 ? '' : 's'}…</b> ${found < GIFTS ? 'tap another stocking' : ''}</span>`; }
     else sfx('coal');
     await wait(fast ? 40 : 260);
   }

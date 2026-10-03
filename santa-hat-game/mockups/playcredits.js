@@ -8,6 +8,7 @@ import { createHouse, check } from './house.js';
 import { newSeed } from './fair.js';
 import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js';
 import { FEE } from './slots.js';
+import { asTapped } from './stocking.js';
 import { play as sfx } from './sfx.js';
 import { SERVER, call, walletReady, payError, forPlayer } from './gameserver.js';
 import { withSlowDown } from './slowdown.js';
@@ -183,10 +184,12 @@ async function recheck() {
   const p = shown; if (!p) return;
   const c = await check(p, await cfgForProof(p)), K = KINDS[p.kind];
   let what, map = '';
-  if (p.kind === 'stocking') { // the two shuffles: where the coal was, and the order Santa opened (stockings 1–10 top row, 11–20 bottom)
-    const o = c.outcome, n = (s) => s + 1;
-    what = `coal in stockings ${o.coal.map(n).join(', ')}; Santa opened ${o.opened.map(n).join(', ')} (${o.opened.map((s) => (o.gifts[s] ? 'gift' : 'coal')).join(', ')}): ${o.found} gift${o.found === 1 ? '' : 's'} before ${o.found === 8 ? 'he ran out of gifts' : 'the coal'}, a ${o.mult}× result`;
-    map = `<span class="stockmap" aria-label="Where the gifts (gold) and coal (black) were; opened stockings are outlined and numbered in the order opened">${o.gifts.map((g, s) => { const at = o.opened.indexOf(s);
+  if (p.kind === 'stocking') { // the turn's SEQUENCE from the two shuffles, laid out on the stockings the player tapped (stocking.js asTapped)
+    const o = c.outcome, n = (s) => s + 1, seq = o.opened.map((s) => (o.gifts[s] ? 'gift' : 'coal')).join(', ');
+    // tap to open (Cody 2026-10-02): the k-th stocking tapped held the k-th item; without taps (a turn from before), Santa's own order
+    const taps = Array.isArray(p.taps) && p.taps.length === o.opened.length ? p.taps : o.opened, shown = taps === o.opened ? o.gifts : asTapped(o, taps);
+    what = `the sequence ${seq}: ${o.found} gift${o.found === 1 ? '' : 's'} before ${o.found === 8 ? 'running out of gifts' : 'the coal'}, a ${o.mult}× result. You opened stockings ${taps.map(n).join(', ')}, in that order`;
+    map = `<span class="stockmap" aria-label="The turn laid out on the stockings you opened: gifts gold, coal black; the ones you opened are outlined and numbered in the order you opened them">${shown.map((g, s) => { const at = taps.indexOf(s);
       return `<span class="${g ? 'g' : 'c'}${at >= 0 ? ' o' : ''}">${at >= 0 ? `<small>${at + 1}</small>` : ''}${n(s)}</span>`; }).join('')}</span>`;
   } else if (p.kind === 'drop') what = c.outcome.board === 1 ? `the bounces ${c.outcome.path.map((x) => (x ? 'R' : 'L')).join(' ')} (one per row of pegs), present ${c.outcome.bin + 1} of 9: a ${c.outcome.mult}× result`
     : `present ${c.outcome.bin + 1} of 17 from the published odds table (a ${c.outcome.mult}× result), reached by the bounces ${c.outcome.path.map((x) => (x ? 'R' : 'L')).join(' ')}`;

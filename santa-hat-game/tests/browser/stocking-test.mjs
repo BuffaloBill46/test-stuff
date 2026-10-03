@@ -36,6 +36,21 @@ for (const [label, vp] of [['phone390', { width: 390, height: 844 }], ['phone320
     return { title: await txt('#buyTitle'), what: await txt('#buyWhat'), go: await txt('#buyGo'), eyebrow: await txt('#buyEyebrow') };
   };
   const go = async () => { await p.evaluate(() => document.querySelector('#buyGo').click()); await p.waitForFunction(() => window.__stocking.opening, null, { timeout: 5000 }).catch(() => {}); };
+  // TAP TO OPEN (Cody, 2026-10-02): a player taps the stockings. This taps like one, all along: whenever the mantel waits, a
+  // random unopened stocking gets a real touch (phones) or click (desktop) at its spot on screen, and that stocking must open.
+  const tapper = { on: true, taps: 0, wrong: 0 };
+  const tapLoop = (async () => {
+    while (tapper.on) {
+      const w = await p.evaluate(() => { const b = window.__stocking?.board; if (!b?.waiting) return null;
+        const cv = document.querySelector('#stocking canvas'); cv.scrollIntoView({ block: 'nearest' });
+        const free = b.opened.map((x, i) => (x ? -1 : i)).filter((i) => i >= 0), s = free[Math.floor(Math.random() * free.length)], c = b.centerOf(s), r = cv.getBoundingClientRect();
+        return { s, x: r.left + c.x, y: r.top + c.y }; }).catch(() => null);
+      if (!w) { await p.waitForTimeout(60).catch(() => {}); continue; }
+      if (label.startsWith('phone')) await p.touchscreen.tap(w.x, w.y).catch(() => {}); else await p.mouse.click(w.x, w.y).catch(() => {});
+      tapper.taps++;
+      if (!(await p.waitForFunction((s) => window.__stocking.board.opened[s] !== null, w.s, { timeout: 30000 }).then(() => true, () => false))) tapper.wrong++;
+    }
+  })();
 
   // 0. The card at rest, labelled from the rules.
   check(await txt('#stocking header em') === '10¢ or $1 a turn · up to 250×', `${label}: header: ${await txt('#stocking header em')}`);
@@ -111,8 +126,9 @@ for (const [label, vp] of [['phone390', { width: 390, height: 844 }], ['phone320
   await p.waitForFunction(() => /atch/.test(document.querySelector('#proofOut').textContent), null, { timeout: 15000 });
   const proof = await p.evaluate(() => ({ text: document.querySelector('#proofOut').textContent, cells: document.querySelectorAll('#proofOut .stockmap > span').length, coal: document.querySelectorAll('#proofOut .stockmap .c').length,
     opened: [...document.querySelectorAll('#proofOut .stockmap .o')].map((s) => [+s.querySelector('small').textContent, +s.lastChild.textContent]).sort((a, b) => a[0] - b[0]).map((x) => x[1] - 1) }));
-  check(/^Matches\..*coal in stockings [\d, ]+; Santa opened [\d, ]+ \(.*\): \d gifts? before .*×/.test(proof.text), `${label}: a real turn re-checks: ${proof.text.slice(0, 170)}`);
-  check(proof.cells === 20 && proof.coal === 12 && JSON.stringify(proof.opened) === JSON.stringify(lastTurn.opened), `${label}: the coal map: 20 stockings, 12 coal, the same stockings opened in the same order (${proof.opened})`);
+  check(/^Matches\..*the sequence (gift|coal)(, (gift|coal))*: \d gifts? before .*×.*You opened stockings [\d, ]+, in that order/.test(proof.text), `${label}: a real turn re-checks: ${proof.text.slice(0, 200)}`);
+  // tap to open: the map shows the turn on the stockings the player TAPPED, in tap order (not the shuffle's own order)
+  check(proof.cells === 20 && proof.coal === 12 && JSON.stringify(proof.opened) === JSON.stringify(lastTurn.taps), `${label}: the map: 20 stockings, 12 coal, the stockings you tapped in the order you tapped them (${proof.opened} vs ${lastTurn.taps})`);
   await p.screenshot({ path: `${OUT}/${label}-3-check.png` });
   await p.evaluate(() => document.querySelector('#proofClose').click());
   // 5. Layout: nothing wider than the screen; thumb-sized buttons; the run buttons and gift slots inside the card.
@@ -123,6 +139,8 @@ for (const [label, vp] of [['phone390', { width: 390, height: 844 }], ['phone320
   await p.evaluate(async () => { const s = window.__stocking.board; s.hurry(); s.reset(); await Promise.all(Array.from({ length: 20 }, (_, i) => s.open(i, i % 3 !== 0))); s.normal(); });
   await p.evaluate(() => document.querySelector('#stocking canvas').scrollIntoView({ block: 'start' })); await p.waitForTimeout(2500);
   await p.screenshot({ path: `${OUT}/${label}-4-all20.png` });
+  tapper.on = false; await tapLoop;
+  check(tapper.taps > 0 && tapper.wrong === 0, `${label}: tap to open: ${tapper.taps} real ${label.startsWith('phone') ? 'touches' : 'clicks'}, each opened the stocking tapped`);
   await ctx.close();
 }
 const real = errors.filter((e) => !/ERR_FAILED|Failed to load|net::/.test(e));
