@@ -14,7 +14,8 @@
 // server → page: { t: 'peers', ps, own } · { t: 'snap', d } · { t: 'emote', d } · { t: 'board', games } · { t: 'err', why }
 //   · { t: 'counted', d: { place, level, xp, up } } my Auto match finish counted toward levels (server-recorded)
 import { createSim, K } from '../mockups/sim.js';
-import { snapMs, autoStartMs, isPublic, styleOf, botName, refereeOpts, modeAllowed } from '../mockups/refcore.js';
+import { snapMs, autoStartMs, isPublic, isWeekly, styleOf, botName, refereeOpts, modeAllowed } from '../mockups/refcore.js';
+import { weeklyAt } from '../mockups/weekly.js';
 import { settleRanked, RULES } from '../mockups/ranked.js';
 import { cleanAvatar, BY_ID, DEFAULT_AVATAR, SB_SLOTS, GEAR_SLOTS } from '../mockups/catalog.js';
 import { clampLevel } from '../mockups/levels.js';
@@ -54,11 +55,12 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
   const boardWatchers = new Set();
   let boardAt = 0;
 
+  // a weekly room (PW…) keeps the week's mode it was made in while it lives (weekly.js)
   function makeRoom(code) {
     const room = { code, conns: new Map(), auto: isPublic(code), mode: code[1] === 'T' && isPublic(code) && allowMode('team') ? 'team' : 'ffa', cdEnd: null, lastSnap: 0, emoteAt: new Map(),
-      ranked: isPublic(code) && code[1] === 'R', style: styleOf(code), rid: RID + Math.floor(rand() * 2 ** 48).toString(36) + now().toString(36), started: false, lastPhase: 'lobby' };
+      ranked: isPublic(code) && code[1] === 'R', style: styleOf(code), variant: isWeekly(code) ? weeklyAt(now()) : null, rid: RID + Math.floor(rand() * 2 ** 48).toString(36) + now().toString(36), started: false, lastPhase: 'lobby' };
     room.info = (e) => room.conns.get(e.peer)?.me;
-    room.sim = createSim(rand, refereeOpts(room.info));
+    room.sim = createSim(rand, { ...refereeOpts(room.info), variant: room.variant });
     room.sim.S.mode = room.mode;
     rooms.set(code, room);
     return room;
@@ -242,15 +244,16 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
   // a new room of a ticked type (FFA first when both are ticked). Never a match already being played. Null when all are full.
   // styles: 'normal' (plain play) and/or 'gear' (special snowballs and gear count), ticked the same way.
   function pickAuto(modes, styles, n = 1) { // n: seats needed (a friends' group moving together)
-    const want = (Array.isArray(modes) ? modes : []).filter(allowMode); // team play paused: TEAM boxes fall back to FFA
+    const want = (Array.isArray(modes) ? modes : []).filter((m) => m === 'weekly' || allowMode(m)); // team play paused: TEAM boxes fall back to FFA; 'weekly': this week's mode
     if (!want.length) want.push('ffa');
     const kinds = (Array.isArray(styles) ? styles : []).filter((x) => x === 'normal' || x === 'gear');
     if (!kinds.length) kinds.push('gear');
-    const open = [...rooms.values()].filter((r) => r.auto && !r.ranked && want.includes(r.mode) && kinds.includes(r.style) && r.sim.S.phase === 'lobby' && seatsLeft(r.code) >= n);
+    const kindOf = (r) => (r.variant ? 'weekly' : r.mode); // a weekly room only for players who ticked this week's mode
+    const open = [...rooms.values()].filter((r) => r.auto && !r.ranked && want.includes(kindOf(r)) && kinds.includes(r.style) && r.sim.S.phase === 'lobby' && seatsLeft(r.code) >= n);
     open.sort((a, b) => players(b).length - players(a).length || (a.cdEnd ?? Infinity) - (b.cdEnd ?? Infinity));
     if (open.length && players(open[0]).length) return open[0].code;
-    for (const mode of ['ffa', 'team'].filter((x) => want.includes(x))) for (const style of ['gear', 'normal'].filter((x) => kinds.includes(x))) {
-      for (let k = 1; k <= 5; k++) { const code = 'P' + (mode === 'team' ? 'T' : 'F') + (style === 'normal' ? 'N' : 'G') + k; if (!rooms.has(code) && seatsLeft(code) >= n) return code; }
+    for (const mode of ['ffa', 'weekly', 'team'].filter((x) => want.includes(x))) for (const style of ['gear', 'normal'].filter((x) => kinds.includes(x))) {
+      for (let k = 1; k <= 5; k++) { const code = 'P' + (mode === 'team' ? 'T' : mode === 'weekly' ? 'W' : 'F') + (style === 'normal' ? 'N' : 'G') + k; if (!rooms.has(code) && seatsLeft(code) >= n) return code; }
     }
     return open[0]?.code || null; // every room of these types exists: an empty waiting one, if any
   }
@@ -300,7 +303,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
     return [...rooms.values()].filter((r) => r.auto).map((r) => {
       const S = r.sim.S, top = [...S.ents].sort((a, b) => b.score - a.score)[0], ps = [...r.conns.values()].map((c) => c.me);
       const nameOf = (e) => (e.bot ? botName(e.id) : r.conns.get(e.peer)?.me.n || 'Player');
-      return { code: r.code, mode: S.mode, style: r.style, ranked: r.ranked ? 1 : 0, phase: S.phase, round: S.round, time: Math.ceil(S.time),
+      return { code: r.code, mode: S.mode, variant: r.variant, style: r.style, ranked: r.ranked ? 1 : 0, phase: S.phase, round: S.round, time: Math.ceil(S.time),
         humans: ps.filter((p) => !p.w).length, watchers: ps.filter((p) => p.w).length, free: Math.max(0, seatsLeft(r.code)),
         starts: S.phase === 'lobby' && r.cdEnd ? Math.max(0, Math.ceil((r.cdEnd - now()) / 1000)) : null, // seconds to the start (waiting games)
         leader: top && S.phase !== 'lobby' ? nameOf(top) : '', lscore: top ? top.score : 0 };

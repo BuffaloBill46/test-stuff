@@ -44,7 +44,7 @@ assert.ok(s.E.some((r) => r[11] > 0), 'someone scored');
 // --- the live games list: honest (the server makes it), the page's fields
 const l = conn('lobby'); l.say({ t: 'board' });
 const g = l.last('board').games.find((x) => x.code === 'PF1');
-assert.deepEqual(Object.keys(g).sort(), ['code', 'free', 'humans', 'leader', 'lscore', 'mode', 'phase', 'ranked', 'round', 'starts', 'style', 'time', 'watchers'].sort());
+assert.deepEqual(Object.keys(g).sort(), ['code', 'free', 'humans', 'leader', 'lscore', 'mode', 'phase', 'ranked', 'round', 'starts', 'style', 'time', 'variant', 'watchers'].sort());
 assert.equal(g.humans, 2); assert.equal(g.phase, 'end'); assert.ok(g.leader, 'names the leader');
 
 // --- private room: only the owner may pick the mode and start; emotes are rate-limited
@@ -188,3 +188,21 @@ console.log('OK: server referee: rooms by the server clock, auto start, a full m
   tt += 21_000; const late = c5('strngr9'); late.say({ t: 'join', code: bigTo, me: me('strngr9') });
   assert.equal(late.last('peers')?.code, bigTo, 'after 20 s the holds are gone: the seats are free again'); }
 console.log('OK: Auto match together: the host only; a public room with seats for the whole group; seats held 20 s (no stranger takes them, Auto match skips the room, the games list shows them taken); the group takes them; bigger groups get a fresh room');
+
+// --- WEEKLY MODE ROOMS (weekly.js): a player who ticks this week's mode gets a PW room playing it; plain FFA never lands there
+{ const { weeklyAt } = await import('../mockups/weekly.js');
+  let tt = 12_000_000_000; const r6 = createReferee({ now: () => tt });
+  const c6 = (id) => { const c = { got: [], send: (x) => c.got.push(JSON.parse(x)) }; c.h = r6.connect(c); c.say = (m) => c.h.message(JSON.stringify(m)); c.last = (k) => [...c.got].reverse().find((m) => m.t === k); return c; };
+  const w1 = c6(); w1.say({ t: 'auto', modes: ['weekly'], styles: ['gear'], me: me('weekly01') });
+  const code = w1.last('peers')?.code;
+  assert.equal(code, 'PWG1', `this week's mode: a weekly room (${code})`);
+  const g = r6.board().find((x) => x.code === code);
+  assert.equal(g.variant, weeklyAt(tt), `the games list says which mode (${g.variant})`);
+  assert.equal(r6.rooms.get(code).sim.S.variant, weeklyAt(tt), 'its match plays that mode');
+  const f1 = c6(); f1.say({ t: 'auto', modes: ['ffa'], styles: ['gear'], me: me('plainff1') });
+  assert.equal(f1.last('peers')?.code, 'PFG1', 'a plain Free-for-all player goes to a plain room');
+  const w2 = c6(); w2.say({ t: 'auto', modes: ['weekly'], styles: ['gear'], me: me('weekly02') });
+  assert.equal(w2.last('peers')?.code, 'PWG1', 'the next weekly player joins the waiting weekly room');
+  const both = c6(); both.say({ t: 'auto', modes: ['ffa', 'weekly'], styles: ['gear'], me: me('either01') });
+  assert.ok(['PWG1', 'PFG1'].includes(both.last('peers')?.code), 'ticking both: the fullest waiting room of either kind'); }
+console.log('OK: weekly mode rooms: PW rooms play this week\'s mode, listed with it; only players who ticked it go there');
