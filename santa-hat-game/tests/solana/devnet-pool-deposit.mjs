@@ -12,8 +12,10 @@ import { createSolanaRpc, createSolanaRpcSubscriptions, sendAndConfirmTransactio
 import * as T22 from '@solana-program/token-2022';
 import { adminMessage } from '../../mockups/adminmsg.js';
 
-const [game, dollarsArg] = process.argv.slice(2), dollars = Number(dollarsArg);
-if (!['spin', 'slots'].includes(game) || !(dollars > 0 && dollars <= 2000)) throw new Error('usage: node devnet-pool-deposit.mjs <spin|slots> <dollars, up to 2000>');
+// <dollars> = bring the pool up to that much; 'topoff' = pay a top-off the game booked and is waiting for (books ahead of the wallet
+// by exactly that; new runs are refused until it's recorded: server/games.js), so books = wallet again (2026-10-03)
+const [game, dollarsArg] = process.argv.slice(2), TOPOFF = dollarsArg === 'topoff', dollars = Number(dollarsArg);
+if (!['spin', 'slots'].includes(game) || !(TOPOFF || (dollars > 0 && dollars <= 2000))) throw new Error('usage: node devnet-pool-deposit.mjs <spin|slots> <dollars, up to 2000 | topoff>');
 const cfg = JSON.parse(readFileSync(new URL('../../devnet.json', import.meta.url), 'utf8'));
 const RPC = cfg.rpc; if (!/devnet/.test(RPC)) throw new Error('devnet only');
 const SERVER = process.env.SERVER || 'https://api.santahatgames.com';
@@ -29,9 +31,10 @@ const booked = async () => BigInt((await post({ action: 'pools' })).pools.find((
 // the price the server values pools at (its 10-minute median), so "$300" means what the game means by it
 const price = (await post({ action: 'market' })).usd; if (!(price > 0)) throw new Error('no SANTA price from the server');
 const before = { book: await booked(), wallet: await onChain() };
-if (before.book !== before.wallet) throw new Error(`books ${before.book} ≠ wallet ${before.wallet}: fix that first, nothing done`);
-const want = BigInt(Math.round((dollars / price) * 1e6)), need = want - before.book;
-console.log(`${game} pool: $${((Number(before.book) / 1e6) * price).toFixed(2)} now (books = wallet = ${before.book} raw) at $${price}; target $${dollars} = ${want} raw`);
+if (!TOPOFF && before.book !== before.wallet) throw new Error(`books ${before.book} ≠ wallet ${before.wallet}: fix that first, nothing done`);
+if (TOPOFF && !(before.book > before.wallet)) throw new Error(`no top-off waiting (books ${before.book}, wallet ${before.wallet}): nothing done`);
+const want = TOPOFF ? before.book : BigInt(Math.round((dollars / price) * 1e6)), need = TOPOFF ? before.book - before.wallet : want - before.book;
+console.log(TOPOFF ? `${game} pool: books ${before.book} raw, wallet ${before.wallet} raw: paying the waiting top-off (${need} raw)` : `${game} pool: $${((Number(before.book) / 1e6) * price).toFixed(2)} now (books = wallet = ${before.book} raw) at $${price}; target $${dollars} = ${want} raw`);
 if (need <= 0n) { console.log('already there: nothing to do'); process.exit(0); }
 
 // 1. the test SANTA into the pool wallet (minting adds no transfer tax: exactly `need` arrives)

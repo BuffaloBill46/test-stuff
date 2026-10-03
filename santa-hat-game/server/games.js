@@ -100,10 +100,10 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     const price = await livePrice(), p = await row('select * from public.pools where game = $1', [KINDS[kind].game]);
     const can = canTake(kind, poolState(p, price.usd), bet, cfg);
     if (!can.ok) return { refused: true, stopped: !!can.stopped };
-    // A top-off is booked into the pool's books the moment it's due, but the SANTA only arrives when Cody deposits it. Until he
-    // records it, no NEW runs: nobody plays (or wins a jackpot sized) on money the wallet doesn't have yet (security review,
-    // 2026-10-03). Runs already paid for still play. The page says "the prize pool is refilling"; the alert tells Cody.
-    if ((await row(`select count(*)::int as n from public.pool_transfers where game = $1 and kind = 'top-off' and status = 'needs_approval'`, [KINDS[kind].game])).n) return { refused: true, stopped: false, refilling: true };
+    // (A waiting top-off no longer stops new runs. Cody, 2026-10-03: "a game that stops working all the time is bad and I don't
+    // have the funds to create a big cushion". The top-off is booked when due; the alert (server/alerts.js "needs a TOP-OFF")
+    // tells him to deposit it. Accepted risk, his call: until he does, the books count SANTA the wallet doesn't have yet, so
+    // a run of big wins could leave a payout waiting for that deposit; it retries and alerts, and nothing is lost.)
     const usd = Math.round(bet * n * 100) / 100, santaRaw = Math.round((usd / price.usd) * DEC);
     const q = await row(`insert into public.quotes (profile_id, kind, n, bet, usd, santa_raw, price_usd) values ($1, $2, $3, $4, $5, $6, $7) returning id, created_at`,
       [profile, kind, n, bet, usd, santaRaw, price.usd]);
