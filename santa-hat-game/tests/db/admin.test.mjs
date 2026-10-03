@@ -12,7 +12,7 @@ await pg.exec(`create role anon; create role authenticated; create role service_
   create table auth.users (id uuid primary key default gen_random_uuid(), email text, raw_user_meta_data jsonb, raw_app_meta_data jsonb, created_at timestamptz default now(), updated_at timestamptz default now(), last_sign_in_at timestamptz);
   create table auth.identities (id uuid primary key default gen_random_uuid(), provider_id text, user_id uuid references auth.users, identity_data jsonb, provider text, last_sign_in_at timestamptz, created_at timestamptz default now(), updated_at timestamptz default now(), email text);
   create function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;`);
-for (const f of ['001_profiles.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql']) await pg.exec(readFileSync(new URL(`../../supabase/${f}`, import.meta.url), 'utf8'));
+for (const f of ['001_profiles.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '026_shared_pool.sql']) await pg.exec(readFileSync(new URL(`../../supabase/${f}`, import.meta.url), 'utf8'));
 const db = { query: async (q, p) => (await pg.query(q, p)).rows, tx: (fn) => pg.transaction((t) => fn({ query: async (q, p) => (await t.query(q, p)).rows })) };
 await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', 58823529411, '{}'), ('slots', 588235294117, '{}')`);
 
@@ -35,11 +35,17 @@ const logs = async () => (await db.query('select count(*)::int as n from public.
 const me = (await db.query('insert into auth.users default values returning id'))[0].id;
 await db.query(`insert into public.profiles (id, wallet, name, avatar) values ($1, 'PLAYERwa11et111111111111111111111111111111', 'P', '{}')`, [me]);
 const server = createGameServer({ db, chain: {}, livePrice: async () => ({ usd: 0.00085 }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: {} });
-const pause = await signed(cody, { action: 'pause', game: 'slots' });
-assert.deepEqual(await admin.run(pause), { ok: true, game: 'slots', rules: { paused: true } });
+// ONE GAME POOL (Cody, 2026-10-02): Big Hat plays from the shared pool ('spin'), so stopping the OLD Slots pool doesn't stop it
+assert.ok((await admin.run(await signed(cody, { action: 'pause', game: 'slots' }))).ok);
+assert.ok((await server.quote(me, 'big', 1, 1)).id, 'the old Slots pool is not where Big Hat plays any more');
+assert.ok((await admin.run(await signed(cody, { action: 'resume', game: 'slots' }))).ok);
+await db.query('delete from public.quotes'); await db.query("delete from public.pool_log"); await db.query("update public.pools set rules = '{}'");
+const pause = await signed(cody, { action: 'pause', game: 'spin' });
+assert.deepEqual(await admin.run(pause), { ok: true, game: 'spin', rules: { paused: true } });
 assert.deepEqual(await server.quote(me, 'big', 1, 1), { refused: true, stopped: true }, 'a stopped pool takes no payment');
 assert.equal((await admin.run(pause)).error, 'this signed message was already used', 'a copied signature can\'t be replayed');
-assert.ok((await admin.run(await signed(cody, { action: 'resume', game: 'slots' }))).ok);
+for (const k of ['drop', 'stocking']) assert.deepEqual(await server.quote(me, k, 1, 0.1), { refused: true, stopped: true }, 'one stop stops every game on the Game pool: ' + k);
+assert.ok((await admin.run(await signed(cody, { action: 'resume', game: 'spin' }))).ok);
 assert.ok((await server.quote(me, 'big', 1, 1)).id, 'resumed: plays can be bought again');
 
 // Refused: another wallet, a tampered message, a stale message, a signature from a different message, junk.
@@ -50,19 +56,28 @@ assert.equal((await admin.run(await signed(cody, { action: 'pause', game: 'spin'
 const other = await signed(cody, { action: 'resume', game: 'spin' });
 assert.equal((await admin.run({ ...good, signature: other.signature })).error, 'signature doesn\'t match the wallet');
 assert.equal((await admin.run({ wallet: cody.address, message: 'hello', signature: '00' })).error, 'not an admin message');
-assert.equal((await rules('spin')).paused, undefined, 'none of those changed anything');
+assert.equal((await rules('spin')).paused, false, 'none of those changed anything (still resumed)');
 
 // Settings: sane changes apply; silly ones are refused and change nothing.
 for (const bad of [{ skim: 2000 }, { topOffBelow: 600 }, { jackpotPct: 0.9 }, { paused: true }, { hatBonus: 1 }, { skimAt: -5 }]) {
   assert.ok(checkRules('slots', bad).length > 0, 'refuses ' + JSON.stringify(bad));
   assert.ok((await admin.run(await signed(cody, { action: 'set-rules', game: 'slots', settings: bad }))).error);
 }
-assert.deepEqual(await rules('slots'), { paused: false }, 'refused settings changed nothing');
+assert.deepEqual(await rules('slots'), {}, 'refused settings changed nothing');
 assert.ok((await admin.run(await signed(cody, { action: 'set-rules', game: 'slots', settings: { jackpotPct: 0.14, skimAt: 1500 } }))).ok);
 const r = await rules('slots'); assert.equal(r.jackpotPct, 0.14);
 const st = { pool: 1750, rules: r, prepaid: true };
 assert.ok(Math.abs(pull(st, 'big', Math.random, 'JACKPOT').pay - 1750 * 0.14) < 1e-9, 'the game uses the new jackpot %');
-assert.equal(await logs(), 3, 'every applied change is in the public log: pause, resume, settings');
+// the shared Game pool ('spin') takes a jackpot % too (all three games' pool jackpots), and its thresholds must keep the newest
+// settings inside their guard rails: a $5,000 skim point would let the Drop's jackpot pay back over 98% (refused, nothing changed)
+assert.match((await admin.run(await signed(cody, { action: 'set-rules', game: 'spin', settings: { skimAt: 5000 } }))).error, /Snowball Drop would pay back 10\d\.\d% with the jackpot at a \$5000 Game pool/);
+assert.equal((await rules('spin')).skimAt, undefined, 'refused: the Game pool rules are unchanged');
+assert.ok((await admin.run(await signed(cody, { action: 'set-rules', game: 'spin', settings: { jackpotPct: 0.2 } }))).ok, 'the Game pool jackpot % can be set');
+{ const { play: dropPlay } = await import('../../mockups/plinko.js'), { play: stockPlay } = await import('../../mockups/stocking.js');
+  const g = { pool: 1000, rules: await rules('spin'), prepaid: true };
+  assert.equal(dropPlay(g, 1, Math.random, [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]).pay, 200, 'the Drop jackpot uses the Game pool\'s 20%');
+  assert.equal(stockPlay({ pool: 1000, rules: g.rules, prepaid: true }, 0.1, Math.random, 8).pay, 20, 'and Stocking Stuffer\'s (× the 10¢ size)'); }
+assert.equal(await logs(), 4, 'every applied change is in the public log: pause, resume, settings, the Game pool %');
 // Top-offs are paid by Cody sending SANTA himself (Cody, 2026-09-30), then recording the deposit. The server books exactly what
 // ARRIVED in the pool wallet (read from the chain's balance record); invariant: wallet = book + owed out − owed in, every step.
 {
@@ -126,14 +141,14 @@ assert.equal(await logs(), 3, 'every applied change is in the public log: pause,
   assert.equal((await st(big)).status, 'queued', 'a real $430 win (above the old $205 guess) is NOT frozen');
   const frozen = await st(bad); assert.equal(frozen.status, 'held', 'a $5,000 single pull (impossible from the prize table) is frozen');
   const shown = (await server.pools()).held;
-  assert.deepEqual(shown.map((h) => [h.id, h.usd, h.name, h.wallet, h.kind, h.game]), [[+frozen.id, 5000, 'P', 'PLAY…1111', 'big', 'slots']], 'the admin screen sees who and how much (wallet shortened)');
+  assert.deepEqual(shown.map((h) => [h.id, h.usd, h.name, h.wallet, h.kind, h.game]), [[+frozen.id, 5000, 'P', 'PLAY…1111', 'big', 'spin']], 'the admin screen sees who and how much (wallet shortened)');
   const rel = async (w, game, payout) => admin.run(await signed(w, { action: 'release-payout', game, settings: { payout } }));
-  assert.equal((await rel(stranger, 'slots', frozen.id)).error, 'not an admin wallet');
-  assert.match((await rel(cody, 'spin', frozen.id)).error, /paid from the slots pool/);
-  assert.match((await rel(cody, 'slots', (await st(big)).id)).error, /isn't frozen/, 'only a frozen payout can be released');
-  assert.match((await rel(cody, 'slots', 'abc')).error, /which payout/);
-  const once = await signed(cody, { action: 'release-payout', game: 'slots', settings: { payout: frozen.id } });
-  assert.deepEqual(await admin.run(once), { ok: true, game: 'slots', payout: +frozen.id, usd: 5000 });
+  assert.equal((await rel(stranger, 'spin', frozen.id)).error, 'not an admin wallet');
+  assert.match((await rel(cody, 'slots', frozen.id)).error, /paid from the spin pool/, 'a Big Hat payout is paid from the shared Game pool now');
+  assert.match((await rel(cody, 'spin', (await st(big)).id)).error, /isn't frozen/, 'only a frozen payout can be released');
+  assert.match((await rel(cody, 'spin', 'abc')).error, /which payout/);
+  const once = await signed(cody, { action: 'release-payout', game: 'spin', settings: { payout: frozen.id } });
+  assert.deepEqual(await admin.run(once), { ok: true, game: 'spin', payout: +frozen.id, usd: 5000 });
   assert.equal((await st(bad)).status, 'queued', 'released: the payout worker sends it on its next pass');
   assert.equal((await admin.run(once)).error, 'this signed message was already used');
   assert.deepEqual((await server.pools()).held, [], 'nothing frozen any more');

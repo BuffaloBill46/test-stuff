@@ -11,24 +11,34 @@
 //   100×, with lots of small ("micro") wins. Target: line wins pay back about 75% of what's played.
 //
 //   POOL JACKPOT (separate): its own random draw each pull, at `poolJackpotOdds`. When it hits, every square on the
-//   grid shows a Santa Hat and the machine pays its % of the shared Slots pool. A full grid can't happen by accident
+//   grid shows a Santa Hat and the machine pays its % of the shared Game pool. A full grid can't happen by accident
 //   (no strip has two Santa Hats next to each other), so the two jackpots never get mixed up.
 //
 // !! PAYS, STRIP COUNTS, ODDS AND JACKPOT %s ARE DRAFTS. Cody decides the real ones. Change them in MACHINES below, then run
 // tests/slots.test.mjs: it prints payback, hit rate and jackpot odds and checks the invariants.
-// The Slots pool is its own wallet. Spin is a separate game with its own pool.
+// ONE GAME POOL (Cody, 2026-10-02): Big Hat, Snowball Drop and Stocking Stuffer all play from ONE shared pool (shown to players
+// as "Game pool"; the database row and wallet keep the old Spin pool's key 'spin'). The old Slots pool wallet is no longer used
+// by any game. The lottery stays separate. POOL_RULES below ARE that shared pool's rules (spin.js SPIN_RULES is the same object).
 
 export const FEE = 0.03;                       // SANTA's own transfer tax (read live from the token in the real version)
 export const BURN = 0.10;                      // Games tab: 10% burned, 90% to the pool, after the tax
 export const IN_PER_DOLLAR = (1 - BURN * (1 - FEE)) * (1 - FEE); // 87.59¢ of each $1 lands in the pool
-// Slots pool (escrow) rules, all ADJUSTABLE: the real server loads these from Cody's admin settings, and pull() reads
-// them on every pull, so a change applies right away.
-//   start        starting pool (must cover the $100 top prize; $500 never locked in simulation, $250 locked ~1 run in 100)
-//   skimAt/skim  when the pool reaches skimAt, send skim to the treasury (Cody: $25 at $1,775; helps cover the tax on winnings)
-//   topOffBelow  if the pool drops below this after a pull, the treasury tops it back up to topOffTo (Cody: top-off feature).
-//                It's above the $100 top prize, so the game can never lock.
-//   paused       Cody's emergency stop: no pulls AND no top-offs (so funds can be withdrawn without the treasury refilling).
-export const POOL_RULES = { start: 500, skimAt: 1775, skim: 25, topOffBelow: 150, topOffTo: 500, paused: false };
+// The Game pool (escrow) rules, all ADJUSTABLE: the real server loads these from Cody's admin settings (the 'spin' pool row),
+// and every game reads them on every play, so a change applies right away. Cody, 2026-10-02 (one shared pool):
+//   start        starting pool: $500
+//   skimAt/skim  when the pool reaches $1,025, $25 goes to the treasury (helps cover the tax on winnings)
+//   topOffBelow  if the pool drops below $200 (before or after a play), the treasury tops it back up to topOffTo ($500).
+//                $200 is above every game's biggest FIXED prize (Big Hat's $100 top line, Stocking Stuffer's 50× = $50 on $1,
+//                Snowball Drop's 25× = $25 on $1), so no play is ever refused for lack of pool. The pool jackpots are a share
+//                of the pool, so they can always be paid.
+//   paused       Cody's emergency stop: no plays AND no top-offs (so funds can be withdrawn without the treasury refilling).
+// (Was, before 2026-10-02: Slots pool $500 start, skim at $1,775, top-off below $150; Drop pool $300, $1,025, below $100.)
+export const POOL_RULES = { start: 500, skimAt: 1025, skim: 25, topOffBelow: 200, topOffTo: 500, paused: false };
+// THE POOL JACKPOTS (Cody, 2026-10-02): one per game, each a share of the Game pool at the moment of the play, scaled by the
+// play's size: pay = pct × pool × (bet ÷ $1). A $1 play wins 25% of the pool, a 10¢ play 2.5%. Big Hat is $1-only and keeps its
+// own rule (pct × pool, as before). Never more than the pool holds, so the pool can never go below zero.
+export const JACKPOT_PCT = 0.25;
+export const poolJackpot = (pool, pct, scale = 1) => Math.max(0, Math.min(pool * pct * scale, pool));
 export const START_POOL = POOL_RULES.start, SKIM_AT = POOL_RULES.skimAt, SKIM = POOL_RULES.skim; // starting values, for tests
 
 export const SYMBOLS = [
@@ -157,9 +167,10 @@ export function pull(state, machineId, rand = Math.random, forcedStops) {
   if (jackpot) {
     const grid = Array.from({ length: m.reels }, () => Array(m.rows).fill(SYM.hat));
     const pct = state.rules?.jackpotPct ?? m.jackpotPct; // adjustable by Cody (admin); the odds stay in code so old plays re-check
-    const pay = Math.min(state.pool * pct, state.pool);
+    // the pool at this moment and the % are recorded with the result, so "Check this result" can re-work the amount
+    const jackpotPool = state.pool, pay = poolJackpot(jackpotPool, pct);
     state.pool -= pay;
-    return skim(state, { topOffBefore: before, stops: null, grid, wins: [], pay, jackpot: true, capped: false, received: pay * (1 - FEE), ahead: pay > m.bet + 1e-9 });
+    return skim(state, { topOffBefore: before, stops: null, grid, wins: [], pay, jackpot: true, jackpotPool, pct, capped: false, received: pay * (1 - FEE), ahead: pay > m.bet + 1e-9 });
   }
   const stops = forcedStops || Array.from({ length: m.reels }, () => Math.floor(rand() * m.stripLen));
   const grid = gridFor(m, stops), wins = evaluate(m, grid);

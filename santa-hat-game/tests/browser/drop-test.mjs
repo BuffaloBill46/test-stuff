@@ -36,7 +36,9 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
     await waitDone(); await p.waitForTimeout(200);
     return dlg;
   };
-  check(await p.textContent('#dropOdds') === '1 in 5,000 to hit the 100× · 1 in 4.4 to win 2× or more', `${label}: the one odds line (Cody): ${await p.textContent('#dropOdds')}`);
+  // board 3 (Cody, 2026-10-02): the centre is the POOL JACKPOT; the odds line leads with what it's worth now at the chosen size
+  { const t = await p.textContent('#dropOdds'), want = (Math.floor(0.25 * (await pool()) * 0.1 * 100 + 1e-6) / 100).toFixed(2);
+    check(t === `Pool jackpot $${want} on a 10¢ drop right now (25% of the Game pool × your drop: the centre present) 1 in 5,000 to hit it · 1 in 4.4 to win 2× or more`, `${label}: the odds line with the live jackpot ($${want}): ${t}`); }
   check(await p.textContent('#drop [data-run="10"] small') === '$1', `${label}: Drop 10 at 10¢ costs $1`);
   await p.screenshot({ path: `${OUT}/${label}-1-board.png` });
 
@@ -54,8 +56,8 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   check(d.title === 'Play 5 drops' && d.what === '5 × 10¢ = $0.50' && d.go === 'Pay $0.50 & play', `${label}: confirm dialog ${JSON.stringify(d)}`);
   const won = 2.5 + 0.2; // 25× + 2× on 10¢
   check(Math.abs((await bal()) - (b0 - 0.5 + won * 0.97)) < 1e-9, `${label}: demo money: −$0.50, then +$2.70 less 3% at the end (${await bal()})`);
-  check(Math.abs((await pool()) - (pool0 + 0.5 * IN - won)) < 1e-9, `${label}: the Spin pool got the $0.50 (after burn and tax) and paid $2.70`);
-  check(await p.textContent('#dropPool') === await p.textContent('#spinPool'), `${label}: both cards show the same shared pool`);
+  check(Math.abs((await pool()) - (pool0 + 0.5 * IN - won)) < 1e-9, `${label}: the shared Game pool got the $0.50 (after burn and tax) and paid $2.70`);
+  check(await p.textContent('#dropPool') === await p.textContent('#spinPool') && await p.textContent('#stockPool') === await p.textContent('#dropPool') && await p.textContent('#slotPool') === await p.textContent('#dropPool'), `${label}: every card shows the same shared Game pool`);
   check(/5 drops: \$2\.70 back/.test(await p.textContent('#drop .res')), `${label}: run summary: ${await p.textContent('#drop .res')}`);
   check((await p.locator('#dropHistory li:not(.empty)').count()) === 5, `${label}: last drops strip has the 5`);
   // the 25× in Recent winners, checked now (board 2 wins about 1 drop in 4, so later runs push it off the short list)
@@ -63,6 +65,18 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   check(winners1.some((w) => /Snowball Drop 10¢/.test(w) && /\+2,?400%/.test(w)), `${label}: the 25× is in Recent winners: ${JSON.stringify(winners1.slice(0, 2))}`);
   await p.screenshot({ path: `${OUT}/${label}-2-run.png` });
 
+  // 1b. THE POOL JACKPOT (forced: 8 rights = the centre present) on a $1 drop: pays exactly 25% of the Game pool at that moment
+  //     (after this run's entry arrived), the biggest celebration with the dollar amount, JP in the history, Recent winners.
+  { const JP = [1, 1, 1, 1, 1, 1, 1, 1, ...Array(8).fill(0)], before = await bal(), pool1 = (await pool()) + 1 * IN, jp = 0.25 * pool1;
+    await run(1, 1, [JP]);
+    check(Math.abs((await bal()) - (before - 1 + jp * 0.97)) < 1e-6, `${label}: the jackpot paid 25% × the $${pool1.toFixed(2)} pool = $${jp.toFixed(2)} (less 3%): balance ${await bal()}`);
+    check(Math.abs((await pool()) - (pool1 - jp)) < 1e-6, `${label}: the pool paid exactly the jackpot`);
+    const res = await p.textContent('#drop .res'), stamp = await p.textContent('#drop .flash');
+    check(/POOL JACKPOT/.test(res) && stamp.startsWith('POOL JACKPOT $') && await p.evaluate(() => document.querySelector('#drop .dropcard').classList.contains('jackpot')), `${label}: the jackpot gets the biggest celebration with its amount: ${stamp} / ${res}`);
+    check((await p.textContent('#dropHistory li')) === 'JP', `${label}: JP in the last drops`);
+    const w = await p.evaluate(() => [...document.querySelectorAll('#winList li')].map((li) => li.textContent.replace(/\s+/g, ' ')));
+    check(w.length > 0 && /Snowball Drop \$1/.test(w[0]) && /pool jackpot/.test(w[0]), `${label}: the jackpot tops Recent winners: ${w[0]}`);
+    await p.screenshot({ path: `${OUT}/${label}-2b-jackpot.png` }); }
   // 2. Drop 1 at $1, no win: nothing to send.
   b0 = await bal();
   await run(1, 1, [MID]);

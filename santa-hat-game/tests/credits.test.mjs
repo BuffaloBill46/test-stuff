@@ -19,12 +19,12 @@ const close = (a, b) => Math.abs(a - b) < 1e-6;
   assert.equal(buyRun(ledger, pools, 'big', 0.1, 5, 'pz').why, 'unknown size', 'Big Hat is $1 a pull only');
   const s0 = pools.spin.pool, l0 = pools.slots.pool;
   assert.ok(buyRun(ledger, pools, 'spin', 1, 5, 'pay1').ok); // five $1 spins
-  assert.ok(close(pools.spin.pool - s0, 5 * IN_PER_DOLLAR) && pools.slots.pool === l0, 'Spin money pays only the Spin pool');
+  assert.ok(close(pools.spin.pool - s0, 5 * IN_PER_DOLLAR) && pools.slots.pool === l0, 'Spin money pays only the shared Game pool');
   assert.equal(buyRun(ledger, pools, 'big', 1, 5, 'pay1').ok, false, 'a payment buys one run, once');
   assert.ok(buyRun(ledger, pools, 'drop', 0.1, 10, 'pay2').ok);
   assert.ok(close(pools.spin.pool - s0, 6 * IN_PER_DOLLAR), 'Snowball Drop pays the Spin pool too');
   assert.ok(buyRun(ledger, pools, 'big', 1, 10, 'pay3').ok);
-  assert.ok(close(pools.slots.pool - l0, 10 * IN_PER_DOLLAR), 'Big Hat pays the Slots pool');
+  assert.ok(close(pools.spin.pool - s0, 16 * IN_PER_DOLLAR) && pools.slots.pool === l0, 'Big Hat pays the shared Game pool too (Cody, 2026-10-02: one pool), never the old Slots pool');
   assert.deepEqual(RUN_SIZES, [1, 5, 10]); assert.equal(costOf(10, 0.1), 1); assert.equal(costOf(5, 1), 5);
   // any run from 1 to 100 (Cody: the custom box; database 014 has the same limit), nothing else
   assert.equal(MAX_RUN, 100);
@@ -36,7 +36,7 @@ const close = (a, b) => Math.abs(a - b) < 1e-6;
 
 // 2. The ORDER, for a whole run: payment first, then a secret locked for each play, then each play drawn and revealed.
 //    Nothing is left over afterwards (no stored credit), and every result re-checks.
-let plays = 0, checked = 0;
+let plays = 0, checked = 0, jackpotsChecked = 0;
 for (let session = 0; session < 40; session++) {
   const { ledger, pools } = fresh(); const house = createHouse(ledger, pools);
   for (let k = 0; k < 6; k++) {
@@ -56,9 +56,11 @@ for (let session = 0; session < 40; session++) {
       // prepaid: the play itself adds nothing; the pool only pays out (plus any skim / top-off)
       assert.ok(close(pools[g].pool, pool0 - s.r.pay - (s.r.skim || 0) + (s.r.topOff || 0)), 'the pool moves by exactly the prize');
       const c = await check(s.proof); assert.ok(c.matches, 'secret matches the fingerprint shown before the play');
-      if (kind === 'drop') assert.deepEqual([c.outcome.path, c.outcome.mult], [s.r.path, s.r.mult]);
-      else if (kind === 'stocking') assert.deepEqual([c.outcome.opened, c.outcome.coal, c.outcome.mult], [s.r.opened, s.r.coal, s.r.mult]);
-      else if (g === 'spin') assert.deepEqual([c.outcome.slice, c.outcome.bonusSlice, c.outcome.mult], [s.r.slice, s.r.bonusSlice, s.r.mult]);
+      // a pool jackpot re-checks: the numbers give the jackpot, and its amount re-works from the pool it recorded and the settings' %
+      if (s.r.jackpot) { const j = c.jackpot; assert.ok(c.outcome.jackpot && j.known && j.ok && j.pctFromSettings && close(j.expected, s.r.pay), 'jackpot re-checks: ' + JSON.stringify(j)); jackpotsChecked++; }
+      if (kind === 'drop') assert.deepEqual([c.outcome.path, c.outcome.mult, !!c.outcome.jackpot], [s.r.path, s.r.jackpot ? undefined : s.r.mult, !!s.r.jackpot]);
+      else if (kind === 'stocking') assert.deepEqual([c.outcome.opened, c.outcome.coal, c.outcome.mult, !!c.outcome.jackpot], [s.r.opened, s.r.coal, s.r.jackpot ? undefined : s.r.mult, !!s.r.jackpot]);
+      else if (kind === 'spin') assert.deepEqual([c.outcome.slice, c.outcome.bonusSlice, c.outcome.mult], [s.r.slice, s.r.bonusSlice, s.r.mult]);
       else if (s.r.jackpot) assert.ok(c.outcome.jackpot); else assert.deepEqual(c.outcome.stops, s.r.stops);
       checked++; plays++;
     }
@@ -67,6 +69,25 @@ for (let session = 0; session < 40; session++) {
     assert.equal(house.pending(), 0, 'nothing left over: the run is fully played');
     assert.deepEqual(audit(ledger), []);
   }
+}
+
+// 2b. A REAL pool jackpot in each game (not forced: found by trying player numbers against a known secret), played through the
+//     house on the shared pool, re-checks from its fair numbers AND to its exact amount (25% × the pool at that moment × size).
+//     (The random runs above rarely hit one, so this proves the jackpot re-check didn't pass by checking nothing.)
+{
+  const KNOWN = 'f'.repeat(64);
+  for (const [kind, bet] of [['drop', 0.1], ['stocking', 1], ['big', 1]]) {
+    const { ledger, pools } = fresh(); const house = createHouse(ledger, pools, { newSeed: (n) => (n ? newSeed(n) : KNOWN), fingerprint, numbers });
+    let seed = null; for (let i = 0; i < 400000 && !seed; i++) { const t = 'a' + i.toString(16).padStart(15, '0'); if (outcomeFrom(kind, await numbers(KNOWN, t, 1, NUMS), { board: kind === 'drop' ? 3 : 2 }).jackpot) seed = t; }
+    assert.ok(seed, `found a player number giving a ${kind} jackpot`);
+    const b = await house.buy(kind, bet, 1, 'jp-' + kind), pool0 = pools.spin.pool, s = await house.settle(b.plays[0].ticket, seed);
+    assert.ok(s.r.jackpot, `${kind}: a real pool jackpot`);
+    assert.ok(close(s.r.pay, 0.25 * pool0 * (kind === 'big' ? 1 : bet)), `${kind}: pays 25% × the $${pool0.toFixed(2)} pool × ${kind === 'big' ? 1 : bet}`);
+    const c = await check(s.proof); assert.ok(c.matches && c.outcome.jackpot && c.jackpot.ok && c.jackpot.pctFromSettings && close(c.jackpot.expected, s.r.pay), `${kind}: the jackpot re-checks`);
+    assert.equal(pools.slots.pool, POOL_RULES.start, 'the old Slots pool is never touched'); jackpotsChecked++;
+  }
+  assert.equal(jackpotsChecked >= 3, true, 'a real jackpot re-checked in each of the three games');
+  console.log(`real pool jackpots re-checked: ${jackpotsChecked} (Drop, Stocking Stuffer and Big Hat, from the fair numbers and the recorded pool)`);
 }
 
 // 3. A play the pool refuses after payment (emergency stop, or the pool refilling): its price goes back with the run's winnings.
