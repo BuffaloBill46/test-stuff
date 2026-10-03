@@ -32,13 +32,15 @@ const buy = async (p, what, opts) => { const q = await shop.quote(p.id, what); a
 { const { q, r } = await buy(A, { kind: 'item', id: 'sb_ice' });
   assert.deepEqual([q.usd, q.burnBps, q.pool, q.payer], [1, 5000, TREASURY, A.w], 'Ice Ball: $1.00 (Cody sheet 2026-10-02), half burned, to the treasury, from my wallet');
   assert.equal(q.santaRaw, Math.round(1 / PRICE * 1e6)); assert.ok(r.ok && r.item === 'sb_ice', JSON.stringify(r)); assert.ok(await owns(A, 'sb_ice'), 'owned');
-  assert.ok((await buy(A, { kind: 'item', id: 'gear_pumpkin' })).r.ok && await owns(A, 'gear_pumpkin'), 'a gear');
+  assert.ok((await buy(A, { kind: 'item', id: 'gear_kevlar' })).r.ok && await owns(A, 'gear_kevlar'), 'a gear');
   // looks sold since 028 (Cody 2026-10-02): only the three faces (Snowman $1, Panda $1.50, Gorilla $2); every other look is a level reward
   const look = (await db.query(`select id, price_usd::float8 as usd from public.items where price_usd is not null and slot = 'face' order by id limit 1`))[0];
   assert.ok(look, 'a face is still sold'); const lq = await buy(A, { kind: 'item', id: look.id });
   assert.ok(lq.r.ok && await owns(A, look.id) && lq.q.usd === look.usd, 'a look (bought on the Avatar screen) at its price'); }
 // the looks that became level rewards are not sold any more (refused before paying)
 for (const id of ['shirt_coal', 'hat_antlers', 'pack_sack', 'snow_ember']) assert.match((await shop.quote(A.id, { kind: 'item', id })).error, /isn't for sale/, id + ' is a level reward now');
+// retired gear (gear.js RETIRED, 2026-10-03: the Pumpkin Costume keeps its price row) and season-pass items are never sold
+for (const id of ['gear_pumpkin', 'face_pumpkinking']) assert.match((await shop.quote(A.id, { kind: 'item', id })).error, /isn't for sale/, id + ' is not for sale');
 // owned: no second quote, so no payment is ever taken for it
 assert.match((await shop.quote(A.id, { kind: 'item', id: 'sb_ice' })).error, /already own/);
 assert.match((await shop.quote(A.id, { kind: 'item', id: 'sb_none' })).error, /isn't for sale/, 'an empty slot is not for sale');
@@ -94,9 +96,9 @@ assert.match((await shop.quote(A.id, { kind: 'item', id: 'shirt_red' })).error, 
   assert.equal(+(await db.query('select level from public.profiles where id = $1', [C.id]))[0].level, 2, 'only one level granted'); }
 
 // 6. Worn-out gear can be bought again: a fresh 7 days.
-{ await db.query(`insert into public.gear_wear (profile_id, item_id, first_worn_at) values ($1, 'gear_pumpkin', now() - interval '8 days')`, [A.id]);
-  assert.ok((await buy(A, { kind: 'item', id: 'gear_pumpkin' })).r.ok, 'bought again after it wore out');
-  assert.equal((await db.query(`select count(*)::int as n from public.gear_wear where profile_id = $1 and item_id = 'gear_pumpkin'`, [A.id]))[0].n, 0, 'its clock starts again at the next match'); }
+{ await db.query(`insert into public.gear_wear (profile_id, item_id, first_worn_at) values ($1, 'gear_kevlar', now() - interval '8 days')`, [A.id]);
+  assert.ok((await buy(A, { kind: 'item', id: 'gear_kevlar' })).r.ok, 'bought again after it wore out');
+  assert.equal((await db.query(`select count(*)::int as n from public.gear_wear where profile_id = $1 and item_id = 'gear_kevlar'`, [A.id]))[0].n, 0, 'its clock starts again at the next match'); }
 
 // 7. Closed shop (no treasury set): nothing can be quoted, so no payment is ever taken.
 assert.match((await createShop({ db, chain, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, treasury: null }).quote(A.id, { kind: 'item', id: 'sb_split' })).error, /not open/);

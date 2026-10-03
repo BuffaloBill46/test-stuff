@@ -2,6 +2,7 @@
 // (002, 008, 010, 012, 015, 023, 028): every items row equals mockups/catalog.js (the costume rows AND the rest); each costume has
 // one free piece per look slot at its level; save_profile refuses every Nutcracker piece below level 5 and saves the whole
 // costume at level 5 (the Frost King stays locked until 10); the file is safe to run twice; the shop never sells a piece.
+// And 032 (the Halloween pass's Pumpkin King): season items with no level or price, wearable only once owned, safe twice.
 // Run: node costumes-db.test.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -13,19 +14,32 @@ const db = await makeDb(['001_profiles.sql', '002_items_seed.sql', '003_email_pr
 const run = (f) => db.pg.exec(readFileSync(new URL(`../../supabase/${f}`, import.meta.url), 'utf8'));
 for (const f of ['015_special_gear.sql', '016_shop.sql', '022_ticket_cap.sql', '023_item_prices.sql', '028_look_rewards.sql', '029_costumes.sql']) await run(f);
 await run('029_costumes.sql'); // twice: safe to re-run
+// 032: the Halloween pass's Pumpkin King (season items: no level, no price), twice: safe to re-run
+await run('032_halloween_costume.sql'); await run('032_halloween_costume.sql');
 
-// 1. The database's items = catalog.js, every row (id, slot, name, unlock level, price)
-const rows = await db.query('select id, slot, name, unlock_level, price_usd::float8 as price from public.items order by id');
-const want = ITEMS.map((i) => ({ id: i.id, slot: i.slot, name: i.name, unlock_level: i.level ?? null, price: i.price ?? null })).sort((a, b) => (a.id < b.id ? -1 : 1));
-assert.deepEqual(rows, want, 'every items row equals catalog.js after 029');
+// 1. The database's items = catalog.js, every row (id, slot, name, unlock level, price, season)
+const rows = await db.query('select id, slot, name, unlock_level, price_usd::float8 as price, season from public.items order by id');
+const want = ITEMS.map((i) => ({ id: i.id, slot: i.slot, name: i.name, unlock_level: i.level ?? null, price: i.price ?? null, season: i.season ?? null })).sort((a, b) => (a.id < b.id ? -1 : 1));
+assert.deepEqual(rows, want, 'every items row equals catalog.js after 029 and 032');
+// the retired Pumpkin Costume gear keeps its row and price (players own it; the code retires it: gear.js RETIRED, forSale)
+assert.deepEqual(rows.find((r) => r.id === 'gear_pumpkin'), { id: 'gear_pumpkin', slot: 'gear', name: 'Pumpkin Costume', unlock_level: null, price: 1, season: null }, 'gear_pumpkin row kept');
+assert.ok(!forSale(ITEMS.find((i) => i.id === 'gear_pumpkin')), 'the retired Pumpkin Costume is not for sale');
 
-// 2. Each costume: one piece per look slot, all at the costume's level, none priced, none for sale
+// 2. Each costume: one piece per look slot, all at the costume's level (a season costume: in its season, no level), none
+// priced, none for sale
 for (const [set, c] of Object.entries(COSTUMES)) {
-  const r = await db.query('select slot, unlock_level, price_usd from public.items where id = any($1) order by slot', [costumeItems(set).map((i) => i.id)]);
+  const r = await db.query('select slot, unlock_level, price_usd, season from public.items where id = any($1) order by slot', [costumeItems(set).map((i) => i.id)]);
   assert.deepEqual(r.map((x) => x.slot), [...COSTUME_SLOTS].sort(), `${set}: one piece per slot`);
-  assert.ok(r.every((x) => x.unlock_level === c.level && x.price_usd === null), `${set}: every piece unlocks at level ${c.level}, free`);
+  if (c.season) assert.ok(r.every((x) => x.unlock_level === null && x.price_usd === null && x.season === c.season), `${set}: every piece is a ${c.season} season piece, no level, no price`);
+  else assert.ok(r.every((x) => x.unlock_level === c.level && x.price_usd === null && x.season === null), `${set}: every piece unlocks at level ${c.level}, free`);
   assert.ok(costumeItems(set).every((i) => !forSale(i)), `${set}: no piece is for sale`);
 }
+// the rebuilt items_check: a season item has neither a level nor a price; any other item still has exactly one
+const bad = (sql) => db.query(sql).then(() => 'accepted', (e) => e.message);
+assert.match(await bad(`insert into public.items (id, slot, name, unlock_level, price_usd, season) values ('shirt_t1', 'shirt', 'T', 3, null, 'halloween')`), /items_check/, 'a season item with a level is refused');
+assert.match(await bad(`insert into public.items (id, slot, name, unlock_level, price_usd, season) values ('shirt_t2', 'shirt', 'T', null, 1, 'halloween')`), /items_check/, 'a season item with a price is refused');
+assert.match(await bad(`insert into public.items (id, slot, name, unlock_level, price_usd) values ('shirt_t3', 'shirt', 'T', null, null)`), /items_check/, 'a plain item with neither is still refused');
+assert.match(await bad(`insert into public.items (id, slot, name, unlock_level, price_usd) values ('shirt_t4', 'shirt', 'T', 2, 1)`), /items_check/, 'a plain item with both is still refused');
 
 // 3. Saving: a player at level 4, then 5, then 10
 const uid = (await db.query('insert into auth.users default values returning id'))[0].id;
@@ -52,5 +66,10 @@ const mix = { ...base, shirt: 'shirt_nutcracker', hat: 'hat_icecrown', pack: 'pa
 assert.ok(wears(await save(mix), mix), 'level 10: pieces mix and match');
 // the old gold snowball stays gone (010): the Nutcracker's gold is a different item
 assert.match((await save({ ...base, snow: 'snow_gold' })).refused || '', /isn't unlocked/, 'Gilded (snow_gold) is still not an item');
+// the Pumpkin King (Halloween pass): no level opens it, even 10; once owned (the pass grants the six by id) it saves at any level
+for (const it of costumeItems('pumpkinking')) assert.match((await save({ ...base, [it.slot]: it.id })).refused || '', /isn't unlocked/, `level 10, not owned: ${it.id} refused`);
+await level(1);
+for (const it of costumeItems('pumpkinking')) await db.query('insert into public.inventory (profile_id, item_id) values ($1, $2)', [uid, it.id]);
+assert.ok(wears(await save({ ...base, ...outfit('pumpkinking') }), outfit('pumpkinking')), 'level 1, owned: the whole Pumpkin King saves');
 
-console.log(`OK: costumes in the database: items = catalog.js (${rows.length} rows, 029 run twice); Nutcracker (5) and Frost King (10) each one free piece per slot (${COSTUME_SLOTS.join(', ')}), none for sale; every Nutcracker piece refused at level 4, whole costume saves at 5; Frost King refused at 5 and 9, saves at 10; pieces mix`);
+console.log(`OK: costumes in the database: items = catalog.js (${rows.length} rows, 029 and 032 run twice); Nutcracker (5) and Frost King (10) each one free piece per slot (${COSTUME_SLOTS.join(', ')}), none for sale; every Nutcracker piece refused at level 4, whole costume saves at 5; Frost King refused at 5 and 9, saves at 10; pieces mix; Pumpkin King (Halloween pass): season pieces with no level or price (items_check rebuilt, still strict for others), refused unowned even at 10, saves owned at 1; gear_pumpkin kept, not for sale`);
