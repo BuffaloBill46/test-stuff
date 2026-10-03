@@ -53,7 +53,7 @@
 <body>
 <header class="top">
   <a class="brand" href="./">Santa <span>Hat</span></a>
-  <nav aria-label="Guide sections"><a href="#start">Start</a><a href="#fight">Snowball fight</a><a href="#specials">Specials</a><a href="#gear">Gear</a><a href="#levels">Levels</a><a href="#ranked">Ranked</a><a href="#games">Games</a><a href="#lottery">Lottery</a><a href="#wallet">Wallet</a></nav>
+  <nav aria-label="Guide sections"><a href="#start">Start</a><a href="#fight">Snowball fight</a><a href="#specials">Specials</a><a href="#gear">Gear</a><a href="#levels">Levels</a><a href="#season">Season</a><a href="#weekly">Weekly modes</a><a href="#ranked">Ranked</a><a href="#games">Games</a><a href="#lottery">Lottery</a><a href="#wallet">Wallet</a></nav>
   <a class="play" href="./">Play now</a>
 </header>
 <main>
@@ -89,6 +89,12 @@
     </ul>
     <h3>Scoring</h3>
     <div class="table"><table id="pts"></table></div>
+    <h3>Playing with friends</h3>
+    <ul>
+      <li><b>Your own room:</b> make a room and share its code or link. Bots fill the empty spots and the host starts the match. These matches are just for fun: they don't count for levels or the daily tasks.</li>
+      <li><b>Auto match together:</b> the host of a friends' room can take everyone into a public match in one tap. The game holds seats for your whole group while you move over, and public matches count.</li>
+      <li><b>Games waiting for players:</b> the Play page lists public matches that are filling up right now. Press <b>Join</b> to hop into one.</li>
+    </ul>
   </section>
 
   <section id="specials">
@@ -115,6 +121,28 @@
     <h3>Looks you unlock</h3>
     <p>Skin tones are free for everyone. Three faces are sold on the Avatar screen; every other look unlocks as you level up, and levels 5 and 10 each give a full costume.</p>
     <div class="table"><table id="lookTable"></table></div>
+  </section>
+
+  <section id="season">
+    <h2>The season calendar and pass</h2>
+    <p id="seasonDates">Each season is a calendar with one door a day.</p>
+    <ol class="steps">
+      <li><i>Every day</i><b>3 daily tasks</b><span>New tasks every day at 9 PM Indiana time. They count in public Auto matches.</span></li>
+      <li><i>All 3 done</i><b>Today's door opens</b><span>One door a day. Missed days stay shut, but the rewards go by how many doors you've opened, so you can catch up.</span></li>
+      <li><i>Every door</i><b>A reward</b><span id="freeLine">A season look on some doors, a step of level progress on the others.</span></li>
+    </ol>
+    <h3>The tasks you might get</h3>
+    <ul id="taskList"></ul>
+    <h3>Free rewards</h3>
+    <ul id="freeList"></ul>
+    <h3>The season pass</h3>
+    <p id="passLine">The season pass unlocks the season's costume, one piece at a time.</p>
+  </section>
+
+  <section id="weekly">
+    <h2>Weekly modes</h2>
+    <p>Some weeks bring a special mode to public Auto matches, one mode a week (the week starts Sunday 9 PM Indiana time). When one is running, the Play page says <b>This week</b> and you can tick it in Auto match. Plain Free-for-all is always there too, and weekly matches count like any public match.</p>
+    <ul id="weeklyList"></ul>
   </section>
 
   <section id="ranked">
@@ -163,17 +191,19 @@
   </footer>
 </main>
 <script type="module">
-  import { ITEMS, COSTUMES, SEASONS } from './catalog.js?v=f49f060705';
-  import { SPECIALS } from './specials.js?v=f49f060705';
-  import { TEAM_PAUSED } from './refcore.js?v=f49f060705';
-  import { GEAR, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=f49f060705';
-  import { LEVELS, MAX_LEVEL, WINS_PER_LEVEL, MAX_BOUGHT_LEVEL, buyPrice } from './levels.js?v=f49f060705';
-  import { RULES, TICKET_MAX, settleRanked } from './ranked.js?v=f49f060705';
-  import { LOTTERIES, LIVE_LOTTERIES, SALES_CLOSE_MS } from './lottery.js?v=f49f060705';
-  import { SYMBOLS, MACHINES, stats, JACKPOT_PCT, POOL_RULES } from './slots.js?v=f49f060705';
-  import * as DROP from './plinko.js?v=f49f060705';
-  import * as STOCK from './stocking.js?v=f49f060705';
-  import { K, PTS } from './sim.js?v=f49f060705';
+  import { ITEMS, COSTUMES, SEASONS } from './catalog.js?v=09f8ae043a';
+  import { SPECIALS } from './specials.js?v=09f8ae043a';
+  import { TEAM_PAUSED } from './refcore.js?v=09f8ae043a';
+  import { GEAR, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=09f8ae043a';
+  import { LEVELS, MAX_LEVEL, WINS_PER_LEVEL, MAX_BOUGHT_LEVEL, buyPrice } from './levels.js?v=09f8ae043a';
+  import { RULES, TICKET_MAX, settleRanked } from './ranked.js?v=09f8ae043a';
+  import { LOTTERIES, LIVE_LOTTERIES, SALES_CLOSE_MS } from './lottery.js?v=09f8ae043a';
+  import { SYMBOLS, MACHINES, stats, JACKPOT_PCT, POOL_RULES } from './slots.js?v=09f8ae043a';
+  import * as DROP from './plinko.js?v=09f8ae043a';
+  import * as STOCK from './stocking.js?v=09f8ae043a';
+  import { K, PTS } from './sim.js?v=09f8ae043a';
+  import * as SEASON from './seasons.js?v=09f8ae043a';
+  import { VARIANTS } from './weekly.js?v=09f8ae043a';
   // team play paused (refcore.js TEAM_PAUSED, Cody 2026-10-03): the guide says so, and goes back by itself when it reopens
   if (TEAM_PAUSED) document.querySelector('#teamLine').textContent = 'Team play (Nice vs Naughty) is paused for now.';
   const $ = (s) => document.querySelector(s);
@@ -188,6 +218,20 @@
 
   // the match
   $('#matchLen').innerHTML = K.ROUNDS > 1 ? `<b>${K.ROUNDS}</b> rounds of <b>${K.ROUND_TIME}</b> seconds. Most points at the end wins.` : `<b>One round</b> of <b>${K.ROUND_TIME}</b> seconds. Most points at the end wins.`;
+  // THE SEASON (seasons.js) and WEEKLY MODES (weekly.js): every date, task, reward and price from the rules files
+  { const fmt = (t) => new Date(t).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'America/Indiana/Indianapolis' });
+    const nameOf = (id) => ITEMS.find((x) => x.id === id)?.name || id;
+    const cur = SEASON.seasonAt() || SEASON.SEASONS.find((s) => s.start > Date.now()) || SEASON.SEASONS[0];
+    // a season opens at 9 PM the evening before its first day and closes at 9 PM on its last day
+    $('#seasonDates').innerHTML = 'Seasons: ' + SEASON.SEASONS.map((s) => `<b>${s.name}</b> (${fmt(s.start + 12 * 3600e3)} to ${fmt(s.end - 3600e3)})`).join(', ') + '. Each one is a calendar with one door a day.';
+    $('#taskList').innerHTML = `<li>Every day: <b>${SEASON.TASKS.games.text}</b>, plus 2 of these:</li>` + Object.entries(SEASON.TASKS).filter(([k]) => k !== 'games').map(([, t]) => `<li>${t.text}</li>`).join('');
+    const looks = Object.entries(cur.free);
+    $('#freeList').innerHTML = (looks.length ? looks.map(([d, id]) => `<li>${cur.name}, door <b>${d}</b>: ${nameOf(id)}</li>`).join('') : `<li>${cur.name}'s looks are coming soon.</li>`)
+      + `<li>Every other door: one step of level progress (like a top-3 finish).</li><li>Every <b>${SEASON.STREAK_EVERY}</b> days in a row: a bonus step.</li>`;
+    $('#passLine').innerHTML = cur.gold.length
+      ? `The ${cur.name} pass costs <b>$${SEASON.PASS_PRICE}</b> (paid in SANTA, like a Store item) and unlocks <b>${cur.costume}</b>: ${cur.gold.length} pieces, one every <b>${SEASON.PIECE_EVERY}</b> doors you open (${cur.gold.map(nameOf).join(', ')}). Buy it any time: doors you've already opened count. The pieces are yours to keep.`
+      : `The ${cur.name} pass opens soon.`;
+    $('#weeklyList').innerHTML = Object.values(VARIANTS).map((v) => `<li><b>${v.name}:</b> ${v.short}</li>`).join(''); }
   for (const [k, v] of Object.entries({ maxHumans: K.MAX_HUMANS })) document.querySelectorAll(`[data-k="${k}"]`).forEach((e) => { e.textContent = v; });
   $('#pts').innerHTML = head(['Do this', 'Points'], ['', 'n']) + '<tbody>' + [['Wearing the hat', `${PTS.hatSec} / sec`], ['Catching the flying hat on your head', PTS.header], ['Knocking the hat off someone', PTS.knock], ['Any snowball hit', PTS.hit]].map((r) => row(r, ['', 'n'])).join('') + '</tbody>';
 
