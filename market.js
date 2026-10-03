@@ -64,3 +64,15 @@ export async function liveFee(mint = MINT, urls = RPCS) {
   const [acct, ep] = await Promise.all([rpc('getAccountInfo', [mint, { encoding: 'jsonParsed' }], urls), rpc('getEpochInfo', [], urls)]);
   return { ...pickFee(acct?.value?.data?.parsed?.info, ep.epoch), epoch: ep.epoch };
 }
+// The server's tax lookup, remembered (found 2026-10-03, 3 test players buying at once): asking Solana on every price and every
+// payment check got "too many requests" (429) from the public node, the payment check failed, and two PAID pulls were never
+// played. Asked again at most once a minute (once per player at most matters little: the tax changes only at an epoch, ~2 days,
+// and the token says in advance when). If Solana doesn't answer, the last good answer from the past 10 minutes is used.
+export function keptFee(lookup, { fresh = 60_000, stale = 600_000, now = () => Date.now() } = {}) {
+  let kept = null, asking = null;
+  return async () => {
+    if (kept && now() - kept.at < fresh) return kept.fee;
+    asking ||= lookup().then((fee) => { kept = { fee, at: now() }; return fee; }).finally(() => { asking = null; });
+    try { return await asking; } catch (e) { if (kept && now() - kept.at < stale) return kept.fee; throw e; }
+  };
+}

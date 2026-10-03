@@ -15,6 +15,7 @@ async function buyPaid(quote, signature) {
   remember({ quote, signature, at: Date.now() }); let b;
   for (let i = 0; i < 40; i++) {
     try { b = await call('shop-buy', { quote, signature }); } catch { b = { error: 'the game server didn\'t answer', retry: true }; }
+    if (b.error && /on our side|answered 5\d\d/.test(b.error)) b.retry = true; // the server failed, it didn't refuse: keep the payment
     if (!b.error || !(b.retry || /not finalized|not found/.test(b.error))) break;
     await new Promise((r) => setTimeout(r, 3000));
   }
