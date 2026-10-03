@@ -1,0 +1,17 @@
+{
+  "network": "mainnet",
+  "mint": "3c7mmVSyEH8jfZXgxvpLsETtko1Y16DyRJ5XYB4snhGt",
+  "note": "Public addresses only. Made 2026-10-03 on the Droplet (/etc/santa/keys-mainnet, owner santa, 600); the secret keys never left it. Checked: each loads in @solana/kit, derives this address, signs and verifies.",
+  "wallets": {
+    "gamePool": "4YGP9Zanq6WvJGk2AhvW8EQVviB5NdxrUrU18BzfjkWR",
+    "slotsPool": "95ufeEXgo2g7iFTUaMAyg6tj5nhE4e4LWp3RiH87oxbU",
+    "lotteryPool": "Fs9tuc4KohvorksFz6dQW851LPJdt6rXZsc4srFmWGF3",
+    "treasury": "FiP8mcq942jtSFm6BD83JtwhmAtRKUqCN86b4qf4QCVW"
+  },
+  "labels": {
+    "gamePool": "Game pool (shared by Big Hat, Snowball Drop, Stocking Stuffer since 026): entries in, winnings out. Fund it.",
+    "slotsPool": "The old Slots pool: kept so the settings stay complete; nothing routes to it since 026. Leave empty.",
+    "lotteryPool": "Lottery wallet: ticket money in, prizes out (automatic). Needs SOL for fees only.",
+    "treasury": "Treasury: 50% of Store/level purchases, pool skims, reward sweeps (GP/GLDX). Needs a little SOL."
+  }
+}
