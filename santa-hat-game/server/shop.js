@@ -44,8 +44,8 @@ export function createShop({ db, chain, livePrice, liveFee, treasury, mint = MIN
     } else if (what.kind === 'tickets') {
       const n = Number(what.n);
       if (!TICKET_PACKS[n]) return { error: 'buy 1, 5 or 10 tickets' };
-      const used = (await row(`select coalesce(sum(n), 0)::int as n from public.ticket_purchases where profile_id = $1 and at > now() - interval '24 hours'`, [profile]).catch(() => ({ n: 0 }))).n;
-      if (used + n > 10) return { error: `at most 10 extra tickets a day (${10 - used} left)` };
+      const used = (await row(`select coalesce(sum(n), 0)::int as n from public.ticket_purchases where profile_id = $1 and at >= public.game_day_start(now())`, [profile]).catch(() => ({ n: 0 }))).n;
+      if (used + n > 10) return { error: `at most 10 extra tickets a day, resetting at 9 PM Indiana time (${10 - used} left)` };
       // at most BOUGHT_MAX bought tickets held (Cody 2026-10-02; supabase/022 at granting). Refused here, BEFORE paying.
       const have = await row('select extra from public.ticket_status($1)', [profile]).catch(() => null), room = BOUGHT_MAX - (have?.extra ?? 0);
       if (have && n > room) return { error: `you can hold at most ${BOUGHT_MAX} bought ranked tickets; room for ${Math.max(0, room)} more` };

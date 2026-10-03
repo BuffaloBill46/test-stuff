@@ -25,7 +25,7 @@ const cleanCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
 const cleanName = (s) => String(s ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 14);
 const isId = (s) => typeof s === 'string' && /^[A-Za-z0-9_-]{4,24}$/.test(s);
 const RID = 'ref-'; // ranked rooms' ticket-hold ids start with this (supabase/018 release_room_holds)
-export const NO_TICKETS = 'No ranked tickets left. 10 free ones come back every 24 hours, or buy more in the Store.';
+export const NO_TICKETS = 'No ranked tickets left. 10 free ones come back every day at 9 PM Indiana time (Eastern), or buy more in the Store.';
 
 // A player who isn't signed in (or whose sign-in didn't check out) keeps their look, but nothing that changes play: plain
 // snowballs, no special snowballs, no gear, level 1. Their page's word is all there is, and it can't be trusted for those.
