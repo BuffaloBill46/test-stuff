@@ -222,6 +222,27 @@ between two devices has never been tested from here. Cody and friends testing on
   025 applied; game server v21; published). Plays from the Drop pool. Exact payback from the table: 60.519% (brief said 60.6%). Pool-coverage at $1 (250× = $250) needs Cody's call before money.
 - Known test-browser limit: controls-test's 768×1024 step crashes the slow WSL browser (before this session's changes too).
 
+### Later 2026-10-02 / early 10-03 (all LIVE: game server v24, Droplet cd71238)
+- Stocking Stuffer since: payback raised to 78.146% (2.5/6/10/20×), TAP TO OPEN (asTapped: the k-th tap shows the k-th item of
+  the fair sequence; a pick can't change a turn), run counter counts only what the player has SEEN (Drop: on landing).
+- Looks: only Snowman $1 / Panda $1.50 / Gorilla $2 sold; skins free; other looks unlock at levels 2,3,4,6,7,8,9; level 5
+  NUTCRACKER SOLDIER and level 10 FROST KING costumes (one piece per look slot, free; Avatar Costumes tab; bots never wear them).
+  028 + 029 applied; live items table == catalog.js (74 rows).
+- EVERY RESET AT 9 PM INDIANA TIME (America/Indiana/Indianapolis, DST-aware; 030 + mockups/gameclock.js): free ranked tickets and
+  the 10-bought-a-day limit reset for everyone at 9 PM; Ranks Today = since 9 PM, This week = since Sunday 9 PM. Weekly lottery
+  draws Sunday 9 PM Indiana time (lottery.js). Gear's 7-day wear is a lifetime, not a reset (unchanged).
+- LOTTERY FULLY AUTOMATIC: a Droplet timer (worker/systemd/santa-alerts.*) runs due draws every 5 min (FOUND: nothing ran draws on a
+  schedule before; a draw waited for someone to open the lottery), then alerts; payouts switched to AUTO on devnet (signed with
+  the codyAdmin stand-in; tests/solana/lottery-auto.devnet.mjs). At mainnet Cody signs "Switch to automatic" once. Not yet proven
+  end to end with a real draw on devnet: buy test tickets before a Sunday draw and check the winners were paid by the worker.
+- Alerts call can take ~75 s on the free devnet RPC (walletRaw has no time limit): TODO add AbortSignal.timeout there.
+- Sign-in: "Open in Phantom / Solflare" on phones with no wallet (no WalletConnect: Phantom doesn't support it; Cody agreed).
+- Focus group: santahatgames.com/feedback.html (027 tester_feedback: anyone adds, nobody reads via the site); tester script page
+  https://claude.ai/artifact/MTdnHbmpLarQ8xxWtbGLJD (private until Cody shares it). TEST_PLAN.md has the test research.
+- IN PROGRESS (agent, worktree): one shared Game pool ($500 start, top-off below $200, $25 skim at $1,025) for Slots/Drop/Stocking,
+  pool jackpots 25% × pool × (bet / $1) in each game (Drop's 100× centre, Stocking's 8 gifts), Stocking 20 stockings / 9 gifts
+  (~73%, Cody's choice). Claude reviews, applies 026, merges the devnet slots-pool money + books into the 'spin' pool, deploys.
+
 ### Overnight 2026-10-02 (Claude, while Cody slept): what changed, in plain English
 - **Cheat-proof match referee is LIVE on the Droplet** (wss://147-182-219-161.sslip.io): every match runs on our server, pages
   only send moves, so nobody can fake scores. Signed-in players play with their SAVED level and items (the database only
