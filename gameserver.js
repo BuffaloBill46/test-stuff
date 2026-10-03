@@ -26,10 +26,14 @@ export const PUBLIC_ACTIONS = ['pools', 'settings', 'stats', 'lottery-tickets', 
 // "Failed to fetch dynamically imported module: https://cdn…"). Says "nothing was charged" only where that's certain: the
 // player cancelled, or the wallet step never loaded (wallet.js never throws once a payment is sent, except for a payment the
 // network rejected, whose own message says no SANTA was taken).
+// The wallet step (wallet.js and the Solana code it downloads) couldn't load. A browser remembers a failed download for the
+// page's whole life and never asks again (checked in Chrome, live QA 2026-10-03: the 2nd and 3rd tries failed with no request),
+// so "try again" alone can't work: the player must reload. Also when window.santaPay never appeared (wallet.js didn't load).
+export const WALLET_LOAD_FAILED = "Couldn't load the wallet step. Reload the page, then try again. Nothing was charged.";
 export function payError(e) {
   const m = String(e?.message || '');
   if (/reject|cancel|denied/i.test(m)) return 'Payment cancelled. Nothing was charged.';
-  if (/dynamically imported module|importing a module/i.test(m)) return "Couldn't load the wallet step. Check your connection and try again. Nothing was charged.";
+  if (/dynamically imported module|importing a module/i.test(m)) return WALLET_LOAD_FAILED;
   return 'Not paid: ' + (m || 'the wallet said no');
 }
 // The server's "sign in first" as a player should meet it (live-site test, 2026-10-02: a guest pressing Pay saw the raw words

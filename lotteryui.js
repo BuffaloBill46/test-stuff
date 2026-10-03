@@ -4,7 +4,7 @@
 // results can be re-checked in this browser: the draw is re-run from public data alone (mockups/lottery.js drawWinners).
 // Without the game server (today's site) buying says so plainly: nothing is sold and nothing is drawn here.
 import { LOTTERIES, LIVE_LOTTERIES, nextDraw, salesFor, drawWinners } from './lottery.js';
-import { SERVER, call, walletReady, payError, forPlayer } from './gameserver.js';
+import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -106,7 +106,7 @@ async function buy(kind, n, note) {
   if (q.closed) { note.textContent = q.why || 'Sales are closed for this draw.'; return; }
   if (q.error) { note.textContent = forPlayer(q.error); return; }
   await walletReady;
-  if (typeof window.santaPay !== 'function') { note.textContent = 'Wallet payments aren\'t connected yet.'; return; }
+  if (typeof window.santaPay !== 'function') { note.textContent = WALLET_LOAD_FAILED; return; }
   let signature; try { note.textContent = `Approve ${q.n} ticket${q.n === 1 ? '' : 's'} (${money(q.usd)}) in your wallet…`; signature = await window.santaPay(q); }
   catch (e) { note.textContent = payError(e); return; }
   note.textContent = 'Confirming the payment…';
