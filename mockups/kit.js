@@ -439,6 +439,40 @@ const HEADS = {
     part(new G.TetrahedronGeometry(0.05), 0x1d1d22, { pos: [0, 1.76, 0.31], rot: [0.6, 0.8, 0] }),
     part(new G.BoxGeometry(0.12, 0.05, 0.03), 0x2b1f24, { pos: [0, 1.69, 0.29] }), part(new G.BoxGeometry(0.06, 0.02, 0.03), 0xd9606a, { pos: [0, 1.675, 0.3] }),
   ] },
+  // COSTUME faces (catalog.js sets). The Nutcracker: a carved wooden toy's head, a square block (every other head is round),
+  // painted: black hair, staring eyes under stern brows, rosy cheeks, a big white moustache, and the nut-cracking jaw with its
+  // row of square teeth. White gloves.
+  nutcracker: { hands: 0xf6f3ea, parts: () => [
+    part(new G.CylinderGeometry(0.29, 0.33, 0.5, 4), 0xf1c9a0, { pos: [0, 1.85, 0], rot: [0, Math.PI / 4, 0], jit: 0.008, seed: 101 }),
+    part(new G.BoxGeometry(0.46, 0.3, 0.06), 0x1c1a22, { pos: [0, 1.95, -0.215] }),
+    ...[-1, 1].map((s) => part(new G.BoxGeometry(0.05, 0.22, 0.34), 0x1c1a22, { pos: [s * 0.215, 1.96, -0.03] })),
+    ...[-1, 1].flatMap((s) => [part(new G.BoxGeometry(0.09, 0.065, 0.03), 0xf6f3ea, { pos: [s * 0.09, 1.88, 0.232] }),
+      part(new G.BoxGeometry(0.04, 0.055, 0.03), C.ink, { pos: [s * 0.085, 1.88, 0.245] }),
+      part(new G.BoxGeometry(0.12, 0.035, 0.03), C.ink, { pos: [s * 0.09, 1.94, 0.236], rot: [0, 0, s * 0.28] }),
+      part(new G.CylinderGeometry(0.045, 0.045, 0.02, 8), 0xe0505a, { pos: [s * 0.14, 1.79, 0.236], rot: [Math.PI / 2, 0, 0] }),
+      // the moustache's two big white curls, swept up at the ends
+      part(new G.IcosahedronGeometry(0.075, 0), 0xf6f3ea, { pos: [s * 0.08, 1.735, 0.262], scale: [1.6, 0.7, 0.6], rot: [0, 0, s * 0.32] })]),
+    part(new G.BoxGeometry(0.07, 0.11, 0.08), 0xe2b48a, { pos: [0, 1.82, 0.26] }),
+    part(new G.BoxGeometry(0.26, 0.055, 0.03), C.ink, { pos: [0, 1.665, 0.232] }),
+    ...[-0.075, -0.025, 0.025, 0.075].map((x) => part(new G.BoxGeometry(0.042, 0.04, 0.03), 0xf6f3ea, { pos: [x, 1.668, 0.24] })),
+    part(new G.BoxGeometry(0.44, 0.1, 0.44), 0xdcae84, { pos: [0, 1.6, 0] }),
+    part(new G.BoxGeometry(0.2, 0.08, 0.05), 0xf6f3ea, { pos: [0, 1.585, 0.225] }),
+  ] },
+  // The Frost King: a pale frosted face with blue ice-crystal facets on the brow and cheeks, frosted white brows, ice-blue
+  // glints in the eyes and a beard of short icicles. Icy hands.
+  frostking: { hands: 0xc6e0f4, parts: () => [
+    part(new G.IcosahedronGeometry(0.3, 1), 0xe8f4fb, { pos: [0, 1.82, 0], jit: 0.02, seed: 111 }),
+    part(new G.OctahedronGeometry(0.06), 0x2f7fd8, { pos: [0, 2.0, 0.25], scale: [0.7, 1.3, 0.4] }),
+    ...[-1, 1].flatMap((s) => [part(new G.OctahedronGeometry(0.05), 0x5fb0ee, { pos: [s * 0.17, 1.79, 0.225], scale: [0.6, 1.4, 0.4], rot: [0, s * 0.5, s * 0.3] }),
+      part(new G.OctahedronGeometry(0.03), 0x2f7fd8, { pos: [s * 0.2, 1.71, 0.19], scale: [0.7, 1.2, 0.5], rot: [0, s * 0.6, 0] }),
+      part(new G.BoxGeometry(0.07, 0.07, 0.03), C.ink, { pos: [s * 0.1, 1.87, 0.272] }),
+      part(new G.BoxGeometry(0.03, 0.03, 0.03), 0x8fe4ff, { pos: [s * 0.085, 1.885, 0.287] }),
+      part(new G.BoxGeometry(0.13, 0.035, 0.03), 0xf6fcff, { pos: [s * 0.1, 1.95, 0.26], rot: [0, 0, -s * 0.22] })]),
+    part(new G.BoxGeometry(0.1, 0.025, 0.03), 0x2a4e7a, { pos: [0, 1.7, 0.282] }),
+    // the icicle beard: short ice spikes hanging from the chin, longest in the middle
+    ...[-0.12, -0.06, 0, 0.06, 0.12].map((x, i) => { const l = [0.1, 0.15, 0.19, 0.15, 0.1][i];
+      return part(new G.ConeGeometry(0.035, l, 4), i % 2 ? 0xa8dcff : 0xe8f6ff, { pos: [x, 1.6 - l / 2 + 0.03, 0.2 - Math.abs(x) * 0.4], rot: [Math.PI, 0, 0] }); }),
+  ] },
 };
 export const HEAD_FACES = Object.keys(HEADS);
 
@@ -457,7 +491,33 @@ function hatPieces(shape, color) {
   if (shape === 'tophat') return [part(new G.CylinderGeometry(0.36, 0.36, 0.05, 10), color, { pos: [0, 2.04, 0] }),
     part(new G.CylinderGeometry(0.22, 0.24, 0.42, 10), color, { pos: [0, 2.27, 0] }),
     part(new G.CylinderGeometry(0.245, 0.245, 0.07, 10), C.hat, { pos: [0, 2.1, 0] })];
+  // Costume hats. The Nutcracker's shako: a tall black drum of a hat with gold bands, a peak over the eyes, a gold plate badge
+  // with a red centre, and a white plume rising from a red pompom.
+  if (shape === 'shako') return [part(new G.CylinderGeometry(0.29, 0.31, 0.46, 10), color, { pos: [0, 2.27, 0] }),
+    part(new G.CylinderGeometry(0.318, 0.318, 0.06, 10), C.gold, { pos: [0, 2.07, 0] }),
+    part(new G.CylinderGeometry(0.297, 0.297, 0.05, 10), C.gold, { pos: [0, 2.475, 0] }),
+    part(new G.BoxGeometry(0.34, 0.035, 0.17), color, { pos: [0, 2.04, 0.33], rot: [0.25, 0, 0] }),
+    part(new G.OctahedronGeometry(0.09), C.gold, { pos: [0, 2.28, 0.3], scale: [1, 1.2, 0.4] }),
+    part(new G.BoxGeometry(0.06, 0.06, 0.03), 0xc4161c, { pos: [0, 2.28, 0.33] }),
+    part(new G.IcosahedronGeometry(0.075, 0), 0xc4161c, { pos: [0, 2.56, 0.12] }),
+    part(new G.IcosahedronGeometry(0.1, 0), 0xf6f3ea, { pos: [0, 2.72, 0.11], scale: [0.9, 1.9, 0.9], jit: 0.02, seed: 103 }),
+    part(new G.IcosahedronGeometry(0.07, 0), 0xe4ded2, { pos: [0.02, 2.9, 0.08], scale: [0.9, 1.6, 0.9], rot: [0, 0, -0.2], jit: 0.015, seed: 104 })];
+  // The Frost King's crown: seven tall jagged ice shards round a blue band (tallest at the front, leaning outward), small
+  // shards between them, alternating pale and deeper ice so it reads as clear crystal, and a deep blue gem at the front.
+  if (shape === 'icecrown') {
+    const ps = [part(new G.TorusGeometry(0.27, 0.05, 4, 14), 0x5aa6e6, { pos: [0, 2.04, 0], rot: [Math.PI / 2, 0, 0] }),
+      part(new G.OctahedronGeometry(0.06), 0x2563c8, { pos: [0, 2.07, 0.315], scale: [1, 1.2, 0.6] })];
+    [0.5, 0.3, 0.38, 0.26, 0.26, 0.38, 0.3].forEach((h, i) => { const a = (i / 7) * Math.PI * 2, b = a + Math.PI / 7, x = Math.sin(a), z = Math.cos(a);
+      ps.push(part(new G.OctahedronGeometry(0.075), i % 2 ? 0x8fcdf6 : color, { pos: [x * 0.27, 2.06 + h * 0.36, z * 0.27], rot: [z * 0.25, 0, -x * 0.25], scale: [0.85, h / 0.15, 0.85] }));
+      ps.push(part(new G.OctahedronGeometry(0.05), i % 2 ? 0xe6f6ff : 0x6ab6ee, { pos: [Math.sin(b) * 0.28, 2.1, Math.cos(b) * 0.28], rot: [Math.cos(b) * 0.4, 0, -Math.sin(b) * 0.4], scale: [0.8, 1.8, 0.8] })); });
+    return ps;
+  }
   return [];
+}
+// A thin box from point a to point b (ropes, cords).
+function stick(a, b, w, color) {
+  const d = new V3(b[0] - a[0], b[1] - a[1], b[2] - a[2]), len = d.length(), e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new V3(0, 1, 0), d.normalize()));
+  return part(new G.BoxGeometry(w, len, w), color, { pos: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2], rot: [e.x, e.y, e.z] });
 }
 function packPieces(shape, color) {
   if (shape === 'satchel') return [part(new G.BoxGeometry(0.42, 0.4, 0.16), color, { pos: [0, 1.22, -0.29], jit: 0.02 }),
@@ -466,6 +526,31 @@ function packPieces(shape, color) {
     part(new G.CylinderGeometry(0.06, 0.1, 0.14, 6), C.gold, { pos: [0, 1.66, -0.38] })];
   if (shape === 'gift') return [part(new G.BoxGeometry(0.46, 0.46, 0.3), color, { pos: [0, 1.25, -0.36] }),
     part(new G.BoxGeometry(0.08, 0.48, 0.32), C.gold, { pos: [0, 1.25, -0.36] }), part(new G.BoxGeometry(0.48, 0.08, 0.32), C.gold, { pos: [0, 1.25, -0.36] })];
+  // Costume packs. The Nutcracker's toy drum, slung across the back on a white sash: a red shell with gold rims and white
+  // drumheads at the sides, white ropes zigzagging rim to rim, and two drumsticks crossed on top.
+  if (shape === 'drum') {
+    const y = 1.24, z = -0.45, R = 0.24, H = 0.17, side = [0, 0, Math.PI / 2], rim = (a, s) => [s * (H - 0.03), y + Math.cos(a) * (R + 0.006), z + Math.sin(a) * (R + 0.006)];
+    const ps = [part(new G.CylinderGeometry(R, R, H * 2, 12), color, { pos: [0, y, z], rot: side }),
+      ...[-1, 1].flatMap((s) => [part(new G.CylinderGeometry(R + 0.024, R + 0.024, 0.05, 12), C.gold, { pos: [s * H, y, z], rot: side }),
+        part(new G.CylinderGeometry(R - 0.012, R - 0.012, 0.02, 12), 0xf6f3ea, { pos: [s * (H + 0.025), y, z], rot: side })]),
+      // the sash: over the left shoulder, across the chest to the right hip (and the same way across the back)
+      ...[0.2, -0.2].map((zz) => part(new G.BoxGeometry(0.06, 0.82, 0.03), 0xf6f3ea, { pos: [-0.02, 1.27, zz], rot: [0, 0, 0.72] }))];
+    for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2, m = a + Math.PI / 10;
+      ps.push(stick(rim(a, -1), rim(m, 1), 0.024, 0xf6f3ea), stick(rim(m, 1), rim(a + Math.PI / 5, -1), 0.024, 0xf6f3ea)); }
+    for (const s of [-1, 1]) { const c = [0, y + R + 0.045, z + 0.02], f = s * 1.15, d = [-Math.sin(f) * 0.25, Math.cos(f) * 0.25];
+      ps.push(part(new G.CylinderGeometry(0.017, 0.02, 0.5, 5), 0xe2bf86, { pos: c, rot: [0, 0, f] }),
+        part(new G.IcosahedronGeometry(0.035, 0), 0xf6f3ea, { pos: [c[0] + d[0], c[1] + d[1] + 0.012, c[2]] })); }
+    return ps;
+  }
+  // The Frost King's ice wings: from a blue crystal clasp between the shoulders, four faceted ice feathers a side fanning out
+  // and up, pale at the top shading to deeper ice at the bottom.
+  if (shape === 'icewings') {
+    const ps = [part(new G.OctahedronGeometry(0.08), 0x4f9ee6, { pos: [0, 1.44, -0.25], scale: [1, 1.3, 0.6] })], sw = 0.4;
+    const cols = [0xe6f6ff, color, 0x8fcdf6, 0x6ab6ee];
+    for (const s of [-1, 1]) [[0.8, 0.74], [0.4, 0.66], [0.02, 0.52], [-0.36, 0.38]].forEach(([t, L], k) => { const r = L / 2;
+      ps.push(part(new G.OctahedronGeometry(1), cols[k], { pos: [s * (0.1 + Math.cos(t) * r * Math.cos(sw)), 1.45 + Math.sin(t) * r, -0.27 - Math.cos(t) * r * Math.sin(sw)], rot: [0, s * sw, s * t], scale: [r, 0.085, 0.026] })); });
+    return ps;
+  }
   return [];
 }
 
@@ -614,9 +699,55 @@ function gearLook(kinds, { keepSleeves } = {}) {
   return L;
 }
 
+// ---------- COSTUME uniforms (catalog.js `trim` on a costume shirt or pants; Cody 2026-10-02: costumes that "stand out and
+// different from everything else"). A shirt is otherwise one colour, so the uniform's extra pieces are added here, merged
+// into the body/arm/leg meshes like gear (no extra draw calls). shirt → body pieces + arm cuffs; pants → each leg (by side
+// -1/+1: the stripe runs down the OUTSIDE) + the boots. Same coordinates as the gear looks above.
+const COSTUME_TRIMS = {
+  nutcracker: {
+    // a toy soldier's coat: three gold cords across the chest with gold buttons, a gold collar, gold epaulettes with fringe,
+    // a white belt with a big gold buckle, coat tails behind, gold cuffs
+    shirt: () => ({ body: [
+      ...[1.44, 1.3, 1.16].flatMap((y) => [part(new G.BoxGeometry(0.3, 0.035, 0.03), C.gold, { pos: [0, y, 0.2] }),
+        ...[-1, 1].map((s) => part(new G.IcosahedronGeometry(0.032, 0), C.gold, { pos: [s * 0.16, y, 0.205] }))]),
+      part(new G.BoxGeometry(0.4, 0.09, 0.32), C.gold, { pos: [0, 1.6, 0] }),
+      ...[-1, 1].flatMap((s) => [part(new G.BoxGeometry(0.2, 0.06, 0.3), C.gold, { pos: [s * 0.32, 1.585, 0], jit: 0.008 }),
+        ...[-0.09, 0, 0.09].map((zz) => part(new G.BoxGeometry(0.03, 0.08, 0.03), C.goldDeep, { pos: [s * 0.41, 1.54, zz] }))]),
+      part(new G.BoxGeometry(0.66, 0.12, 0.42), 0xf4f1e8, { pos: [0, 0.9, 0] }),
+      part(new G.BoxGeometry(0.16, 0.13, 0.03), C.gold, { pos: [0, 0.9, 0.225] }),
+      ...[-1, 1].map((s) => part(new G.BoxGeometry(0.25, 0.26, 0.04), 0xa81218, { pos: [s * 0.13, 0.74, -0.2], rot: [0.12, 0, 0] })),
+    ], arm: () => [part(new G.BoxGeometry(0.23, 0.08, 0.23), C.gold, { pos: [0, -0.58, 0] })] }),
+    // white trousers with a red stripe down the outside, tall black boots with a gold top and a shine
+    pants: { leg: (s) => [part(new G.BoxGeometry(0.03, 0.5, 0.08), 0xc4161c, { pos: [s * 0.122, -0.27, 0] })],
+      feet: () => [part(new G.BoxGeometry(0.27, 0.36, 0.3), 0x17171f, { pos: [0, -0.66, 0] }), part(new G.BoxGeometry(0.27, 0.12, 0.36), 0x17171f, { pos: [0, -0.79, 0.05] }),
+        part(new G.BoxGeometry(0.28, 0.04, 0.31), C.gold, { pos: [0, -0.48, 0] }), part(new G.BoxGeometry(0.05, 0.12, 0.02), 0x8a8aa0, { pos: [0.06, -0.64, 0.155] })] },
+  },
+  frostking: {
+    // an ice robe: it flares into a short skirt below the belt (wide enough for the legs to swing inside), a deep blue panel
+    // down the front with crystal clasps, a navy sash, frost streaks across the chest, and a tall collar of ice shards
+    // standing up behind the head; flared ice cuffs
+    shirt: () => ({ body: [
+      part(new G.CylinderGeometry(0.36, 0.45, 0.28, 8), 0x9fcff2, { pos: [0, 0.76, 0], jit: 0.012, seed: 121 }),
+      part(new G.CylinderGeometry(0.465, 0.465, 0.06, 8), 0x2559b0, { pos: [0, 0.63, 0] }),
+      part(new G.BoxGeometry(0.15, 0.68, 0.03), 0x2559b0, { pos: [0, 1.22, 0.2] }),
+      ...[1.42, 1.26, 1.1].map((y) => part(new G.OctahedronGeometry(0.045), 0xf2fbff, { pos: [0, y, 0.222], scale: [1, 1.3, 0.6] })),
+      part(new G.BoxGeometry(0.66, 0.11, 0.42), 0x274a80, { pos: [0, 0.9, 0] }),
+      ...[-1, 1].map((s) => part(new G.BoxGeometry(0.03, 0.34, 0.02), 0xf6fcff, { pos: [s * 0.2, 1.32, 0.196], rot: [0, 0, s * 0.45] })),
+      ...[-2, -1, 0, 1, 2].map((k) => part(new G.OctahedronGeometry(1), k % 2 ? 0x8fcdf6 : 0xe6f6ff,
+        { pos: [k * 0.12, 1.74 + (2 - Math.abs(k)) * 0.03, -0.3 + Math.abs(k) * 0.04], rot: [-0.35, 0, -k * 0.35], scale: [0.06, 0.2 - Math.abs(k) * 0.02, 0.03] })),
+    ], arm: () => [part(new G.BoxGeometry(0.27, 0.1, 0.27), 0x8fcdf6, { pos: [0, -0.58, 0] }), part(new G.BoxGeometry(0.28, 0.03, 0.28), 0xf2fbff, { pos: [0, -0.53, 0] })] }),
+    // silver trousers with an ice-blue stripe down the outside, ice boots with a white cuff and a crystal on each toe
+    pants: { leg: (s) => [part(new G.BoxGeometry(0.03, 0.62, 0.08), 0x4a9be8, { pos: [s * 0.122, -0.36, 0] })],
+      feet: () => [part(new G.BoxGeometry(0.27, 0.2, 0.36), 0x8cc6f2, { pos: [0, -0.76, 0.04] }), part(new G.BoxGeometry(0.28, 0.05, 0.3), 0xf2fbff, { pos: [0, -0.655, 0] }),
+        part(new G.OctahedronGeometry(0.06), 0xe6f6ff, { pos: [0, -0.77, 0.24], scale: [0.9, 0.8, 1.4] })] },
+  },
+};
+
 export function character(o = {}) {
   const look = gearLook(o.gear, { keepSleeves: o.keepSleeves });
   const fullHead = HEADS[o.face];
+  // costume trims: a full-body gear coat (Santa Costume: its own sleeves) covers the shirt's; gear trousers cover the pants'
+  const shirtTrim = look.sleeve ? null : COSTUME_TRIMS[o.shirtTrim]?.shirt?.(), pantsTrim = look.pants ? null : COSTUME_TRIMS[o.pantsTrim]?.pants;
   const shirt = o.shirt ?? C.hat, pants = look.pants ?? o.pants ?? 0x34405e, skin = o.skin ?? C.skin, seed = o.seed ?? 1;
   const g = new G.Group();
   const bodyParts = [
@@ -627,6 +758,7 @@ export function character(o = {}) {
     ...(look.noHead ? [] : fullHead ? fullHead.parts() : [
       part(new G.IcosahedronGeometry(0.28, 0), skin, { pos: [0, 1.82, 0], scale: [1, 1.08, 1], jit: 0.03, seed: seed + 2 }),
       ...faceParts(o.face || (o.beard ? 'beard' : 'dots'))]),
+    ...(shirtTrim ? shirtTrim.body : []),
     ...look.body,
   ];
   if (o.ears && !look.noHead) bodyParts.push(
@@ -650,11 +782,14 @@ export function character(o = {}) {
   };
   const hands = fullHead ? fullHead.hands : skin;
   // gear: sleeves (a coat's colour, cuffs, puffy bands) and feet (Santa's boots, elf shoes)
-  const sleeve = look.sleeve ?? shirt, cuffs = () => look.arm.flatMap((f) => f()), feet = () => (look.feet ? look.feet.map((p) => p.clone()) : [part(new G.BoxGeometry(0.26, 0.14, 0.34), C.woodDark, { pos: [0, -0.8, 0.05] })]);
+  // costume trims too: the uniform's cuffs, the trousers' side stripe (by side) and its boots (gear feet win over them)
+  const sleeve = look.sleeve ?? shirt, cuffs = () => [...look.arm.flatMap((f) => f()), ...(shirtTrim?.arm ? shirtTrim.arm() : [])];
+  const feet = () => (look.feet ? look.feet.map((p) => p.clone()) : pantsTrim?.feet ? pantsTrim.feet() : [part(new G.BoxGeometry(0.26, 0.14, 0.34), C.woodDark, { pos: [0, -0.8, 0.05] })]);
+  const stripe = (s) => (pantsTrim?.leg ? pantsTrim.leg(s) : []);
   const armL = limb(0.2, 0.66, sleeve, -0.42, 1.52, [part(new G.BoxGeometry(0.2, 0.14, 0.2), hands, { pos: [0, -0.72, 0] }), ...cuffs()]);
   const armR = limb(0.2, 0.66, sleeve, 0.42, 1.52, [part(new G.BoxGeometry(0.2, 0.14, 0.2), hands, { pos: [0, -0.72, 0] }), ...cuffs()]);
-  const legL = limb(0.24, 0.84, pants, -0.16, 0.86, feet());
-  const legR = limb(0.24, 0.84, pants, 0.16, 0.86, feet());
+  const legL = limb(0.24, 0.84, pants, -0.16, 0.86, [...feet(), ...stripe(-1)]);
+  const legR = limb(0.24, 0.84, pants, 0.16, 0.86, [...feet(), ...stripe(1)]);
   g.userData = { armL, armR, legL, legR, body, hatMesh, phase: Math.random() * 6 };
   return g;
 }
