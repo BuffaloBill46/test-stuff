@@ -20,6 +20,8 @@ await db.pg.exec(readFileSync(new URL('../../supabase/032_halloween_costume.sql'
 const sql033 = readFileSync(new URL('../../supabase/033_seasons.sql', import.meta.url), 'utf8');
 await db.pg.exec(sql033);
 await db.pg.exec(sql033); // safe to apply twice
+// the Thanksgiving items (035: the free looks and the Gobbler), so every season item in catalog.js is in the database
+await db.pg.exec(readFileSync(new URL('../../supabase/035_thanksgiving.sql', import.meta.url), 'utf8'));
 
 const S = seasonAt(); assert.ok(S && S.id === 'halloween', 'the test runs during Halloween (Oct 1–31 2026): ' + S?.id);
 const DAY = dayKey(), DAYS = seasonDays(S);
