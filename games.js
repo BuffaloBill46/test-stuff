@@ -1,19 +1,21 @@
 // Games tab: wires the Slots page (readouts, Pull, full screen, paytable, winners list) to the rules (slots.js) and the
 // 3D Big Hat machine (slots3d.js). DEMO ONLY: play money and a demo pool kept in this browser. No SANTA moves.
-import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount } from './slots.js?v=a80c15b94d';
-import { createMachine, symbolImages } from './slots3d.js?v=a80c15b94d';
-import { initSpin, showSpin, resetSpin, spinState, refreshSpin, showResult } from './spinui.js?v=a80c15b94d';
-import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js?v=a80c15b94d';
-import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js?v=a80c15b94d';
-import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js?v=a80c15b94d';
-import { runSummary } from './runui.js?v=a80c15b94d';
-import { livePrice, liveFee, santaFor, fmtSanta } from './market.js?v=a80c15b94d';
-import { FEE } from './slots.js?v=a80c15b94d';
-import { play as sfx } from './sfx.js?v=a80c15b94d';
-import { SERVER, call, settingsReady } from './gameserver.js?v=a80c15b94d';
-import { KINDS, SIZES } from './credits.js?v=a80c15b94d';
-import { initRunPick, priceLabel } from './runpick.js?v=a80c15b94d';
-import { topMult } from './spin.js?v=a80c15b94d';
+import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount, poolJackpot } from './slots.js?v=89017a56cf';
+import { JP as DROP_JP } from './plinko.js?v=89017a56cf';
+import { JP as STOCK_JP } from './stocking.js?v=89017a56cf';
+import { createMachine, symbolImages } from './slots3d.js?v=89017a56cf';
+import { initSpin, showSpin, resetSpin, spinState, refreshSpin, showResult } from './spinui.js?v=89017a56cf';
+import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js?v=89017a56cf';
+import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js?v=89017a56cf';
+import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js?v=89017a56cf';
+import { runSummary } from './runui.js?v=89017a56cf';
+import { livePrice, liveFee, santaFor, fmtSanta } from './market.js?v=89017a56cf';
+import { FEE } from './slots.js?v=89017a56cf';
+import { play as sfx } from './sfx.js?v=89017a56cf';
+import { SERVER, call, settingsReady } from './gameserver.js?v=89017a56cf';
+import { KINDS, SIZES } from './credits.js?v=89017a56cf';
+import { initRunPick, priceLabel } from './runpick.js?v=89017a56cf';
+import { topMult } from './spin.js?v=89017a56cf';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -45,6 +47,10 @@ function render() {
   $('#slotPool').textContent = money(shownPool);
   $('#demoBal').textContent = money(state.bal);
   $('#jpAmt').textContent = money(jackpotAmount('big', shownPool));
+  // the money strip at the top (moneystrip.js): the same pool and what each game's pool jackpot is worth now (Drop and Stocking
+  // jackpots scale with the play's size: shown for a $1 play)
+  if ($('#msPool')) { $('#msPool').textContent = money(shownPool) + ' now';
+    $('#msJp').textContent = `Big Hat ${money(jackpotAmount('big', shownPool))} · Drop ${money(poolJackpot(shownPool, DROP_JP.pct, 1))} · Stocking ${money(poolJackpot(shownPool, STOCK_JP.pct, 1))} ($1 plays)`; }
   $('#slots .machine .pct').textContent = +(M.jackpotPct * 100).toFixed(2) + '%';
   $('#topAmt').textContent = money(100 * M.bet);
   renderWinners();

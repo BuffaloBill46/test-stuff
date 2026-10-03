@@ -13,12 +13,14 @@
 //  - No bulk discount.
 // Invariants (audit): every run: plays made = played + refused ≤ n; every payment buys one run, once;
 //   a finished run is paid exactly once, exactly what it won + refunded; an unfinished run is paid nothing.
-import { IN_PER_DOLLAR } from './slots.js?v=a80c15b94d';
+import { IN_PER_DOLLAR } from './slots.js?v=89017a56cf';
 
 // kind → the pool it pays, and the sizes it can be played at. Spin's sizes come from the game settings (settings.js
 // applyToGame keeps SIZES.spin in step with the prices spin10 / spin100); Snowball Drop's and Big Hat's are fixed here.
 // ONE GAME POOL (Cody, 2026-10-02): every game pays into and out of the shared pool, key 'spin' (shown as "Game pool"). The
 // old 'slots' pool is no longer used by any game. (`game` is the POOL; to tell the games apart, test the kind itself.)
+// Every game entry: 10% of the payment burned, the rest to the Game pool (server/games.js quotes and checks it; the money strip shows it)
+export const GAME_BURN_BPS = 1000;
 export const KINDS = {
   spin: { game: 'spin', bet: 0.10, name: 'Santa Hat Spin', one: 'spin', many: 'spins' },
   big: { game: 'spin', bet: 1.00, name: 'Big Hat', one: 'pull', many: 'pulls' },

@@ -1,22 +1,23 @@
 // Santa Hat Legends (the Snowball Square game): lobby, rooms, referee hand-off, smoothing, HUD.
-import './buildcheck.js?v=a80c15b94d'; // first: the page and this code come from the same publish (buildcheck.js)
-import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo, Sparks, gearTick, GEAR_TINT, disposeTree } from './kit.js?v=a80c15b94d';
-import { buildPlaza, makeHat, shadowBlob } from './plaza.js?v=a80c15b94d';
-import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js?v=a80c15b94d';
-import { openRoom, accounts, findWallet, gamesBoard } from './net.js?v=a80c15b94d';
-import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js?v=a80c15b94d';
-import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js?v=a80c15b94d';
-import { initSeason, refreshSeason } from './seasonui.js?v=a80c15b94d';
-import { TICKET_MAX } from './ranked.js?v=a80c15b94d';
-import { levelInfo, clampLevel } from './levels.js?v=a80c15b94d';
-import { SERVER, call, token as signInToken } from './gameserver.js?v=a80c15b94d';
-import { SPECIALS, cantThrow } from './specials.js?v=a80c15b94d';
-import { gearIn, effectsOf, heldWith, gearOfMask, statOf, RETIRED } from './gear.js?v=a80c15b94d';
-import { initLottery } from './lotteryui.js?v=a80c15b94d';
-import { play as sfx, initSoundButtons } from './sfx.js?v=a80c15b94d';
-import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js?v=a80c15b94d';
-import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js?v=a80c15b94d';
-import { snapMs, autoStartMs, isPublic, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js?v=a80c15b94d';
+import './buildcheck.js?v=89017a56cf'; // first: the page and this code come from the same publish (buildcheck.js)
+import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo, Sparks, gearTick, GEAR_TINT, disposeTree } from './kit.js?v=89017a56cf';
+import { buildPlaza, makeHat, shadowBlob } from './plaza.js?v=89017a56cf';
+import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js?v=89017a56cf';
+import { openRoom, accounts, findWallet, gamesBoard } from './net.js?v=89017a56cf';
+import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js?v=89017a56cf';
+import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js?v=89017a56cf';
+import { initSeason, refreshSeason } from './seasonui.js?v=89017a56cf';
+import { initMoneyStrips, refreshBurned } from './moneystrip.js?v=89017a56cf';
+import { TICKET_MAX } from './ranked.js?v=89017a56cf';
+import { levelInfo, clampLevel } from './levels.js?v=89017a56cf';
+import { SERVER, call, token as signInToken } from './gameserver.js?v=89017a56cf';
+import { SPECIALS, cantThrow } from './specials.js?v=89017a56cf';
+import { gearIn, effectsOf, heldWith, gearOfMask, statOf, RETIRED } from './gear.js?v=89017a56cf';
+import { initLottery } from './lotteryui.js?v=89017a56cf';
+import { play as sfx, initSoundButtons } from './sfx.js?v=89017a56cf';
+import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js?v=89017a56cf';
+import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js?v=89017a56cf';
+import { snapMs, autoStartMs, isPublic, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js?v=89017a56cf';
 
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
@@ -875,7 +876,7 @@ $('#create').addEventListener('click', () => enterRoom(rid(4).toUpperCase().repl
 $('#joinBtn').addEventListener('click', () => { const c = cleanCode($('#code').value); if (c.length < 3) { status('Type the room code your friend shared.'); return; } enterRoom(c, false); });
 $('#practice').addEventListener('click', startPractice);
 $('#playUnranked').addEventListener('click', () => openLobby('unranked'));
-$('#playBig').addEventListener('click', () => { openLobby('unranked'); $('#quick').click(); }); // the hero's big button: straight into a free Auto match
+$('#playBig').addEventListener('click', () => { tabs.show('play'); scrollTo(0, 0); }); // Home's Play now: the Play page and its match types (Cody 2026-10-03)
 $('#homeClose').addEventListener('click', closeLobby);
 $('#leave').addEventListener('click', () => leaveRoom());
 initSoundButtons();
@@ -908,12 +909,14 @@ const app = {
   get theme() { return theme; }, setTheme,
   onTab: (tab) => {
     ui.lastBoard = '';
-    if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js?v=a80c15b94d')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
+    if (tab === 'store' || tab === 'games') refreshBurned(); // the money strip's burned-so-far (kept a minute)
+    if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js?v=89017a56cf')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
   },
 };
 let gamesMod = null; // Games tab code loads the first time it's opened
 const tabs = initTabs(app);
 initSeason({ thumbnail, onBought: () => tabs.reloadMine() }); // the Season card (seasonui.js); a bought pass reloads what I own
+initMoneyStrips(); // the Store and Games pages' money strip (moneystrip.js): burn, treasury, pool, burned so far
 renderProgress(app.profile); // the Play page's Player Progress box (guests: level 1; updated on sign-in)
 initLottery(); // the Store's Santa Lottery (lotteryui.js)
 $('#loading')?.remove();

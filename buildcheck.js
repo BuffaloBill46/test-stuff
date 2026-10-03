@@ -4,7 +4,7 @@
 // page's <html data-build>, and adds ?v=<build> to every file the code loads (so the code itself is always one matching set).
 // A mismatch reloads ONCE per build (a reload re-checks the page with GitHub); 'dev' (a local copy) never reloads.
 // Imported FIRST by online.js, so this runs before any other game code.
-export const BUILD = 'a80c15b94d';
+export const BUILD = '89017a56cf';
 const page = document.documentElement.dataset.build;
 if (BUILD !== 'dev' && page && page !== BUILD) {
   try { if (sessionStorage.getItem('santa.buildReload') !== BUILD) { sessionStorage.setItem('santa.buildReload', BUILD); location.reload(); } } catch {}

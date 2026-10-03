@@ -1,19 +1,19 @@
 // Site tabs: Play / Store / Avatar / Ranks, wallet sign-in, avatar editor, leaderboard.
-import { THREE, character, lights, toon, part, build, hatGeo, giftGeo, C, Sparks, TOON } from './kit.js?v=a80c15b94d';
-import { BALL_COLOR, tracer, dropStreak } from './ballfx.js?v=a80c15b94d';
-import { mountHumanCheck } from './human.js?v=a80c15b94d';
-import { GEAR_SLOTS } from './catalog.js?v=a80c15b94d';
-import { shopBuy, resumeShop } from './shopui.js?v=a80c15b94d';
-import { forSale } from './shoprules.js?v=a80c15b94d';
-import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=a80c15b94d';
-import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable, COSTUMES, costumeItems, costumeWord, SEASONS } from './catalog.js?v=a80c15b94d';
-import { SPECIALS } from './specials.js?v=a80c15b94d';
-import { settingsReady, call } from './gameserver.js?v=a80c15b94d';
-import { TICKET_MAX } from './ranked.js?v=a80c15b94d';
-import { dayStart, weekStart } from './gameclock.js?v=a80c15b94d';
-import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js?v=a80c15b94d';
-import { refreshSeason } from './seasonui.js?v=a80c15b94d';
-import { THEMES, THEME_IDS } from './themes.js?v=a80c15b94d';
+import { THREE, character, lights, toon, part, build, hatGeo, giftGeo, C, Sparks, TOON } from './kit.js?v=89017a56cf';
+import { BALL_COLOR, tracer, dropStreak } from './ballfx.js?v=89017a56cf';
+import { mountHumanCheck } from './human.js?v=89017a56cf';
+import { GEAR_SLOTS } from './catalog.js?v=89017a56cf';
+import { shopBuy, resumeShop } from './shopui.js?v=89017a56cf';
+import { forSale } from './shoprules.js?v=89017a56cf';
+import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=89017a56cf';
+import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable, COSTUMES, costumeItems, costumeWord, SEASONS } from './catalog.js?v=89017a56cf';
+import { SPECIALS } from './specials.js?v=89017a56cf';
+import { settingsReady, call } from './gameserver.js?v=89017a56cf';
+import { TICKET_MAX } from './ranked.js?v=89017a56cf';
+import { dayStart, weekStart } from './gameclock.js?v=89017a56cf';
+import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js?v=89017a56cf';
+import { refreshSeason } from './seasonui.js?v=89017a56cf';
+import { THEMES, THEME_IDS } from './themes.js?v=89017a56cf';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -147,7 +147,7 @@ function withGear(a, slot, id) {
 const STAT_NAMES = { hits: 'extra hits', held: 'snowballs held', refill: 'refill speed', speed: 'move speed', size: 'size' };
 const statName = (kind) => (kind === 'present' ? 'a random gear' : STAT_NAMES[statOf(kind)] || '');
 export function initTabs(app) {
-  const state = { tab: 'play', slot: 'shirt', sbSlot: 'sb1', gSlot: 'g1', draft: null, owned: new Set(), board: null };
+  const state = { tab: 'home', slot: 'shirt', sbSlot: 'sb1', gSlot: 'g1', draft: null, owned: new Set(), board: null };
   // The Avatar editor's tabs: the look slots, then Special Snowballs and Special Gear. Special Gear REPLACES Backpacks (Cody,
   // 2026-10-01: "it should also replace the backpack section"); a backpack already worn stays on (the pack slot is still saved).
   // Costumes (Cody, 2026-10-02: the level 5 and 10 rewards) get their own tab: wear a whole costume in one tap, and put on or
@@ -156,8 +156,11 @@ export function initTabs(app) {
 
   // ---------- tabs
   function show(tab) {
-    if (!['play', 'games', 'store', 'avatar', 'ranks'].includes(tab)) tab = 'play';
+    if (!['home', 'play', 'games', 'store', 'avatar', 'ranks'].includes(tab)) tab = 'home';
     state.tab = tab;
+    // Player Progress is ONE box (its ids are used everywhere): it sits at the top of Home or Play, whichever is open (Cody 2026-10-03)
+    const pg = $('#progress'), page = $('#tab-' + tab);
+    if (pg && page && (tab === 'home' || tab === 'play')) page.insertBefore(pg, tab === 'home' ? page.querySelector('.hero')?.nextElementSibling || null : page.firstElementChild);
     document.querySelectorAll('#nav .tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
     document.querySelectorAll('#pages .page').forEach((p) => { p.hidden = p.id !== 'tab-' + tab; });
     try { history.replaceState(null, '', location.pathname + location.search + '#' + tab); } catch {}
@@ -509,7 +512,7 @@ export function initTabs(app) {
     if (store.get('sq_link') && !app.profile) openAcct();
   })();
   renderWho();
-  show((location.hash || '#play').slice(1));
+  show((location.hash || '#home').slice(1));
   return { show, reloadMine, get tab() { return state.tab; } };
 }
 
