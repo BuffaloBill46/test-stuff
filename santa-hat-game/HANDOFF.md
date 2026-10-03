@@ -174,7 +174,10 @@ between two devices has never been tested from here. Cody and friends testing on
 - Friends together LIVE: a friends' room host presses "Auto match together" → the match server holds seats for the whole group in a
   public room (20 s) and moves everyone (`referee.js together/holds`). Play page "Games waiting for players" with Join. Tested on
   the LIVE match server: `REF_URL=wss://play.santahatgames.com node friends-test.mjs`.
-- Still next: weekly modes; share-a-win image, biggest wins of the week, pool jackpot banner.
+- Mini-games group LIVE: Winners tabs Latest / Biggest this week (`weekWinners`), pool jackpot banner (`jackpotbar.js`), jackpot
+  alerts to Cody's Telegram (`alerts.js`, once each), Share this win picture (`sharecard.js`). Tests: jackpot-week-test,
+  share-win-test, games-test, alerts-db. stocking-test can flake on the 390 px phone under parallel load (passes alone).
+- Still next: weekly modes (a design call for Cody: rules per mode).
 
 ### 2026-10-03 late night: HOME PAGE + MONEY STRIPS LIVE
 - The site opens on **Home** (intro, Player Progress, the season calendar); Home's Play now → the **Play** page (match types).
