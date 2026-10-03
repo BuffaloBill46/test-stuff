@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Santa Hat Legends · Player Guide</title>
+<meta name="description" content="How to play Santa Hat Legends: the snowball fight, levels, special snowballs, gear, ranked, the games for SANTA and the lottery.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@600;800&family=Alegreya+Sans:wght@400;500;700&family=Silkscreen:wght@400;700&display=swap">
+<style>
+  /* The player guide (Cody, 2026-10-03; TEST_PLAN B). Every number below comes from the game's own rules files (catalog.js, specials.js,
+     gear.js, levels.js, ranked.js, lottery.js, slots.js, plinko.js, stocking.js), so the guide can't disagree with the game.
+     Odds: only the jackpots' (Cody: "all other odds info can be removed"). */
+  :root { color-scheme: dark; --ink: #0c0f1a; --ground: #121732; --plaque: #1b2344; --plaque-hi: #26305a; --frost: #b9cdf2; --text: #eef2fb;
+    --dim: #9aa6c7; --hat: #cf3128; --brim: #f5f1e8; --lamp: #ffbe5c; --pine: #7fe0a0;
+    --display: 'Grenze Gotisch', 'Palatino Linotype', Georgia, serif; --body: 'Alegreya Sans', 'Segoe UI', system-ui, sans-serif; --digits: 'Silkscreen', ui-monospace, monospace; }
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: 64px; }
+  body { margin: 0; background: var(--ground); color: var(--text); font: 400 17px/1.55 var(--body); padding-inline: 16px; padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px); }
+  a { color: var(--lamp); }
+  .top { position: sticky; top: 0; z-index: 2; margin-inline: -16px; padding: 10px 16px; background: rgba(12,15,26,.94); border-bottom: 3px dotted var(--brim); display: flex; gap: 10px 16px; align-items: center; flex-wrap: wrap; }
+  .top .brand { font: 800 22px/1 var(--display); color: var(--hat); text-decoration: none; } .top .brand span { color: var(--brim); }
+  .top nav { display: flex; gap: 4px 12px; flex-wrap: wrap; font: 700 11px/1.6 var(--digits); letter-spacing: .5px; text-transform: uppercase; }
+  .top nav a { color: var(--frost); text-decoration: none; } .top nav a:hover, .top nav a:focus-visible { color: var(--lamp); }
+  .top .play { margin-left: auto; font: 700 15px/1 var(--body); color: var(--brim); background: var(--hat); border: 2px solid var(--ink); border-radius: 3px; padding: 8px 12px 9px; text-decoration: none; box-shadow: inset 0 -3px 0 #8f1712; }
+  main { max-width: 900px; margin: 0 auto; padding-block: 24px 64px; display: grid; gap: 36px; }
+  .hero { display: grid; gap: 10px; }
+  .eyebrow { font: 700 11px/1 var(--digits); letter-spacing: 1.5px; text-transform: uppercase; color: var(--lamp); }
+  h1 { font: 800 clamp(38px, 8vw, 60px)/1 var(--display); margin: 0; color: var(--brim); text-wrap: balance; }
+  h2 { font: 800 32px/1.05 var(--display); margin: 0; color: var(--brim); text-wrap: balance; }
+  h3 { font: 700 13px/1.2 var(--digits); letter-spacing: 1px; text-transform: uppercase; color: var(--frost); margin: 8px 0 0; }
+  p, li { max-width: 70ch; margin: 0; } .dim { color: var(--dim); } b { color: var(--brim); }
+  section { display: grid; gap: 12px; }
+  ol, ul { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+  .steps { list-style: none; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  .steps li { background: var(--plaque); border: 2px solid var(--plaque-hi); border-radius: 4px; padding: 14px; display: grid; gap: 6px; align-content: start; }
+  .steps li i { font: 700 11px/1 var(--digits); color: var(--lamp); font-style: normal; letter-spacing: 1px; }
+  .note { background: var(--plaque); border-left: 4px solid var(--hat); border-radius: 3px; padding: 12px 14px; display: grid; gap: 6px; }
+  .table { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 16px; }
+  th { font: 700 10px/1.2 var(--digits); letter-spacing: 1px; text-transform: uppercase; color: var(--frost); text-align: left; padding: 6px 8px; border-bottom: 2px solid var(--plaque-hi); white-space: nowrap; }
+  td { padding: 7px 8px; border-bottom: 1px solid var(--plaque); vertical-align: top; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.n { font: 700 14px/1.3 var(--digits); color: var(--lamp); }
+  td:first-child { color: var(--brim); font-weight: 700; }
+  td.jp { color: var(--lamp); font-weight: 700; text-align: right; }
+  .odds { display: inline-block; font: 700 12px/1 var(--digits); color: var(--ink); background: var(--lamp); border-radius: 2px; padding: 4px 6px 3px; }
+  .kbd { font: 700 12px/1 var(--digits); background: var(--brim); color: var(--ink); border-radius: 2px; padding: 3px 5px 2px; }
+  footer { color: var(--dim); font-size: 15px; border-top: 1px dashed var(--plaque-hi); padding-top: 14px; display: grid; gap: 6px; }
+  @media (max-width: 560px) { body { font-size: 16px; } h2 { font-size: 27px; } .top nav { display: none; } table { font-size: 14px; } td, th { padding: 6px 5px; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="./">Santa <span>Hat</span></a>
+  <nav aria-label="Guide sections"><a href="#start">Start</a><a href="#fight">Snowball fight</a><a href="#specials">Specials</a><a href="#gear">Gear</a><a href="#levels">Levels</a><a href="#ranked">Ranked</a><a href="#games">Games</a><a href="#lottery">Lottery</a><a href="#wallet">Wallet</a></nav>
+  <a class="play" href="./">Play now</a>
+</header>
+<main>
+  <div class="hero">
+    <div class="eyebrow">Santa Hat Legends · Player guide</div>
+    <h1>Grab the hat. Keep the hat.</h1>
+    <p>Everything you need to know: the free snowball fight, levels and looks, special snowballs and gear, ranked, the games you can play for SANTA, and the lottery.</p>
+  </div>
+
+  <section id="start">
+    <h2>Start in a minute</h2>
+    <ol class="steps">
+      <li><i>Free · no sign-up</i><b>Play Snowball Square</b><span>Open <a href="./">santahatgames.com</a> and press <b>Play now</b>. Practice against bots, or join a public match.</span></li>
+      <li><i>Keep your progress</i><b>Sign in</b><span>With a Solana wallet (Phantom or Solflare) or your email. Your level, looks and items are saved to your account.</span></li>
+      <li><i>18+ · real SANTA</i><b>Play for SANTA</b><span>Big Hat, Snowball Drop, Stocking Stuffer and the lottery use SANTA on Solana. Winnings go straight to your wallet.</span></li>
+    </ol>
+  </section>
+
+  <section id="fight">
+    <h2>Snowball Square</h2>
+    <p>Up to <b data-k="maxHumans">8</b> players in a snowy ring. One Santa hat. Wear it to score; knock it off everyone else.</p>
+    <h3>Controls</h3>
+    <ul>
+      <li><b>Computer:</b> <span class="kbd">WASD</span> or arrows to move, <b>click</b> to throw where you point, <span class="kbd">Space</span> to auto-aim, <span class="kbd">1</span>–<span class="kbd">4</span> for emotes, <span class="kbd">Q</span> <span class="kbd">E</span> <span class="kbd">R</span> for your special snowballs.</li>
+      <li><b>Phone:</b> move with the joystick, tap anywhere else to throw there. To move the joystick, triple-tap it and hold, then drag it where you like. Your special snowballs are the buttons under your snowball counter.</li>
+    </ul>
+    <h3>A match</h3>
+    <ul>
+      <li><b data-k="rounds">3</b> rounds of <b data-k="roundTime">60</b> seconds. Most points at the end wins.</li>
+      <li><b>Free-for-all:</b> everyone chases whoever wears the hat. <b>Nice vs Naughty:</b> two teams, and team points add up.</li>
+      <li>A snowball hit knocks a player down for a moment. Hit whoever wears the hat and it flies off; catch it on your head to take it.</li>
+      <li>Your snowball counter refills by itself, and much faster when you stand next to a snow pile.</li>
+    </ul>
+    <h3>Scoring</h3>
+    <div class="table"><table id="pts"></table></div>
+  </section>
+
+  <section id="specials">
+    <h2>Special snowballs</h2>
+    <p>Bought once in the Store and kept. Put them in your special slots on the Avatar screen (more slots open as you level up). Each throw uses snowballs from your counter.</p>
+    <div class="table"><table id="sbTable"></table></div>
+    <div class="note"><p><b>Tap</b> a special's button (or <span class="kbd">Q</span> <span class="kbd">E</span> <span class="kbd">R</span>) to use it for your next throw. <b>Double-tap</b> to lock it on for every throw; double-tap again for normal snowballs.</p>
+      <p><b>Try before you buy:</b> in the Store, <b>Try it</b> opens a free practice match with that snowball already loaded.</p></div>
+  </section>
+
+  <section id="gear">
+    <h2>Special gear</h2>
+    <p>Gear changes how you play: more hits before you're knocked down, more snowballs, more speed. Wear it in your gear slot on the Avatar screen.</p>
+    <div class="table"><table id="gearTable"></table></div>
+    <div class="note"><p><b>No stacking:</b> <span id="noStack"></span></p>
+      <p><b>Wears out:</b> gear lasts <b id="wearDays">7</b> days from the first match you wear it in. Then you can buy it again.</p></div>
+  </section>
+
+  <section id="levels">
+    <h2>Levels and looks</h2>
+    <p id="levelHow"></p>
+    <p class="dim">Each level sets how many snowballs you start a match with, and how many special snowball and gear slots you have.</p>
+    <div class="table"><table id="levelTable"></table></div>
+    <h3>Looks you unlock</h3>
+    <p>Skin tones are free for everyone. Three faces are sold on the Avatar screen; every other look unlocks as you level up, and levels 5 and 10 each give a full costume.</p>
+    <div class="table"><table id="lookTable"></table></div>
+  </section>
+
+  <section id="ranked">
+    <h2>Ranked</h2>
+    <ul id="rankedList"></ul>
+    <div class="table"><table id="rankedEx"></table></div>
+  </section>
+
+  <section id="games">
+    <h2>Games for SANTA</h2>
+    <div class="note">
+      <p><b>18+ and real money.</b> These games are played with SANTA on Solana. Only play with what you can afford to lose.</p>
+      <p>Every entry: <b>10% is burned</b> and the rest goes into the <b>Game pool</b> that all three games pay from. Pick how many plays you want; the SANTA price is locked for the whole run, and everything the run wins is sent to your wallet at the end.</p>
+      <p><b>3% SANTA tax:</b> winnings arrive 3% lighter. The SANTA token does that, not the game.</p>
+      <p><b>Provably fair:</b> every result is decided by a secret locked before you play. After a run, tap <b>Check last result</b> and re-run it yourself.</p>
+    </div>
+    <h3>Big Hat · slots</h3>
+    <p id="bigHow"></p>
+    <div class="table"><table id="bigTable"></table></div>
+    <h3>Snowball Drop</h3>
+    <p id="dropHow"></p>
+    <div class="table"><table id="dropTable"></table></div>
+    <h3>Stocking Stuffer</h3>
+    <p id="stockHow"></p>
+    <div class="table"><table id="stockTable"></table></div>
+  </section>
+
+  <section id="lottery">
+    <h2>The Santa Lottery</h2>
+    <ul id="lotList"></ul>
+  </section>
+
+  <section id="wallet">
+    <h2>Wallet and safety</h2>
+    <ul>
+      <li>Use <b>Phantom</b> or <b>Solflare</b>. On a phone, open santahatgames.com <b>inside your wallet app's browser</b>; the site shows an "Open in Phantom" button if you're in a normal browser.</li>
+      <li>Signing in only proves you own the wallet: it sends nothing and costs nothing. Every payment shows its exact amount in your wallet before you approve it.</li>
+      <li><b>Nobody from Santa Hat will ever ask for your secret phrase</b> or DM you first. Anyone who does is a scammer.</li>
+      <li>A payment that went through but didn't reach the game (a closed tab, a dropped connection) is finished automatically the next time you open the site.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>The numbers on this page are read live from the game's own rules, so they always match what you play.</p>
+    <p><a href="./">Back to the game</a> · <a href="./feedback.html">Send feedback</a></p>
+  </footer>
+</main>
+<script type="module">
+  import { ITEMS, COSTUMES } from './catalog.js';
+  import { SPECIALS } from './specials.js';
+  import { GEAR, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js';
+  import { LEVELS, MAX_LEVEL, WINS_PER_LEVEL, MAX_BOUGHT_LEVEL, buyPrice } from './levels.js';
+  import { RULES, TICKET_MAX, settleRanked } from './ranked.js';
+  import { LOTTERIES, LIVE_LOTTERIES, SALES_CLOSE_MS } from './lottery.js';
+  import { SYMBOLS, MACHINES, stats, JACKPOT_PCT, POOL_RULES } from './slots.js';
+  import * as DROP from './plinko.js';
+  import * as STOCK from './stocking.js';
+  import { K, PTS } from './sim.js';
+  const $ = (s) => document.querySelector(s);
+  const usd = (v) => (v < 1 ? Math.round(v * 100) + '¢' : '$' + (Number.isInteger(v) ? v : v.toFixed(2)));
+  const money = (v) => '$' + v.toFixed(2);
+  const oneIn = (p) => `<span class="odds">1 in ${Math.round(1 / p).toLocaleString('en-US')}</span>`;
+  const row = (cells, cls = []) => `<tr>${cells.map((c, i) => `<td${cls[i] ? ` class="${cls[i]}"` : ''}>${c}</td>`).join('')}</tr>`;
+  const head = (cells, cls = []) => `<thead><tr>${cells.map((c, i) => `<th${cls[i] ? ` class="${cls[i]}"` : ''}>${c}</th>`).join('')}</tr></thead>`;
+  const pct = (x) => +(x * 100).toFixed(2) + '%';
+  // the jackpot row: one wide cell in plain text (in the pixel font it pushed the $1 column off a phone screen)
+  const jpRow = (label, p, what) => `<tr><td>${label}</td><td colspan="2" class="jp">Pool jackpot: ${pct(p)} of the Game pool × your ${what}'s size</td></tr>`;
+
+  // the match
+  for (const [k, v] of Object.entries({ maxHumans: K.MAX_HUMANS, rounds: K.ROUNDS, roundTime: K.ROUND_TIME })) document.querySelectorAll(`[data-k="${k}"]`).forEach((e) => { e.textContent = v; });
+  $('#pts').innerHTML = head(['Do this', 'Points'], ['', 'n']) + '<tbody>' + [['Wearing the hat', `${PTS.hatSec} / sec`], ['Catching the flying hat on your head', PTS.header], ['Knocking the hat off someone', PTS.knock], ['Any snowball hit', PTS.hit]].map((r) => row(r, ['', 'n'])).join('') + '</tbody>';
+
+  // special snowballs: price from the catalog, cost and effect from specials.js
+  const sbs = ITEMS.filter((i) => i.slot === 'sball' && i.special);
+  $('#sbTable').innerHTML = head(['Snowball', 'What it does', 'Uses', 'Price'], ['', '', 'n', 'n']) + '<tbody>' + sbs.map((i) => { const S = SPECIALS[i.special];
+    return row([i.name, S.note, S.cost === 'all' ? 'all' : S.cost, i.price ? usd(i.price) : '—'], ['', '', 'n', 'n']); }).join('') + '</tbody>';
+
+  // gear (retired ones left out)
+  const gear = ITEMS.filter((i) => i.slot === 'gear' && i.gear && !RETIRED.has(i.gear));
+  $('#gearTable').innerHTML = head(['Gear', 'What it does', 'Price'], ['', '', 'n']) + '<tbody>' + gear.map((i) => row([i.name, GEAR[i.gear].note, i.price ? usd(i.price) : '—'], ['', '', 'n'])).join('') + '</tbody>';
+  $('#noStack').textContent = NO_STACK_NOTE; $('#wearDays').textContent = WEAR_DAYS;
+
+  // levels
+  const prices = Array.from({ length: MAX_BOUGHT_LEVEL - 1 }, (_, k) => k + 1).map((l) => `level ${l + 1} ${usd(buyPrice(l))}`).join(', ');
+  $('#levelHow').innerHTML = `Levels go from 1 to ${MAX_LEVEL}. Level up by finishing <b>top 3 in ${WINS_PER_LEVEL} public Auto matches</b> (practice and private rooms don't count); from level 9 to 10 it takes 10 first places. Up to level ${MAX_BOUGHT_LEVEL} you can also buy a level: ${prices}. Guests play at level 1; sign in to keep your level.`;
+  $('#levelTable').innerHTML = head(['Level', 'Snowballs', 'Specials', 'Gear'], ['', 'n', 'n', 'n']) + '<tbody>' + Object.entries(LEVELS).map(([l, x]) => row([l, x.start, x.sb, x.gear], ['', 'n', 'n', 'n'])).join('') + '</tbody>';
+  const byLevel = new Map();
+  for (const i of ITEMS) if (i.level >= 2 && !['sball', 'gear'].includes(i.slot) && !/_none$/.test(i.id)) (byLevel.get(i.level) || byLevel.set(i.level, []).get(i.level)).push(i);
+  const setName = (s) => COSTUMES?.[s]?.name || s;
+  $('#lookTable').innerHTML = head(['Level', 'Unlocks']) + '<tbody>' + [...byLevel.keys()].sort((a, b) => a - b).map((l) => { const its = byLevel.get(l), sets = [...new Set(its.filter((i) => i.set).map((i) => i.set))];
+    const one = { shirt: 'shirt', pants: 'pants', face: 'face', hat: 'hat', pack: 'backpack', snow: 'snowball colour', skin: 'skin' };
+    const plain = its.filter((i) => !i.set).map((i) => `${i.name} <span class="dim">(${one[i.slot] || i.slot})</span>`);
+    return row([l, [...sets.map((s) => `<b>${setName(s)} costume</b>`), ...plain].join(', ')]); }).join('') + '</tbody>';
+
+  // ranked
+  $('#rankedList').innerHTML = [
+    `<b>10 free tickets</b> every day, refilled at <b>9 PM Eastern (Indiana time)</b>. One ticket per ranked match; leave before it starts and you get it back.`,
+    `Buy up to <b>10 more</b> a day in the Store (that limit also resets at 9 PM). You can hold <b>${TICKET_MAX}</b> at most.`,
+    `Every player in the match adds <b>${RULES.perPlayer} points</b> to the pot, bots included.`,
+    `3 or fewer players: 1st takes the whole pot. 4 or more: 1st ${RULES.split4[0] * 100}%, 2nd ${RULES.split4[1] * 100}%, 3rd ${RULES.split4[2] * 100}%. Not placing costs <b>${-RULES.notPlacing}</b> points.`,
+    `Bots play to win and can take paid places. The leaderboard (Ranks) is your total points.`,
+  ].map((t) => `<li>${t}</li>`).join('');
+  const ex = (n) => { const r = settleRanked(Array.from({ length: n }, (_, i) => ({ id: 'p' + i, bot: false, score: 100 - i }))); return Array.from({ length: n }, (_, i) => r.points['p' + i]); };
+  $('#rankedEx').innerHTML = head(['Players', 'Pot', '1st', '2nd', '3rd', 'Others'], ['', 'n', 'n', 'n', 'n', 'n']) + '<tbody>' + [3, 4, 8].map((n) => { const p = ex(n), s = (v) => (v > 0 ? '+' : '') + v;
+    return row([n, n * RULES.perPlayer, s(p[0]), s(p[1]), s(p[2]), n > 3 ? s(p[3]) : '—'], ['', 'n', 'n', 'n', 'n', 'n']); }).join('') + '</tbody>';
+
+  // Big Hat
+  const M = MACHINES.big, st = stats(M);
+  $('#bigHow').innerHTML = `${usd(M.bet)} a pull on a 5×5 grid with ${M.lines.length} lines (straight or diagonal, always from the first reel). Match 3, 4 or 5 in a row; the <b>Santa Hat is wild</b> (not for Coal), every Santa Hat anywhere also pays ${usd(M.hatBonus * M.bet)}, and all winning lines add up. <b>Top Line JackPot:</b> 5 Santa Hats on a line, about ${oneIn(st.topPerLine * st.lines)}. <b>Pool jackpot:</b> all 25 squares Santa Hats, ${pct(M.jackpotPct)} of the Game pool, ${oneIn(M.poolJackpotOdds)}.`;
+  $('#bigTable').innerHTML = head(['Symbol', '3 in a row', '4 in a row', '5 in a row'], ['', 'n', 'n', 'n']) + '<tbody>' + SYMBOLS.filter((s) => M.pays[s.id]).map((s) => { const p = M.pays[s.id];
+    return row([s.name + (s.id === 'hat' ? ' (wild)' : ''), p[3] ? money(p[3] * M.bet) : '—', p[4] ? money(p[4] * M.bet) : '—', p[5] ? money(p[5] * M.bet) : '—'], ['', 'n', 'n', 'n']); }).join('') + '</tbody>';
+
+  // Snowball Drop
+  const mults = [...new Set(DROP.PAYS2.filter((p, k) => p > 0 && k !== DROP.JACKPOT_BIN))].sort((a, b) => b - a);
+  $('#dropHow').innerHTML = `10¢ or $1 a drop. Each snowball bounces down ${DROP.ROWS} rows of pegs into one of ${DROP.BINS} presents; the present it lands in is your prize (its number × your drop), and the gaps between presents pay nothing. <b>The centre present is the pool jackpot:</b> ${pct(DROP.JP.pct)} of the Game pool × your drop's size, ${oneIn(DROP.jackpotOdds())}.`;
+  $('#dropTable').innerHTML = head(['Lands in', '10¢ drop', '$1 drop'], ['', 'n', 'n']) + '<tbody>' + mults.map((m) => row([`${m}× present`, money(m * 0.1), money(m)], ['', 'n', 'n'])).join('') + jpRow('Centre present', DROP.JP.pct, 'drop') + '</tbody>';
+
+  // Stocking Stuffer
+  $('#stockHow').innerHTML = `10¢ or $1 a turn. ${STOCK.STOCKINGS} stockings: ${STOCK.GIFTS} hide a gift, the rest hide coal. Tap them open one at a time; the first coal ends the turn, and you're paid by how many gifts you found before it. Which stocking you tap doesn't change anything: the turn is decided before your first tap. <b>${STOCK.MAX_OPEN} gifts in a row win the pool jackpot:</b> ${pct(STOCK.JP.pct)} of the Game pool × your turn's size, ${oneIn(STOCK.WAYS[STOCK.MAX_OPEN] / STOCK.TOTAL)}.`;
+  $('#stockTable').innerHTML = head(['Gifts before the coal', '10¢ turn', '$1 turn'], ['', 'n', 'n']) + '<tbody>' + STOCK.PAYS.map((p, k) => (k === 0 ? '' : row([k + (p < 1 && p > 0 ? ' <span class="dim">(less than the turn)</span>' : ''), p ? money(p * 0.1) : '—', p ? money(p) : '—'], ['', 'n', 'n']))).join('') + jpRow(`${STOCK.MAX_OPEN} in a row`, STOCK.JP.pct, 'turn') + '</tbody>';
+
+  // lottery
+  const live = LIVE_LOTTERIES.map((k) => LOTTERIES[k]);
+  $('#lotList').innerHTML = [
+    `Tickets: ${live.map((L) => `<b>${L.name}</b> ${usd(L.ticket)}`).join(', ')}. Buy as many as you like in the Store.`,
+    `The weekly draws are every <b>Sunday at 9 PM Eastern (Indiana time)</b>; the Christmas draw is <b>December 23 at 9 PM</b>. Sales close ${SALES_CLOSE_MS / 60000} minutes before each draw.`,
+    `<b>10% of every ticket is burned</b>; the rest is the pot. The top 3 tickets win <b>${LOTTERIES['weekly-10'].split.join(' / ')}%</b> of the pot, one prize per wallet, paid to the winners' wallets automatically.`,
+    `Every draw is checkable: the Store shows the draw's fingerprint before sales close, and after the draw anyone can re-run it with <b>Check this draw</b>.`,
+  ].map((t) => `<li>${t}</li>`).join('');
+</script>
+</body>
+</html>
