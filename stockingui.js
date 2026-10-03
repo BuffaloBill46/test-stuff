@@ -5,8 +5,8 @@
 // playcredits.js / house.js): the WHOLE turn is decided before the first stocking jiggles; the board only shows it.
 // Celebrations follow the money (LESSONS: no losses dressed as wins): the jackpot gets the biggest, with its dollar amount; 3+
 // gifts celebrate (5+ bigger); 2 gifts (1.5×) a light touch; 1 gift (0.5×) is a loss and is said plainly. Winners absorb SANTA's 3% tax, and the messages say so.
-import { PAYS, WAYS, TOTAL, GIFTS, STOCKINGS, ROW, MAX_OPEN, JP, payback, paybackAt, realWin, topMult } from './stocking.js';
-import { poolJackpot, POOL_RULES } from './slots.js';
+import { PAYS, WAYS, TOTAL, GIFTS, STOCKINGS, ROW, MAX_OPEN, JP, topMult } from './stocking.js';
+import { poolJackpot } from './slots.js';
 import { createStockings } from './stockingboard.js';
 import { playRun, short } from './playcredits.js';
 import { runSummary } from './runui.js';
@@ -31,8 +31,13 @@ function render() {
     : '<li class="empty">No turns yet.</li>';
   // the description, the 8th slot and "How to win" carry the pool jackpot's live amount: they follow the pool
   $('#stockDesc').innerHTML = `${GIFTS} stockings hide a gift, ${STOCKINGS - GIFTS} hide coal. Open them until the first coal: the more gifts before it, the bigger the prize. <b>Find ${MAX_OPEN} gifts in a row for the pool jackpot: ${money(jpNow(1))}</b> on a $1 turn right now (${money(jpNow(0.1))} on 10¢). Winnings arrive 3% lighter (SANTA's token tax).`;
-  ladder(shownFound, shownDone);
+  ladder(shownFound, shownDone); jpOdds();
   if ($('#stockHow')?.open || !howTo.done) howTo();
+}
+// The jackpot's odds, always on show (Cody, 2026-10-03: each game shows its jackpot odds; the other odds went)
+function jpOdds() {
+  const el = $('#stockOdds'); if (!el) return;
+  el.innerHTML = `<span class="jpline">Pool jackpot <b>${money(jpNow(bet))}</b> on a ${cents(bet)} turn right now <span class="dim">(${MAX_OPEN} gifts in a row: ${+(JP.pct * 100).toFixed(2)}% of the Game pool × your turn)</span></span> <b>1 in ${Math.round(TOTAL / WAYS[MAX_OPEN]).toLocaleString('en-US')}</b> to hit it`;
 }
 // The 8 gift slots: slot k fills with the k-th gift found; under each, what stopping there pays; the 8th is the POOL JACKPOT
 // (gold, its live amount at the chosen size as its label's title). The step reached is lit.
@@ -42,20 +47,19 @@ function ladder(found, done = false) {
   $('#stockLadder').innerHTML = Array.from({ length: MAX_OPEN }, (_, i) => { const k = i + 1, jp = k === MAX_OPEN, label = jp ? 'JP' : mult(PAYS[k]), said = jp ? `the pool jackpot, ${money(jpNow(bet))} on a ${cents(bet)} turn right now` : mult(PAYS[k]);
     return `<li class="${k <= found ? 'got' : ''}${k === found ? ' now' : ''}${done && k === found ? ' end' : ''}${jp || PAYS[k] > 1 ? ' win' : ''}${jp ? ' jpslot' : ''}"${jp ? ` title="${said}"` : ''}><i aria-hidden="true"></i><b>${label}</b><span class="sr">${k} gift${k === 1 ? '' : 's'}: ${said}</span></li>`; }).join('');
 }
-// "How to win": everything from the rules (the payback is computed from the pay table and the live pool, never typed in)
+// "How to play & win": the rules and what each result pays, from the pay table (never typed in)
 function howTo() {
   howTo.done = true;
-  const pc = (x) => (x * 100).toFixed(1) + '%', R = POOL_RULES, odds1 = (w) => (TOTAL / w).toLocaleString('en-US', { maximumFractionDigits: TOTAL / w < 100 ? 1 : 0 });
-  const rows = PAYS.map((p, k) => `<tr class="${p > 1 ? 'win' : ''}"><td>${k === 0 ? 'Coal first' : k}</td><td>${p ? mult(p) : '—'}${p > 0 && p < 1 ? ' <span class="dim">(less back than it cost)</span>' : ''}</td><td>${p ? amt(p * 0.1) : '—'}</td><td>${p ? amt(p) : '—'}</td><td>1 in ${odds1(WAYS[k])}</td></tr>`).join('')
-    + `<tr class="win jprow"><td>${MAX_OPEN} in a row</td><td>Pool jackpot <span class="dim">(${+(JP.pct * 100).toFixed(2)}% of the Game pool × the turn)</span></td><td>${money(jpNow(0.1))}</td><td>${money(jpNow(1))}</td><td>1 in ${odds1(WAYS[MAX_OPEN])}</td></tr>`;
+  // (no chances or payback here: Cody 2026-10-03, only the jackpot's odds are shown, in the line above the box)
+  const rows = PAYS.map((p, k) => `<tr class="${p > 1 ? 'win' : ''}"><td>${k === 0 ? 'Coal first' : k}</td><td>${p ? mult(p) : '—'}${p > 0 && p < 1 ? ' <span class="dim">(less back than it cost)</span>' : ''}</td><td>${p ? amt(p * 0.1) : '—'}</td><td>${p ? amt(p) : '—'}</td></tr>`).join('')
+    + `<tr class="win jprow"><td>${MAX_OPEN} in a row</td><td>Pool jackpot <span class="dim">(${+(JP.pct * 100).toFixed(2)}% of the Game pool × the turn)</span></td><td>${money(jpNow(0.1))}</td><td>${money(jpNow(1))}</td></tr>`;
   $('#stockHow .body').innerHTML = `<ol class="howrules">
       <li><b>${STOCKINGS} stockings</b> hang on the mantel: <b>${GIFTS} hide a gift</b>, the other ${STOCKINGS - GIFTS} hide a lump of coal (the Naughty List).</li>
       <li><b>Tap the stockings</b> to open them, one at a time, up to ${MAX_OPEN}. <b>The first coal ends the turn.</b></li>
       <li><b>Which stocking you tap doesn't change your chances.</b> Your turn is decided before your first tap: its fair numbers fix what the 1st, 2nd, 3rd… stocking you open holds, wherever you tap.</li>
       <li>You're paid by <b>how many gifts you find before the coal</b>. Each of the ${MAX_OPEN} slots under the mantel shows what stopping there pays. <b>${MAX_OPEN} gifts in a row win the pool jackpot</b>: ${+(JP.pct * 100).toFixed(2)}% of the Game pool at that moment, times your turn's size (a $1 turn wins ${+(JP.pct * 100).toFixed(2)}% of the pool, a 10¢ turn a tenth of that).</li>
-      <li>1 gift pays back half the turn: less than it cost, so it isn't a win. <b>2 gifts or more</b> pay more than the turn (1 in ${(1 / realWin()).toFixed(1)} turns).</li></ol>
-    <table class="pays"><thead><tr><th>Gifts before the coal</th><th>Pays</th><th>10¢ turn</th><th>$1 turn</th><th>Chance</th></tr></thead><tbody>${rows}</tbody></table>
-    <p>The fixed prizes pay back <b>${pc(payback())}</b> of what's played, on average; with the pool jackpot at today's Game pool (${money(pool())}) about <b>${pc(paybackAt(pool()))}</b>. The jackpot grows with the pool: ${pc(paybackAt(R.topOffBelow))} at $${R.topOffBelow}, ${pc(paybackAt(R.skimAt))} at $${R.skimAt.toLocaleString('en-US')}. (Worked out exactly from the table above: each prize × its chance.)</p>
+      <li>1 gift pays back half the turn: less than it cost, so it isn't a win. <b>2 gifts or more</b> pay more than the turn.</li></ol>
+    <table class="pays"><thead><tr><th>Gifts before the coal</th><th>Pays</th><th>10¢ turn</th><th>$1 turn</th></tr></thead><tbody>${rows}</tbody></table>
     <p><b>3% SANTA tax:</b> winnings are paid in SANTA and arrive 3% lighter. The token does that, not this game; winners absorb it.</p>
     <p class="dim"><b>Check it yourself:</b> after a turn, tap <b>Check last result</b>. Your turn's 38 fair numbers come from the revealed secret (see that panel).
       The first 19 shuffle the ${GIFTS} gifts and ${STOCKINGS - GIFTS} coals into stockings 1–${STOCKINGS} (top row 1–${ROW} left to right, bottom row ${ROW + 1}–${STOCKINGS}):
@@ -67,7 +71,7 @@ function stamp(text) { const fl = $('#stocking .flash'); fl.textContent = text; 
 function setBet(b) {
   bet = b; document.querySelectorAll('#stocking .bets button').forEach((x) => x.setAttribute('aria-checked', String(+x.dataset.sbet === b)));
   document.querySelectorAll('#stocking [data-run]').forEach((x) => { $('small', x).textContent = priceLabel(b * +x.dataset.run); }); // incl. the custom one
-  if (inited) ladder(shownFound, shownDone); // the jackpot slot says what it's worth at this size
+  if (inited) { ladder(shownFound, shownDone); jpOdds(); } // the jackpot slot and line say what it's worth at this size
 }
 const wait = (ms) => new Promise((x) => setTimeout(x, ms));
 

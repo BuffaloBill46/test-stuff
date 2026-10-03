@@ -665,13 +665,17 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 .stockhow .body > p { margin: 8px 0 0; line-height: 1.4; color: #d6ddf0; } .stockhow .body > p b { color: var(--lamp); }
 .stockhow .pays td:first-child { display: table-cell; } .stockhow tr.win td { color: var(--lamp); } .stockhow tr.jprow td { color: #ffc94a; font-weight: 700; } .stockhow .pays td .dim { font: 400 12px/1.2 var(--body); }
 .stockhow .howrules { margin-top: 8px; }
+/* the How to play & win rules are a plain list, not paytable rows (.paytable li made each rule a 4-column grid and hid its last part on phones) */
+.stockhow .howrules li { display: list-item; padding: 0; background: none; border-radius: 0; } .stockhow .howrules li > :last-child { display: inline; }
+.stockhow .howrules li b { font: 700 15px/1.4 var(--body); color: var(--text); }
 @media (max-width: 600px) { #stocking.block { padding: 12px 8px 14px; } .stockhow .pays th, .stockhow .pays td { padding: 3px 4px; font-size: 12px; } }
 @media (max-width: 420px) { .giftrow { gap: 2px; } .giftrow b { font: 700 12px/1 var(--body); letter-spacing: -.2px; } } /* narrow phones: "1.75×" in the pixel font is wider than its slot */
 @media (min-width: 821px) { /* the board on the left; the description, sizes, gift slots, buttons, how-to and history on the right */
-  .stockcard { grid-template-rows: auto auto auto auto auto auto 1fr; }
-  .stockcard .screen { grid-row: 1 / span 7; }
+  .stockcard { grid-template-rows: auto auto auto auto auto auto auto 1fr; }
+  .stockcard .screen { grid-row: 1 / span 8; }
   .stockcard .stockdesc { grid-column: 2; grid-row: 2; } .stockcard .bets { grid-row: 3; } .stockcard .giftrow { grid-column: 2; grid-row: 4; margin-top: 12px; }
-  .stockcard .pullrow { grid-row: 5; align-self: start; margin: 10px 0 0; } .stockcard .stockhow { grid-column: 2; grid-row: 6; } .stockcard .history { grid-column: 2; grid-row: 7; }
+  .stockcard .pullrow { grid-row: 5; align-self: start; margin: 10px 0 0; } .stockcard #stockOdds { grid-column: 2; grid-row: 6; } .stockcard .stockhow { grid-column: 2; grid-row: 7; } .stockcard .history { grid-column: 2; grid-row: 8; }
+  .dropcard .stockhow { grid-column: 2; grid-row: 5; align-self: start; } .dropcard .history { grid-row: 6; } /* How to play & win above the history, as on Stocking Stuffer */
 }
 /* "Check this result" for a turn: where the gifts and the coal were, and the order Santa opened them */
 .stockmap { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; margin: 10px 0 4px; max-width: 420px; }
@@ -823,16 +827,13 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
         <div class="jp"><span>Pool jackpot<small><b class="pct">25%</b> of the pool · 25 Santa Hats</small></span><b class="amt" id="jpAmt">$125.00</b></div>
         <div class="jp topline"><span>Top Line JackPot<small>5 Santa Hats in a row on a line</small></span><b id="topAmt">$100.00</b></div>
         <div class="screen"><canvas aria-label="Big Hat slot machine, 5 by 5 reels"></canvas><div class="flash" aria-hidden="true"></div>
-          <button class="sec howbtn" id="howBtn" type="button">How to win · examples &amp; win table</button></div>
+          <button class="sec howbtn" id="howBtn" type="button">How to play &amp; win</button></div>
         <div class="pullrow"><div class="runcount" data-runcount="big" aria-live="polite"><i>This run</i><b>–</b><span>won $0.00</span></div><div class="runbtns" role="group" aria-label="Buy and play"><button class="go pull" data-run="1"><b>Pull 1</b><small>$1</small></button><button class="go" data-run="5"><b>Pull 5</b><small>$5</small></button><button class="go" data-run="10"><b>Pull 10</b><small>$10</small></button></div>
           <div class="runpick" role="group" aria-label="Or pick how many pulls"><span class="lbl">Or pick</span><span class="stepper"><button type="button" class="sec" data-step="-1" aria-label="One less">▼</button><input type="number" inputmode="numeric" min="1" max="100" step="1" value="20" aria-label="How many pulls, 1 to 100"><button type="button" class="sec" data-step="1" aria-label="One more">▲</button></span><button class="go" data-run="20"><b>Pull 20</b><small>$20</small></button></div>
           <output class="res" aria-live="polite">Pick 1, 5, 10, or any number up to 100 pulls: they play straight away, and anything you win is sent to your wallet at the end.</output>
           <div class="credrow"><span class="cred runstat" id="runBig"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="big" hidden>Check last result</button></div></div>
         <ul class="facts"></ul>
       </article>
-      <details class="paytable"><summary>Paytable <span class="dim">· draft, payouts not final</span></summary><div id="payRows"></div>
-        <h4>The 11 paylines: straight or diagonal, from the first reel</h4><div id="payLines"></div>
-        <p class="dim">Wins count from the leftmost reel. A Santa Hat is wild: it stands in for any symbol except Coal. Every Santa Hat anywhere also pays <span class="hatc">6¢</span>. All winning lines add up. Winnings arrive 3% lighter (SANTA's token tax).</p></details>
     </section>
     <!-- Santa Hat Spin: removed from the page (Cody, 2026-10-01: "not very fun"). Kept hidden: its code holds the shared Game pool every game plays from. -->
     <section class="block plaque slotsbox fur" id="spin" hidden>
@@ -872,6 +873,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
           <output class="res" aria-live="polite">Pick 10¢ or $1, then 1, 5, 10, or up to 100 snowballs: they drop straight away, and anything you win is sent to your wallet at the end.</output>
           <div class="credrow"><span class="cred runstat" id="runDrop"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="drop" hidden>Check last result</button></div></div>
         <p class="dropodds" id="dropOdds"></p>
+        <details class="paytable stockhow" id="dropHow"><summary>How to play &amp; win</summary><div class="body"></div></details>
         <div class="history"><h4>Your last drops</h4><ol id="dropHistory"></ol></div>
       </article>
     </section>
@@ -894,7 +896,8 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
           <div class="runpick" role="group" aria-label="Or pick how many turns"><span class="lbl">Or pick</span><span class="stepper"><button type="button" class="sec" data-step="-1" aria-label="One less">▼</button><input type="number" inputmode="numeric" min="1" max="100" step="1" value="20" aria-label="How many turns, 1 to 100"><button type="button" class="sec" data-step="1" aria-label="One more">▲</button></span><button class="go" data-run="20"><b>Play 20</b><small>$2</small></button></div>
           <output class="res" aria-live="polite">Pick 10¢ or $1, then 1, 5, 10, or up to 100 turns: they play straight away, and anything you win is sent to your wallet at the end.</output>
           <div class="credrow"><span class="cred runstat" id="runStock"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="stocking" hidden>Check last result</button></div></div>
-        <details class="paytable stockhow" id="stockHow"><summary>How to win · pay table &amp; odds</summary><div class="body"></div></details>
+        <p class="dropodds" id="stockOdds"></p>
+        <details class="paytable stockhow" id="stockHow"><summary>How to play &amp; win</summary><div class="body"></div></details>
         <div class="history"><h4>Your last turns <span class="dim">(gifts found)</span></h4><ol id="stockHistory"></ol></div>
       </article>
     </section>
@@ -925,7 +928,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       <p class="dim">Demo: the house runs in your browser for now. With real SANTA it runs on the game server, in the same order.</p>
     </dialog>
     <dialog id="howDlg" class="plaque howdlg" aria-labelledby="howTitle">
-      <div class="howhead"><div><div class="eyebrow">Big Hat · $1.00 a pull</div><h2 id="howTitle">How to win</h2></div>
+      <div class="howhead"><div><div class="eyebrow">Big Hat · $1.00 a pull</div><h2 id="howTitle">How to play &amp; win</h2></div>
         <button class="sec" id="howClose" type="button">Close</button></div>
       <ol class="howrules">
         <li><b>Match 3, 4 or 5 in a row</b> in a <b>straight line or a diagonal</b>, always starting on the <b>first (left) reel</b>. There are 11 lines.</li>
@@ -938,7 +941,9 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       <div class="examples" id="howExamples"></div>
       <h3>Win table</h3>
       <div id="howTable"></div>
-      <p class="dim">Prizes are for a $1 pull. Winnings are paid in SANTA and arrive 3% lighter (the token's tax). The full paytable with odds is under the machine too.</p>
+      <h3>The 11 paylines</h3>
+      <p class="dim">Straight or diagonal, always from the first (left) reel.</p><div id="payLines"></div>
+      <p class="dim">Prizes are for a $1 pull. Winnings are paid in SANTA and arrive 3% lighter (the token's tax).</p>
     </dialog>
     <section class="block plaque winners">
       <h2>Recent winners</h2>
