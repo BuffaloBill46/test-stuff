@@ -30,7 +30,7 @@ try {
   ok(await vis('text=or win 5 matches'), 'Progress box: "or win 5 matches top 3 or better" with its counter');
 
   console.log('2. A full practice match against bots');
-  await tap('#playUnranked'); await p.waitForTimeout(500);
+  await tap('#t-play'); await tap('#playUnranked'); await p.waitForTimeout(500);
   ok(await vis('#home:not([hidden])'), 'Play now opens the Unranked lobby');
   await tap('#practice');
   ok(await wait(() => window.__sq.view && document.querySelector('#start')), 'Practice: in the plaza with a Start button');
@@ -82,7 +82,7 @@ try {
   ok(!(await p.evaluate(() => !!window.__sq.room || !!window.__sq.sim)), 'Leave takes me out');
 
   console.log('3. Public Auto match (alone: bots fill in after 25 s)');
-  await tap('#playUnranked'); await p.waitForTimeout(400); await tap('#quick');
+  await tap('#t-play'); await tap('#playUnranked'); await p.waitForTimeout(400); await tap('#quick');
   ok(await wait(() => window.__sq.room && window.__sq.view, null, 20000), 'Auto match puts me in a public room');
   await p.waitForTimeout(1500); await shot('07-auto-match');
   ok(await wait(() => ['intro', 'count', 'play'].includes(window.__sq.view?.phase), null, 40000), 'it starts by itself');

@@ -18,6 +18,7 @@
 //   EVERY_MS           how often to look (default 5000)
 //   ONCE=1             run one pass and exit (for testing)
 import { readFileSync, existsSync } from 'node:fs';
+import { JSONB } from './pgjson.mjs';
 import path from 'node:path';
 import postgres from 'postgres';
 import * as kit from '@solana/kit';
@@ -29,7 +30,7 @@ import { liveFee } from '../mockups/market.js';
 
 const env = (k, d = '') => process.env[k] || d;
 const need = (k) => { const v = env(k); if (!v) { console.error(`worker: ${k} is not set`); process.exit(2); } return v; };
-const sql = postgres(need('DATABASE_URL'), { prepare: false, max: 2 });
+const sql = postgres(need('DATABASE_URL'), { prepare: false, max: 2, ...JSONB });
 const db = { query: (q, p = []) => sql.unsafe(q, p), tx: (fn) => sql.begin((t) => fn({ query: (q, p = []) => t.unsafe(q, p) })) };
 const rpcUrl = need('SOLANA_RPC_URL'), mint = need('SANTA_MINT'), KEYS = need('KEYS_DIR'), treasuryAddr = need('TREASURY_WALLET');
 const signer = async (name) => { const f = path.join(KEYS, name + '.json'); if (!existsSync(f)) return null; return kit.createKeyPairSignerFromBytes(new Uint8Array(JSON.parse(readFileSync(f, 'utf8')))); };

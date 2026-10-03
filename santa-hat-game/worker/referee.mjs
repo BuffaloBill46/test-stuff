@@ -7,6 +7,7 @@
 //   and its publishable key, the public one already in the website).
 // Run: node referee.mjs        Health check: GET /health → { rooms, players }
 import http from 'node:http';
+import { JSONB } from './pgjson.mjs';
 import { existsSync } from 'node:fs';
 import { WebSocketServer } from 'ws';
 import { createReferee } from '../server/referee.js';
@@ -30,7 +31,7 @@ let weeklyOnList = [], readWeekly = null;
 const rankedSpecials = process.env.RANKED_SPECIALS !== '0';
 if (process.env.DATABASE_URL) {
   const { default: postgres } = await import('postgres');
-  const sql = postgres(process.env.DATABASE_URL, { max: 3, prepare: false });
+  const sql = postgres(process.env.DATABASE_URL, { max: 3, prepare: false, ...JSONB });
   const db = { query: (q, p = []) => sql.unsafe(q, p) };
   // The sign-in token → the Supabase user (Supabase checks it) → the profile it's linked to → that profile's SAVED level/look.
   identify = async (token) => {

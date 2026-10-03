@@ -14,6 +14,7 @@
 // SPIN_POOL_WALLET, SLOTS_POOL_WALLET, LOTTERY_WALLET, TREASURY_WALLET, ADMIN_WALLETS, SOLANA_CLUSTER, TELEGRAM_BOT_TOKEN,
 // TELEGRAM_CHAT_ID, REFEREE_HEALTH_URL, SUPABASE_URL, SUPABASE_KEY (publishable), PORT (default 8082), HOST (127.0.0.1).
 import http from 'node:http';
+import { JSONB } from './pgjson.mjs';
 import postgres from 'postgres';
 import { createGameServer } from '../server/games.js';
 import { makeHandler } from '../server/http.js';
@@ -32,7 +33,7 @@ const env = (k, d = '') => process.env[k] || d;
 if (!env('DATABASE_URL')) { console.error('games: DATABASE_URL is not set'); process.exit(2); }
 // One long-lived connection pool; a connection must answer quickly before it carries work (the same rule as the Edge Function:
 // only a harmless "select 1" is ever retried, real work never runs twice).
-const newClient = () => postgres(env('DATABASE_URL'), { prepare: false, max: 4, connect_timeout: 10 });
+const newClient = () => postgres(env('DATABASE_URL'), { prepare: false, max: 4, connect_timeout: 10, ...JSONB });
 let sql = newClient(), answeredAt = 0;
 async function ready() {
   if (Date.now() - answeredAt < 30_000) return sql;

@@ -8,6 +8,7 @@
 //     5. start everything again, open the wallets' SANTA accounts (worker/open-accounts.mjs --send), and check it all
 // Prints public addresses and yes/no answers only; never a key, a password or the RPC URL.
 import { readFileSync, existsSync, writeFileSync, copyFileSync, mkdirSync } from 'fs';
+import { JSONB } from './pgjson.mjs';
 import { execSync } from 'child_process';
 import path from 'path';
 import postgres from 'postgres';
@@ -55,7 +56,7 @@ if (!/__/.test(g.SOLANA_RPC_URL || '__')) {
 } else ok(false, 'the Helius mainnet URL is in place');
 
 console.log('database');
-const sql = postgres(parseEnv(`${ETC}/games.env`).DATABASE_URL, { prepare: false, max: 1 });
+const sql = postgres(parseEnv(`${ETC}/games.env`).DATABASE_URL, { prepare: false, max: 1, ...JSONB });
 const [c] = await sql`select (select count(*) from public.payouts where status not in ('sent')) unsent, (select count(*) from public.lottery_draws where status = 'open') open_draws,
   (select count(*) from public.price_samples where at > now() - interval '10 minutes') samples`;
 console.log(`  (now: ${c.unsent} unsent test payouts, ${c.open_draws} open test draws: the reset clears them; ${c.samples} price samples in the last 10 min)`);

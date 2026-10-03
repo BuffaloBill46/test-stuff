@@ -24,7 +24,7 @@ async function player(n, i) {
   const before = (await p.textContent('#progress').catch(() => '')).replace(/\s+/g, ' ').slice(0, 110);
   say(`progress before: "${before}"`);
   await p.waitForTimeout(i * 1500); // not all in the same instant, like real people
-  await p.click('#playUnranked'); await p.waitForTimeout(400); await p.click('#quick');
+  await p.click('#t-play'); await p.click('#playUnranked'); await p.waitForTimeout(400); await p.click('#quick');
   check(await p.waitForFunction(() => window.__sq.room && window.__sq.view, null, { timeout: 30000 }).then(() => true, () => false), 'Auto match put me in a public room');
   const room = await p.evaluate(() => window.__sq.room?.code || window.__sq.room?.id || null);
   check(await p.waitForFunction(() => window.__sq.view?.phase === 'play', null, { timeout: 90000 }).then(() => true, () => false), `the match started (room ${room})`);

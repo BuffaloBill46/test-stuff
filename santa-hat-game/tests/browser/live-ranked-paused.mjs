@@ -11,7 +11,7 @@ await p.waitForFunction(() => window.__sq, null, { timeout: 60000 });
 check(await signIn(p), 'signed in');
 await p.waitForTimeout(2000);
 const tix0 = await p.textContent('#tixchip b');
-await p.click('#playRanked'); await p.waitForTimeout(800);
+await p.click('#t-play'); await p.click('#playRanked'); await p.waitForTimeout(800);
 // whatever the lobby asks next (mode / Auto match), take the first ranked way in
 for (const sel of ['#quick', '[data-ranked]', 'button:has-text("Auto match")']) { const l = p.locator(sel).first(); if (await l.isVisible().catch(() => false)) { await l.click(); break; } }
 const said = await p.waitForFunction(() => /Ranked is paused/.test(document.body.innerText), null, { timeout: 30000 }).then(() => true, () => false);
