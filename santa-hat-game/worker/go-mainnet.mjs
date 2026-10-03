@@ -74,7 +74,13 @@ const bk = `/var/backups/santa/db-${new Date().toISOString().replace(/[:.]/g, '-
 writeFileSync(bk, JSON.stringify({ at: new Date().toISOString(), tables: dump }, (k, v) => (typeof v === 'bigint' ? String(v) : v)), { mode: 0o600 });
 console.log(`  ✓ ${tables.length} tables → ${bk}`);
 console.log('3. clearing every test money record (one transaction)');
-await sql.unsafe(readFileSync(path.join(REPO, 'supabase/ops/mainnet_reset.sql'), 'utf8'));
+try { await sql.unsafe(readFileSync(path.join(REPO, 'supabase/ops/mainnet_reset.sql'), 'utf8')); }
+catch (e) { // the script's own checks failed: nothing was saved. Undo the open transaction, bring the test site back as it was, stop.
+  console.log(`  ✗ the reset refused: ${e.message}. Nothing was changed in the database.`);
+  await sql.unsafe('rollback').catch(() => {}); await sql.end();
+  sh('systemctl start santa-games santa-worker santa-alerts.timer');
+  console.log('REFUSED: everything is running again on the TEST settings, as before. Nothing switched.'); process.exit(1);
+}
 const [after] = await sql`select (select count(*) from public.payouts) payouts, (select count(*) from public.lottery_draws) draws, (select sum(santa_raw) from public.pools) books`;
 ok(+after.payouts === 0 && +after.draws === 0 && +after.books === 0, `cleared: ${after.payouts} payouts, ${after.draws} draws, books ${after.books}`);
 await sql.end();
