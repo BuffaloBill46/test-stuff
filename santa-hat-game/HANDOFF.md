@@ -177,7 +177,10 @@ between two devices has never been tested from here. Cody and friends testing on
 - Mini-games group LIVE: Winners tabs Latest / Biggest this week (`weekWinners`), pool jackpot banner (`jackpotbar.js`), jackpot
   alerts to Cody's Telegram (`alerts.js`, once each), Share this win picture (`sharecard.js`). Tests: jackpot-week-test,
   share-win-test, games-test, alerts-db. stocking-test can flake on the 390 px phone under parallel load (passes alone).
-- Still next: weekly modes (a design call for Cody: rules per mode).
+- WEEKLY MODES built (Hot Hat, King of the Gazebo, Blizzard; Hat Hunt NOT built, can't be switched on) and LIVE BUT ALL
+  SWITCHED OFF (Cody: keep them off for now). Admin screen → Weekly modes: a signed switch each (`supabase/034`, `admin.js
+  weekly-mode`). Only on+built modes take turns, one per game week. Rules in `mockups/weekly.js`. Tests: weekly.test, referee.test,
+  admin.test, weekly-test, admin-weekly-shot. Next: Hat Hunt (three hats: sim/render/bots/server all assume one hat).
 
 ### 2026-10-03 late night: HOME PAGE + MONEY STRIPS LIVE
 - The site opens on **Home** (intro, Player Progress, the season calendar); Home's Play now → the **Play** page (match types).
