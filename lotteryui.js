@@ -44,7 +44,7 @@ function card(kind) {
     <header>${ticketIcon(kind)}<h3>${esc(L.name)}</h3></header>
     <p class="lotnotice">${esc(i.notice)}</p>
     <dl class="lotrows">${i.rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}<div><dt>Draws in</dt><dd>${when}</dd></div></dl>
-    ${kind === 'christmas' ? '<p class="lotwhen">Draws December 23, 7 PM Eastern</p>' : ''}
+    ${kind === 'christmas' ? '<p class="lotwhen">Draws December 23, 9 PM Eastern (Indiana time)</p>' : ''}
     <div class="lotbuy" role="group" aria-label="How many ${esc(L.name)} tickets">
       ${[1, 5, 10].map((n) => `<button type="button" data-amt="${n}">${n}</button>`).join('')}
       <input type="number" min="1" max="10000" step="1" value="1" aria-label="How many tickets">
