@@ -61,7 +61,7 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
     <div class="row"><button type="button" id="shopLoad">Show refunds owed</button></div>
     <div id="shopOwed" class="dim">Not loaded yet.</div></section>
   <section class="plaque" id="rewardsBox"><h2>Claim rewards</h2>
-    <p class="dim">Reward tokens sent to SANTA holders (GP, GLDX, any other) land in the Drop, Slots and Lottery pool wallets.
+    <p class="dim">Reward tokens sent to SANTA holders (GP, GLDX, any other) land in the Game pool, the old Slots pool and the Lottery wallets.
       Claiming sends every token in those three wallets that is NOT SANTA to the treasury. SANTA is never touched and nothing can
       be sent anywhere else. The payout worker sends them within a minute; each pool pays a tiny one-time fee the first time
       the treasury receives a new token.</p>
@@ -74,7 +74,7 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
     <button type="button" id="botCheck">Check for bots</button>
     <div id="bots" class="dim">Not checked yet.</div></section>
   <section class="plaque"><h2>Change settings</h2>
-    <div class="row"><label>Pool <select id="game"><option value="slots">Slots</option><option value="spin">Drop (was Spin)</option></select></label></div>
+    <div class="row"><label>Pool <select id="game"><option value="spin">Game pool (every game)</option><option value="slots">Old Slots pool (no game uses it)</option></select></label></div>
     <div class="form" id="fields"></div>
     <div class="row"><button id="save" type="button">Sign and save settings</button></div>
     <p class="dim">Money amounts are dollars (pools are valued at the live SANTA price). The server refuses unsafe settings.</p>
@@ -87,7 +87,8 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
     <h3>Spin bonus wheel (after a gold star) <span class="dim" id="gsBonusTotal"></span></h3><div class="form" id="gsBonus"></div>
     <h3>Big Hat</h3><div class="form" id="gsBig"></div>
     <details><summary>Symbols on each reel, and line prizes (× the pull price)</summary><div class="form" id="gsCounts"></div><div id="gsPays"></div></details>
-    <h3>Stocking Stuffer: prize by gifts found before the coal (× the turn price; 10¢ or $1)</h3><div class="form" id="gsStock"></div>
+    <h3>Stocking Stuffer: prize by gifts found before the coal (× the turn price; 10¢ or $1). 8 gifts in a row = the pool jackpot</h3><div class="form" id="gsStock"></div>
+    <h3>Snowball Drop: the centre present is the pool jackpot</h3><div class="form" id="gsDrop"></div>
     <h3>Store items</h3><div id="gsItems"></div>
     <details><summary>Add a new item (a new colour of an existing look)</summary><div class="form" id="gsNew"></div><button type="button" id="gsAdd">Add to the list</button></details>
     <div class="plaque preview" id="gsPreview" aria-live="polite"></div>
@@ -100,7 +101,7 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
       from your own wallet to the pool's address, then paste the transaction's signature here. The server checks it on the chain
       and books exactly what arrived (after SANTA's 3% tax). Extra SANTA is simply added to the pool.</p>
     <div id="toSend"></div>
-    <div class="row"><label>Pool<select id="depGame"><option value="spin">Drop (was Spin)</option><option value="slots">slots</option></select></label>
+    <div class="row"><label>Pool<select id="depGame"><option value="spin">Game pool (every game)</option><option value="slots">Old Slots pool</option></select></label>
       <label style="flex:1">Transaction signature<input id="depTx" placeholder="e.g. 5h3k…"></label>
       <button type="button" id="depSave">Record deposit</button></div></section>
   <section class="plaque"><h2>Change log</h2><div id="log" class="dim">No changes yet.</div></section>
