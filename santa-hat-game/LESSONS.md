@@ -460,3 +460,8 @@ game page failed to load (season-test caught it). Rule: an optional card renders
 ## 2026-10-03: `$'` in a JavaScript replace string inserts the rest of the text
 `s.replace(x, "...$'...")`: `$'` means "everything after the match", so a quote-dollar in the new text pasted the rest of tabs.js
 into itself. Rule: edit files with the Edit tool; in a replace string, write `$$` for a literal `$`, or pass a function.
+
+## 2026-10-03: anything drawn over the playing field must let taps through
+The first-match tips box sat over the top of the field; on a phone you throw by tapping ANYWHERE, so taps on the box threw
+nothing (controls-test caught it). Rule: an overlay during a match gets `pointer-events: none`, and only its own buttons take
+taps (`pointer-events: auto`). Test it with a real tap on the overlay that must still throw.

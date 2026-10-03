@@ -57,6 +57,11 @@ await practice(p); t = await tip(p);
 check(t?.title === 'Move' && /joystick/.test(t.text), `phone tip 1: ${t?.text}`);
 await p.screenshot({ path: 'out/coach-phone.png' });
 const box = await p.locator('#coach').boundingBox(); check(box && box.x >= 0 && box.x + box.width <= 375, 'fits the phone');
+// a tap ON the tip (not on Skip) still throws: a phone throws by tapping anywhere, the tip must not eat it
+const ball0 = await p.evaluate(() => Math.max(-1, ...window.__sq.view.balls.map((b) => b.id)));
+const tb = await p.locator('#coach span').boundingBox(); await p.touchscreen.tap(tb.x + 20, tb.y + tb.height / 2);
+const threw = await p.waitForFunction((id) => { const v = window.__sq.view, e = v.ents.find((x) => x.peer === window.__sq.me.id); return v.balls.some((b) => b.owner === e.id && b.id > id); }, ball0, { timeout: 2000 }).then(() => true, () => false);
+check(threw && (await tip(p)) !== null, 'a tap on the tip box throws a snowball (taps pass through); the tip stays');
 await p.tap('#coach [data-coach="skip"]'); await p.waitForTimeout(300);
 check((await tip(p)) === null && await p.evaluate(() => localStorage.getItem('santa.coached')) === '1', 'Skip tips: gone and remembered');
 await ctx.close();
