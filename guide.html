@@ -163,16 +163,16 @@
   </footer>
 </main>
 <script type="module">
-  import { ITEMS, COSTUMES, SEASONS } from './catalog.js';
-  import { SPECIALS } from './specials.js';
-  import { GEAR, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js';
-  import { LEVELS, MAX_LEVEL, WINS_PER_LEVEL, MAX_BOUGHT_LEVEL, buyPrice } from './levels.js';
-  import { RULES, TICKET_MAX, settleRanked } from './ranked.js';
-  import { LOTTERIES, LIVE_LOTTERIES, SALES_CLOSE_MS } from './lottery.js';
-  import { SYMBOLS, MACHINES, stats, JACKPOT_PCT, POOL_RULES } from './slots.js';
-  import * as DROP from './plinko.js';
-  import * as STOCK from './stocking.js';
-  import { K, PTS } from './sim.js';
+  import { ITEMS, COSTUMES, SEASONS } from './catalog.js?v=a80c15b94d';
+  import { SPECIALS } from './specials.js?v=a80c15b94d';
+  import { GEAR, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=a80c15b94d';
+  import { LEVELS, MAX_LEVEL, WINS_PER_LEVEL, MAX_BOUGHT_LEVEL, buyPrice } from './levels.js?v=a80c15b94d';
+  import { RULES, TICKET_MAX, settleRanked } from './ranked.js?v=a80c15b94d';
+  import { LOTTERIES, LIVE_LOTTERIES, SALES_CLOSE_MS } from './lottery.js?v=a80c15b94d';
+  import { SYMBOLS, MACHINES, stats, JACKPOT_PCT, POOL_RULES } from './slots.js?v=a80c15b94d';
+  import * as DROP from './plinko.js?v=a80c15b94d';
+  import * as STOCK from './stocking.js?v=a80c15b94d';
+  import { K, PTS } from './sim.js?v=a80c15b94d';
   const $ = (s) => document.querySelector(s);
   const usd = (v) => (v < 1 ? Math.round(v * 100) + '¢' : '$' + (Number.isInteger(v) ? v : v.toFixed(2)));
   const money = (v) => '$' + v.toFixed(2);

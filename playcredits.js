@@ -3,15 +3,15 @@
 // One run: the confirm dialog (price, SANTA amount) → the payment → the plays, played one after another by the game's own
 // card (spinui.js, dropui.js, games.js) → the run's winnings sent. Plus "Check this result" for the last play of each game.
 // DEMO: the house runs in this browser and pays from / to the demo balance. Server mode (?server=): the game server does it.
-import { KINDS, newLedger, costOf } from './credits.js';
-import { createHouse, check } from './house.js';
-import { newSeed } from './fair.js';
-import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js';
-import { FEE } from './slots.js';
-import { asTapped } from './stocking.js';
-import { play as sfx } from './sfx.js';
-import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js';
-import { withSlowDown } from './slowdown.js';
+import { KINDS, newLedger, costOf } from './credits.js?v=a80c15b94d';
+import { createHouse, check } from './house.js?v=a80c15b94d';
+import { newSeed } from './fair.js?v=a80c15b94d';
+import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js?v=a80c15b94d';
+import { FEE } from './slots.js?v=a80c15b94d';
+import { asTapped } from './stocking.js?v=a80c15b94d';
+import { play as sfx } from './sfx.js?v=a80c15b94d';
+import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js?v=a80c15b94d';
+import { withSlowDown } from './slowdown.js?v=a80c15b94d';
 export const serverMode = !!SERVER; // ?server=<address>: plays come from the game server
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -183,7 +183,7 @@ function showProofOf(p) {
 async function cfgForProof(p) {
   if (!serverMode || p.settingsVersion === undefined) return null;
   const r = await call('settings', { version: p.settingsVersion }); if (!r?.settings) return null;
-  const { build } = await import('./settings.js'); return build(r.settings);
+  const { build } = await import('./settings.js?v=a80c15b94d'); return build(r.settings);
 }
 async function recheck() {
   const p = shown; if (!p) return;

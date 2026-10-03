@@ -1,19 +1,19 @@
 // Games tab: wires the Slots page (readouts, Pull, full screen, paytable, winners list) to the rules (slots.js) and the
 // 3D Big Hat machine (slots3d.js). DEMO ONLY: play money and a demo pool kept in this browser. No SANTA moves.
-import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount } from './slots.js';
-import { createMachine, symbolImages } from './slots3d.js';
-import { initSpin, showSpin, resetSpin, spinState, refreshSpin, showResult } from './spinui.js';
-import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js';
-import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js';
-import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js';
-import { runSummary } from './runui.js';
-import { livePrice, liveFee, santaFor, fmtSanta } from './market.js';
-import { FEE } from './slots.js';
-import { play as sfx } from './sfx.js';
-import { SERVER, call, settingsReady } from './gameserver.js';
-import { KINDS, SIZES } from './credits.js';
-import { initRunPick, priceLabel } from './runpick.js';
-import { topMult } from './spin.js';
+import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount } from './slots.js?v=a80c15b94d';
+import { createMachine, symbolImages } from './slots3d.js?v=a80c15b94d';
+import { initSpin, showSpin, resetSpin, spinState, refreshSpin, showResult } from './spinui.js?v=a80c15b94d';
+import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js?v=a80c15b94d';
+import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js?v=a80c15b94d';
+import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js?v=a80c15b94d';
+import { runSummary } from './runui.js?v=a80c15b94d';
+import { livePrice, liveFee, santaFor, fmtSanta } from './market.js?v=a80c15b94d';
+import { FEE } from './slots.js?v=a80c15b94d';
+import { play as sfx } from './sfx.js?v=a80c15b94d';
+import { SERVER, call, settingsReady } from './gameserver.js?v=a80c15b94d';
+import { KINDS, SIZES } from './credits.js?v=a80c15b94d';
+import { initRunPick, priceLabel } from './runpick.js?v=a80c15b94d';
+import { topMult } from './spin.js?v=a80c15b94d';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };

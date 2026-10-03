@@ -1,21 +1,22 @@
 // Santa Hat Legends (the Snowball Square game): lobby, rooms, referee hand-off, smoothing, HUD.
-import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo, Sparks, gearTick, GEAR_TINT, disposeTree } from './kit.js';
-import { buildPlaza, makeHat, shadowBlob } from './plaza.js';
-import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js';
-import { openRoom, accounts, findWallet, gamesBoard } from './net.js';
-import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js';
-import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js';
-import { initSeason, refreshSeason } from './seasonui.js';
-import { TICKET_MAX } from './ranked.js';
-import { levelInfo, clampLevel } from './levels.js';
-import { SERVER, call, token as signInToken } from './gameserver.js';
-import { SPECIALS, cantThrow } from './specials.js';
-import { gearIn, effectsOf, heldWith, gearOfMask, statOf, RETIRED } from './gear.js';
-import { initLottery } from './lotteryui.js';
-import { play as sfx, initSoundButtons } from './sfx.js';
-import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js';
-import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js';
-import { snapMs, autoStartMs, isPublic, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js';
+import './buildcheck.js?v=a80c15b94d'; // first: the page and this code come from the same publish (buildcheck.js)
+import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo, Sparks, gearTick, GEAR_TINT, disposeTree } from './kit.js?v=a80c15b94d';
+import { buildPlaza, makeHat, shadowBlob } from './plaza.js?v=a80c15b94d';
+import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js?v=a80c15b94d';
+import { openRoom, accounts, findWallet, gamesBoard } from './net.js?v=a80c15b94d';
+import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js?v=a80c15b94d';
+import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js?v=a80c15b94d';
+import { initSeason, refreshSeason } from './seasonui.js?v=a80c15b94d';
+import { TICKET_MAX } from './ranked.js?v=a80c15b94d';
+import { levelInfo, clampLevel } from './levels.js?v=a80c15b94d';
+import { SERVER, call, token as signInToken } from './gameserver.js?v=a80c15b94d';
+import { SPECIALS, cantThrow } from './specials.js?v=a80c15b94d';
+import { gearIn, effectsOf, heldWith, gearOfMask, statOf, RETIRED } from './gear.js?v=a80c15b94d';
+import { initLottery } from './lotteryui.js?v=a80c15b94d';
+import { play as sfx, initSoundButtons } from './sfx.js?v=a80c15b94d';
+import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js?v=a80c15b94d';
+import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js?v=a80c15b94d';
+import { snapMs, autoStartMs, isPublic, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js?v=a80c15b94d';
 
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
@@ -907,7 +908,7 @@ const app = {
   get theme() { return theme; }, setTheme,
   onTab: (tab) => {
     ui.lastBoard = '';
-    if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
+    if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js?v=a80c15b94d')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
   },
 };
 let gamesMod = null; // Games tab code loads the first time it's opened
