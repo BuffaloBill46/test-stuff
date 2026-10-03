@@ -1,21 +1,22 @@
 // Games tab: wires the Slots page (readouts, Pull, full screen, paytable, winners list) to the rules (slots.js) and the
 // 3D Big Hat machine (slots3d.js). DEMO ONLY: play money and a demo pool kept in this browser. No SANTA moves.
-import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount, poolJackpot } from './slots.js?v=19f08d50c0';
-import { JP as DROP_JP } from './plinko.js?v=19f08d50c0';
-import { JP as STOCK_JP } from './stocking.js?v=19f08d50c0';
-import { createMachine, symbolImages } from './slots3d.js?v=19f08d50c0';
-import { initSpin, showSpin, resetSpin, spinState, refreshSpin, showResult } from './spinui.js?v=19f08d50c0';
-import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js?v=19f08d50c0';
-import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js?v=19f08d50c0';
-import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js?v=19f08d50c0';
-import { runSummary } from './runui.js?v=19f08d50c0';
-import { livePrice, liveFee, santaFor, fmtSanta } from './market.js?v=19f08d50c0';
-import { FEE } from './slots.js?v=19f08d50c0';
-import { play as sfx } from './sfx.js?v=19f08d50c0';
-import { SERVER, call, settingsReady } from './gameserver.js?v=19f08d50c0';
-import { KINDS, SIZES } from './credits.js?v=19f08d50c0';
-import { initRunPick, priceLabel } from './runpick.js?v=19f08d50c0';
-import { topMult } from './spin.js?v=19f08d50c0';
+import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount, poolJackpot } from './slots.js?v=810de0dff9';
+import { JP as DROP_JP } from './plinko.js?v=810de0dff9';
+import { JP as STOCK_JP } from './stocking.js?v=810de0dff9';
+import { createMachine, symbolImages } from './slots3d.js?v=810de0dff9';
+import { initSpin, showSpin, resetSpin, spinState, refreshSpin, showResult } from './spinui.js?v=810de0dff9';
+import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js?v=810de0dff9';
+import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js?v=810de0dff9';
+import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js?v=810de0dff9';
+import { runSummary } from './runui.js?v=810de0dff9';
+import { livePrice, liveFee, santaFor, fmtSanta } from './market.js?v=810de0dff9';
+import { FEE } from './slots.js?v=810de0dff9';
+import { play as sfx } from './sfx.js?v=810de0dff9';
+import { SERVER, call, settingsReady } from './gameserver.js?v=810de0dff9';
+import { refreshWallet } from './walletline.js?v=810de0dff9';
+import { KINDS, SIZES } from './credits.js?v=810de0dff9';
+import { initRunPick, priceLabel } from './runpick.js?v=810de0dff9';
+import { topMult } from './spin.js?v=810de0dff9';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -241,7 +242,7 @@ export async function initGames(opts = {}) {
   initDrop({ wallet, addWinner, pool: () => sp.pool, onPool: poolMoved });
   initStocking({ addWinner, pool: () => sp.pool, onPool: poolMoved });
   // Runs: buying moves the entry money into that game's pool straight away, so the pool readouts update on purchase.
-  initCredits({ wallet, pools: { slots: state, spin: spinState() }, onChange: () => { shownPool = shared().pool; store.set(state); render(); refreshSpin(); refreshDrop(); refreshStocking(); } });
+  initCredits({ wallet, pools: { slots: state, spin: spinState() }, onChange: () => { shownPool = shared().pool; store.set(state); render(); refreshSpin(); refreshDrop(); refreshStocking(); refreshWallet(); } }); // refreshWallet: my wallet under the games (at most every 8 s)
   refreshCredits();
   // A payment from an earlier visit the server never received (closed tab, dropped network): hand it over and play it now.
   if (SERVER) resumePaid().then((r) => { if (r) { console.info('finished a paid run from an earlier visit', r.run); refreshCredits(); } }).catch(() => {});

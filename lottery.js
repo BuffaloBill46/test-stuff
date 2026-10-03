@@ -80,7 +80,7 @@ export function pickWinners(tickets, places, numbers) {
 // The draw's fair numbers. The secret was fixed (its fingerprint published) when the draw opened, before any ticket; the
 // blockhash comes from AFTER sales closed (nobody, us included, knew it in advance); the ticket list is public. Changing any
 // one of them changes every number, so a draw can't be steered once tickets are sold. Re-check: same inputs, same winners.
-import { numbers } from './fair.js?v=19f08d50c0';
+import { numbers } from './fair.js?v=810de0dff9';
 export async function ticketsHash(tickets) {
   const text = tickets.map((t) => `${t.id}:${t.wallet}`).join('\n');
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))].map((b) => b.toString(16).padStart(2, '0')).join('');

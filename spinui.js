@@ -1,10 +1,10 @@
 // Santa Hat Spin page: size chips, Spin 1 / 5 / 10 (a run that plays straight away), pool readout, odds, last spins, full screen.
 // DEMO ONLY: play money (the same demo balance as Slots) and a demo Spin pool kept in this browser.
-import { SPIN_RULES, MAIN_SLICES, MAIN, BONUS, STAR, odds } from './spin.js?v=19f08d50c0';
-import { createWheel, MULT_STYLE } from './spin3d.js?v=19f08d50c0';
-import { playRun, short } from './playcredits.js?v=19f08d50c0';
-import { runSummary } from './runui.js?v=19f08d50c0';
-import { play as sfx } from './sfx.js?v=19f08d50c0';
+import { SPIN_RULES, MAIN_SLICES, MAIN, BONUS, STAR, odds } from './spin.js?v=810de0dff9';
+import { createWheel, MULT_STYLE } from './spin3d.js?v=810de0dff9';
+import { playRun, short } from './playcredits.js?v=810de0dff9';
+import { runSummary } from './runui.js?v=810de0dff9';
+import { play as sfx } from './sfx.js?v=810de0dff9';
 
 const $ = (s, el = document) => el.querySelector(s);
 const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);

@@ -1,6 +1,6 @@
 // Mockup C: Sleigh Night. Drop presents down chimneys; skip the Naughty houses; dodge the tall pines.
-import { THREE, C, Snow, Burst, toon, giftGeo, glow } from './kit.js?v=19f08d50c0';
-import { buildNight, Street, sleigh, SPAN } from './village.js?v=19f08d50c0';
+import { THREE, C, Snow, Burst, toon, giftGeo, glow } from './kit.js?v=810de0dff9';
+import { buildNight, Street, sleigh, SPAN } from './village.js?v=810de0dff9';
 
 const V3 = THREE.Vector3;
 const SX = -5, ROUND = 75, GIFT_G = 16, Y_MIN = 6.8, Y_MAX = 14, CHIMNEY_Y = 5.3;

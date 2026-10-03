@@ -2,10 +2,10 @@
 // rewards each track gives, and the $5 pass. Rules from seasons.js; a signed-in player's progress from the game server
 // (server/seasons.js 'season'), a guest sees the same tasks and calendar with nothing opened yet. Progress only moves in public
 // Auto matches the match server runs, so the card says so and refreshes after each match.
-import { seasonAt, dayKey, dayEnds, seasonDays, tasksFor, freeReward, goldReward, PASS_PRICE, PIECE_EVERY, STREAK_EVERY } from './seasons.js?v=19f08d50c0';
-import { BY_ID } from './catalog.js?v=19f08d50c0';
-import { call } from './gameserver.js?v=19f08d50c0';
-import { shopBuy } from './shopui.js?v=19f08d50c0';
+import { seasonAt, dayKey, dayEnds, seasonDays, tasksFor, freeReward, goldReward, PASS_PRICE, PIECE_EVERY, STREAK_EVERY } from './seasons.js?v=810de0dff9';
+import { BY_ID } from './catalog.js?v=810de0dff9';
+import { call } from './gameserver.js?v=810de0dff9';
+import { shopBuy } from './shopui.js?v=810de0dff9';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
