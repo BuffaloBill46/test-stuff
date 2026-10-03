@@ -44,7 +44,13 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   // board 2 (16 rows, 17 presents): all left = present 1 (25×); one right = present 2 (0×); six rights = present 7 (2×)
   const L = Array(16).fill(0), MID = [1, ...Array(15).fill(0)], ONE = [1, 1, 1, 1, 1, 1, ...Array(10).fill(0)]; // 25×, 0×, 2×
   let b0 = await bal(), pool0 = await pool();
+  // the run counter's "won" may only count balls that have LANDED (Cody 2026-10-02: it ran ~1 s ahead of the balls, the first
+  // ones counted half way down): watched every 20 ms through the whole run, it must never show more than the landed balls won
+  await p.evaluate(() => { window.__ahead = []; window.__watch = setInterval(() => { const t = document.querySelector('[data-runcount="drop"] span')?.textContent || '';
+    const shown = +(t.match(/[\d.]+/)?.[0] || 0); if (shown > window.__drop.landedWon + 0.005) window.__ahead.push(`${t} with ${window.__drop.landedWon} landed`); }, 20); });
   const d = await run(5, 0.1, [L, MID, ONE, MID, MID]);
+  const ahead = await p.evaluate(() => { clearInterval(window.__watch); return window.__ahead; });
+  check(ahead.length === 0 && /won \$2\.70/.test(await p.textContent('[data-runcount="drop"] span')), `${label}: the run counter only counts balls that have landed (never ahead: ${ahead.slice(0, 2).join(' | ') || 'none'}), ending at won $2.70`);
   check(d.title === 'Play 5 drops' && d.what === '5 × 10¢ = $0.50' && d.go === 'Pay $0.50 & play', `${label}: confirm dialog ${JSON.stringify(d)}`);
   const won = 2.5 + 0.2; // 25× + 2× on 10¢
   check(Math.abs((await bal()) - (b0 - 0.5 + won * 0.97)) < 1e-9, `${label}: demo money: −$0.50, then +$2.70 less 3% at the end (${await bal()})`);

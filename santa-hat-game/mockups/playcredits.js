@@ -142,7 +142,7 @@ export async function playRun(kind, bet, n, onPlay, forced = []) {
     if (!b) return null;
     closeBuy(true); onChange();
     runCounter(kind, 0, n, 0); // a new run: the counter starts again
-    const results = []; let won = 0, sent = b.sent ?? null, held = !!b.held;
+    const results = []; let won = 0, sent = b.sent ?? null, held = !!b.held, counted = 0, wonShown = 0;
     for (const [i, p] of b.plays.entries()) {
       let s;
       try { s = serverMode ? await withSlowDown(() => call('settle', { ticket: p.ticket, seed: newSeed(16) })) : await house.settle(p.ticket, newSeed(16), forced[i]); }
@@ -150,10 +150,13 @@ export async function playRun(kind, bet, n, onPlay, forced = []) {
       if (s.r && s.proof && s.proof.commit !== p.commit) s = { failed: true, why: 'the server changed its locked fingerprint' }; // never trust, check
       if (s.proof) last[kind] = s.proof;
       if (s.r) won += s.r.pay;
-      runCounter(kind, i + 1, n, won);
       if (s.sent !== undefined) { sent = s.sent; held = !!s.held; }
       results.push(s); refresh(); onChange();
-      await onPlay(s, i, n);
+      // The run counter moves when the PLAYER SEES the result (Cody 2026-10-02: the Drop's total ran ~1 s ahead of its balls;
+      // and it must never give away a Stocking Stuffer turn before its stockings are tapped): after the game's own animation, or,
+      // for a game that keeps going while one plays out (Snowball Drop: balls in flight), when the result it returns has landed.
+      const shown = await onPlay(s, i, n), pay = s.r ? s.r.pay : 0, count = () => runCounter(kind, ++counted, n, (wonShown += pay));
+      if (shown?.landed) shown.landed.then(count, count); else count();
     }
     // demo: the house "sends" the run's winnings to the demo balance, 3% lighter (SANTA's tax), all at once
     if (!serverMode && sent) wallet.add(sent * (1 - FEE));
