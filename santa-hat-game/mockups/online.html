@@ -210,6 +210,20 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 #progress .pgor { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0; font-size: 14px; color: var(--dim); }
 .progress .pgor b { font: 700 15px/1 var(--digits); font-variant-numeric: tabular-nums; color: var(--lamp); white-space: nowrap; }
 @media (max-width: 640px) { .progress { grid-template-columns: auto minmax(0, 1fr); } .progress .pgside { grid-column: 1 / -1; } }
+/* The money strip (moneystrip.js): Store and Games, where the SANTA goes. Burn reads as fire, the pool and treasury as lamp light. */
+.moneystrip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin-bottom: 14px; overflow: hidden; }
+.moneystrip .ms { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-left: 2px solid var(--ink); min-width: 0; }
+.moneystrip .ms:first-child { border-left: 0; }
+.moneystrip .ms > b { font: 700 24px/1 var(--digits); color: var(--lamp); flex: none; }
+.moneystrip .ms.burn { background: linear-gradient(90deg, rgba(207,49,40,.35), rgba(207,49,40,.12)); } .moneystrip .ms.burn > b { color: #ff8a5c; }
+.moneystrip .ms span { font-size: 14px; line-height: 1.25; color: var(--text); } .moneystrip .ms em { font-style: normal; font-weight: 800; }
+.moneystrip .ms.burn em { color: #ff8a5c; } .moneystrip .ms.pool em, .moneystrip .ms.treasury em { color: var(--lamp); }
+.moneystrip .ms.msjp, .moneystrip .ms.total, .moneystrip .ms.lotto { flex-direction: column; align-items: flex-start; gap: 3px; justify-content: center; }
+.moneystrip .ms i { font: 700 10px/1.2 var(--digits); letter-spacing: .8px; text-transform: uppercase; font-style: normal; color: var(--frost); }
+.moneystrip .ms.total b { white-space: nowrap; font: 700 18px/1.1 var(--digits); color: #ff8a5c; font-variant-numeric: tabular-nums; }
+.moneystrip .ms.lotto b { font: inherit; font-weight: 800; color: var(--lamp); }
+@media (max-width: 900px) { .moneystrip { grid-template-columns: repeat(2, minmax(0, 1fr)); } .moneystrip .ms:nth-child(3) { border-left: 0; } .moneystrip .ms:nth-child(n+3) { border-top: 2px solid var(--ink); } }
+@media (max-width: 420px) { .moneystrip .ms.total b { font-size: 15px; } .moneystrip .ms { padding: 8px 10px; gap: 8px; } .moneystrip .ms > b { font-size: 20px; } .moneystrip .ms span { font-size: 13px; } }
 /* The Season card (seasonui.js). One accent per season: pumpkin for Halloween; the rest is the page's own plaque language. */
 .season { --ss: #f2862e; --ss-dim: rgba(242,134,46,.16); margin-bottom: 14px; }
 .season[data-season="thanksgiving"] { --ss: #d9a441; --ss-dim: rgba(217,164,65,.16); }
@@ -782,7 +796,8 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 <nav id="nav">
   <div class="brand"><img src="hat-logo.png" alt=""><span class="wordmark"><span><b>Santa</b> Hat</span><small>Legends</small></span></div>
   <div class="tabs" role="tablist" aria-label="Sections">
-    <button role="tab" id="t-play" data-tab="play" aria-selected="true">Play</button>
+    <button role="tab" id="t-home" data-tab="home" aria-selected="true">Home</button>
+    <button role="tab" id="t-play" data-tab="play" aria-selected="false">Play</button>
     <button role="tab" id="t-games" data-tab="games" aria-selected="false">Games</button>
     <button role="tab" id="t-store" data-tab="store" aria-selected="false">Store</button>
     <button role="tab" id="t-avatar" data-tab="avatar" aria-selected="false">Avatar</button>
@@ -797,13 +812,16 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 </nav>
 
 <main id="pages">
-  <section id="tab-play" class="page" role="tabpanel" aria-labelledby="t-play">
+  <!-- HOME (Cody, 2026-10-03): the landing page and info section: what the game is, Player Progress, the season calendar.
+       Its Play now goes to the Play page (the match types). Player Progress is ONE box that tabs.js moves to the top of Home or
+       Play, whichever is open. -->
+  <section id="tab-home" class="page" role="tabpanel" aria-labelledby="t-home">
     <div class="hero">
       <div class="eyebrow">Snowball Square · up to 8 players</div>
       <h1>Play for Free</h1>
       <p>Grab the Santa hat, keep it on your head, and knock it off everyone else's.</p>
-      <!-- One tap to a match (Cody, 2026-10-03): the lobby's own free Auto match, above the fold on every screen -->
-      <div class="heroplay"><button class="go" id="playBig">Play now</button><span>A free match in seconds. No sign-in needed.</span></div>
+      <!-- Play now (Cody, 2026-10-03): to the Play page and its match types, above the fold on every screen -->
+      <div class="heroplay"><button class="go" id="playBig">Play now</button><span>Pick a match: free, ranked or with friends.</span></div>
       <p class="testnote"><b>Test version</b> Snowball Square is free and works now. Ranked tickets, wagers and SANTA prizes aren't switched on yet.</p>
     </div>
     <!-- Player Progress (Cody, 2026-10-01): level and what it gives, special gear, season pass, stats. Filled by tabs.js. -->
@@ -872,6 +890,9 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
         </div>
       </div>
     </section>
+  </section>
+
+  <section id="tab-play" class="page" hidden role="tabpanel" aria-labelledby="t-play">
     <div class="modes3">
       <article class="mode plaque fur">
         <h3>Unranked</h3><p class="tagline">Free · no sign-in needed</p>
@@ -933,6 +954,13 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
   </section>
 
   <section id="tab-games" class="page" role="tabpanel" aria-labelledby="t-games" hidden>
+    <!-- The money strip (Cody, 2026-10-03; moneystrip.js): where every entry's SANTA goes, with the live pool and jackpots -->
+    <section class="moneystrip plaque" aria-label="Where your SANTA goes">
+      <div class="ms burn"><b data-share="games.burn">10%</b><span>of every entry <em>burned forever</em></span></div>
+      <div class="ms pool"><b data-share="games.rest">90%</b><span>into the Game pool <em id="msPool">—</em></span></div>
+      <div class="ms msjp"><i>Pool jackpots right now</i><span id="msJp">—</span></div>
+      <div class="ms total"><i>Burned so far</i><b data-burned>—</b></div>
+    </section>
     <div class="hero"><div class="eyebrow">Santa Hat Games · single player</div><h1>Santa Hat Games</h1>
       <p>Quick games you play on your own. Every entry: 10% burned, 90% into the one Game pool all three games pay from. <a href="./guide.html#games">How each game works</a></p>
       <p class="taxnote" id="lockNote"><b>Price locked per run</b> The SANTA price is locked when you buy a run. Everything that run wins is paid in SANTA at that same price, even if the price moves while it plays.</p>
@@ -1079,6 +1107,13 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
   </section>
 
   <section id="tab-store" class="page" role="tabpanel" aria-labelledby="t-store" hidden>
+    <!-- The money strip (Cody, 2026-10-03; moneystrip.js): where Store and lottery SANTA goes -->
+    <section class="moneystrip plaque" aria-label="Where your SANTA goes">
+      <div class="ms burn"><b data-share="store.burn">50%</b><span>of every Store buy <em>burned forever</em></span></div>
+      <div class="ms treasury"><b data-share="store.rest">50%</b><span>to the game's <em>treasury</em></span></div>
+      <div class="ms lotto"><i>Lottery tickets</i><span><b data-share="lottery.burn">10%</b> burned · <b data-share="lottery.rest">90%</b> to the pot</span></div>
+      <div class="ms total"><i>Burned so far</i><b data-burned>—</b></div>
+    </section>
     <div class="hero"><div class="eyebrow">Store</div><h1>Snowball Supply</h1>
       <p>Prices are in dollars, paid in SANTA at the live price. <b>Payments open soon</b>; you can try everything on now.</p>
       <p class="testnote"><b>Test version</b> Nothing can be bought yet and the lottery isn't running. Try items on for free; payments open after testing.</p></div>

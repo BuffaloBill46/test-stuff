@@ -6,7 +6,7 @@
 //   settle → the player's number in, draw, record, reveal the secret; the run's last play queues ONE payout (finish_run)
 // `db` = { query(sql, params) → rows, tx(fn) } on a direct Postgres connection (a transaction holds the pool row lock).
 // `chain.getTransaction(sig)` = Solana getTransaction (jsonParsed, finalized). Keys and secrets never leave the server.
-import { KINDS, MAX_RUN, isRunSize } from '../mockups/credits.js';
+import { KINDS, MAX_RUN, isRunSize, GAME_BURN_BPS } from '../mockups/credits.js';
 import { BETS as DROP_SIZES } from '../mockups/plinko.js';
 const near = (a, b) => Math.abs(a - b) < 1e-9;
 import { play as dropPlay, canPlay as canDrop, MAX_MULT as DROP_TOP, MAX_MULT_BOARD as DROP_TOP_ON } from '../mockups/plinko.js';
@@ -17,7 +17,8 @@ import { spin, canSpin, topMult } from '../mockups/spin.js';
 import { pull, canPull, FEE, MAX_FIXED, poolJackpot } from '../mockups/slots.js';
 import * as fair from '../mockups/fair.js';
 import { NUMS, proofExtras } from '../mockups/house.js';
-import { MINT, QUOTE_SECONDS, CUSHION } from '../mockups/market.js';
+import { MINT, QUOTE_SECONDS, CUSHION, splitPayment } from '../mockups/market.js';
+import { SHOP_BURN_BPS } from '../mockups/shoprules.js';
 import { verifyPayment } from './verify.js';
 
 // The most ONE play can ever pay (jackpot aside), worked out from the prize table the play ran on, never from what a
@@ -110,7 +111,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     // where to pay: the page builds the one transaction from this (mockups/pay.js); the live tax so its fee matches the token
     const fee = await liveFee();
     return { id: q.id, kind, n, bet, usd, santaRaw, price: price.usd, expiresAt: new Date(q.created_at).getTime() + QUOTE_SECONDS * 1000,
-      mint, pool: poolWallets?.[KINDS[kind].game] || null, fee: { bps: fee.bps, max: fee.max }, burnBps: 1000,
+      mint, pool: poolWallets?.[KINDS[kind].game] || null, fee: { bps: fee.bps, max: fee.max }, burnBps: GAME_BURN_BPS,
       // only a payment FROM this wallet is accepted (verify.js): the page refuses to sign with any other, so nobody pays for nothing
       payer, cluster };
   }
@@ -125,7 +126,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     const [tx, fee, wallet] = await Promise.all([chain.getTransaction(signature), liveFee(), walletOf(profile)]);
     if (!wallet) return { error: 'buying needs a linked wallet' };
     const v = verifyPayment(tx, { mint, player: wallet, pool: poolWallets[KINDS[q.kind].game], quoteRaw: +q.santa_raw,
-      quoteAt: new Date(q.created_at).getTime(), quoteSeconds: QUOTE_SECONDS, cushion: CUSHION, burnBps: 1000, fee });
+      quoteAt: new Date(q.created_at).getTime(), quoteSeconds: QUOTE_SECONDS, cushion: CUSHION, burnBps: GAME_BURN_BPS, fee });
     if (!v.ok) return { error: v.why };
     let runId;
     try { runId = +(await row('select public.buy_run($1, $2, $3, $4, $5, $6) as id', [q.id, signature, v.paid, v.burned, v.arrived, await settingsVersion()])).id; }
@@ -266,5 +267,19 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   }
   // Called when Cody publishes new settings, so the very next play uses them (no 15-second wait).
   const settingsChanged = () => { latest = { at: 0, version: 0 }; };
-  return { quote, buy, settle, tidy, winners, pools, settings, market, settingsChanged };
+  // Public: SANTA burned by the game so far (the Store and Games pages' money strip, Cody 2026-10-03). Game runs and lottery
+  // tickets: the burn checked on chain at purchase (payments / lottery_buys burned_raw). Store purchases: the 50% share of every
+  // paid quote (verify.js refuses a payment that burned less; a refund doesn't un-burn). Kept a minute: one query per minute at most.
+  let burnKept = { at: 0, v: null };
+  async function burned() {
+    if (burnKept.v && Date.now() - burnKept.at < 60_000) return burnKept.v;
+    const r = (await db.query(`select (select coalesce(sum(burned_raw), 0) from public.payments)::text as games,
+      (select coalesce(sum(burned_raw), 0) from public.lottery_buys)::text as lottery,
+      (select coalesce(sum(santa_raw), 0) from public.shop_quotes where used_by is not null)::text as store_paid`))[0];
+    const fee = feeKept.fee || (await liveFee().catch(() => null)) || { bps: 300, max: Infinity };
+    const games = +r.games, lottery = +r.lottery, store = splitPayment(+r.store_paid, SHOP_BURN_BPS, fee).burn;
+    burnKept = { at: Date.now(), v: { gamesRaw: games, lotteryRaw: lottery, storeRaw: store, totalRaw: games + lottery + store } };
+    return burnKept.v;
+  }
+  return { quote, buy, settle, tidy, winners, pools, settings, market, burned, settingsChanged };
 }

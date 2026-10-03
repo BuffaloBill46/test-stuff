@@ -1,6 +1,8 @@
 // Games tab: wires the Slots page (readouts, Pull, full screen, paytable, winners list) to the rules (slots.js) and the
 // 3D Big Hat machine (slots3d.js). DEMO ONLY: play money and a demo pool kept in this browser. No SANTA moves.
-import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount } from './slots.js';
+import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount, poolJackpot } from './slots.js';
+import { JP as DROP_JP } from './plinko.js';
+import { JP as STOCK_JP } from './stocking.js';
 import { createMachine, symbolImages } from './slots3d.js';
 import { initSpin, showSpin, resetSpin, spinState, refreshSpin, showResult } from './spinui.js';
 import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js';
@@ -45,6 +47,10 @@ function render() {
   $('#slotPool').textContent = money(shownPool);
   $('#demoBal').textContent = money(state.bal);
   $('#jpAmt').textContent = money(jackpotAmount('big', shownPool));
+  // the money strip at the top (moneystrip.js): the same pool and what each game's pool jackpot is worth now (Drop and Stocking
+  // jackpots scale with the play's size: shown for a $1 play)
+  if ($('#msPool')) { $('#msPool').textContent = money(shownPool) + ' now';
+    $('#msJp').textContent = `Big Hat ${money(jackpotAmount('big', shownPool))} · Drop ${money(poolJackpot(shownPool, DROP_JP.pct, 1))} · Stocking ${money(poolJackpot(shownPool, STOCK_JP.pct, 1))} ($1 plays)`; }
   $('#slots .machine .pct').textContent = +(M.jackpotPct * 100).toFixed(2) + '%';
   $('#topAmt').textContent = money(100 * M.bet);
   renderWinners();

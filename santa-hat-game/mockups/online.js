@@ -7,6 +7,7 @@ import { openRoom, accounts, findWallet, gamesBoard } from './net.js';
 import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js';
 import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js';
 import { initSeason, refreshSeason } from './seasonui.js';
+import { initMoneyStrips, refreshBurned } from './moneystrip.js';
 import { TICKET_MAX } from './ranked.js';
 import { levelInfo, clampLevel } from './levels.js';
 import { SERVER, call, token as signInToken } from './gameserver.js';
@@ -875,7 +876,7 @@ $('#create').addEventListener('click', () => enterRoom(rid(4).toUpperCase().repl
 $('#joinBtn').addEventListener('click', () => { const c = cleanCode($('#code').value); if (c.length < 3) { status('Type the room code your friend shared.'); return; } enterRoom(c, false); });
 $('#practice').addEventListener('click', startPractice);
 $('#playUnranked').addEventListener('click', () => openLobby('unranked'));
-$('#playBig').addEventListener('click', () => { openLobby('unranked'); $('#quick').click(); }); // the hero's big button: straight into a free Auto match
+$('#playBig').addEventListener('click', () => { tabs.show('play'); scrollTo(0, 0); }); // Home's Play now: the Play page and its match types (Cody 2026-10-03)
 $('#homeClose').addEventListener('click', closeLobby);
 $('#leave').addEventListener('click', () => leaveRoom());
 initSoundButtons();
@@ -908,12 +909,14 @@ const app = {
   get theme() { return theme; }, setTheme,
   onTab: (tab) => {
     ui.lastBoard = '';
+    if (tab === 'store' || tab === 'games') refreshBurned(); // the money strip's burned-so-far (kept a minute)
     if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
   },
 };
 let gamesMod = null; // Games tab code loads the first time it's opened
 const tabs = initTabs(app);
 initSeason({ thumbnail, onBought: () => tabs.reloadMine() }); // the Season card (seasonui.js); a bought pass reloads what I own
+initMoneyStrips(); // the Store and Games pages' money strip (moneystrip.js): burn, treasury, pool, burned so far
 renderProgress(app.profile); // the Play page's Player Progress box (guests: level 1; updated on sign-in)
 initLottery(); // the Store's Santa Lottery (lotteryui.js)
 $('#loading')?.remove();

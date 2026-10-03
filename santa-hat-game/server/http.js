@@ -7,6 +7,7 @@
 //   settings { version? }      → public game settings (prices, odds, prizes); any version, for re-checking old plays
 //   alerts                     → public: run the alert checks (Cody's Telegram; server/alerts.js); answers counts only
 //   market                     → public: the SANTA price quotes use now (10-minute median) and the token's tax
+//   burned                     → public: SANTA burned by the game so far (games, lottery, Store)
 //   pools                      → public pool status: balances, settings, pending transfers, change log (admin screen)
 //   progress                   → my level and progress toward the next (server/levels.js)
 //   finish { match }           → the host reports a finished Auto match's places; top-3 players' finishes count toward levels
@@ -69,6 +70,9 @@ export function makeHandler(deps) {
     }
     if (body?.action === 'market') { // public: the price quotes use and the token's tax (the page's info line)
       try { return reply(origin, 200, await deps.server.market()); } catch (e) { console.error('market error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
+    }
+    if (body?.action === 'burned') { // public: SANTA burned by the game so far (the Store and Games pages' money strip)
+      try { return reply(origin, 200, await deps.server.burned()); } catch (e) { console.error('burned error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
     }
     if (body?.action === 'winners') { // public: the shared Recent winners list (names and amounts only)
       try { return reply(origin, 200, { winners: await deps.server.winners() }); } catch (e) { console.error('winners error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }

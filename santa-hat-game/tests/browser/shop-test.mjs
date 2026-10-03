@@ -35,7 +35,7 @@ function payFor(q) {
 }
 const shop = createShop({ db, chain: { getTransaction: async (s) => txs.get(s) ?? null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, treasury: TREASURY, mint: MINT, cluster: 'devnet' });
 const noDraws = { draws: async () => ({ open: [], recent: [] }), tickets: async () => ({ error: 'no such draw' }) };
-const handle = makeHandler({ shop, lottery: noDraws, limiter: null, server: { winners: async () => [], settings: async () => ({}), pools: async () => ({}), market: async () => ({ cluster: 'devnet' }) }, profileFor: async (t) => (t === 'test-token' ? me : null) });
+const handle = makeHandler({ shop, lottery: noDraws, seasons: { state: async () => ({ off: true }) }, limiter: null, server: { burned: async () => ({ gamesRaw: 0, lotteryRaw: 0, storeRaw: 0, totalRaw: 0 }), winners: async () => [], settings: async () => ({}), pools: async () => ({}), market: async () => ({ cluster: 'devnet' }) }, profileFor: async (t) => (t === 'test-token' ? me : null) });
 const web = http.createServer(async (req, res) => {
   if (req.method === 'GET') { const pth = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]).replace(/^\//, '') || 'online.html');
     if (!pth.startsWith(ROOT) || !existsSync(pth)) { res.writeHead(404); return res.end(); }

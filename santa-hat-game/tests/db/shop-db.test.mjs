@@ -131,4 +131,20 @@ for (const role of ['anon', 'authenticated']) {
   assert.match((await tryPay(handTx(o.wallet, o.raw))).error, /already paid/, 'paid twice: refused');
   assert.equal((await admin.run(await signed({ action: 'shop-owed', game: 'shop' }))).owed.length, 0, 'nothing owed now');
   assert.ok((await admin.run(await signed({ action: 'shop-owed', game: 'spin' }))).error, 'wrong game in the signed message: refused'); }
+// The money strip's "burned so far" (server/games.js burned, Cody 2026-10-03): the Store's 50% of every PAID quote (a refund
+// doesn't un-burn: the burn already happened on chain), plus game runs and lottery tickets exactly as recorded. Kept a minute.
+{ const { createGameServer } = await import('../../server/games.js');
+  const gs = createGameServer({ retired: [], db, chain, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: {} });
+  const paid = await db.query('select santa_raw from public.shop_quotes where used_by is not null');
+  const refunds = (await db.query('select count(*)::int n from public.shop_refunds'))[0].n;
+  const perQuote = paid.reduce((a, q) => a + splitPayment(+q.santa_raw, SHOP_BURN_BPS, FEE).burn, 0);
+  const sums = (await db.query('select (select coalesce(sum(burned_raw), 0) from public.payments)::text g, (select coalesce(sum(burned_raw), 0) from public.lottery_buys)::text l'))[0];
+  const b = await gs.burned();
+  assert.ok(paid.length >= 3 && refunds >= 1, `the test made paid Store buys (${paid.length}) and a refunded one (${refunds})`);
+  assert.ok(Math.abs(b.storeRaw - perQuote) <= paid.length, `Store burn = 50% of every paid quote after the tax (${b.storeRaw} vs ${perQuote}, rounding ≤ 1 per buy)`);
+  assert.deepEqual([b.gamesRaw, b.lotteryRaw, b.totalRaw], [+sums.g, +sums.l, +sums.g + +sums.l + b.storeRaw], 'games and lottery exactly as recorded; total adds up');
+  await db.query(`update public.shop_quotes set santa_raw = santa_raw * 2 where used_by is not null`);
+  assert.equal((await gs.burned()).storeRaw, b.storeRaw, 'kept a minute: no new database read for every visitor');
+  await db.query(`update public.shop_quotes set santa_raw = santa_raw / 2 where used_by is not null`); }
+console.log('OK: the money strip\'s burned-so-far: the Store\'s share of every paid buy (refunds included), games and lottery as recorded, kept a minute');
 console.log('OK: shop: items (special snowballs, gear, looks), a level and ranked tickets, each a checked payment (50% burned / 50% treasury) granted once; reused payments/quotes, short, wrong wallet refused; a paid-but-ungrantable purchase owed back in full; worn-out gear re-bought for a fresh 7 days; nothing unsellable quoted; the website kept out');
