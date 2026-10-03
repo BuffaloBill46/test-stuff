@@ -42,6 +42,15 @@
 6. **The final "GO"**, after Claude reports everything ready. Then **one 10¢ play with your own Phantom on mainnet** (the dry
    run). A win, if any, should arrive within a minute.
 
+## Cody's items: progress
+- [x] **3. Helius** (2026-10-03): Cody saved the URL to `C:\santa-devnet-keys\helius-mainnet.txt`. Claude moved the file to
+  `/etc/santa/helius-mainnet.txt` without displaying it and filled `SOLANA_RPC_URL` in both `*.env.mainnet` files.
+  go-mainnet checked that it answers and that it is Solana MAINNET (genesis hash).
+- [x] **5. Backup** (2026-10-03, Cody's yes on the price): DigitalOcean live snapshot `santa-before-mainnet-2026-10-03`,
+  2.56 GB, about $0.15/month. It includes the mainnet keys in `/etc/santa/keys-mainnet`. The site stayed up while it was taken.
+  **Take another snapshot after GO**, so the backup holds the switched settings too.
+- [ ] 1. Fund the wallets.  - [ ] 2. Cody's Phantom address.  - [ ] 4. Telegram (recommended).  - [ ] 6. GO.
+
 ## Done since the checklist was written (all live on the test network, tested)
 - **Security review done**, every finding checked by Claude before acting on it. Fixed:
   - The old Supabase game server (still on test settings, writing to the same database) is shut. After the switch, test SANTA
