@@ -3,15 +3,15 @@
 // One run: the confirm dialog (price, SANTA amount) → the payment → the plays, played one after another by the game's own
 // card (spinui.js, dropui.js, games.js) → the run's winnings sent. Plus "Check this result" for the last play of each game.
 // DEMO: the house runs in this browser and pays from / to the demo balance. Server mode (?server=): the game server does it.
-import { KINDS, newLedger, costOf } from './credits.js?v=ecda0eab50';
-import { createHouse, check } from './house.js?v=ecda0eab50';
-import { newSeed } from './fair.js?v=ecda0eab50';
-import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js?v=ecda0eab50';
-import { FEE } from './slots.js?v=ecda0eab50';
-import { asTapped } from './stocking.js?v=ecda0eab50';
-import { play as sfx } from './sfx.js?v=ecda0eab50';
-import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js?v=ecda0eab50';
-import { withSlowDown } from './slowdown.js?v=ecda0eab50';
+import { KINDS, newLedger, costOf } from './credits.js?v=2335b0c955';
+import { createHouse, check } from './house.js?v=2335b0c955';
+import { newSeed } from './fair.js?v=2335b0c955';
+import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js?v=2335b0c955';
+import { FEE } from './slots.js?v=2335b0c955';
+import { asTapped } from './stocking.js?v=2335b0c955';
+import { play as sfx } from './sfx.js?v=2335b0c955';
+import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js?v=2335b0c955';
+import { withSlowDown } from './slowdown.js?v=2335b0c955';
 export const serverMode = !!SERVER; // ?server=<address>: plays come from the game server
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -163,7 +163,7 @@ export async function playRun(kind, bet, n, onPlay, forced = []) {
     // demo: the house "sends" the run's winnings to the demo balance, 3% lighter (SANTA's tax), all at once
     if (!serverMode && sent) wallet.add(sent * (1 - FEE));
     onChange();
-    return { n, results, won: Math.round(won * 100) / 100, sent: sent ?? 0, received: (sent ?? 0) * (1 - FEE), held };
+    return { n, kind, bet, cost: costOf(n, bet), results, won: Math.round(won * 100) / 100, sent: sent ?? 0, received: (sent ?? 0) * (1 - FEE), held }; // kind, bet, cost: the share-a-win card
   } finally { busy[kind] = false; }
 }
 export const short = (h) => h.slice(0, 8);
@@ -183,7 +183,7 @@ function showProofOf(p) {
 async function cfgForProof(p) {
   if (!serverMode || p.settingsVersion === undefined) return null;
   const r = await call('settings', { version: p.settingsVersion }); if (!r?.settings) return null;
-  const { build } = await import('./settings.js?v=ecda0eab50'); return build(r.settings);
+  const { build } = await import('./settings.js?v=2335b0c955'); return build(r.settings);
 }
 async function recheck() {
   const p = shown; if (!p) return;
