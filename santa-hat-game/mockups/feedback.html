@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Santa Hat Legends · Tester feedback</title>
+<link rel="icon" href="hat-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@600;800&family=Alegreya+Sans:wght@400;500;700&family=Silkscreen:wght@400;700&display=swap">
+<style>
+/* Focus-group feedback (Cody, 2026-10-02; TEST_PLAN.md A). Same look as the game: ink-outlined plaques on night blue.
+   Answers go to the game database's tester_feedback table (supabase/027): testers can add, never read. */
+:root {
+  color-scheme: dark;
+  --ink: #0c0f1a; --night: #121830; --plaque: #1b2344; --plaque-hi: #26305a; --frost: #b9cdf2;
+  --text: #eef2fb; --dim: #9aa6c7; --hat: #cf3128; --hat-dark: #8f1712; --brim: #f5f1e8; --lamp: #ffbe5c;
+  --display: 'Grenze Gotisch', 'Palatino Linotype', Georgia, serif;
+  --body: 'Alegreya Sans', 'Trebuchet MS', system-ui, sans-serif;
+  --digits: 'Silkscreen', 'Courier New', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--night); color: var(--text); font: 17px/1.5 var(--body); padding: calc(env(safe-area-inset-top, 0px) + 20px) 16px calc(env(safe-area-inset-bottom, 0px) + 40px); }
+main { max-width: 640px; margin: 0 auto; display: grid; gap: 16px; }
+.plaque { background: var(--plaque); border: 2px solid var(--ink); box-shadow: inset 0 0 0 1px rgba(185,205,242,.18), 3px 3px 0 var(--ink); border-radius: 3px; padding: 16px; }
+h1 { font: 800 clamp(34px, 9vw, 48px)/1 var(--display); margin: 0; color: var(--brim); text-shadow: 3px 3px 0 var(--ink); text-wrap: balance; }
+h2 { font: 800 26px/1.1 var(--display); margin: 0 0 6px; color: var(--brim); }
+.eyebrow { font: 700 12px/1.3 var(--digits); letter-spacing: 1.5px; color: var(--lamp); text-transform: uppercase; }
+p { margin: 6px 0; } .dim { color: var(--dim); }
+label { display: block; font-weight: 700; margin: 12px 0 4px; }
+input[type=text], select, textarea { width: 100%; font: 16px/1.4 var(--body); color: var(--text); background: var(--ink); border: 2px solid #3a4570; border-radius: 3px; padding: 10px 12px; }
+textarea { min-height: 84px; resize: vertical; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
+.rate { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; padding: 8px 0; border-top: 1px dashed #3a4570; }
+.rate:first-of-type { border-top: 0; }
+.rate span small { display: block; color: var(--dim); font-weight: 400; }
+.stars { display: flex; gap: 4px; }
+.stars button { width: 40px; height: 40px; font: 700 18px/1 var(--digits); color: var(--dim); background: var(--ink); border: 2px solid #3a4570; border-radius: 3px; cursor: pointer; }
+.stars button[aria-pressed="true"] { color: var(--ink); background: var(--lamp); border-color: var(--ink); }
+.stars .skip { width: auto; padding: 0 8px; font: 500 13px/1 var(--body); }
+@media (max-width: 420px) { .rate { grid-template-columns: 1fr; } }
+.send { width: 100%; min-height: 54px; font: 800 24px/1 var(--display); color: var(--brim); background: var(--hat); border: 2px solid var(--ink); border-radius: 3px; box-shadow: 0 5px 0 var(--hat-dark), 3px 7px 0 var(--ink); cursor: pointer; }
+.send:disabled { opacity: .6; cursor: default; }
+#msg { min-height: 1.5em; font-weight: 700; } #msg.ok { color: #7fe0a0; } #msg.bad { color: #ff8a80; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Santa Hat Legends · test version</div>
+    <h1>Tester feedback</h1>
+    <p class="dim">Thanks for playing! Tell us what was fun, what confused you and what broke. Every answer is optional; a sentence beats a star.</p>
+  </header>
+  <form id="fb" class="plaque" novalidate>
+    <h2>About you</h2>
+    <label for="tester">Your first name or a nickname</label>
+    <input id="tester" type="text" maxlength="40" autocomplete="given-name" placeholder="e.g. Sam">
+    <label for="device">Phone or computer you played on</label>
+    <input id="device" type="text" maxlength="60" placeholder="e.g. iPhone 14, Safari · or Windows laptop, Chrome">
+    <label for="wallet">How you signed in</label>
+    <select id="wallet"><option value="">Choose one</option><option value="phantom">Phantom wallet</option><option value="solflare">Solflare wallet</option><option value="email">Email code</option><option value="none">I didn't sign in</option><option value="other">Something else</option></select>
+  </form>
+  <section class="plaque" aria-labelledby="rateH">
+    <h2 id="rateH">Rate what you tried</h2>
+    <p class="dim">1 = didn't like it, 5 = loved it. Skip anything you didn't try.</p>
+    <div id="rates"></div>
+  </section>
+  <section class="plaque" aria-labelledby="tellH">
+    <h2 id="tellH">Tell us more</h2>
+    <label for="q_confused">What confused you in your first two minutes?</label><textarea id="q_confused" maxlength="1500"></textarea>
+    <label for="q_broke">Anything broken, stuck or looking wrong? Which page, and what were you doing?</label><textarea id="q_broke" maxlength="1500"></textarea>
+    <label for="q_money">Did a win ever take longer than a minute to reach your wallet, or a payment not go through?</label><textarea id="q_money" maxlength="1500"></textarea>
+    <label for="q_best">Your favourite thing</label><textarea id="q_best" maxlength="1500"></textarea>
+    <label for="q_change">One thing you'd change</label><textarea id="q_change" maxlength="1500"></textarea>
+  </section>
+  <button class="send" id="send" type="button">Send feedback</button>
+  <p id="msg" role="status" aria-live="polite"></p>
+</main>
+<script>
+// The rated parts, in the order the tester script plays them.
+const PARTS = [['first', 'First impression', 'the first page you saw'], ['match', 'Snowball Square', 'the free snowball match'], ['slots', 'Big Hat Slots', ''],
+  ['drop', 'Snowball Drop', ''], ['stocking', 'Stocking Stuffer', 'tapping the stockings'], ['store', 'Store and Avatar', 'buying and wearing items'],
+  ['signin', 'Signing in and paying', 'the wallet steps'], ['again', 'Would you play again?', '']];
+const ratings = {};
+const rates = document.getElementById('rates');
+rates.innerHTML = PARTS.map(([k, name, sub]) => `<div class="rate"><span>${name}${sub ? `<small>${sub}</small>` : ''}</span><div class="stars" role="group" aria-label="${name}: 1 to 5">${
+  [1, 2, 3, 4, 5].map((n) => `<button type="button" data-k="${k}" data-n="${n}" aria-pressed="false" aria-label="${n} of 5">${n}</button>`).join('')}<button type="button" class="skip" data-k="${k}" data-n="0" aria-pressed="false">Didn't try</button></div></div>`).join('');
+rates.addEventListener('click', (e) => { const b = e.target.closest('button[data-k]'); if (!b) return;
+  const k = b.dataset.k, n = +b.dataset.n; if (n) ratings[k] = n; else delete ratings[k];
+  rates.querySelectorAll(`[data-k="${k}"]`).forEach((x) => x.setAttribute('aria-pressed', String(+x.dataset.n === n))); });
+
+// Sent straight to the game's database with its public key (supabase/027 lets anyone add feedback and nobody read it).
+const URL_ = 'https://olganobdypnxfpmsxibe.supabase.co/rest/v1/tester_feedback', KEY = 'sb_publishable_eLn_YYzLDOTuUAOTZLeyKQ_PLGT8B6N';
+const val = (id) => document.getElementById(id).value.trim();
+const msg = (t, cls) => { const m = document.getElementById('msg'); m.textContent = t; m.className = cls || ''; };
+document.getElementById('send').addEventListener('click', async (e) => {
+  const answers = {}; for (const q of ['confused', 'broke', 'money', 'best', 'change']) { const v = val('q_' + q); if (v) answers[q] = v.slice(0, 1500); }
+  if (!Object.keys(ratings).length && !Object.keys(answers).length) return msg('Add a rating or an answer first.', 'bad');
+  const body = { tester: val('tester').slice(0, 40) || null, device: val('device').slice(0, 60) || null, wallet: val('wallet') || null, ratings, answers };
+  e.currentTarget.disabled = true; msg('Sending…');
+  try {
+    const r = await fetch(URL_, { method: 'POST', headers: { apikey: KEY, 'content-type': 'application/json', prefer: 'return=minimal' }, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error('the server answered ' + r.status);
+    msg('Sent. Thank you! You can close this page.', 'ok');
+  } catch (err) { e.currentTarget.disabled = false; msg(`Didn't send (${err.message}). Check your connection and try again.`, 'bad'); }
+});
+</script>
+</body>
+</html>

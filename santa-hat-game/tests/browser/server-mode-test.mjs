@@ -85,7 +85,7 @@ check(/\$0\.000850/.test(mk) && /tax 3%/.test(mk), 'the price/tax line should co
 // shows my tickets; a practice match keeps ?server= in the address (a reload used to fall back to the demo); a wallet step that
 // can't load says so in plain English.
 check(await p.waitForFunction(() => [...document.querySelectorAll('.testnote')].every((n) => n.hidden), null, { timeout: 15000 }).then(() => true, () => false), 'mainnet server: the "Test version" notes are hidden');
-check(await p.waitForFunction(() => /^\d+\/10/.test(document.querySelector('#tixchip b')?.textContent || ''), null, { timeout: 15000 }).then(() => true, () => false), 'the ticket chip shows my tickets: ' + await p.evaluate(() => document.querySelector('#tixchip b')?.textContent));
+check(await p.waitForFunction(() => /^\d+\/25/.test(document.querySelector('#tixchip b')?.textContent || ''), null, { timeout: 15000 }).then(() => true, () => false), 'the ticket chip shows my tickets: ' + await p.evaluate(() => document.querySelector('#tixchip b')?.textContent));
 await p.evaluate(() => { window.__sq.startPractice(); window.__sq.leaveRoom(); });
 check(/server=/.test(await p.evaluate(() => location.search)), 'leaving a match keeps ?server= in the address: ' + await p.evaluate(() => location.search));
 check(await p.evaluate(async () => (await import('./gameserver.js')).payError(new Error('Failed to fetch dynamically imported module: https://cdn.jsdelivr.net/x'))) === "Couldn't load the wallet step. Check your connection and try again. Nothing was charged.", 'a wallet step that cannot load: plain English');

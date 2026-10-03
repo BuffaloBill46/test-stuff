@@ -17,7 +17,7 @@ await ctx.route('**/*', async (route) => { const url = route.request().url();
 const p = await ctx.newPage(), errors = []; p.on('pageerror', (e) => errors.push(e.message));
 await p.goto('http://localhost/online.html?net=local'); await p.waitForFunction(() => window.__sq, null, { timeout: 90000 }); await p.waitForTimeout(800);
 await p.evaluate(() => document.querySelector('#t-games').click()); await p.waitForFunction(() => window.__drop && window.__slots, null, { timeout: 90000 }); await p.waitForTimeout(800);
-const MID = [1, 0, 1, 0, 1, 0, 1, 0];
+const MID = [1, ...Array(15).fill(0)]; // board 2 (16 rows since 2026-10-02): one right then all left = present 2, a 0× drop
 const skip = (g) => p.evaluate((g) => { const b = document.querySelector(`#${g} .skip`); return { text: b.textContent, pressed: b.getAttribute('aria-pressed'), hidden: b.hidden }; }, g);
 
 console.log('1. Snowball Drop: 10 drops; Skip ahead → fast + "Normal speed"; again → normal + "Skip ahead"');
