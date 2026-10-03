@@ -52,7 +52,7 @@ const lottery = createLottery({ db, chain: { latestBlock: async () => ({ blockha
 const drawn = await (lottery.runDraws ? lottery.runDraws() : lottery.draws().then(() => []));
 assert.equal(await count('lottery_payouts'), 0, `the lottery runner finds no test tickets to pay (drew ${JSON.stringify(drawn)})`);
 assert.deepEqual((await queueRewardClaims({ db, pools: { spin: 'A', slots: 'B', lottery: 'C' }, balances: async () => [], isSanta: () => true })), [], 'no reward claim waiting');
-for (const p of await db.query('select game, santa_raw from public.pools')) assert.equal(+p.santa_raw, 0, `${p.game} book is 0`);
+for (const p of await db.query('select game, santa_raw, treasury_net_raw, rules from public.pools')) { assert.equal(+p.santa_raw, 0, `${p.game} book is 0`); assert.equal(+p.treasury_net_raw, 0, `${p.game} treasury share is 0`); assert.deepEqual(p.rules, {}, `${p.game} has no rule overrides (jackpot % etc.)`); }
 
 // kept
 assert.equal(await count('profiles'), before.profiles, 'every account kept'); assert.equal(await count('logins'), before.logins, 'every login kept');

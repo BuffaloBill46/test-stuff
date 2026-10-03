@@ -23,7 +23,7 @@ truncate table
   public.match_results, public.level_finishes, public.ranked_results,
   public.alerts_sent;
 
-update public.pools set santa_raw = 0, updated_at = now();
+update public.pools set santa_raw = 0, treasury_net_raw = 0, updated_at = now();
 update public.profiles set level = 1, xp = 0, rank_points = 0, updated_at = now();
 
 -- the checks: anything left that could pay out, or a book that isn't zero, aborts the whole switch-over
@@ -34,7 +34,7 @@ begin
        + (select count(*) from public.shop_refunds) + (select count(*) from public.lottery_draws) + (select count(*) from public.lottery_buys)
        + (select count(*) from public.runs) + (select count(*) from public.plays) + (select count(*) from public.payments) into n;
   if n <> 0 then raise exception 'mainnet reset: % test rows left that could pay out', n; end if;
-  if exists (select 1 from public.pools where santa_raw <> 0) then raise exception 'mainnet reset: a pool book is not zero'; end if;
+  if exists (select 1 from public.pools where santa_raw <> 0 or treasury_net_raw <> 0) then raise exception 'mainnet reset: a pool book is not zero'; end if;
   if exists (select 1 from public.profiles where level <> 1 or xp <> 0 or rank_points <> 0) then raise exception 'mainnet reset: a profile kept test progress'; end if;
 end $$;
 
