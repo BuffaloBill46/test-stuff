@@ -47,7 +47,9 @@ export function createAlerts({ db, telegram, walletRaw, refereeHealth, games = [
   }
   // Sends what's new (or due again). Returns counts only (the action is public: no details leave this way).
   async function run() {
-    if (!telegram) return { off: true };
+    // No Telegram yet: still run every check and write what's found to the server log (journalctl -u santa-games), so the books
+    // check never silently stops (mainnet launch 2026-10-03, before Cody's bot exists). Public answer: counts only, as below.
+    if (!telegram) { const list = await findings(); for (const f of list) console.error('ALERT (no Telegram set up): ' + f.text); return { off: true, found: list.length }; }
     const list = await findings(), due = [];
     for (const f of list) {
       const [last] = await db.query('select sent_at from public.alerts_sent where key = $1', [f.key]);

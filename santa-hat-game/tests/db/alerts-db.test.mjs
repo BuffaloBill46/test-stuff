@@ -50,7 +50,10 @@ t += 60e3; r = await alerts.run(); assert.equal(r.sent, 0, 'send failed'); t += 
 // after REPEAT_HOURS the lasting ones come again
 t += (REPEAT_HOURS + 0.1) * 3600e3; r = await alerts.run(); assert.ok(r.sent >= 6, 'lasting problems repeated after ' + REPEAT_HOURS + ' h: ' + r.sent);
 // off without a token
-assert.deepEqual(await createAlerts({ db, telegram: null }).run(), { off: true });
+{ // no Telegram yet: nothing sent, but every check still runs and each finding goes to the server log
+  const logged = [], err = console.error; console.error = (m) => logged.push(String(m));
+  const r = await createAlerts({ db, telegram: null }).run(); console.error = err;
+  assert.equal(r.off, true); assert.ok(r.found >= 1 && logged.length === r.found && logged.every((l) => l.startsWith('ALERT (no Telegram set up): ')), 'checks still run and are logged: ' + JSON.stringify(r)); }
 assert.equal(makeTelegram({ token: '', db }), null);
 // the chat: found from the bot's /start, remembered, then used
 const calls = [];
