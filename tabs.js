@@ -364,6 +364,8 @@ export function initTabs(app) {
   $('#carousels').addEventListener('click', (e) => {
     const b = e.target.closest('[data-try]'); if (!b) return;
     const it = BY_ID.get(b.dataset.try); state.slot = it.slot;
+    // a special snowball: throw it for real in a free practice match (Cody, 2026-10-03); gear is still tried on in the Avatar screen
+    if (it.slot === 'sball' && it.special && app.tryInPractice) { show('play'); app.tryInPractice(it.special); return; }
     const a = { ...app.me.a };
     if (it.slot === 'sball') withSpecial(a, state.sbSlot, it.id); else if (it.slot === 'gear') { if (!withGear(a, state.gSlot, it.id)) withGear(a, state.gSlot === 'g1' ? 'g2' : 'g1', it.id); } else a[it.slot] = it.id;
     state.draft = { name: app.me.n, a };
