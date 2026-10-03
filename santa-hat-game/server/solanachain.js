@@ -65,7 +65,11 @@ function sendAndStatus(kit, rpc) {
       const alive = (await rpc.isBlockhashValid(blockhash, { commitment: 'confirmed' }).send()).value; // FIRST (see top)
       const seen = await lookup(signature);
       if (seen) return seen;
-      return alive ? 'pending' : 'expired';
+      if (alive) return 'pending';
+      // 'expired' means "re-send it", so ask once more after a pause: a provider's servers can be a moment apart, and the one
+      // that answered the lookup may not have seen a transaction that just landed (security review 2026-10-03)
+      await new Promise((r) => setTimeout(r, 2000));
+      return (await lookup(signature)) || 'expired';
     },
   };
 }
