@@ -40,7 +40,10 @@ function dbUrl(): string {
   u.hostname = pooler; u.port = '6543';
   return u.toString();
 }
-const sql = postgres(dbUrl(), { prepare: false, max: 3 });
+// idle_timeout: connections close after 5 s unused. With none (postgres.js's default keeps them forever), a copy of this
+// server holding open connections was slow to retire, and about 1 request in 10 landed on one and waited ~75 s (found
+// 2026-10-03 timing 20 requests in a row). connect_timeout: a stuck connect fails in 10 s instead of hanging a play.
+const sql = postgres(dbUrl(), { prepare: false, max: 3, idle_timeout: 5, connect_timeout: 10 });
 const db = {
   query: (q: string, p: unknown[] = []) => sql.unsafe(q, p as never[]),
   tx: (fn: (t: { query: (q: string, p?: unknown[]) => Promise<unknown[]> }) => Promise<unknown>) =>
