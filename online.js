@@ -1,23 +1,24 @@
 // Santa Hat Legends (the Snowball Square game): lobby, rooms, referee hand-off, smoothing, HUD.
-import './buildcheck.js?v=89017a56cf'; // first: the page and this code come from the same publish (buildcheck.js)
-import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo, Sparks, gearTick, GEAR_TINT, disposeTree } from './kit.js?v=89017a56cf';
-import { buildPlaza, makeHat, shadowBlob } from './plaza.js?v=89017a56cf';
-import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js?v=89017a56cf';
-import { openRoom, accounts, findWallet, gamesBoard } from './net.js?v=89017a56cf';
-import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js?v=89017a56cf';
-import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js?v=89017a56cf';
-import { initSeason, refreshSeason } from './seasonui.js?v=89017a56cf';
-import { initMoneyStrips, refreshBurned } from './moneystrip.js?v=89017a56cf';
-import { TICKET_MAX } from './ranked.js?v=89017a56cf';
-import { levelInfo, clampLevel } from './levels.js?v=89017a56cf';
-import { SERVER, call, token as signInToken } from './gameserver.js?v=89017a56cf';
-import { SPECIALS, cantThrow } from './specials.js?v=89017a56cf';
-import { gearIn, effectsOf, heldWith, gearOfMask, statOf, RETIRED } from './gear.js?v=89017a56cf';
-import { initLottery } from './lotteryui.js?v=89017a56cf';
-import { play as sfx, initSoundButtons } from './sfx.js?v=89017a56cf';
-import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js?v=89017a56cf';
-import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js?v=89017a56cf';
-import { snapMs, autoStartMs, isPublic, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js?v=89017a56cf';
+import './buildcheck.js?v=4028a8e4cb'; // first: the page and this code come from the same publish (buildcheck.js)
+import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo, Sparks, gearTick, GEAR_TINT, disposeTree } from './kit.js?v=4028a8e4cb';
+import { buildPlaza, makeHat, shadowBlob } from './plaza.js?v=4028a8e4cb';
+import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js?v=4028a8e4cb';
+import { openRoom, accounts, findWallet, gamesBoard } from './net.js?v=4028a8e4cb';
+import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js?v=4028a8e4cb';
+import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js?v=4028a8e4cb';
+import { initSeason, refreshSeason } from './seasonui.js?v=4028a8e4cb';
+import { initMoneyStrips, refreshBurned } from './moneystrip.js?v=4028a8e4cb';
+import { createCoach } from './coach.js?v=4028a8e4cb';
+import { TICKET_MAX } from './ranked.js?v=4028a8e4cb';
+import { levelInfo, clampLevel } from './levels.js?v=4028a8e4cb';
+import { SERVER, call, token as signInToken } from './gameserver.js?v=4028a8e4cb';
+import { SPECIALS, cantThrow } from './specials.js?v=4028a8e4cb';
+import { gearIn, effectsOf, heldWith, gearOfMask, statOf, RETIRED } from './gear.js?v=4028a8e4cb';
+import { initLottery } from './lotteryui.js?v=4028a8e4cb';
+import { play as sfx, initSoundButtons } from './sfx.js?v=4028a8e4cb';
+import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js?v=4028a8e4cb';
+import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js?v=4028a8e4cb';
+import { snapMs, autoStartMs, isPublic, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js?v=4028a8e4cb';
 
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
@@ -201,6 +202,29 @@ async function enterRoom(code, quick, opts = {}) {
   renderChrome();
 }
 
+// THE RESULTS CARD'S NEXT STEP (Cody, 2026-10-03), true to what each room does after a match: practice waits for Start, so
+// "Play again" starts the next one at once; a public Auto match starts its next match by itself (no button needed, Leave
+// offered); ranked closes the room, so "Play again" queues the next ranked match (1 ticket); a friends' room goes back to its
+// warm-up. A guest who placed top 3 in a public match is told what signing in would have kept.
+let againWanted = false;
+function endActions(v, sorted) {
+  const secs = Math.ceil(v.time), place = sorted.findIndex((e) => e.peer === me.id) + 1;
+  const nudge = !profile && !me.w && !practice && autoStart && !v.rk && place >= 1 && place <= 3
+    ? `<div class="nudge"><b>You finished ${['1st', '2nd', '3rd'][place - 1]}!</b> Sign in and finishes like this count: top 3 moves your level up and counts toward the daily tasks. <button class="sec" data-act="signin">Sign in</button></div>` : '';
+  if (me.w) return `${nudge}<p class="dim">Next match in ${secs}s</p>`;
+  if (practice) return `${nudge}<div class="endacts"><button class="go" data-act="again">Play again</button><button class="sec" data-act="leave">Leave</button></div>`;
+  if (v.rk) return `${nudge}<div class="endacts"><button class="go" data-act="again-ranked">Play again · 1 ticket</button><button class="sec" data-act="leave">Leave</button></div>`;
+  if (autoStart) return `${nudge}<div class="endacts"><p>Next match starts by itself in about ${secs}s. Stay to play again.</p><button class="sec" data-act="leave">Leave</button></div>`;
+  return `${nudge}<div class="endacts"><p>Back to the warm-up in ${secs}s.</p><button class="sec" data-act="leave">Leave</button></div>`;
+}
+$('#panel').addEventListener('click', (e) => {
+  const act = e.target.closest('[data-act]')?.dataset.act; if (!act) return;
+  if (act === 'again' && practice && sim) { againWanted = true; sim.S.time = 0; } // end → warm-up now, then straight into the next match
+  else if (act === 'again-ranked') { leaveRoom(); enterRoom('', false, { ranked: true }); }
+  else if (act === 'leave') leaveRoom();
+  else if (act === 'signin') $('#signin')?.click();
+});
+
 function startPractice() {
   if (!profile) { me.n = cleanName($('#name')?.value) || me.n; store.set('sq_name', me.n); }
   practice = true; room = null; roomCode = ''; isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)), startOf, specialsOf, levelOf, gearOf }); me.j = Date.now(); me.w = false; ctl.ep = -1; snaps = []; lastEv = 0;
@@ -226,6 +250,7 @@ function tryInPractice(kind) {
 }
 
 function leaveRoom(reason) {
+  againWanted = false;
   endTrial();
   const was = roomCode;
   if (isHost) board.unpublish();
@@ -287,7 +312,7 @@ function tryThrow(tx, tz) {
   if (!e || e.stun || ctl.cool > 0 || e.ammo <= 0 || !(v.phase === 'lobby' || v.phase === 'play')) return;
   if (armed && cantThrow(armed, { ammo: e.ammo, max: maxOf(e), level: me.l || 1 })) armed = ''; // not enough snowballs any more: a plain throw
   ctl.sp = armed; armed = locked; ui.lastHud = ''; // a locked special stays armed for the next throw
-  ctl.t++; ctl.ax = tx; ctl.az = tz; ctl.cool = K.HUMAN_COOL; ctl.throwT = 1; ctl.dirty = true; sfx('throw');
+  ctl.t++; ctl.ax = tx; ctl.az = tz; ctl.cool = K.HUMAN_COOL; ctl.throwT = 1; ctl.dirty = true; sfx('throw'); coach.thrown(); // first-match tips (coach.js)
   const dx = tx - ctl.x, dz = tz - ctl.z, l = Math.hypot(dx, dz) || 1; ctl.face = Math.atan2(dx, dz);
   if (!isHost && !ctl.sp) { // show my own plain snowball instantly; the referee's copy of it is hidden on my screen (specials: the referee's)
     const dist = Math.max(1.5, l), tt = dist / K.BALL_SPEED, mesh = toon(ballGeo, 0.02); mesh.material = ballMat(BY_ID.get(me.a.snow).color); scene.add(mesh);
@@ -477,6 +502,7 @@ const joy = { x: 0, y: 0, id: null, ox: 0, oy: 0, taps: [], moving: false, holdT
 const JOY_TAPS_MS = 700, JOY_HOLD_MS = 350;
 const JOY_MAX = 42, JOY_GRAB = 72; // knob travel; how near its centre a touch must start to steer
 const touchUI = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+const coach = createCoach({ touch: touchUI, el: $('#coach') }); // first-match tips (coach.js)
 function joyHome() { // remembered as a share of the screen, so it survives turning the phone
   let p = null; try { p = JSON.parse(store.get('sh_joy') || 'null'); } catch {}
   const x = p ? p.fx * W : 84, y = p ? p.fy * H : H - (H < 480 ? 84 : 176); // default: bottom left (above the emotes when they span the bottom)
@@ -561,8 +587,9 @@ function renderChrome() {
   const cnt = inRoom() && v && v.phase === 'count' ? Math.max(1, Math.ceil(v.time)) : 0;
   if (cnt !== ui.lastCount) { ui.lastCount = cnt; const c = $('#count'); c.hidden = !cnt; if (cnt) { c.textContent = cnt; c.classList.remove('show'); void c.offsetWidth; c.classList.add('show'); sfx('tick'); } }
   // Out of a match: clear the scoreboard too (it used to linger after Leave, showing over the Avatar tab on Cody's phone).
-  if (!inRoom() || !v) { if (ui.lastCard) { $('#panel').hidden = true; ui.lastCard = ''; } setHud(''); ui.lastBoard = ''; $('#board').hidden = true; return; }
+  if (!inRoom() || !v) { coach.update(null); if (ui.lastCard) { $('#panel').hidden = true; ui.lastCard = ''; } setHud(''); ui.lastBoard = ''; $('#board').hidden = true; return; }
   const m = myEnt(v);
+  coach.update(v, me.w ? null : m); // first-match tips: move, throw, get the hat (coach.js)
   const humans = v.ents.filter((e) => !e.bot);
   // lobby / results panel
   let card = '';
@@ -592,7 +619,7 @@ function renderChrome() {
       ${mvp ? `<div class="verdict">MVP: ${esc(nameOf(mvp))} with ${mvp.score}</div>` : ''}
       ${v.rk && rankNews ? `<div class="verdict">Rank points ${rankNews.change >= 0 ? '+' : '−'}${Math.abs(rankNews.change)}${Number.isFinite(rankNews.points) ? ` · now ${rankNews.points}` : ''}</div>` : ''}
       <ol class="final">${sorted.map((e) => `<li><span>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}</span><b>${e.score}</b></li>`).join('')}</ol>
-      <p class="dim">Back to the lobby in ${Math.ceil(v.time)}s</p>`;
+      ${endActions(v, sorted)}`;
   }
   if (card !== ui.lastCard) {
     ui.lastCard = card; const p = $('#panel'); p.hidden = !card; p.innerHTML = card; p.classList.toggle('intro', v.phase === 'intro');
@@ -769,6 +796,7 @@ function frame() {
         if (cdEnd === null || cdEnd - now > want) cdEnd = now + want;
         if (now >= cdEnd) { sim.introMatch(sim.S.mode); cdEnd = null; }
       } else cdEnd = null;
+      if (practice && againWanted && sim.S.phase === 'lobby') { againWanted = false; sim.introMatch(sim.S.mode); } // results card: Play again
       if (ctl.ep >= 0) sim.setReport(me.id, report());
       sim.step(dt);
       const s = sim.snapshot(); s.hid = me.id; s.hj = me.j; s.pub = autoStart ? 1 : 0; s.cd = cdEnd ? Math.max(0, (cdEnd - now) / 1000) : 0;
@@ -877,6 +905,8 @@ $('#joinBtn').addEventListener('click', () => { const c = cleanCode($('#code').v
 $('#practice').addEventListener('click', startPractice);
 $('#playUnranked').addEventListener('click', () => openLobby('unranked'));
 $('#playBig').addEventListener('click', () => { tabs.show('play'); scrollTo(0, 0); }); // Home's Play now: the Play page and its match types (Cody 2026-10-03)
+// the Games tab's jump buttons: scroll to that game (just under the sticky top bar)
+document.querySelectorAll('[data-jump]').forEach((b) => b.addEventListener('click', () => document.getElementById(b.dataset.jump)?.scrollIntoView({ behavior: 'smooth', block: 'start' })));
 $('#homeClose').addEventListener('click', closeLobby);
 $('#leave').addEventListener('click', () => leaveRoom());
 initSoundButtons();
@@ -910,7 +940,7 @@ const app = {
   onTab: (tab) => {
     ui.lastBoard = '';
     if (tab === 'store' || tab === 'games') refreshBurned(); // the money strip's burned-so-far (kept a minute)
-    if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js?v=89017a56cf')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
+    if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js?v=4028a8e4cb')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
   },
 };
 let gamesMod = null; // Games tab code loads the first time it's opened

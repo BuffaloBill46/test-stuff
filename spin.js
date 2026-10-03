@@ -7,7 +7,7 @@
 //   0× 50% · 1× 30% · 2× 12.5% · 3× 5.625% · 4× 1.25% · 5× 0.625%                                  → pays back 80.0%
 // (Cody, 2026-09-30: "around 80%, remember we lose 16% to fees": 10% burn + 3% tax in + 3% tax out.)
 // Spin (retired) played from the pool that is now the shared Game pool. Both spin sizes ($0.10 and $1.00) shared it.
-import { FEE, IN_PER_DOLLAR, POOL_RULES } from './slots.js?v=89017a56cf';
+import { FEE, IN_PER_DOLLAR, POOL_RULES } from './slots.js?v=4028a8e4cb';
 
 export const MAIN_SLICES = 40, BONUS_SLICES = 12;
 export const STAR = -1;                     // a main-wheel segment that sends you to the bonus wheel

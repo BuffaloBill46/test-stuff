@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="89017a56cf">
+<html lang="en" data-build="4028a8e4cb">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -77,6 +77,18 @@ header.bar { position: fixed; left: 0; right: 0; top: 0; z-index: 5; display: fl
 .eyebrow { font: 700 11px/1.3 var(--digits); letter-spacing: 1px; color: var(--frost); text-transform: uppercase; }
 h1, h2 { font: 800 38px/1 var(--display); margin: 6px 0 8px; color: var(--brim); text-wrap: balance; text-shadow: 2px 2px 0 var(--ink); }
 #home p, #panel p { margin: 0 0 10px; line-height: 1.4; color: #d6ddf0; }
+/* the results card's next step and the guest nudge (online.js endActions) */
+#panel .endacts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 10px; } #panel .endacts p { flex: 1 1 100%; margin: 0; font-size: 14px; }
+#panel .endacts .go { font-size: 22px; padding: 8px 20px; }
+#panel .nudge { margin-top: 10px; padding: 10px 12px; background: rgba(255,190,92,.12); border: 1px solid var(--lamp); font-size: 14px; line-height: 1.35; }
+#panel .nudge b { color: var(--lamp); } #panel .nudge button { display: block; margin-top: 8px; }
+/* first-match tips (coach.js): top centre, clear of the joystick, the results card and the special buttons. Taps go THROUGH
+   the box to the game (a phone throws by tapping anywhere; controls-test caught it eating throws); only Skip takes a tap. */
+#coach { pointer-events: none; position: fixed; z-index: 7; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 70px); width: min(440px, calc(100% - 32px)); box-sizing: border-box; padding: 10px 14px 12px; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; border-color: var(--lamp); }
+#coach i { grid-column: 1 / -1; font: 700 10px/1.3 var(--digits); letter-spacing: 1px; text-transform: uppercase; font-style: normal; color: var(--frost); }
+#coach b { font: 400 24px/1.1 var(--display); color: var(--lamp); } #coach span { grid-column: 1; font-size: 15px; line-height: 1.3; }
+#coach button { pointer-events: auto; grid-column: 2; grid-row: 2 / 4; align-self: center; background: none; border: 1px solid rgba(185,205,242,.4); color: var(--dim); font: 600 13px var(--body); padding: 6px 10px; cursor: pointer; }
+@media (max-width: 600px) { #coach { top: calc(env(safe-area-inset-top, 0px) + 58px); } #coach b { font-size: 20px; } #coach span { font-size: 14px; } }
 .dim { color: var(--dim) !important; font-size: 14px; }
 label { display: block; font: 700 11px/1 var(--body); text-transform: uppercase; letter-spacing: 1.4px; color: var(--dim); margin: 10px 0 5px; }
 input[type=text], input[type=number] { width: 100%; font: 500 17px/1.2 var(--body); color: var(--text); background: #0e1328; border: 2px solid var(--ink); box-shadow: inset 0 0 0 1px rgba(185,205,242,.2); border-radius: 3px; padding: 9px 10px; -webkit-user-select: text; user-select: text; }
@@ -224,6 +236,12 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 .moneystrip .ms.lotto b { font: inherit; font-weight: 800; color: var(--lamp); }
 @media (max-width: 900px) { .moneystrip { grid-template-columns: repeat(2, minmax(0, 1fr)); } .moneystrip .ms:nth-child(3) { border-left: 0; } .moneystrip .ms:nth-child(n+3) { border-top: 2px solid var(--ink); } }
 @media (max-width: 420px) { .moneystrip .ms.total b { font-size: 15px; } .moneystrip .ms { padding: 8px 10px; gap: 8px; } .moneystrip .ms > b { font-size: 20px; } .moneystrip .ms span { font-size: 13px; } }
+/* Games tab: jump buttons and the folded notes */
+.jumps { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+.jumps button { font: 700 14px var(--body); color: var(--text); background: var(--plaque); border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); padding: 6px 12px; cursor: pointer; }
+.jumps button:hover, .jumps button:focus-visible { background: var(--plaque-hi); }
+#slots, #drop, #stocking, #winners { scroll-margin-top: 84px; } /* a jump lands below the fixed top bar */
+.goodtoknow { margin: 8px 0; } .goodtoknow summary { cursor: pointer; font-size: 14px; color: var(--frost); } .goodtoknow p { margin: 8px 0 0; }
 /* The Season card (seasonui.js). One accent per season: pumpkin for Halloween; the rest is the page's own plaque language. */
 .season { --ss: #f2862e; --ss-dim: rgba(242,134,46,.16); margin-bottom: 14px; }
 .season[data-season="thanksgiving"] { --ss: #d9a441; --ss-dim: rgba(217,164,65,.16); }
@@ -962,9 +980,13 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       <div class="ms total"><i>Burned so far</i><b data-burned>—</b></div>
     </section>
     <div class="hero"><div class="eyebrow">Santa Hat Games · single player</div><h1>Santa Hat Games</h1>
-      <p>Quick games you play on your own. Every entry: 10% burned, 90% into the one Game pool all three games pay from. <a href="./guide.html#games">How each game works</a></p>
-      <p class="taxnote" id="lockNote"><b>Price locked per run</b> The SANTA price is locked when you buy a run. Everything that run wins is paid in SANTA at that same price, even if the price moves while it plays.</p>
-      <p class="taxnote"><b>3% SANTA tax</b> Winnings are paid in SANTA and arrive 3% lighter; the token does that, not this game.</p>
+      <p>Quick games you play on your own, all paying from the one Game pool. <a href="./guide.html#games">How each game works</a></p>
+      <!-- Jump straight to a game (Cody's list, 2026-10-03: a tidier Games tab); buttons, since the address's #part picks the tab -->
+      <nav class="jumps" aria-label="Jump to a game"><button type="button" data-jump="slots">Big Hat</button><button type="button" data-jump="drop">Snowball Drop</button><button type="button" data-jump="stocking">Stocking Stuffer</button><button type="button" data-jump="winners">Recent winners</button></nav>
+      <details class="goodtoknow"><summary>Good to know: the price is locked per run · the 3% SANTA tax</summary>
+        <p class="taxnote" id="lockNote"><b>Price locked per run</b> The SANTA price is locked when you buy a run. Everything that run wins is paid in SANTA at that same price, even if the price moves while it plays.</p>
+        <p class="taxnote"><b>3% SANTA tax</b> Winnings are paid in SANTA and arrive 3% lighter; the token does that, not this game.</p>
+      </details>
       <p class="testnote"><b>Test version</b> These games use pretend money for now. Nothing costs SANTA and nothing pays out SANTA yet; real payments open after testing.</p>
       <p class="livechip" id="liveMarket" aria-live="polite">Checking the live SANTA price…</p></div>
     <section class="block plaque slotsbox fur" id="slots">
@@ -1099,7 +1121,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       <p class="dim">The full payout table and the 11 paylines are under the machine.</p>
       <p class="dim">Prizes are for a $1 pull. Winnings are paid in SANTA and arrive 3% lighter (the token's tax).</p>
     </dialog>
-    <section class="block plaque winners">
+    <section class="block plaque winners" id="winners">
       <h2>Recent winners</h2>
       <p class="dim" id="winNote">Every Santa Hat game. Demo: wins from this browser only; once payouts are real this shows everyone's.</p>
       <ol id="winList"></ol>
@@ -1207,9 +1229,10 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
   <div id="gamesList"><p class="dim">Loading…</p></div>
 </section>
 <section id="panel" class="plaque" hidden></section>
+<div id="coach" class="plaque" hidden aria-live="polite"></div>
 <div id="emotes" hidden></div>
 <div id="joy" hidden></div>
 <div id="zoom" hidden><button id="zoomIn" aria-label="Zoom in">+</button><button id="zoomOut" aria-label="Zoom out">−</button></div>
-<script type="module" src="./online.js?v=89017a56cf"></script>
+<script type="module" src="./online.js?v=4028a8e4cb"></script>
 </body>
 </html>
