@@ -93,7 +93,9 @@ function match({ gear = {}, lv = {}, seed = 7 } = {}) {
 { const m = match({ gear: { b: ['pumpkin'] } }); m.sim.S.hat.st = 'head'; m.sim.S.hat.holder = m.P('b').id;
   m.shoot(); assert.equal(m.sim.S.hat.holder, m.P('b').id, 'a hit that only takes an extra hit leaves the hat on');
   m.shoot(); assert.notEqual(m.sim.S.hat.holder, m.P('b').id, 'the knock-down knocks it off'); }
-{ const m = match({ gear: { b: ['pumpkin'] } }); m.shoot(); assert.equal(m.P('b').xh, 0); m.sim.S.time = 0.01; m.run(K.BREAK_TIME + 0.2); assert.equal(m.sim.S.round, 2); assert.equal(m.P('b').xh, 1, 'a new round starts with every extra hit'); }
+{ const m = match({ gear: { b: ['pumpkin'] } }); m.shoot(); assert.equal(m.P('b').xh, 0); m.sim.S.time = 0.01;
+  if (K.ROUNDS > 1) { m.run(K.BREAK_TIME + 0.2); assert.equal(m.sim.S.round, 2); assert.equal(m.P('b').xh, 1, 'a new round starts with every extra hit'); }
+  else { m.run(0.2); assert.equal(m.sim.S.phase, 'end', 'one round (Cody 2026-10-03): the match ends when the round does'); } }
 
 // Elf Hat: stun twice as long (normal and Ice Ball), half size; a hit still takes just ONE extra hit (Cody, 2026-10-01).
 { const m = match({ gear: { b: ['elfhat'] } }); const s = m.shoot(); assert.ok(s > K.STUN && s <= 2 * K.STUN, `Elf Hat: ${s.toFixed(2)} s of ${2 * K.STUN}`); }

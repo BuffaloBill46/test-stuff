@@ -14,7 +14,7 @@
 // server → page: { t: 'peers', ps, own } · { t: 'snap', d } · { t: 'emote', d } · { t: 'board', games } · { t: 'err', why }
 //   · { t: 'counted', d: { place, level, xp, up } } my Auto match finish counted toward levels (server-recorded)
 import { createSim, K } from '../mockups/sim.js';
-import { snapMs, autoStartMs, isPublic, styleOf, botName, refereeOpts } from '../mockups/refcore.js';
+import { snapMs, autoStartMs, isPublic, styleOf, botName, refereeOpts, modeAllowed } from '../mockups/refcore.js';
 import { settleRanked, RULES } from '../mockups/ranked.js';
 import { cleanAvatar, BY_ID, DEFAULT_AVATAR, SB_SLOTS, GEAR_SLOTS } from '../mockups/catalog.js';
 import { clampLevel } from '../mockups/levels.js';
@@ -46,7 +46,7 @@ export function guestLook(a) {
 //   special snowballs count in ranked (Cody's open question; on = as they're sold today).
 export const RANKED_PAUSED = 'Ranked is paused right now. Try Unranked.';
 // rankedPaused() → true while Cody has ranked paused (worker/referee.mjs: the file /etc/santa/ranked-paused exists).
-export function createReferee({ now = () => Date.now(), rand = Math.random, identify = null, finish = null, ranked = null, rankedSpecials = true, rankedPaused = () => false, log = console } = {}) {
+export function createReferee({ now = () => Date.now(), rand = Math.random, identify = null, finish = null, ranked = null, rankedSpecials = true, rankedPaused = () => false, log = console, modeAllowed: allowMode = modeAllowed } = {}) { // allowMode: team play paused (refcore TEAM_PAUSED) unless a test says otherwise
   const rooms = new Map(); // code → room
   let rankedSeq = 0;
   // A restart: tickets still held for rooms of an earlier run come back (those rooms are gone).
@@ -55,7 +55,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
   let boardAt = 0;
 
   function makeRoom(code) {
-    const room = { code, conns: new Map(), auto: isPublic(code), mode: code[1] === 'T' && isPublic(code) ? 'team' : 'ffa', cdEnd: null, lastSnap: 0, emoteAt: new Map(),
+    const room = { code, conns: new Map(), auto: isPublic(code), mode: code[1] === 'T' && isPublic(code) && allowMode('team') ? 'team' : 'ffa', cdEnd: null, lastSnap: 0, emoteAt: new Map(),
       ranked: isPublic(code) && code[1] === 'R', style: styleOf(code), rid: RID + Math.floor(rand() * 2 ** 48).toString(36) + now().toString(36), started: false, lastPhase: 'lobby' };
     room.info = (e) => room.conns.get(e.peer)?.me;
     room.sim = createSim(rand, refereeOpts(room.info));
@@ -171,7 +171,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
           room.emoteAt.set(me.id, now()); sendAll(room, { t: 'emote', d: { p: me.id, e } }, me.id); return;
         }
         if ((m.t === 'start' || m.t === 'mode') && !room.auto && owner(room) === me.id && room.sim.S.phase === 'lobby') {
-          if (m.t === 'mode' && (m.mode === 'ffa' || m.mode === 'team')) { room.sim.S.mode = m.mode; room.sim.syncRoster(players(room).map((x) => x.id)); }
+          if (m.t === 'mode' && allowMode(m.mode)) { room.sim.S.mode = m.mode; room.sim.syncRoster(players(room).map((x) => x.id)); }
           if (m.t === 'start') room.sim.introMatch(room.sim.S.mode);
         }
       },
@@ -226,7 +226,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
   // a new room of a ticked type (FFA first when both are ticked). Never a match already being played. Null when all are full.
   // styles: 'normal' (plain play) and/or 'gear' (special snowballs and gear count), ticked the same way.
   function pickAuto(modes, styles) {
-    const want = (Array.isArray(modes) ? modes : []).filter((x) => x === 'ffa' || x === 'team');
+    const want = (Array.isArray(modes) ? modes : []).filter(allowMode); // team play paused: TEAM boxes fall back to FFA
     if (!want.length) want.push('ffa');
     const kinds = (Array.isArray(styles) ? styles : []).filter((x) => x === 'normal' || x === 'gear');
     if (!kinds.length) kinds.push('gear');

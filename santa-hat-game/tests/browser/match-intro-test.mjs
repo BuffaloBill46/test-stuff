@@ -61,7 +61,7 @@ console.log('1. No game server: Start opens the load screen; nobody moves or thr
   check(JSON.stringify(await mine(p)) === JSON.stringify(at2), 'no moving during the countdown');
   await p.evaluate(() => { window.__sq.sim.S.time = 0; }); // to round 1
   await p.waitForFunction(() => window.__sq.view?.phase === 'play', null, { timeout: 15000 });
-  check(await until(p, () => document.querySelector('#count').hidden && /Round 1 of 3/.test(document.querySelector('#banner').textContent)), 'round 1: the number goes, "Round 1 of 3" shows');
+  check(await until(p, () => document.querySelector('#count').hidden && /^Go!$|Round 1 of/.test(document.querySelector('#banner').textContent)), 'round 1: the number goes, "Go!" shows (one round since 2026-10-03)');
   check(await until(p, () => !!document.querySelector('#hud .stat')), 'the HUD is back');
   const at3 = await mine(p); await p.keyboard.down('KeyD');
   check(await p.waitForFunction((x) => { const s = window.__sq, e = s.sim.S.ents.find((q) => q.peer === s.me.id); return Math.abs(e.x - x) > 0.5; }, at3.x, { timeout: 20000 }).then(() => true, () => false), 'and now I can move');

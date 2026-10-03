@@ -88,7 +88,7 @@ function runMatch(mode, humansStart, churn) {
     if (simNow.S.phase === 'lobby' && phases.includes('end')) break;
     if (t > K.ROUNDS * K.ROUND_TIME + (K.ROUNDS - 1) * K.BREAK_TIME + K.END_TIME + 5) fail('match never ended', { phases, t });
   }
-  const want = ['play', 'break', 'play', 'break', 'play', 'end', 'lobby'];
+  const want = [...Array.from({ length: K.ROUNDS }, (_, i) => (i ? ['break', 'play'] : ['play'])).flat(), 'end', 'lobby']; // K.ROUNDS rounds (1 since 2026-10-03)
   if (JSON.stringify(phases) !== JSON.stringify(want)) fail('phase order', phases);
   matches++;
   return sim;

@@ -13,6 +13,9 @@ export const autoStartMs = (humans) => (humans >= 2 ? 15000 : 25000);
 // gear: the referee strips them), PFG1 / PTG1 special gear (everything a player owns counts). The older PF1–PF5 / PT1–PT5 count
 // as special gear.
 // Ranked rooms PR[N|G]1-99 have the same style letter (Cody 2026-10-02); PR1-99 with no letter is an older gear room.
+// TEAM PLAY PAUSED (Cody, 2026-10-03): no Nice vs Naughty anywhere (Auto match, private rooms, the match server). Set false to bring it back.
+export const TEAM_PAUSED = true;
+export const modeAllowed = (m) => m === 'ffa' || (m === 'team' && !TEAM_PAUSED);
 export const isPublic = (c) => /^P(?:[FT][NG]?[1-5]|R[NG]?[1-9]\d?)$/.test(c);
 export const styleOf = (c) => (isPublic(c) && c[2] === 'N' ? 'normal' : 'gear');
 

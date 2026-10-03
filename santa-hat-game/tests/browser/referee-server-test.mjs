@@ -44,8 +44,9 @@ try {
   check(await until(A.p, () => !!document.querySelector('#start')), 'the owner (first in) gets Start');
   check(!(await B.p.evaluate(() => !!document.querySelector('#start'))), 'the other player does not');
   console.log('2. Mode and Start from the owner, run by the server');
-  await A.p.evaluate(() => document.querySelector('[data-mode="team"]')?.click());
-  check(await until(B.p, () => window.__sq.view?.mode === 'team'), "the owner's mode change reaches Bob through the server");
+  // team play paused (Cody 2026-10-03): no Nice vs Naughty button, and the room stays "Everyone vs the hat" on both screens
+  check(!(await A.p.evaluate(() => !!document.querySelector('[data-mode="team"]'))) && !!(await A.p.evaluate(() => document.querySelector('[data-mode="ffa"]'))), 'team play paused: only "Everyone vs the hat" is offered');
+  check(await until(B.p, () => window.__sq.view?.mode === 'ffa'), 'the room is FFA on both screens');
   await A.p.evaluate(() => document.querySelector('#start')?.click());
   check(await until(B.p, () => window.__sq.view?.phase === 'intro'), 'Start → the load screen on both screens');
   check(await until(A.p, () => window.__sq.view?.phase === 'play', null, 40000), 'round 1 starts after the countdown');

@@ -424,3 +424,12 @@ Also learned this pass:
 - Chrome never retries a failed dynamic import() for the life of the page, so a "try again" message after one has to say
   "reload".
 - The worker's payout memo is "Santa Hat payouts #<id>" (plural).
+
+## `node --check file.js` is not the browser's check (2026-10-03)
+A `//` note put in the middle of a line in online.js swallowed the code after it, and the game page stopped loading.
+`node --check online.js` passed anyway, because Node read the .js file as an old-style script, not as a module.
+Every browser test then timed out on the page load.
+Rules:
+- Check page code as a module: `node --input-type=module --check < file.js`.
+- deploy-pages.sh now runs this on every file and refuses to publish if one fails.
+- Put notes on their own line, or at the very end of a line (the third time this exact slip has bitten).

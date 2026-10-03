@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import { createReferee, MAX_WATCHERS } from '../server/referee.js';
 import { K, PHASES } from '../mockups/sim.js';
+import { TEAM_PAUSED } from '../mockups/refcore.js';
 
 let t = 1_000_000;
 const ref = createReferee({ now: () => t });
@@ -36,7 +37,7 @@ assert.ok(Math.abs(alice()[4] - before) < 3, 'a teleport is refused (the referee
 const scoreBefore = alice()[11];
 a.say({ t: 'snap', d: { s: 1e9, E: [[0, 'alice01', 0, 0, 0, 0, 0, 0, 0, 0, 0, 99999]] } }); a.say({ t: 'score', n: 99999 });
 run(0.2); assert.ok(alice()[11] < 99999 && alice()[11] >= scoreBefore, 'fake snapshots/scores from a page are ignored');
-run(3 * K.ROUND_TIME + 2 * K.BREAK_TIME + 5);
+run(K.ROUNDS * K.ROUND_TIME + (K.ROUNDS - 1) * K.BREAK_TIME + 5); // every round (1 since 2026-10-03), into the end screen
 s = a.last('snap').d; assert.equal(PHASES[s.ph], 'end', 'the match ran to the end on the server'); assert.ok(Array.isArray(s.R), 'with a result');
 assert.ok(s.E.some((r) => r[11] > 0), 'someone scored');
 
@@ -52,7 +53,7 @@ o.say({ t: 'join', code: 'ab12', me: me('owner01') }); t += 10; p.say({ t: 'join
 run(1);
 p.say({ t: 'start' }); run(0.5); assert.equal(PHASES[o.last('snap').d.ph], 'lobby', 'a non-owner cannot start');
 p.say({ t: 'mode', mode: 'team' }); run(0.5); assert.equal(o.last('snap').d.md, 0, 'a non-owner cannot change the mode');
-o.say({ t: 'mode', mode: 'team' }); run(0.5); assert.equal(o.last('snap').d.md, 1, 'the owner can');
+o.say({ t: 'mode', mode: 'team' }); run(0.5); assert.equal(o.last('snap').d.md, TEAM_PAUSED ? 0 : 1, TEAM_PAUSED ? 'team play is paused: even the owner gets FFA (Cody 2026-10-03)' : 'the owner can');
 o.say({ t: 'start' }); run(0.5); assert.equal(PHASES[o.last('snap').d.ph], 'intro', 'the owner starts the match');
 p.got.length = 0; o.say({ t: 'emote', d: { e: 1 } }); o.say({ t: 'emote', d: { e: 2 } });
 assert.equal(p.got.filter((m) => m.t === 'emote').length, 1, 'one emote per 1.2 s');
@@ -104,7 +105,7 @@ bad.h.message('not json'); assert.match(bad.last('err').why, /JSON/);
 console.log('OK: phase 2: saved level/look for signed-in players, forged sign-ins play as guests, one seat per account, Auto match finishes recorded once by the server and told to the player');
 // --- Auto match (Cody, 2026-10-02): tick FFA/TEAM and normal/special gear, the server pairs you with the best waiting game
 {
-  let at = 9_000_000; const r3 = createReferee({ now: () => at });
+  let at = 9_000_000; const r3 = createReferee({ now: () => at, modeAllowed: () => true }); // the team-room logic, as it works when team play is on
   const c3 = () => { const c = { got: [], send: (x) => c.got.push(JSON.parse(x)) }; c.h = r3.connect(c); c.say = (m) => c.h.message(JSON.stringify(m)); c.last = (k) => [...c.got].reverse().find((m) => m.t === k); return c; };
   const settle = () => new Promise((r) => setTimeout(r, 0));
   const auto = async (id, modes, styles, extra = {}) => { const c = c3(); c.say({ t: 'auto', modes, styles, me: me(id, extra) }); await settle(); return c; };
@@ -131,6 +132,18 @@ console.log('OK: phase 2: saved level/look for signed-in players, forged sign-in
   // the games list says each room's style
   const lst = c3(); lst.say({ t: 'board' }); const byCode = Object.fromEntries(lst.last('board').games.map((x) => [x.code, x.style]));
   assert.deepEqual([byCode.PTN1, byCode.PFG2], ['normal', 'gear']);
+}
+// TEAM PLAY PAUSED (Cody 2026-10-03), as the live server runs: ticking only TEAM gets an FFA room, and a TEAM room code plays FFA
+if (TEAM_PAUSED) {
+  let t4 = 9_500_000; const r4 = createReferee({ now: () => t4 });
+  const c4 = () => { const c = { got: [], send: (x) => c.got.push(JSON.parse(x)) }; c.h = r4.connect(c); c.say = (m) => c.h.message(JSON.stringify(m)); c.last = (k) => [...c.got].reverse().find((m) => m.t === k); return c; };
+  const t1 = c4(); t1.say({ t: 'auto', modes: ['team'], styles: ['gear'], me: me('paus0001') }); await new Promise((r) => setTimeout(r, 0));
+  assert.equal(t1.last('peers')?.code, 'PFG1', 'team play paused: TEAM-only tick gets an FFA room');
+  const t2 = c4(); t2.say({ t: 'join', code: 'ptg1', me: me('paus0002') }); await new Promise((r) => setTimeout(r, 0));
+  for (let i = 0; i < 30; i++) { t4 += 33; r4.tick(1 / 30); } // the server's clock runs: snapshots go out
+  const snap2 = t2.last('snap')?.d;
+  assert.ok(snap2 && snap2.md === 0, `a TEAM room code plays FFA while paused (snapshot mode ${snap2?.md})`);
+  console.log('OK: team play paused: TEAM ticks and TEAM room codes play FFA');
 }
 console.log('OK: Auto match: ticked types and styles, fullest waiting room first, styles never mix, normal play strips specials and gear on the server, running matches never picked');
 console.log('OK: server referee: rooms by the server clock, auto start, a full match to the end, moves checked, fakes ignored, honest games list, owner-only controls, caps');

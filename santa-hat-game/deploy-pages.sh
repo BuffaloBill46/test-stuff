@@ -5,6 +5,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 SRC=santa-hat-game/mockups
+# Never publish a broken page: every game file must parse as a MODULE, the way the browser loads it (2026-10-03: a `//` note
+# put mid-line swallowed code; `node --check file.js` passed because it reads .js as an old-style script; the site wouldn't load).
+bad=0; for f in "$SRC"/*.js; do node --input-type=module --check < "$f" >/dev/null 2>&1 || { echo "NOT PUBLISHED: $f does not parse as a module"; bad=1; }; done
+[ "$bad" = 0 ] || exit 1
 OUT=$(mktemp -d)
 trap 'git worktree remove --force "$OUT" 2>/dev/null || true' EXIT
 
