@@ -2,7 +2,7 @@
 // like every game here), the Drop pool readout (it shares that pool), the row of 8 gift slots that is also the pay table, the
 // "How to win" panel and your last turns. Every turn runs in the house's order (paid → secret locked → drawn → revealed;
 // playcredits.js / house.js): the WHOLE turn is decided before the first stocking jiggles; the board only shows it.
-// Celebrations follow the money (LESSONS: no losses dressed as wins): 3+ gifts celebrate; 2 gifts (1.75×) a light touch;
+// Celebrations follow the money (LESSONS: no losses dressed as wins): 3+ gifts celebrate; 2 gifts (2.5×) a light touch;
 // 1 gift (0.5×) is a loss and is said plainly. Winners absorb SANTA's 3% tax, and the messages say so.
 import { PAYS, WAYS, TOTAL, GIFTS, STOCKINGS, ROW, payback, realWin, topMult } from './stocking.js';
 import { createStockings } from './stockingboard.js';
