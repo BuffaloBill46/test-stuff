@@ -44,7 +44,7 @@ assert.ok(s.E.some((r) => r[11] > 0), 'someone scored');
 // --- the live games list: honest (the server makes it), the page's fields
 const l = conn('lobby'); l.say({ t: 'board' });
 const g = l.last('board').games.find((x) => x.code === 'PF1');
-assert.deepEqual(Object.keys(g).sort(), ['code', 'humans', 'leader', 'lscore', 'mode', 'phase', 'ranked', 'round', 'style', 'time', 'watchers'].sort());
+assert.deepEqual(Object.keys(g).sort(), ['code', 'free', 'humans', 'leader', 'lscore', 'mode', 'phase', 'ranked', 'round', 'starts', 'style', 'time', 'watchers'].sort());
 assert.equal(g.humans, 2); assert.equal(g.phase, 'end'); assert.ok(g.leader, 'names the leader');
 
 // --- private room: only the owner may pick the mode and start; emotes are rate-limited
@@ -151,3 +151,40 @@ if (TEAM_PAUSED) {
 }
 console.log('OK: Auto match: ticked types and styles, fullest waiting room first, styles never mix, normal play strips specials and gear on the server, running matches never picked');
 console.log('OK: server referee: rooms by the server clock, auto start, a full match to the end, moves checked, fakes ignored, honest games list, owner-only controls, caps');
+
+// --- AUTO MATCH TOGETHER (Cody 2026-10-03): a friends' room's host takes the group into a public Auto match. The server
+// picks a public room with seats for ALL of them, holds those seats 20 s, and tells everyone where to go; a stranger can't
+// take a held seat; holds run out; only the host, before a match, can do it.
+{ let tt = 9_000_000; const r5 = createReferee({ now: () => tt });
+  const c5 = (id) => { const c = { got: [], send: (x) => c.got.push(JSON.parse(x)) }; c.h = r5.connect(c); c.say = (m) => c.h.message(JSON.stringify(m)); c.last = (k) => [...c.got].reverse().find((m) => m.t === k); c.id = id; return c; };
+  // a public room with 5 strangers already waiting (3 seats left)
+  const strangers = Array.from({ length: 5 }, (_, i) => c5('strngr' + i));
+  strangers.forEach((c, i) => { tt += 10; c.say({ t: 'join', code: 'PFG1', me: me(c.id) }); });
+  // a friends' room of 3
+  const host = c5('host001'), f1 = c5('frnd001'), f2 = c5('frnd002');
+  for (const c of [host, f1, f2]) { tt += 10; c.say({ t: 'join', code: 'FRND42', me: me(c.id) }); }
+  f1.say({ t: 'together', modes: ['ffa'], styles: ['gear'] });
+  assert.ok(/host/.test(f1.last('err')?.why || ''), 'only the host can take the group');
+  host.say({ t: 'together', modes: ['ffa'], styles: ['gear'] });
+  const go = host.last('goto');
+  assert.ok(go && go.code === 'PFG1' && f1.last('goto')?.code === 'PFG1' && f2.last('goto')?.code === 'PFG1', `everyone is sent to the waiting public room with exactly 3 seats left (${JSON.stringify(go)})`);
+  const board5 = () => r5.board().find((g) => g.code === 'PFG1');
+  assert.equal(board5().free, 0, 'the games list shows it full: 5 waiting + 3 held');
+  // a stranger tries to take a held seat; Auto match doesn't offer the room either
+  const s6 = c5('strngr6'); s6.say({ t: 'join', code: 'PFG1', me: me('strngr6') });
+  assert.ok(/full/.test(s6.last('err')?.why || ''), 'a stranger can\'t take a held seat');
+  const s7 = c5('strngr7'); s7.say({ t: 'auto', modes: ['ffa'], styles: ['gear'], me: me('strngr7') });
+  assert.notEqual(s7.last('peers')?.code, 'PFG1', 'Auto match sends a stranger elsewhere');
+  // the group arrives (each leaves the friends' room and joins with the normal join)
+  for (const c of [host, f1, f2]) { c.h.gone(); const n = c5(c.id); tt += 10; n.say({ t: 'join', code: 'PFG1', me: me(c.id) }); assert.equal(n.last('peers')?.code, 'PFG1', `${c.id} takes its held seat`); }
+  assert.equal(board5().humans, 8, 'all 8 seated');
+  // a group bigger than any waiting room's free seats gets a fresh room; holds run out after 20 s
+  const big = Array.from({ length: 4 }, (_, i) => c5('big00' + i));
+  big.forEach((c) => { tt += 10; c.say({ t: 'join', code: 'BIG777', me: me(c.id) }); });
+  big[0].say({ t: 'together', modes: ['ffa'], styles: ['gear'] });
+  const bigTo = big[0].last('goto')?.code;
+  assert.ok(bigTo && bigTo !== 'PFG1', `a group of 4 goes to a room with 4 free seats (${bigTo})`);
+  { const g = r5.board().find((x) => x.code === bigTo); assert.equal(g ? g.free : 4, 8 - (g ? g.humans : 0) - 4, `its 4 seats held (${g ? g.humans : 0} already there)`); }
+  tt += 21_000; const late = c5('strngr9'); late.say({ t: 'join', code: bigTo, me: me('strngr9') });
+  assert.equal(late.last('peers')?.code, bigTo, 'after 20 s the holds are gone: the seats are free again'); }
+console.log('OK: Auto match together: the host only; a public room with seats for the whole group; seats held 20 s (no stranger takes them, Auto match skips the room, the games list shows them taken); the group takes them; bigger groups get a fresh room');

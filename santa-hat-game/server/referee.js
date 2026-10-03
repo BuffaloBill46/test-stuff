@@ -64,6 +64,14 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
     return room;
   }
   const players = (room) => [...room.conns.values()].map((c) => c.me).filter((m) => !m.w).sort((a, b) => (better(a, b) ? -1 : 1));
+  // AUTO MATCH TOGETHER (Cody 2026-10-03: friends play public matches as a group): seats held in a public room for a friends'
+  // group while its players move over (code → Map(player id → until)), so strangers can't take them in between. Held 20 s.
+  const holds = new Map(), HOLD_MS = 20_000;
+  const heldFor = (code, except = null) => { const h = holds.get(code); if (!h) return 0; const r = rooms.get(code); let n = 0;
+    for (const [id, until] of h) { if (until <= now() || r?.conns.has(id)) h.delete(id); else if (id !== except) n++; }
+    if (!h.size) holds.delete(code); return n; };
+  // seats a public room has left: players in it plus seats held for a group on its way
+  const seatsLeft = (code, except = null) => K.MAX_HUMANS - (rooms.get(code) ? players(rooms.get(code)).length : 0) - heldFor(code, except);
   const owner = (room) => players(room)[0]?.id || null;
   const sendAll = (room, msg, skip) => { const s = JSON.stringify(msg); for (const [id, c] of room.conns) if (id !== skip) c.send(s); };
   const peersMsg = (room) => ({ t: 'peers', code: room.code, own: owner(room), ps: [...room.conns.values()].map(({ me }) => ({ id: me.id, n: me.n, j: me.j, a: me.a, w: me.w, l: me.l, pid: me.pid })) });
@@ -96,7 +104,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
       if (r.ranked && !p.w) { if (!r.conns.size) rooms.delete(code); return err('Ranked games are joined with Auto match.'); }
       const w = !!p.w, ps = [...r.conns.values()].map((c) => c.me);
       if (w && ps.filter((x) => x.w).length >= MAX_WATCHERS) return err(`That game already has ${MAX_WATCHERS} watchers. Try another.`);
-      if (!w && ps.filter((x) => !x.w).length >= K.MAX_HUMANS) return err(`Room ${code} is full (${K.MAX_HUMANS} players).`);
+      if (!w && seatsLeft(code, p.id) <= 0) { if (!r.conns.size) rooms.delete(code); return err(`Room ${code} is full (${K.MAX_HUMANS} players).`); } // held seats count
       // The joining time is the SERVER's clock (a page can't claim it joined first to take over the room's controls).
       me = who ? { id: p.id, n: cleanName(who.n) || 'Player', j: now(), a: cleanAvatar(who.a), w, l: clampLevel(who.l), pid: who.pid }
         : identify ? { id: p.id, n: cleanName(p.n) || 'Player', j: now(), a: guestLook(p.a), w, l: 1, pid: null }
@@ -170,6 +178,14 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
           if (me.w || now() - at < 1200 || !(e >= 0 && e < 8)) return;
           room.emoteAt.set(me.id, now()); sendAll(room, { t: 'emote', d: { p: me.id, e } }, me.id); return;
         }
+        // a friends' room's owner takes the whole group into a public Auto match: seats held there, then everyone is sent over
+        if (m.t === 'together') {
+          if (room.auto || owner(room) !== me.id || room.sim.S.phase !== 'lobby') return err('Only the room host can do that, before a match starts.');
+          const group = players(room), code = pickAuto(m.modes, m.styles, group.length);
+          if (!code) return err('No public game has room for your whole group right now. Try again in a moment.');
+          const h = holds.get(code) || new Map(); for (const x of group) h.set(x.id, now() + HOLD_MS); holds.set(code, h);
+          sendAll(room, { t: 'goto', code }); return;
+        }
         if ((m.t === 'start' || m.t === 'mode') && !room.auto && owner(room) === me.id && room.sim.S.phase === 'lobby') {
           if (m.t === 'mode' && allowMode(m.mode)) { room.sim.S.mode = m.mode; room.sim.syncRoster(players(room).map((x) => x.id)); }
           if (m.t === 'start') room.sim.introMatch(room.sim.S.mode);
@@ -225,16 +241,16 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
   // ticked types with a free seat, the one with the most players already in it (ties: the one starting soonest). None waiting:
   // a new room of a ticked type (FFA first when both are ticked). Never a match already being played. Null when all are full.
   // styles: 'normal' (plain play) and/or 'gear' (special snowballs and gear count), ticked the same way.
-  function pickAuto(modes, styles) {
+  function pickAuto(modes, styles, n = 1) { // n: seats needed (a friends' group moving together)
     const want = (Array.isArray(modes) ? modes : []).filter(allowMode); // team play paused: TEAM boxes fall back to FFA
     if (!want.length) want.push('ffa');
     const kinds = (Array.isArray(styles) ? styles : []).filter((x) => x === 'normal' || x === 'gear');
     if (!kinds.length) kinds.push('gear');
-    const open = [...rooms.values()].filter((r) => r.auto && !r.ranked && want.includes(r.mode) && kinds.includes(r.style) && r.sim.S.phase === 'lobby' && players(r).length < K.MAX_HUMANS);
+    const open = [...rooms.values()].filter((r) => r.auto && !r.ranked && want.includes(r.mode) && kinds.includes(r.style) && r.sim.S.phase === 'lobby' && seatsLeft(r.code) >= n);
     open.sort((a, b) => players(b).length - players(a).length || (a.cdEnd ?? Infinity) - (b.cdEnd ?? Infinity));
     if (open.length && players(open[0]).length) return open[0].code;
     for (const mode of ['ffa', 'team'].filter((x) => want.includes(x))) for (const style of ['gear', 'normal'].filter((x) => kinds.includes(x))) {
-      for (let n = 1; n <= 5; n++) { const code = 'P' + (mode === 'team' ? 'T' : 'F') + (style === 'normal' ? 'N' : 'G') + n; if (!rooms.has(code)) return code; }
+      for (let k = 1; k <= 5; k++) { const code = 'P' + (mode === 'team' ? 'T' : 'F') + (style === 'normal' ? 'N' : 'G') + k; if (!rooms.has(code) && seatsLeft(code) >= n) return code; }
     }
     return open[0]?.code || null; // every room of these types exists: an empty waiting one, if any
   }
@@ -285,7 +301,8 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
       const S = r.sim.S, top = [...S.ents].sort((a, b) => b.score - a.score)[0], ps = [...r.conns.values()].map((c) => c.me);
       const nameOf = (e) => (e.bot ? botName(e.id) : r.conns.get(e.peer)?.me.n || 'Player');
       return { code: r.code, mode: S.mode, style: r.style, ranked: r.ranked ? 1 : 0, phase: S.phase, round: S.round, time: Math.ceil(S.time),
-        humans: ps.filter((p) => !p.w).length, watchers: ps.filter((p) => p.w).length,
+        humans: ps.filter((p) => !p.w).length, watchers: ps.filter((p) => p.w).length, free: Math.max(0, seatsLeft(r.code)),
+        starts: S.phase === 'lobby' && r.cdEnd ? Math.max(0, Math.ceil((r.cdEnd - now()) / 1000)) : null, // seconds to the start (waiting games)
         leader: top && S.phase !== 'lobby' ? nameOf(top) : '', lscore: top ? top.score : 0 };
     });
   }
