@@ -42,6 +42,29 @@
 6. **The final "GO"**, after Claude reports everything ready. Then **one 10¢ play with your own Phantom on mainnet** (the dry
    run). A win, if any, should arrive within a minute.
 
+## Done since the checklist was written (all live on the test network, tested)
+- **Security review done**, every finding checked by Claude before acting on it. Fixed:
+  - The old Supabase game server (still on test settings, writing to the same database) is shut. After the switch, test SANTA
+    could have bought plays there that got paid in real SANTA.
+  - The switch-over script clears every test record that could ever be paid out. It was rehearsed on a full copy of today's
+    data (backup in `C:\santa-devnet-keys\backups`).
+  - No new runs while a pool top-off waits for your deposit, so nobody plays on money that hasn't arrived.
+  - The pools' SOL can't be drained by players closing and reopening their SANTA account: the pool opens a winner's account at
+    most once a day.
+  - Prices: the server samples the SANTA price every minute and needs 5 samples before pricing a play, so a short pump does
+    nothing.
+  - Payouts double-check before re-sending (never pay twice).
+  - No ranked tickets sold while ranked is paused. They go back on sale by themselves when you reopen it.
+  - Alerts run their checks even before Telegram is set up (written to the server log).
+- **Known, smaller, left for after launch** (no money is lost to these at launch size):
+  - Lottery: someone could pump SANTA to buy tickets cheap. That only pays once a pot is in the thousands; a per-wallet ticket
+    cap is next.
+  - One payment could in theory count for a game AND a Store item at once. The pools still get their full amounts; only some
+    of the 10% burn is skipped.
+  - Store refunds owe back the full payment, including the burned half. You pay those by hand, so you can decline odd ones.
+  - **Don't deposit much more than ~$1,000 into the Game pool.** Above about $4,800 the Drop jackpot makes Drop pay players more
+    than they put in. Skims at $1,025 normally keep it well below that.
+
 ## What Claude is doing meanwhile (no money involved)
 - A security review of every money path, including the thin-market price question.
 - A **safe switch-over script**. When the site switches, every leftover TEST item must be cleared, so none of it is ever paid
