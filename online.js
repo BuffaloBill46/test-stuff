@@ -5,11 +5,12 @@ import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js';
 import { openRoom, accounts, findWallet, gamesBoard } from './net.js';
 import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js';
 import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js';
+import { initSeason, refreshSeason } from './seasonui.js';
 import { TICKET_MAX } from './ranked.js';
 import { levelInfo, clampLevel } from './levels.js';
 import { SERVER, call, token as signInToken } from './gameserver.js';
 import { SPECIALS, cantThrow } from './specials.js';
-import { gearIn, effectsOf, heldWith, gearOfMask, statOf } from './gear.js';
+import { gearIn, effectsOf, heldWith, gearOfMask, statOf, RETIRED } from './gear.js';
 import { initLottery } from './lotteryui.js';
 import { play as sfx, initSoundButtons } from './sfx.js';
 import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js';
@@ -352,7 +353,7 @@ function handleEvents(v) {
     else if (k === 'splat') burst.spawn(new V3(+a || 0, 0.1, +b || 0), 6, 0xffffff, 2, 1.5);
     else if (k === 'round') { sfx('round'); banner(K.ROUNDS > 1 ? `Round ${+a || 1} of ${K.ROUNDS}` : 'Go!'); } // one round (Cody 2026-10-03): just "Go!"
     else if (k === 'break') banner(`Round ${+a || 1} done`);
-    else if (k === 'end') banner('Match over');
+    else if (k === 'end') { banner('Match over'); setTimeout(() => refreshSeason(), 4000); } // the match server records season tasks at the end
   }
 }
 
@@ -848,7 +849,7 @@ function renderGames(list = lastGames) {
   const label = ranked ? 'ranked' : autoModes.length > 1 ? 'FFA or TEAM' : autoModes[0] === 'team' ? 'TEAM' : 'FFA';
   $('#gamesList').innerHTML = games.length ? games.map((g) => {
     const full = (Number(g.watchers) || 0) >= MAX_WATCHERS;
-    const state = g.phase === 'lobby' || g.phase === 'intro' || g.phase === 'count' ? 'Starting soon' : g.phase === 'end' ? 'Final scores' : `Round ${Number(g.round) || 1}/3 · ${Number(g.time) || 0}s`;
+    const state = g.phase === 'lobby' || g.phase === 'intro' || g.phase === 'count' ? 'Starting soon' : g.phase === 'end' ? 'Final scores' : `${K.ROUNDS > 1 ? `Round ${Number(g.round) || 1}/${K.ROUNDS} · ` : 'Playing · '}${Number(g.time) || 0}s`;
     return `<div class="game"><div><b>${g.mode === 'team' ? 'TEAM' : 'FFA'}${(g.style || 'gear') === 'normal' ? ' · Normal' : ' · Gear'}</b><span>${Number(g.humans) || 0}/8 players${g.watchers ? ` · ${Number(g.watchers)} watching` : ''}</span></div>
       <div><span>${esc(state)}</span>${g.leader ? `<span>Leader: ${esc(String(g.leader).slice(0, 14))} · ${Number(g.lscore) || 0}</span>` : ''}</div>
       <button class="sec" data-watch="${esc(cleanCode(g.code))}" ${full ? 'disabled' : ''}>${full ? 'Watchers full' : 'Watch now'}</button></div>`;
@@ -873,6 +874,7 @@ $('#create').addEventListener('click', () => enterRoom(rid(4).toUpperCase().repl
 $('#joinBtn').addEventListener('click', () => { const c = cleanCode($('#code').value); if (c.length < 3) { status('Type the room code your friend shared.'); return; } enterRoom(c, false); });
 $('#practice').addEventListener('click', startPractice);
 $('#playUnranked').addEventListener('click', () => openLobby('unranked'));
+$('#playBig').addEventListener('click', () => { openLobby('unranked'); $('#quick').click(); }); // the hero's big button: straight into a free Auto match
 $('#homeClose').addEventListener('click', closeLobby);
 $('#leave').addEventListener('click', () => leaveRoom());
 initSoundButtons();
@@ -886,7 +888,8 @@ const previewHat = toon(hatGeo({ scale: 0.88 }), 0.03);
 function setPreview(a) {
   if (preview.userData.ch) { preview.remove(preview.userData.ch); disposeTree(preview.userData.ch); }
   // the preview wears what is in the gear slots (a Gift Box: a wrapped present); an Elf Hat or a Santa cap takes the hat's place
-  const gear = GEAR_SLOTS.map((s) => BY_ID.get(cleanAvatar(a)[s])?.gear).filter(Boolean);
+  // (retired gear, gear.js RETIRED, isn't worn: an old saved Pumpkin Costume doesn't draw, as in a match)
+  const gear = GEAR_SLOTS.map((s) => BY_ID.get(cleanAvatar(a)[s])?.gear).filter((k) => k && !RETIRED.has(k));
   const ch = avatarCharacter(a, { gear }); preview.userData.ch = ch; preview.add(ch);
   // a costume hat (the Nutcracker's shako, the Ice Crown) is shown instead of the Santa hat: they're tall and the Santa hat hid them
   const costumeHat = !!BY_ID.get(cleanAvatar(a).hat)?.set;
@@ -909,6 +912,7 @@ const app = {
 };
 let gamesMod = null; // Games tab code loads the first time it's opened
 const tabs = initTabs(app);
+initSeason({ thumbnail, onBought: () => tabs.reloadMine() }); // the Season card (seasonui.js); a bought pass reloads what I own
 renderProgress(app.profile); // the Play page's Player Progress box (guests: level 1; updated on sign-in)
 initLottery(); // the Store's Santa Lottery (lotteryui.js)
 $('#loading')?.remove();

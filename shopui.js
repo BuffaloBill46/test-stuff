@@ -32,7 +32,7 @@ export async function resumeShop() {
   if (!b.error || /already used/.test(b.error)) remember(null);
   return b;
 }
-const done = (b) => (b.refunded ? b.note : b.item ? 'Bought! It\'s yours.' : b.level ? `You're level ${b.level}!` : b.tickets ? `+${b.tickets} ranked ticket${b.tickets === 1 ? '' : 's'}.` : 'Bought!');
+const done = (b) => (b.refunded ? b.note : b.pass ? 'The season pass is yours! Your costume pieces unlock as you open doors.' : b.item ? 'Bought! It\'s yours.' : b.level ? `You're level ${b.level}!` : b.tickets ? `+${b.tickets} ranked ticket${b.tickets === 1 ? '' : 's'}.` : 'Bought!');
 
 // what: { kind: 'item', id } | { kind: 'level' } | { kind: 'tickets', n }. note(text) shows progress next to the button.
 // Returns the server's answer when something was granted (or owed back), else null.

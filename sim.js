@@ -69,6 +69,9 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
   function spawn(e, i = Math.floor(rand() * 16), n = 16) {
     const a = Math.PI / 2 + (i / n) * Math.PI * 2; e.x = Math.cos(a) * 9; e.z = Math.sin(a) * 9; e.vx = e.vz = 0; e.stun = 0; e.face = a + Math.PI; e.ep++; e.since = 9;
   }
+  // Per-player match counts for the daily tasks (seasons.js; Cody 2026-10-03): only during real play, like points. The match
+  // server sends them with an Auto match's finish; they never leave the server in snapshots.
+  function tally(e, key, n = 1) { if (!scoring() || !e || e.bot) return; (e.st ||= { hits: 0, hatSec: 0, steals: 0, catches: 0, specials: 0 })[key] += n; }
   function addScore(e, p) {
     if (!scoring() || !e) return;
     e.score += p; if (S.mode === 'team') S.team[e.team] += p;
@@ -142,7 +145,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     S.round = 1; S.team = [0, 0]; S.result = null;
     S.mid = Array.from({ length: 4 }, () => Math.floor(rand() * 2 ** 32).toString(16).padStart(8, '0')).join('');
     balance(true);
-    S.ents.forEach((e) => { e.score = 0; wearGear(e); }); // gear (and a Present Box's pick) is set for the whole match here
+    S.ents.forEach((e) => { e.score = 0; e.st = { hits: 0, hatSec: 0, steals: 0, catches: 0, specials: 0 }; wearGear(e); }); // gear (and a Present Box's pick) is set for the whole match here
     resetRound();
   }
   const go = () => { S.phase = 'play'; S.time = K.ROUND_TIME; ev('round', 1); };
@@ -175,13 +178,13 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
   function giveHat(e, caught) {
     Object.assign(S.hat, { st: 'head', holder: e.id, acc: 0 });
     e.immune = HAT_IMMUNE; // untouchable for 2 s, so a player can get out of a crowd with it (Cody)
-    if (caught) { if (S.phase !== 'lobby') addScore(e, PTS.header); ev('catch', e.id); botChat(e, 0); } else ev('grab', e.id);
+    if (caught) { if (S.phase !== 'lobby') { addScore(e, PTS.header); tally(e, 'catches'); } ev('catch', e.id); botChat(e, 0); } else ev('grab', e.id);
   }
   function knockHat(e, dir, by) {
     const h = S.hat; const l = hyp(dir.x, dir.z) || 1;
     Object.assign(h, { st: 'air', holder: -1, last: e.id, cool: 0.5, bounces: 0, x: e.x, y: K.HEAD_Y + 0.2, z: e.z });
     h.vx = (dir.x / l) * 3.4 + (rand() - 0.5) * 2.5; h.vy = 10; h.vz = (dir.z / l) * 3.4 + (rand() - 0.5) * 2.5;
-    if (by) addScore(by, PTS.knock);
+    if (by) { addScore(by, PTS.knock); tally(by, 'steals'); }
     ev('knock', e.id, by ? by.id : 0);
     botChat(e, 2);
   }
@@ -194,6 +197,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
       const why = cantThrow(kind, { ammo: e.ammo, max: e.max, level: levelOf(e) }); if (why) return no(why);
     }
     let dx = tx - e.x, dz = tz - e.z; const dist = Math.max(1.5, hyp(dx, dz)); const l = hyp(dx, dz) || 1; dx /= l; dz /= l;
+    if (kind) tally(e, 'specials');
     e.ammo -= kind ? costOf(kind, e.max) : 1; e.regen = 0; e.cool = e.bot ? 1.1 + rand() * 1.1 : K.HUMAN_COOL; e.throwT = 1; e.face = Math.atan2(dx, dz);
     if (kind === 'sky' || kind === 'rain') return dropsFrom(e, kind, tx, tz);
     const SP = SPECIALS[kind] || {};
@@ -227,7 +231,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     if (kept) e.xh -= 1;
     else { e.stun = (b.stunSec || K.STUN * (b.sm || 1)) * fx.hitMult; e.xh = fx.extraHits; const l = hyp(b.vx, b.vz) || 1; e.vx = (b.vx / l) * 5; e.vz = (b.vz / l) * 5; }
     const thrower = byId(b.owner);
-    if (thrower) addScore(thrower, PTS.hit);
+    if (thrower) { addScore(thrower, PTS.hit); tally(thrower, 'hits'); }
     // Getting hit costs 1 point (Cody); a score never goes below 0 (a team loses only what its player had).
     if (scoring()) { const lost = Math.min(1, e.score); e.score -= lost; if (S.mode === 'team') S.team[e.team] -= lost; }
     ev('hit', e.id, r2(b.x), r2(b.y), r2(b.z));
@@ -337,7 +341,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
       if (!e) { h.st = 'ped'; h.holder = -1; }
       else {
         h.x = e.x; h.y = K.HEAD_Y; h.z = e.z; h.acc += dt;
-        if (h.acc >= 1) { h.acc -= 1; if (scoring()) { addScore(e, PTS.hatSec); ev('pts', e.id, PTS.hatSec); } }
+        if (h.acc >= 1) { h.acc -= 1; if (scoring()) { addScore(e, PTS.hatSec); tally(e, 'hatSec'); ev('pts', e.id, PTS.hatSec); } }
       }
     } else if (h.st === 'air') {
       h.cool -= dt; h.vy -= K.HAT_G * dt; h.x += h.vx * dt; h.y += h.vy * dt; h.z += h.vz * dt;

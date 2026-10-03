@@ -190,6 +190,9 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
   background: linear-gradient(90deg, rgba(12,15,26,.8), rgba(12,15,26,.68) 80%, rgba(12,15,26,0)); }
 .hero h1 { font-size: 56px; margin: 4px 0 6px; }
 .hero p { margin: 0; font-size: 18px; color: #d6ddf0; max-width: 60ch; text-shadow: 1px 1px 0 var(--ink); }
+.heroplay { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin: 12px 0 4px; }
+.heroplay .go { font-size: 34px; padding: 12px 36px; } .heroplay span { font-size: 15px; color: var(--frost); text-shadow: 1px 1px 0 var(--ink); }
+@media (max-width: 600px) { .heroplay .go { width: 100%; font-size: 30px; } }
 /* Player Progress box: the level badge, what the next level takes, what this level gives (Cody's table), gear, pass, stats. */
 .progress { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 220px); gap: 16px; align-items: center; margin-bottom: 14px; }
 .progress .pglevel { text-align: center; padding: 8px 14px; background: var(--hat); border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); }
@@ -207,6 +210,68 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 #progress .pgor { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0; font-size: 14px; color: var(--dim); }
 .progress .pgor b { font: 700 15px/1 var(--digits); font-variant-numeric: tabular-nums; color: var(--lamp); white-space: nowrap; }
 @media (max-width: 640px) { .progress { grid-template-columns: auto minmax(0, 1fr); } .progress .pgside { grid-column: 1 / -1; } }
+/* The Season card (seasonui.js). One accent per season: pumpkin for Halloween; the rest is the page's own plaque language. */
+.season { --ss: #f2862e; --ss-dim: rgba(242,134,46,.16); margin-bottom: 14px; }
+.season[data-season="thanksgiving"] { --ss: #d9a441; --ss-dim: rgba(217,164,65,.16); }
+.season[data-season="christmas"] { --ss: var(--pine); --ss-dim: rgba(127,224,160,.14); }
+.season .sshead { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 12px; border-bottom: 2px solid var(--ink); padding-bottom: 10px; }
+.season h2 { font: 400 30px/1 var(--display); margin: 2px 0 0; color: var(--ss); }
+.season h3 { font: 700 11px/1.3 var(--digits); letter-spacing: 1px; text-transform: uppercase; color: var(--frost); margin: 0 0 8px; }
+.season .ssreset { text-align: right; } .season .ssreset i { display: block; font-style: normal; font-size: 12px; color: var(--dim); }
+.season .ssreset b { font: 700 18px/1.2 var(--digits); color: var(--lamp); font-variant-numeric: tabular-nums; }
+.season .ssbody { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+.season ol { list-style: none; margin: 0; padding: 0; }
+.season #ssTasks { display: grid; gap: 8px; }
+.season #ssTasks li { position: relative; display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px 12px; background: var(--ink); border: 1px solid rgba(185,205,242,.14); font-size: 15px; }
+.season #ssTasks li b { font: 700 14px/1.3 var(--digits); color: var(--dim); white-space: nowrap; }
+.season #ssTasks li i { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: linear-gradient(90deg, var(--ss) var(--p), transparent var(--p)); }
+.season #ssTasks li.done { border-color: var(--ss); } .season #ssTasks li.done b { color: var(--ss); }
+.season #ssTasks li.done span::before { content: '\2713'; color: var(--ss); font-weight: 800; margin-right: 6px; }
+.season .ssnote { font-size: 13px; color: var(--dim); margin: 8px 0 0; }
+.season .sscal { max-width: 400px; }
+.season .sswk, .season #ssCal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.season .sswk li { text-align: center; font: 700 10px/1.6 var(--digits); color: var(--dim); }
+.season #ssCal li { aspect-ratio: 1.3; display: grid; place-items: center; font: 700 13px/1 var(--digits); font-variant-numeric: tabular-nums; background: var(--ink); color: var(--dim); border: 1px solid rgba(185,205,242,.12); }
+.season #ssCal li.pad { background: none; border: 0; }
+.season #ssCal li.open { background: var(--ss); color: var(--ink); border-color: var(--ink); box-shadow: inset 0 -3px 0 rgba(0,0,0,.25); }
+.season #ssCal li.today { color: var(--text); border: 2px solid var(--lamp); }
+.season #ssCal li.missed { opacity: .45; text-decoration: line-through; }
+.season .ssstreak { font-size: 14px; margin: 10px 0 0; color: var(--dim); } .season .ssstreak b { font-family: var(--digits); color: var(--text); }
+.season .ssstreak span { display: block; font-size: 12px; }
+.season .ssrow { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 58px); gap: 6px; }
+.season .ssrow li { min-width: 0; text-align: center; padding: 4px 2px 3px; background: var(--ink); border: 1px solid rgba(185,205,242,.12); opacity: .55; }
+.season .ssrow li.own { opacity: 1; border-color: var(--ss); }
+.season .ssrow img { width: 100%; max-width: 46px; aspect-ratio: 1; height: auto; display: block; margin: 0 auto; }
+.season .ssrow small { display: block; white-space: nowrap; letter-spacing: -.3px; font: 700 9px/1.4 var(--digits); color: var(--dim); text-transform: uppercase; } .season .ssrow li.own small { color: var(--ss); }
+.season .ssq { display: grid; place-items: center; width: 100%; max-width: 46px; aspect-ratio: 1; margin: 0 auto; color: var(--dim); font: 700 18px var(--digits); }
+.season .ssgold { margin-top: 14px; padding: 10px; background: var(--ss-dim); border: 1px dashed var(--ss); }
+.season .ssgold.has { border-style: solid; }
+.season .ssgold #ssGoldHead { color: var(--ss); }
+.season #ssBuy { margin-top: 10px; width: 100%; }
+.season .sshow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0 0 14px; }
+.season .sshow li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--ss-dim); border: 1px solid rgba(242,134,46,.35); font-size: 15px; line-height: 1.25; }
+.season .sshow b { flex: none; display: grid; place-items: center; width: 28px; height: 28px; background: var(--ss); color: var(--ink); font: 700 15px/1 var(--digits); border: 2px solid var(--ink); }
+.season .sshow em, .season .sslead em { font-style: normal; font-weight: 800; color: var(--ss); }
+.season .sslead { font-size: 14px; color: var(--text); margin: -2px 0 8px; }
+.season .sslegend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 12px; color: var(--dim); margin: 8px 0 0; }
+.season .sslegend .k { width: 12px; height: 12px; display: inline-block; background: var(--ink); border: 1px solid rgba(185,205,242,.3); margin-left: 6px; }
+.season .sslegend .k:first-child { margin-left: 0; } .season .sslegend .k.open { background: var(--ss); } .season .sslegend .k.today { border: 2px solid var(--lamp); } .season .sslegend .k.missed { opacity: .45; }
+.season .ssrewards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 18px; margin-top: 16px; padding-top: 14px; border-top: 2px solid var(--ink); }
+.season .ssgold { margin: 0; }
+.season .sspass { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 14px; align-items: start; }
+.season #ssOutfit { margin: 0; aspect-ratio: 1; background: radial-gradient(circle at 50% 40%, rgba(242,134,46,.35), var(--ink) 70%); border: 2px solid var(--ss); display: grid; place-items: center; }
+.season #ssOutfit img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.season .ssoutname { display: block; font: 400 26px/1.1 var(--display); color: var(--ss); margin-bottom: 4px; }
+.season .sspieces { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.season .sspieces li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 2px 6px; align-items: center; padding: 4px; background: var(--ink); border: 1px solid rgba(185,205,242,.12); }
+.season .sspieces li img, .season .sspieces .ssq { width: 34px; height: 34px; grid-row: span 2; }
+.season .sspieces span { font-size: 12px; font-weight: 700; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.season .sspieces small { font: 700 9px/1.2 var(--digits); color: var(--dim); text-transform: uppercase; }
+.season .sspieces li.own { border-color: var(--ss); } .season .sspieces li.own small { color: var(--ss); }
+@media (max-width: 900px) { .season .ssrewards { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) { .season .sshow { grid-template-columns: minmax(0, 1fr); } .season .sspass { grid-template-columns: minmax(0, 1fr); } .season #ssOutfit { width: 180px; justify-self: center; } .season .sspieces { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+@media (max-width: 600px) { .season .ssbody { grid-template-columns: minmax(0, 1fr); } .season h2 { font-size: 25px; } .season .ssrow { grid-auto-columns: minmax(0, 1fr); } .season .ssq { width: 100%; height: auto; aspect-ratio: 1; } .season #ssCal li { aspect-ratio: 1; } }
 .modes3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .mode { padding: 14px 16px 16px; display: flex; flex-direction: column; background: rgba(27,35,68,.94); }
 .mode h3 { font: 800 32px/1 var(--display); margin: 0; color: var(--brim); text-shadow: 2px 2px 0 var(--ink); }
@@ -451,6 +516,7 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
 #avgrid.list .pick.costume img { width: 88px; height: 88px; }
 .pick .settag { position: absolute; top: 6px; left: 6px; max-width: calc(100% - 12px); font: 700 8px/1.15 var(--digits); font-style: normal; text-transform: uppercase; color: var(--ink); background: var(--lamp); border: 1px solid var(--ink); padding: 2px 3px; }
 .pick .settag[data-set="frostking"] { background: #bfe6ff; }
+.pick .settag[data-set="pumpkinking"] { background: #ffa31a; }
 .carousel { margin: 0 0 16px; }
 .carousel h4 { margin: 0 0 8px; }
 .strip { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 10px; scroll-snap-type: x mandatory; }
@@ -736,6 +802,8 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       <div class="eyebrow">Snowball Square · up to 8 players</div>
       <h1>Play for Free</h1>
       <p>Grab the Santa hat, keep it on your head, and knock it off everyone else's.</p>
+      <!-- One tap to a match (Cody, 2026-10-03): the lobby's own free Auto match, above the fold on every screen -->
+      <div class="heroplay"><button class="go" id="playBig">Play now</button><span>A free match in seconds. No sign-in needed.</span></div>
       <p class="testnote"><b>Test version</b> Snowball Square is free and works now. Ranked tickets, wagers and SANTA prizes aren't switched on yet.</p>
     </div>
     <!-- Player Progress (Cody, 2026-10-01): level and what it gives, special gear, season pass, stats. Filled by tabs.js. -->
@@ -749,17 +817,65 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       </div>
       <div class="pgside">
         <div><i>Special gear</i><b id="pgGear">None yet</b></div>
-        <div><i>Season pass</i><b>Coming soon</b></div>
+        <div><i>Season</i><b id="pgSeason">—</b></div>
         <div><i>Rank points</i><b id="pgPts">—</b></div>
         <div><i>Ranked tickets</i><b id="pgTix">—</b></div>
         <button class="sec" id="pgBuy">Buy level 2 · $1.00</button><p class="pgnote" id="pgNote" aria-live="polite"></p>
         <p class="pgor" id="pgOr">or win 5 matches top 3 or better <b id="pgOrN">0 / 5</b></p>
       </div>
     </section>
+    <!-- The Season (Cody, 2026-10-03): daily tasks open a door a day; free rewards for everyone, the costume with the $5 pass.
+         Rules in seasons.js, filled by seasonui.js. -->
+    <section class="block plaque season" id="season" aria-label="Season calendar" hidden>
+      <header class="sshead">
+        <div><div class="eyebrow" id="ssEyebrow">Season</div><h2 id="ssTitle">The Calendar</h2></div>
+        <div class="ssreset"><i>New tasks in</i><b id="ssReset">—</b></div>
+      </header>
+      <ol class="sshow" aria-label="How the calendar works">
+        <li><b>1</b><span>Do today's <em>3 tasks</em> in Auto matches</span></li>
+        <li><b>2</b><span>All 3 done: <em>today's door opens</em></span></li>
+        <li><b>3</b><span>Every door gives a <em>reward</em>. New tasks every day at 9 PM.</span></li>
+      </ol>
+      <div class="ssbody">
+        <div class="sstasks">
+          <h3>Today's tasks</h3>
+          <ol id="ssTasks"></ol>
+          <p class="ssnote" id="ssNote" aria-live="polite"></p>
+        </div>
+        <div class="sscal">
+          <h3>Your doors this month</h3>
+          <ol class="sswk" aria-hidden="true"><li>S</li><li>M</li><li>T</li><li>W</li><li>T</li><li>F</li><li>S</li></ol>
+          <ol id="ssCal"></ol>
+          <p class="sslegend"><span class="k open"></span>opened <span class="k today"></span>today <span class="k missed"></span>missed</p>
+          <p class="ssstreak" id="ssStreak"></p>
+        </div>
+      </div>
+      <div class="ssrewards">
+        <div class="ssfree">
+          <h3>Free for everyone</h3>
+          <p class="sslead">A new look on these doors. Every other door: +1 level step.</p>
+          <ol class="ssrow" id="ssFree"></ol>
+          <p class="ssnote" id="ssFreeNote"></p>
+        </div>
+        <div class="ssgold" id="ssGoldBox">
+          <h3 id="ssGoldHead">Season pass</h3>
+          <div class="sspass">
+            <figure id="ssOutfit"></figure>
+            <div>
+              <b class="ssoutname" id="ssOutName">The costume</b>
+              <p class="sslead" id="ssGoldLead"></p>
+              <ol class="sspieces" id="ssGold"></ol>
+            </div>
+          </div>
+          <p class="ssnote" id="ssGoldNote"></p>
+          <button class="go" id="ssBuy" hidden>Get the pass</button><p class="ssnote" id="ssBuyNote" aria-live="polite"></p>
+        </div>
+      </div>
+    </section>
     <div class="modes3">
       <article class="mode plaque fur">
         <h3>Unranked</h3><p class="tagline">Free · no sign-in needed</p>
-        <ul><li>Practice against bots</li><li>Play friends, with bots filling in</li><li>Player vs player</li><li>Free-for-all or Nice vs Naughty teams</li></ul>
+        <ul><li>Practice against bots</li><li>Play friends, with bots filling in</li><li>Player vs player</li><li>Free-for-all</li></ul>
         <button class="go" id="playUnranked">Play now</button>
       </article>
       <article class="mode plaque fur">

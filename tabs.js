@@ -5,13 +5,14 @@ import { mountHumanCheck } from './human.js';
 import { GEAR_SLOTS } from './catalog.js';
 import { shopBuy, resumeShop } from './shopui.js';
 import { forSale } from './shoprules.js';
-import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS } from './gear.js';
-import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable, COSTUMES, costumeItems } from './catalog.js';
+import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js';
+import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable, COSTUMES, costumeItems, costumeWord, SEASONS } from './catalog.js';
 import { SPECIALS } from './specials.js';
 import { settingsReady, call } from './gameserver.js';
 import { TICKET_MAX } from './ranked.js';
 import { dayStart, weekStart } from './gameclock.js';
 import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js';
+import { refreshSeason } from './seasonui.js';
 import { THEMES, THEME_IDS } from './themes.js';
 
 const $ = (s) => document.querySelector(s);
@@ -130,6 +131,7 @@ export function renderProgress(profile) {
   // the free way to the same level, with the count so far (Auto match top-3 finishes; guests: sign in to count them)
   const or = el.querySelector('#pgOr'); or.hidden = price === null;
   if (price !== null) { or.firstChild.textContent = `or win ${pl.need} matches top 3 or better `; el.querySelector('#pgOrN').textContent = `${pl.xp} / ${pl.need}`; }
+  refreshSeason(profile); // the Season card below (seasonui.js): my tasks and doors, or the guest view
 }
 // Put a special in a slot; if it was already in another slot it MOVES (the same special can't fill two slots; database 012).
 function withSpecial(a, slot, id) { for (const s of SB_SLOTS) if (s !== slot && a[s] === id && id !== 'sb_none') a[s] = 'sb_none'; a[slot] = id; return a; }
@@ -333,8 +335,12 @@ export function initTabs(app) {
   function status(item) {
     const lvl = app.profile ? app.profile.level : 1;
     if (usable(item, lvl, state.owned)) return '<span class="ok">Unlocked</span>';
-    return item.price != null ? `<span class="price">$${item.price.toFixed(2)}</span>` : `<span>Level ${item.level}</span>`;
+    return `<span${item.price != null ? ' class="price"' : ''}>${lockWord(item)}</span>`;
   }
+  // How a locked item is had, in words: its price, its season pass ("Halloween pass": given, never sold) or its level
+  const lockWord = (i) => (i.price != null ? '$' + i.price.toFixed(2) : i.season ? (i.set ? esc(SEASONS[i.season]?.name || i.season) : esc(i.season[0].toUpperCase() + i.season.slice(1)) + ' calendar') : 'Level ' + i.level);
+  // Gear the Store and the Avatar screen list: retired gear (gear.js RETIRED: Heated Coat, Pumpkin Costume) left out
+  const listedGear = () => ITEMS.filter((i) => i.slot === 'gear' && !RETIRED.has(i.gear));
   let settingsIn = false;
   function renderStore(force) {
     if (!settingsIn) { settingsReady.then(() => { settingsIn = true; renderStore(force); }); return; } // server mode: published prices/items first
@@ -343,7 +349,7 @@ export function initTabs(app) {
     requestAnimationFrame(() => {
       // Cody, 2026-10-01: the Store sells only 1. Special Snowballs and 2. Special Gear, each saying what it does, with the rules
       // (snowballs are kept forever; gear lasts 7 days). The look items (shirts, hats…) are still earned by level on the Avatar screen.
-      const sbs = ITEMS.filter((i) => i.slot === 'sball' && i.id !== 'sb_none'), gear = ITEMS.filter((i) => i.slot === 'gear' && i.id !== 'gear_none');
+      const sbs = ITEMS.filter((i) => i.slot === 'sball' && i.id !== 'sb_none'), gear = listedGear().filter((i) => i.id !== 'gear_none');
       box.innerHTML = `<div class="shop"><div class="shophead"><h3>1. Special Snowballs</h3><p class="rule"><b>Yours forever</b> Buy one once and keep it. Put it in a special slot (SB1–SB3) on the Avatar screen; a throw uses that many snowballs from your counter.</p></div>
         <div class="shopgrid">${sbs.map((i) => { const S = SPECIALS[i.special];
           return `<div class="shopitem"><img alt="" src="${thumbnail(i)}"><div><b>${esc(i.name)}</b><span class="uses">${costWords(S)}${S.minLevel ? ' · level ' + S.minLevel + '+' : ''}</span><p>${esc(S.note)}</p>${status(i)}</div><div class="shopbtns"><button class="sec" data-try="${i.id}">Try it</button>${buyBtn(i)}</div><p class="shopnote" aria-live="polite"></p></div>`; }).join('')}</div></div>
@@ -391,20 +397,22 @@ export function initTabs(app) {
         + `<p class="avrule"><b>Lasts ${WEAR_DAYS} days</b> from your first match wearing it. <b>No stacking</b> ${esc(NO_STACK_NOTE)}</p>`; }
     // Costumes: one card per costume (tap = wear every piece), then the back pieces (a costume's pack, or none)
     const co = state.slot === 'costume';
-    if (co) { sbBox.hidden = false; sbBox.innerHTML = `<p class="avrule"><b>Free</b> ${Object.values(COSTUMES).map((c) => `level ${c.level}: ${esc(c.name)}`).join(', ')}. Each piece is also in its own tab, to mix and match.</p>`;
+    // (a season costume, the Halloween pass's Pumpkin King, says which pass gives it; locked, it can be tried on but not saved)
+    if (co) { const byLvl = Object.values(COSTUMES).filter((c) => !c.season), bySeason = Object.values(COSTUMES).filter((c) => c.season);
+      sbBox.hidden = false; sbBox.innerHTML = `<p class="avrule"><b>Free</b> ${byLvl.map((c) => `level ${c.level}: ${esc(c.name)}`).join(', ')}.${bySeason.map((c) => ` <b>${esc(costumeWord(c))}</b> ${esc(c.name)}.`).join('')} Each piece is also in its own tab, to mix and match.</p>`;
       $('#avgrid').innerHTML = Object.entries(COSTUMES).map(([set, c]) => { const ps = costumeItems(set), ok = ps.every((i) => usable(i, lvl, state.owned)), on = ps.every((i) => d.a[i.slot] === i.id);
-        return `<button class="pick wide costume ${ok ? '' : 'locked'}" data-costume="${set}" aria-pressed="${on}"><img alt="" src="${thumbnail({ id: 'costume_' + set, slot: 'costume', set })}">${esc(c.name)}<small>${esc(ps.map((i) => i.name).join(' · '))}</small><small>${on ? 'Wearing the whole costume' : ok ? 'Tap to wear the whole costume' : `Level ${c.level} costume · tap to try it on`}</small></button>`; }).join('')
+        return `<button class="pick wide costume ${ok ? '' : 'locked'}" data-costume="${set}" aria-pressed="${on}"><img alt="" src="${thumbnail({ id: 'costume_' + set, slot: 'costume', set })}">${esc(c.name)}<small>${esc(ps.map((i) => i.name).join(' · '))}</small><small>${on ? 'Wearing the whole costume' : ok ? 'Tap to wear the whole costume' : `${esc(costumeWord(c))} · tap to try it on`}</small></button>`; }).join('')
         + ['pack_none', ...ITEMS.filter((i) => i.slot === 'pack' && i.set).map((i) => i.id)].map((id) => { const i = BY_ID.get(id), ok = usable(i, lvl, state.owned);
-          return `<button class="pick wide ${ok ? '' : 'locked'}" data-pick="${id}" aria-pressed="${d.a.pack === id}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${i.set ? 'The ' + esc(COSTUMES[i.set].name) + '\'s back piece' : 'Nothing on your back'}</small><small>${ok ? 'Unlocked' : 'Level ' + i.level}</small></button>`; }).join('');
+          return `<button class="pick wide ${ok ? '' : 'locked'}" data-pick="${id}" aria-pressed="${d.a.pack === id}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${i.set ? 'The ' + esc(COSTUMES[i.set].name) + '\'s back piece' : 'Nothing on your back'}</small><small>${ok ? 'Unlocked' : lockWord(i)}</small></button>`; }).join('');
     } else
-    $('#avgrid').innerHTML = ITEMS.filter((i) => i.slot === state.slot).map((i) => {
+    $('#avgrid').innerHTML = (gr ? listedGear() : ITEMS.filter((i) => i.slot === state.slot)).map((i) => {
       const ok = usable(i, lvl, state.owned), on = sb ? d.a[state.sbSlot] === i.id : gr ? d.a[state.gSlot] === i.id : d.a[i.slot] === i.id, S = SPECIALS[i.special], G = GEAR[i.gear];
       if (gr) return `<button class="pick wide ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}">${G ? `<img alt="" src="${thumbnail(i)}">` : `<i class="chip" style="background:#${(i.color ?? 0x5a6688).toString(16).padStart(6, '0')}"></i>`}${esc(i.name)}<small>${G ? esc(G.note) : 'Leave this slot empty'}</small><small>${!ok ? '$' + i.price.toFixed(2) + ' in Store' : G?.minLevel && lvl < G.minLevel ? 'level ' + G.minLevel + '+' : G ? statName(i.gear) : ''}</small></button>`;
       if (sb) return `<button class="pick wide ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${S ? esc(S.note) : 'Leave this slot empty'}</small><small>${!ok ? '$' + i.price.toFixed(2) + ' in Store' : S ? costWords(S) + (S.minLevel && lvl < S.minLevel ? ' · level ' + S.minLevel : '') : 'empty slot'}</small></button>`;
       // look items are bought here on the Avatar screen, not in the Store (Cody, 2026-10-01)
-      // a costume piece wears a small tag saying which costume it belongs to (e.g. "Level 5 costume")
-      const tag = i.set && COSTUMES[i.set] ? `<em class="settag" data-set="${i.set}" title="${esc(COSTUMES[i.set].name)}">Level ${COSTUMES[i.set].level} costume</em>` : '';
-      return `<button class="pick ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}"><img alt="" src="${thumbnail(i)}">${tag}${esc(i.name)}<small>${ok ? 'Unlocked' : i.price != null ? '$' + i.price.toFixed(2) : 'Level ' + i.level}</small></button>`;
+      // a costume piece wears a small tag saying which costume it belongs to (e.g. "Level 5 costume", "Halloween pass")
+      const tag = i.set && COSTUMES[i.set] ? `<em class="settag" data-set="${i.set}" title="${esc(COSTUMES[i.set].name)}">${esc(costumeWord(COSTUMES[i.set]))}</em>` : '';
+      return `<button class="pick ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}"><img alt="" src="${thumbnail(i)}">${tag}${esc(i.name)}<small>${ok ? 'Unlocked' : lockWord(i)}</small></button>`;
     }).join('');
     $('#avgrid').classList.toggle('list', sb || gr || co); // special snowballs, gear and costumes: a list, so what each is can be read
     const blocked = [...SLOTS, ...SB_SLOTS, ...GEAR_SLOTS].map((s) => BY_ID.get(d.a[s] || (GEAR_SLOTS.includes(s) ? 'gear_none' : 'sb_none'))).filter((i) => !usable(i, lvl, state.owned));
@@ -502,7 +510,7 @@ export function initTabs(app) {
   })();
   renderWho();
   show((location.hash || '#play').slice(1));
-  return { show, get tab() { return state.tab; } };
+  return { show, reloadMine, get tab() { return state.tab; } };
 }
 
 function safeJSON(s) { try { return JSON.parse(s); } catch { return null; } }

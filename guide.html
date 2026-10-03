@@ -163,7 +163,7 @@
   </footer>
 </main>
 <script type="module">
-  import { ITEMS, COSTUMES } from './catalog.js';
+  import { ITEMS, COSTUMES, SEASONS } from './catalog.js';
   import { SPECIALS } from './specials.js';
   import { GEAR, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js';
   import { LEVELS, MAX_LEVEL, WINS_PER_LEVEL, MAX_BOUGHT_LEVEL, buyPrice } from './levels.js';
@@ -208,7 +208,9 @@
   $('#lookTable').innerHTML = head(['Level', 'Unlocks']) + '<tbody>' + [...byLevel.keys()].sort((a, b) => a - b).map((l) => { const its = byLevel.get(l), sets = [...new Set(its.filter((i) => i.set).map((i) => i.set))];
     const one = { shirt: 'shirt', pants: 'pants', face: 'face', hat: 'hat', pack: 'backpack', snow: 'snowball colour', skin: 'skin' };
     const plain = its.filter((i) => !i.set).map((i) => `${i.name} <span class="dim">(${one[i.slot] || i.slot})</span>`);
-    return row([l, [...sets.map((s) => `<b>${setName(s)} costume</b>`), ...plain].join(', ')]); }).join('') + '</tbody>';
+    return row([l, [...sets.map((s) => `<b>${setName(s)} costume</b>`), ...plain].join(', ')]); }).join('')
+    // season-pass costumes (no level, never sold): one row each, named by the pass that gives them
+    + Object.entries(COSTUMES || {}).filter(([, c]) => c.season).map(([, c]) => row([SEASONS?.[c.season]?.name || c.season, `<b>${c.name} costume</b> <span class="dim">(the pass's reward)</span>`])).join('') + '</tbody>';
 
   // ranked
   $('#rankedList').innerHTML = [
