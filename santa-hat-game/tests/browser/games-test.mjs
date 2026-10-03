@@ -47,7 +47,8 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   check(r.pool === '$500.00' && r.bal === '$100.00', label + ': starting pool/balance');
   check(r.pct === '25%' && r.jp === '$125.00' && r.top === '$100.00', label + ': jackpot readouts');
   check(!r.wide, label + ': page wider than screen');
-  check(await p.locator('#payRows tbody tr').count() === 12, label + ': paytable rows (9 symbols + hat bonus + pool jackpot + coal)');
+  // (Cody, 2026-10-03: one "How to play & win" spot per game; the separate paytable box went, its win table is in How to play & win)
+  check(await p.locator('#slots details.paytable, #payRows').count() === 0, label + ': no separate paytable box under Big Hat');
   check(await p.locator('#payLines figure').count() === 11, label + ': 11 payline diagrams');
   await p.evaluate(() => document.querySelector('.machine').scrollIntoView({ block: 'start' })); await p.waitForTimeout(400);
   await p.screenshot({ path: `${OUT}/${label}-1-machine.png` });

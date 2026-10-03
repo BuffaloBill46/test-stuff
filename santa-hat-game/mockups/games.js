@@ -58,8 +58,10 @@ function facts() {
   $('#slots .machine .facts').innerHTML = [
     // One jackpot line (Cody, 2026-10-01: payback and the two separate odds rows removed): the chance a pull hits EITHER the
     // Top Line JackPot (5 Santa Hats on a line) or the Pool jackpot, from the live odds. Payback is still in PAYTABLE.md / tests.
-    ['Jackpot odds (Top Line or Pool)', `about 1 in ${Math.round(1 / jackpotChance(s)).toLocaleString()}`],
-    ['Every Santa Hat on the grid', `+${Math.round(M.hatBonus * M.bet * 100)}¢`],
+    // Cody, 2026-10-03: each game shows its jackpot odds and a "How to play & win" spot; every other odds line went (the hat
+    // bonus and the win table are in How to play & win)
+    ['Top Line JackPot odds', `about 1 in ${Math.round(1 / (s.topPerLine * s.lines)).toLocaleString()}`],
+    ['Pool jackpot odds', `1 in ${Math.round(1 / M.poolJackpotOdds).toLocaleString()}`],
   ].map(([k, v]) => `<li><span>${k}</span><b>${v}</b></li>`).join('');
 }
 
@@ -69,7 +71,7 @@ function paytable() {
     const p = M.pays[s.id];
     return `<tr><td><img alt="" src="${src(s.id)}">${esc(s.name)}${s.id === 'hat' ? ' <span class="dim">(wild)</span>' : ''}</td><td>${p[3] ? usd(p[3]) : '—'}</td><td>${p[4] ? usd(p[4]) : '—'}</td><td>${p[5] ? usd(p[5]) : '—'}</td></tr>`;
   }).join('');
-  $('#payRows').innerHTML = winTable(src, usd);
+  // (the separate paytable under the machine went, Cody 2026-10-03: one "How to play & win" spot per game; the win table is in it)
   $('#payLines').innerHTML = M.lines.map((rows, i) => `<figure><div class="mini">${Array.from({ length: M.rows * M.reels }, (_, k) => {
     const row = Math.floor(k / M.reels), r = k % M.reels; return `<i class="${rows[r] === row ? 'on' : ''}"></i>`; }).join('')}</div>Line ${i + 1}</figure>`).join('');
 }

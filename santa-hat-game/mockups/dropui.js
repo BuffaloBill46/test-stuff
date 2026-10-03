@@ -2,7 +2,7 @@
 // pool readout and its jackpot (board 3: the centre present), odds, last drops. Every drop runs in the house's order (paid → secret locked → drawn → revealed;
 // playcredits.js / house.js), on the Spin pool (shared, Cody); the run's winnings are sent at the end. The board only
 // animates the path the draw already decided. DEMO: the same demo balance as Slots.
-import { realWin, jackpotOdds, JP } from './plinko.js';
+import { jackpotOdds, JP, PAYS2, JACKPOT_BIN, ROWS, BINS } from './plinko.js';
 import { poolJackpot } from './slots.js';
 import { createBoard } from './plinkoboard.js';
 import { playRun, short } from './playcredits.js';
@@ -26,7 +26,23 @@ function render() {
 // One odds line (Cody, 2026-10-01: in place of the list of presents), from the board's real odds table (board 2, 2026-10-02).
 // Board 3 (Cody, 2026-10-02): the centre present is the POOL JACKPOT, 25% of the Game pool at that moment × the drop's size; the
 // line shows what it is worth right now at the chosen size, from the live pool (never typed in).
-function odds() { $('#dropOdds').innerHTML = `<span class="jpline">Pool jackpot <b>${money(poolJackpot(pool(), JP.pct, bet))}</b> on a ${cents(bet)} drop right now <span class="dim">(${+(JP.pct * 100).toFixed(2)}% of the Game pool × your drop: the centre present)</span></span> <b>1 in ${Math.round(1 / jackpotOdds()).toLocaleString('en-US')}</b> to hit it · <b>1 in ${(1 / realWin()).toFixed(1)}</b> to win 2× or more`; }
+function odds() { $('#dropOdds').innerHTML = `<span class="jpline">Pool jackpot <b>${money(poolJackpot(pool(), JP.pct, bet))}</b> on a ${cents(bet)} drop right now <span class="dim">(${+(JP.pct * 100).toFixed(2)}% of the Game pool × your drop: the centre present)</span></span> <b>1 in ${Math.round(1 / jackpotOdds()).toLocaleString('en-US')}</b> to hit it`; } // only the jackpot's odds (Cody, 2026-10-03)
+// "How to play & win" (Cody, 2026-10-03: one per game, no odds besides the jackpot's): the presents' prizes from the board itself
+function howTo() {
+  const kinds = [...new Set(PAYS2.filter((p, k) => p > 0 && k !== JACKPOT_BIN))].sort((a, b) => b - a);
+  const row = (m) => `<tr class="win"><td>${m}× present</td><td>${money(m * 0.1)}</td><td>${money(m)}</td></tr>`;
+  $('#dropHow .body').innerHTML = `<ol class="howrules">
+      <li><b>Pick a size</b> (10¢ or $1 a drop) and <b>how many drops</b>, then buy. They play straight away.</li>
+      <li>Each snowball bounces down ${ROWS} rows of pegs and lands in one of the ${BINS} presents at the bottom.</li>
+      <li><b>The present it lands in is your prize:</b> its number times your drop. Empty spaces between presents pay nothing.</li>
+      <li><b>The centre present is the pool jackpot:</b> ${+(JP.pct * 100).toFixed(2)}% of the Game pool at that moment, times your drop's size (a $1 drop wins ${+(JP.pct * 100).toFixed(2)}%, a 10¢ drop a tenth of that).</li>
+      <li>Everything a run wins is added up and sent to your wallet at the end of the run.</li></ol>
+    <table class="pays"><thead><tr><th>Lands in</th><th>10¢ drop</th><th>$1 drop</th></tr></thead><tbody>${kinds.map(row).join('')}
+      <tr class="win jprow"><td>Centre present</td><td colspan="2">Pool jackpot (${money(poolJackpot(pool(), JP.pct, 0.1))} / ${money(poolJackpot(pool(), JP.pct, 1))} right now)</td></tr>
+      <tr><td>A space between presents</td><td colspan="2" class="dim">No win</td></tr></tbody></table>
+    <p><b>3% SANTA tax:</b> winnings are paid in SANTA and arrive 3% lighter. The token does that, not this game.</p>
+    <p class="dim"><b>Check it yourself:</b> after a drop, tap <b>Check last result</b> to re-run it from the revealed secret.</p>`;
+}
 const cents = (v) => (v < 1 ? Math.round(v * 100) + '¢' : '$' + (Number.isInteger(v) ? v : v.toFixed(2)));
 function stamp(text) { const fl = $('#drop .flash'); fl.textContent = text; fl.classList.remove('show'); void fl.offsetWidth; fl.classList.add('show'); }
 function setBet(b) {
@@ -88,7 +104,8 @@ export function initDrop(opts) {
   initRunPick($('#drop .runpick'), { verb: 'Drop', priceOf: (n) => priceLabel(bet * n) });
   $('#drop .skip').addEventListener('click', (e) => { fast = !fast; if (fast) board.hurry(); else board.normal(); skipLabel(e.currentTarget); });
   document.querySelectorAll('#drop .bets button').forEach((b) => b.addEventListener('click', () => setBet(+b.dataset.dbet)));
-  setBet(0.1); odds(); render();
+  setBet(0.1); odds(); render(); howTo();
+  $('#dropHow').addEventListener('toggle', () => { if ($('#dropHow').open) howTo(); }); // today's jackpot amounts when opened
   window.__drop = { test, get opening() { return opening; }, get flying() { return flying; }, get landedWon() { return landedWon; }, history, get bet() { return bet; }, get fast() { return fast; } };
 }
 // The board draws (falling snow, snowballs) only while it's on screen, or while snowballs are still falling: three game

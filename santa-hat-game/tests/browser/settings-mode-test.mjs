@@ -95,8 +95,10 @@ check(/0×nowin·18of40onthewheel45\.0%/.test((await p.textContent('#oddsList'))
 // Cody's one jackpot-odds row: the chance a pull hits the Top Line JackPot OR the Pool jackpot, from the PUBLISHED machine
 // (v1 has more Santa Hats on the reels and a 1 in 10,000 Pool jackpot), worked out here from the published numbers.
 { const { stats } = await import('../../mockups/slots.js'), M = build(V1).machine, st = stats(M);
-  const want = Math.round(1 / (1 - (1 - st.topPerLine * st.lines) * (1 - M.poolJackpotOdds))).toLocaleString('en-US');
-  check((await p.textContent('#slots .facts')).includes(`Jackpot odds (Top Line or Pool)about 1 in ${want}`) && want !== '7,665', `the Big Hat facts show the published odds (about 1 in ${want}, not the default 7,665): ` + await p.textContent('#slots .facts')); }
+  // (since 2026-10-03 the two jackpots' odds are shown separately: Cody, "each game has jackpot odds")
+  const want = Math.round(1 / (st.topPerLine * st.lines)).toLocaleString('en-US'), pj = Math.round(1 / M.poolJackpotOdds).toLocaleString('en-US');
+  const f = await p.textContent('#slots .facts');
+  check(f.includes(`Top Line JackPot oddsabout 1 in ${want}`) && f.includes(`Pool jackpot odds1 in ${pj}`) && pj === '10,000', `the Big Hat facts show the published odds (Top Line about 1 in ${want}, Pool 1 in ${pj}): ` + f); }
 check(await p.evaluate(() => window.__spin.SLICES && window.__spin.view.shownMult !== undefined), 'wheel ready');
 // The Store sells only special snowballs and gear now (Cody, 2026-10-01), so a published look item shows on the Avatar screen with
 // its price. (The admin store editor still edits look items only: see TODO.)

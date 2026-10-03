@@ -61,8 +61,10 @@ for (const [label, vp] of [['phone390', { width: 390, height: 844 }], ['phone320
   // amounts (2.5% / 25% of the pool) and its 1 in 13,997; the tax note; check-it-yourself
   const how = await p.evaluate(() => document.querySelector('#stockHow .body').textContent.replace(/\s+/g, ' ')), pool0h = await pool();
   const jpTxt = (b) => '$' + (Math.floor(0.25 * pool0h * b * 100 + 1e-6) / 100).toFixed(2);
-  check(/fixed prizes pay back 72\.4% /.test(how) && new RegExp(`with the pool jackpot at today's Game pool \\(\\$${pool0h.toFixed(2)}\\) about 73\\.3%`).test(how) && /3% SANTA tax/.test(how) && /Check it yourself/.test(how)
-    && /1 in 13,997/.test(how) && how.includes(`Pool jackpot (25% of the Game pool × the turn)${jpTxt(0.1)}${jpTxt(1)}`) && /15¢/.test(how), `${label}: How to win: fixed 72.4% + jackpot 73.3% at the $${pool0h.toFixed(2)} pool (computed), the jackpot row ${jpTxt(0.1)} / ${jpTxt(1)}, odds, tax note, check-it-yourself: ${how.slice(0, 120)}`);
+  // (Cody, 2026-10-03: How to play & win keeps the rules and prizes; the only odds shown are the jackpot's, in #stockOdds)
+  check(!/pay back|payback|\b1 in \d/.test(how) && /3% SANTA tax/.test(how) && /Check it yourself/.test(how)
+    && /Pool jackpot \$[\d.]+ on a 10¢ turn right now .* 1 in 13,997 to hit it/.test(await txt('#stockOdds'))
+    && how.includes(`Pool jackpot (25% of the Game pool × the turn)${jpTxt(0.1)}${jpTxt(1)}`) && /15¢/.test(how), `${label}: How to win: fixed 72.4% + jackpot 73.3% at the $${pool0h.toFixed(2)} pool (computed), the jackpot row ${jpTxt(0.1)} / ${jpTxt(1)}, odds, tax note, check-it-yourself: ${how.slice(0, 120)}`);
   { const desc = await txt('#stocking .stockdesc');
     check(/3% lighter/.test(desc) && /^9 stockings hide a gift, 11 hide coal/.test(desc) && desc.includes(`pool jackpot: ${jpTxt(1)} on a $1 turn right now`), `${label}: the description: 9 gifts, the live jackpot (${jpTxt(1)} on $1) and the 3% tax: ${desc}`); }
   check(await txt('#stocking [data-run="10"] small') === '$1' && await txt('#stocking [data-run="1"] b') === 'Play 1', `${label}: Play 1 / 5 / 10 at 10¢ ($1 for 10)`);

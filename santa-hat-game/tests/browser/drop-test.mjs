@@ -38,7 +38,7 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   };
   // board 3 (Cody, 2026-10-02): the centre is the POOL JACKPOT; the odds line leads with what it's worth now at the chosen size
   { const t = await p.textContent('#dropOdds'), want = (Math.floor(0.25 * (await pool()) * 0.1 * 100 + 1e-6) / 100).toFixed(2);
-    check(t === `Pool jackpot $${want} on a 10¢ drop right now (25% of the Game pool × your drop: the centre present) 1 in 5,000 to hit it · 1 in 4.4 to win 2× or more`, `${label}: the odds line with the live jackpot ($${want}): ${t}`); }
+    check(t === `Pool jackpot $${want} on a 10¢ drop right now (25% of the Game pool × your drop: the centre present) 1 in 5,000 to hit it`, `${label}: the odds line with the live jackpot ($${want}): ${t}`); }
   check(await p.textContent('#drop [data-run="10"] small') === '$1', `${label}: Drop 10 at 10¢ costs $1`);
   await p.screenshot({ path: `${OUT}/${label}-1-board.png` });
 

@@ -52,10 +52,10 @@ const held = +(await p.inputValue('#slots .runpick input')); check(held > 22, `h
 check(await counter('drop') === 'This run – won $0.00' && await counter('big') === 'This run – won $0.00', 'no run yet: "This run – won $0.00"');
 // Cody's wording (2026-10-01): Top Line JackPot; one combined jackpot-odds row instead of payback + two odds rows; Drop's one odds line
 const facts = await p.evaluate(() => [...document.querySelectorAll('#slots .facts li')].map((li) => [...li.children].map((c) => c.textContent).join(': ')));
-check(JSON.stringify(facts) === JSON.stringify(['Jackpot odds (Top Line or Pool): about 1 in 7,665', 'Every Santa Hat on the grid: +6¢']), 'Big Hat facts: ' + facts.join(' | '));
+check(JSON.stringify(facts) === JSON.stringify(['Top Line JackPot odds: about 1 in 11,054', 'Pool jackpot odds: 1 in 25,000']), 'Big Hat facts: ' + facts.join(' | '));
 check(/^Top Line JackPot/.test(await txt(p, '#slots .jp.topline span')), 'the box says Top Line JackPot');
 // the centre present is the POOL JACKPOT since 2026-10-02 (25% of the Game pool × the drop's size); its odds stay 1 in 5,000
-check(/^Pool jackpot \$[\d,.]+ on a 10¢ drop right now \(25% of the Game pool × your drop: the centre present\) 1 in 5,000 to hit it · 1 in 4\.4 to win 2× or more$/.test(await txt(p, '#dropOdds')), 'Drop: ' + await txt(p, '#dropOdds'));
+check(/^Pool jackpot \$[\d,.]+ on a 10¢ drop right now \(25% of the Game pool × your drop: the centre present\) 1 in 5,000 to hit it$/.test(await txt(p, '#dropOdds')), 'Drop: ' + await txt(p, '#dropOdds'));
 await p.evaluate(() => document.querySelector('#drop').scrollIntoView({ block: 'start' })); await p.screenshot({ path: `${OUT}/desk-box.png` });
 
 console.log('2. A run of 23 drops from the box: the counter above the buttons counts it, to the cent');
