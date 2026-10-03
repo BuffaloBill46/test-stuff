@@ -8,8 +8,9 @@ import http from 'http';
 const require = createRequire(import.meta.url);
 const { chromium } = require(path.join(execSync('npm root -g').toString().trim(), 'playwright'));
 const ROOT = new URL('../../mockups', import.meta.url).pathname, fails = [], check = (ok, msg) => { if (!ok) fails.push(msg); console.log((ok ? '  ✓ ' : '  ✗ ') + msg); };
-const PORT = 8093, REF = `ws://localhost:${PORT}`, HEALTH = `http://localhost:${PORT}/health`;
-const door = spawn(process.execPath, [fileURLToPath(new URL('../../worker/referee.mjs', import.meta.url))], { env: { ...process.env, PORT: String(PORT) }, stdio: 'inherit' });
+// Against the LIVE match server instead: REF_URL=wss://play.santahatgames.com node friends-test.mjs
+const PORT = 8093, REMOTE = process.env.REF_URL || '', REF = REMOTE || `ws://localhost:${PORT}`, HEALTH = REMOTE ? REMOTE.replace(/^ws/, 'http') + '/health' : `http://localhost:${PORT}/health`;
+const door = REMOTE ? { kill() {} } : spawn(process.execPath, [fileURLToPath(new URL('../../worker/referee.mjs', import.meta.url))], { env: { ...process.env, PORT: String(PORT) }, stdio: 'inherit' });
 for (let i = 0; i < 40; i++) { try { await fetch(HEALTH); break; } catch { await new Promise((r) => setTimeout(r, 150)); } }
 const WEB = 8097, TYPES = { js: 'text/javascript', html: 'text/html', png: 'image/png', css: 'text/css', json: 'application/json' };
 const web = http.createServer((req, res) => { const p = path.join(ROOT, decodeURIComponent(req.url.split('?')[0])); if (!p.startsWith(ROOT) || !existsSync(p)) { res.writeHead(404); return res.end(); }

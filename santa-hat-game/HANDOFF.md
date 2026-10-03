@@ -171,7 +171,10 @@ between two devices has never been tested from here. Cody and friends testing on
 - Match call-outs + end highlights LIVE (`callouts.js`, `callouts-test`).
 - My wallet under every game's play buttons LIVE (`walletline.js`; game server `wallet` action reads the player's own linked
   wallet via Helius, 10 s memory; `wallet-line-test`, shop-db). Checked on the Droplet against a real devnet account.
-- Still next: weekly modes, party join for Auto match; share-a-win image, biggest wins of the week, pool jackpot banner.
+- Friends together LIVE: a friends' room host presses "Auto match together" → the match server holds seats for the whole group in a
+  public room (20 s) and moves everyone (`referee.js together/holds`). Play page "Games waiting for players" with Join. Tested on
+  the LIVE match server: `REF_URL=wss://play.santahatgames.com node friends-test.mjs`.
+- Still next: weekly modes; share-a-win image, biggest wins of the week, pool jackpot banner.
 
 ### 2026-10-03 late night: HOME PAGE + MONEY STRIPS LIVE
 - The site opens on **Home** (intro, Player Progress, the season calendar); Home's Play now → the **Play** page (match types).
