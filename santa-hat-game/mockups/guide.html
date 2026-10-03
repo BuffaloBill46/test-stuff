@@ -83,7 +83,7 @@
     <h3>A match</h3>
     <ul>
       <li id="matchLen">One round of 60 seconds. Most points at the end wins.</li>
-      <li><b>Free-for-all:</b> everyone chases whoever wears the hat. <b>Nice vs Naughty:</b> two teams, and team points add up.</li>
+      <li><b>Free-for-all:</b> everyone chases whoever wears the hat. <span id="teamLine"><b>Nice vs Naughty:</b> two teams, and team points add up.</span></li>
       <li>A snowball hit knocks a player down for a moment. Hit whoever wears the hat and it flies off; catch it on your head to take it.</li>
       <li>Your snowball counter refills by itself, and much faster when you stand next to a snow pile.</li>
     </ul>
@@ -165,6 +165,7 @@
 <script type="module">
   import { ITEMS, COSTUMES, SEASONS } from './catalog.js';
   import { SPECIALS } from './specials.js';
+  import { TEAM_PAUSED } from './refcore.js';
   import { GEAR, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js';
   import { LEVELS, MAX_LEVEL, WINS_PER_LEVEL, MAX_BOUGHT_LEVEL, buyPrice } from './levels.js';
   import { RULES, TICKET_MAX, settleRanked } from './ranked.js';
@@ -173,6 +174,8 @@
   import * as DROP from './plinko.js';
   import * as STOCK from './stocking.js';
   import { K, PTS } from './sim.js';
+  // team play paused (refcore.js TEAM_PAUSED, Cody 2026-10-03): the guide says so, and goes back by itself when it reopens
+  if (TEAM_PAUSED) document.querySelector('#teamLine').textContent = 'Team play (Nice vs Naughty) is paused for now.';
   const $ = (s) => document.querySelector(s);
   const usd = (v) => (v < 1 ? Math.round(v * 100) + '¢' : '$' + (Number.isInteger(v) ? v : v.toFixed(2)));
   const money = (v) => '$' + v.toFixed(2);
