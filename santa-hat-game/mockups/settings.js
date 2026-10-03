@@ -45,9 +45,10 @@ export function build(s) {
 }
 // Payback of each Game-pool game at a given pool size (dollars): fixed prizes + its pool jackpot (pct × pool, × the play's size
 // for Drop and Stocking, whose jackpot share of what's played is the same at any size; Big Hat is $1 a pull: pct × pool ÷ price).
-export function paybacksAt(b, pool, bigFixed = stats(b.machine).payback) {
-  const m = b.machine;
-  return { big: bigFixed + m.poolJackpotOdds * m.jackpotPct * pool / m.bet, drop: dropPaybackAt(pool, b.drop.jackpotPct), stocking: stockPaybackAt(pool, b.stocking2.jackpotPct, b.stocking2.pays) };
+// override: Cody's pool rule `jackpotPct` on the Game pool, which every game's jackpot uses instead of its published % (as play does).
+export function paybacksAt(b, pool, bigFixed = stats(b.machine).payback, override) {
+  const m = b.machine, pct = (own) => override ?? own;
+  return { big: bigFixed + m.poolJackpotOdds * pct(m.jackpotPct) * pool / m.bet, drop: dropPaybackAt(pool, pct(b.drop.jackpotPct)), stocking: stockPaybackAt(pool, pct(b.stocking2.jackpotPct), b.stocking2.pays) };
 }
 // Same spreading as slots.js (so version 0 gives the identical strips): deterministic shuffle, no symbol twice in a row.
 // Symbols go in the game's fixed symbol order, NOT the order the counts happen to be listed in: the database stores settings
@@ -106,7 +107,8 @@ export function check(s, rules = { spin: SPIN_RULES, slots: POOL_RULES }) {
   // Payback of the three Game-pool games, fixed prizes + pool jackpot, at the LOW end (the top-off point) and the HIGH end (the
   // skim point) of the pool: both must be inside the limits, so no pool size in between can break them (the payback rises
   // steadily with the pool). Reported at the start ($500) as the headline.
-  const lo = G.topOffBelow, hi = G.skimAt, at = { lo: paybacksAt(b, lo, st.payback), start: paybacksAt(b, G.start ?? G.topOffTo, st.payback), hi: paybacksAt(b, hi, st.payback) };
+  const lo = G.topOffBelow, hi = G.skimAt, ov = G.jackpotPct;
+  const at = { lo: paybacksAt(b, lo, st.payback, ov), start: paybacksAt(b, G.start ?? G.topOffTo, st.payback, ov), hi: paybacksAt(b, hi, st.payback, ov) };
   for (const [k, name] of [['big', 'Big Hat'], ['drop', 'Snowball Drop'], ['stocking', 'Stocking Stuffer']]) {
     for (const [end, pool] of [['lo', lo], ['hi', hi]]) if (!(at[end][k] >= LIMITS.payback[0] && at[end][k] <= LIMITS.payback[1])) p.push(`${name} would pay back ${pc(at[end][k])} with the jackpot at a $${pool} Game pool (allowed ${allowed})`);
   }
@@ -123,10 +125,10 @@ export function check(s, rules = { spin: SPIN_RULES, slots: POOL_RULES }) {
   const range = (k) => ({ payback: at.start[k], at: G.start ?? G.topOffTo, low: at.lo[k], lowPool: lo, high: at.hi[k], highPool: hi });
   const report = {
     spin: { payback: spinPayback, realWin: spinWin, top: maxMult, stars: s.spin.main.star || 0 },
-    big: { ...range('big'), fixed: st.payback, realWin: ahead / 20000, topPrize: topFixed, top100: st.each['hat:5'] ? 1 / (st.each['hat:5'] * st.lines) : null, jackpot: `${Math.round(s.big.jackpotPct * 100)}% of the pool, 1 in ${Math.round(s.big.jackpotOdds).toLocaleString()}` },
-    drop: { ...range('drop'), fixed: dropFixedPayback(), realWin: dropWinOf(), top: DROP_TOP, jackpot: `${+(b.drop.jackpotPct * 100).toFixed(2)}% of the pool × the drop's size, 1 in ${Math.round(1 / dropJackpotOdds()).toLocaleString()}` },
+    big: { ...range('big'), fixed: st.payback, realWin: ahead / 20000, topPrize: topFixed, top100: st.each['hat:5'] ? 1 / (st.each['hat:5'] * st.lines) : null, jackpot: `${+((ov ?? s.big.jackpotPct) * 100).toFixed(2)}% of the pool${ov !== undefined ? " (the Game pool override)" : ""}, 1 in ${Math.round(s.big.jackpotOdds).toLocaleString()}` },
+    drop: { ...range('drop'), fixed: dropFixedPayback(), realWin: dropWinOf(), top: DROP_TOP, jackpot: `${+((ov ?? b.drop.jackpotPct) * 100).toFixed(2)}% of the pool × the drop's size, 1 in ${Math.round(1 / dropJackpotOdds()).toLocaleString()}` },
     prices: s.prices,
-    stocking: { ...range('stocking'), fixed: stockPaybackOf(sp), realWin: stockWinOf(sp), top: stockTopOf(sp), jackpot: `${+(s2.jackpotPct * 100).toFixed(2)}% of the pool × the turn's size, 1 in ${Math.round(1 / stockJackpotOdds()).toLocaleString()}` },
+    stocking: { ...range('stocking'), fixed: stockPaybackOf(sp), realWin: stockWinOf(sp), top: stockTopOf(sp), jackpot: `${+((ov ?? s2.jackpotPct) * 100).toFixed(2)}% of the pool × the turn's size, 1 in ${Math.round(1 / stockJackpotOdds()).toLocaleString()}` },
   };
   return p.length ? { ok: false, problems: p, report } : { ok: true, problems: [], report };
 }

@@ -100,6 +100,10 @@ console.log('OK: settings: version 0 = today exactly; 14 unsafe changes refused;
   no('drop jackpot 0%', (s) => { s.drop = { jackpotPct: 0 }; }, /Snowball Drop's pool jackpot must be 1%–50%/);
   // the reference pools: a skim point so high that the Drop's jackpot would push it over 98% is refused (the jackpot grows with the pool)
   no('a $5,000 skim point', () => {}, /Snowball Drop would pay back 10\d\.\d% with the jackpot at a \$5000 Game pool/, { spin: { ...SPIN_RULES, skimAt: 5000 }, slots: POOL_RULES });
+  // Cody's pool-rule jackpot override on the Game pool is what every game plays with, so the guard rails and preview use it too
+  { const ov = chk(T(), { spin: { ...SPIN_RULES, jackpotPct: 0.1 }, slots: POOL_RULES }); assert.ok(ov.ok);
+    assert.ok(Math.abs(ov.report.drop.payback - (0.76 + 0.1 * 500 / 5000)) < 1e-12 && Math.abs(ov.report.stocking.payback - paybackAt(500, 0.1)) < 1e-15, 'the override % is what the payback uses');
+    assert.match(ov.report.drop.jackpot, /^10% of the pool/); }
   // an allowed change does what it says: a bigger 3-gift prize raises the payback by exactly its extra × its chance
   const s = T(); s.stocking2.pays[3] = DEFAULT_PAYS[3] + 1; const r = chk(s); assert.ok(r.ok, r.problems.join('; '));
   assert.ok(Math.abs(r.report.stocking.fixed - (pb(DEFAULT_PAYS) + WAYS[3] / TOTAL)) < 1e-12, '3 gifts at one more × adds exactly 1 × P(3 gifts)');

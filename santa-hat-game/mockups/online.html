@@ -648,7 +648,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 .giftrow li.now { border-color: var(--lamp); box-shadow: 0 0 0 2px rgba(255,190,92,.28); } .giftrow li.now b { color: var(--lamp); }
 .giftrow li.end:not(.win) { border-color: #6f7ba8; box-shadow: none; } .giftrow li.end:not(.win) b { color: #d6ddf0; }
 /* the 8th slot: 8 gifts in a row win the POOL JACKPOT (Cody, 2026-10-02): a gold frame and a red JP, like the Slots jackpot bar */
-.giftrow li.jp { border-color: #c98a1b; } .giftrow li.jp b { color: var(--hat); } .giftrow li.jp.got { border-color: var(--lamp); box-shadow: 0 0 0 2px rgba(255,190,92,.45); }
+.giftrow li.jpslot { border-color: #c98a1b; } .giftrow li.jpslot b { color: var(--hat); } .giftrow li.jpslot.got { border-color: var(--lamp); box-shadow: 0 0 0 2px rgba(255,190,92,.45); }
 .stockdesc b { color: var(--lamp); }
 .giftrow .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 #stockHistory li { display: inline-flex; gap: 4px; align-items: center; justify-content: center; background: #151a30; color: #6f7ba8; }
@@ -657,7 +657,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 #stockHistory .g3, #stockHistory .g4 { background: #c98a1b; color: var(--ink); } #stockHistory .g5 { background: var(--lamp); color: #7a1414; }
 #stockHistory .gjp { background: var(--hat); color: #ffc94a; outline: 2px solid var(--lamp); }
 .stockhow .body > p { margin: 8px 0 0; line-height: 1.4; color: #d6ddf0; } .stockhow .body > p b { color: var(--lamp); }
-.stockhow .pays td:first-child { display: table-cell; } .stockhow tr.win td { color: var(--lamp); } .stockhow tr.jp td { color: #ffc94a; font-weight: 700; } .stockhow .pays td .dim { font: 400 12px/1.2 var(--body); }
+.stockhow .pays td:first-child { display: table-cell; } .stockhow tr.win td { color: var(--lamp); } .stockhow tr.jprow td { color: #ffc94a; font-weight: 700; } .stockhow .pays td .dim { font: 400 12px/1.2 var(--body); }
 .stockhow .howrules { margin-top: 8px; }
 @media (max-width: 600px) { #stocking.block { padding: 12px 8px 14px; } .stockhow .pays th, .stockhow .pays td { padding: 3px 4px; font-size: 12px; } }
 @media (max-width: 420px) { .giftrow { gap: 2px; } .giftrow b { font: 700 12px/1 var(--body); letter-spacing: -.2px; } } /* narrow phones: "1.75×" in the pixel font is wider than its slot */

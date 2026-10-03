@@ -40,14 +40,14 @@ let shownFound = 0, shownDone = false;
 function ladder(found, done = false) {
   shownFound = found; shownDone = done;
   $('#stockLadder').innerHTML = Array.from({ length: MAX_OPEN }, (_, i) => { const k = i + 1, jp = k === MAX_OPEN, label = jp ? 'JP' : mult(PAYS[k]), said = jp ? `the pool jackpot, ${money(jpNow(bet))} on a ${cents(bet)} turn right now` : mult(PAYS[k]);
-    return `<li class="${k <= found ? 'got' : ''}${k === found ? ' now' : ''}${done && k === found ? ' end' : ''}${jp || PAYS[k] > 1 ? ' win' : ''}${jp ? ' jp' : ''}"${jp ? ` title="${said}"` : ''}><i aria-hidden="true"></i><b>${label}</b><span class="sr">${k} gift${k === 1 ? '' : 's'}: ${said}</span></li>`; }).join('');
+    return `<li class="${k <= found ? 'got' : ''}${k === found ? ' now' : ''}${done && k === found ? ' end' : ''}${jp || PAYS[k] > 1 ? ' win' : ''}${jp ? ' jpslot' : ''}"${jp ? ` title="${said}"` : ''}><i aria-hidden="true"></i><b>${label}</b><span class="sr">${k} gift${k === 1 ? '' : 's'}: ${said}</span></li>`; }).join('');
 }
 // "How to win": everything from the rules (the payback is computed from the pay table and the live pool, never typed in)
 function howTo() {
   howTo.done = true;
   const pc = (x) => (x * 100).toFixed(1) + '%', R = POOL_RULES, odds1 = (w) => (TOTAL / w).toLocaleString('en-US', { maximumFractionDigits: TOTAL / w < 100 ? 1 : 0 });
   const rows = PAYS.map((p, k) => `<tr class="${p > 1 ? 'win' : ''}"><td>${k === 0 ? 'Coal first' : k}</td><td>${p ? mult(p) : '—'}${p > 0 && p < 1 ? ' <span class="dim">(less back than it cost)</span>' : ''}</td><td>${p ? amt(p * 0.1) : '—'}</td><td>${p ? amt(p) : '—'}</td><td>1 in ${odds1(WAYS[k])}</td></tr>`).join('')
-    + `<tr class="win jp"><td>${MAX_OPEN} in a row</td><td>Pool jackpot <span class="dim">(${+(JP.pct * 100).toFixed(2)}% of the Game pool × the turn)</span></td><td>${money(jpNow(0.1))}</td><td>${money(jpNow(1))}</td><td>1 in ${odds1(WAYS[MAX_OPEN])}</td></tr>`;
+    + `<tr class="win jprow"><td>${MAX_OPEN} in a row</td><td>Pool jackpot <span class="dim">(${+(JP.pct * 100).toFixed(2)}% of the Game pool × the turn)</span></td><td>${money(jpNow(0.1))}</td><td>${money(jpNow(1))}</td><td>1 in ${odds1(WAYS[MAX_OPEN])}</td></tr>`;
   $('#stockHow .body').innerHTML = `<ol class="howrules">
       <li><b>${STOCKINGS} stockings</b> hang on the mantel: <b>${GIFTS} hide a gift</b>, the other ${STOCKINGS - GIFTS} hide a lump of coal (the Naughty List).</li>
       <li><b>Tap the stockings</b> to open them, one at a time, up to ${MAX_OPEN}. <b>The first coal ends the turn.</b></li>
