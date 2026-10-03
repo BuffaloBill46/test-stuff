@@ -56,6 +56,13 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     landing: { x: 0, z: 0 },
     variant: VARIANTS[variant] ? variant : null, zoneAcc: 0, // the weekly mode, and King of the Gazebo's 1-second clock
   };
+  // HAT HUNT (weekly.js hathunt): more than one hat. S.hats[0] IS S.hat (the gazebo's hat, everything else keeps using it); the
+  // extra hats start on the ground at EXTRA_SPOTS and never go back on the gazebo. A plain match has exactly one: S.hats = [S.hat].
+  const hatCount = () => Math.max(1, Math.min(3, (VARIANTS[S.variant] || {}).hats || 1));
+  const EXTRA_SPOTS = [[-7.5, 0], [7.5, 0]];
+  const mkHat = (i) => (i === 0 ? S.hat : { st: 'ground', x: EXTRA_SPOTS[i - 1][0], y: 0.15, z: EXTRA_SPOTS[i - 1][1], vx: 0, vy: 0, vz: 0, holder: -1, last: -1, cool: 0, bounces: 3, rest: 0, acc: 0, melt: 0, lx: 0, lz: 0 });
+  S.hats = Array.from({ length: hatCount() }, (_, i) => mkHat(i));
+  const wearing = (e) => S.hats.find((h) => h.st === 'head' && h.holder === e.id) || null; // a player wears one hat at most
   const V = () => VARIANTS[S.variant] || {}; // this room's weekly mode rules ({} = plain)
 
   const byId = (id) => S.ents.find((e) => e.id === id);
@@ -104,7 +111,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     for (let i = bots.length - 1; i >= want; i--) removeEnt(bots[i]);
   }
   function removeEnt(e) {
-    if (S.hat.holder === e.id) knockHat(e, { x: 0, z: 1 });
+    if (wearing(e)) knockHat(e, { x: 0, z: 1 });
     S.ents = S.ents.filter((x) => x !== e);
   }
   function syncRoster(peers) {
@@ -141,6 +148,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     S.ents.forEach((e, i) => { spawn(e, i, S.ents.length); e.max = startCount(e); e.ammo = e.max; // a level-up shows from the next round
       e.cool = e.bot ? 0.8 + rand() : 0; e.regen = 0; e.xh = e.fx.extraHits; }); // every round starts with all extra hits
     Object.assign(S.hat, { st: 'ped', holder: -1, last: -1, x: 0, y: K.PED_TOP, z: 0, vx: 0, vy: 0, vz: 0, acc: 0, melt: 0 }); S.zoneAcc = 0;
+    S.hats = Array.from({ length: hatCount() }, (_, i) => mkHat(i)); // Hat Hunt: the extra hats back on their spots
     S.balls = []; S.drops = []; S.gh = {};
   }
   // Set up a new match: mode, match id, teams, scores to 0, everyone on their spawn spot with a full counter.
@@ -179,13 +187,13 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
   function botChat(e, i) { if (!e || !e.bot || (e.chat || 0) > 0 || rand() > 0.3) return; e.chat = 8; ev('emote', e.id, i); }
 
   // ---------- hat + snowballs (same rules as the single-player mockup)
-  function giveHat(e, caught) {
-    Object.assign(S.hat, { st: 'head', holder: e.id, acc: 0 });
+  function giveHat(e, caught, h = S.hat) {
+    Object.assign(h, { st: 'head', holder: e.id, acc: 0 });
     e.immune = HAT_IMMUNE; // untouchable for 2 s, so a player can get out of a crowd with it (Cody)
     if (caught) { if (S.phase !== 'lobby') { addScore(e, PTS.header); tally(e, 'catches'); } ev('catch', e.id); botChat(e, 0); } else ev('grab', e.id);
   }
   function knockHat(e, dir, by) {
-    const h = S.hat; const l = hyp(dir.x, dir.z) || 1;
+    const h = wearing(e) || S.hat; const l = hyp(dir.x, dir.z) || 1; // the hat THIS player wears (Hat Hunt: one of several)
     Object.assign(h, { st: 'air', holder: -1, last: e.id, cool: 0.5, bounces: 0, x: e.x, y: K.HEAD_Y + 0.2, z: e.z });
     h.vx = (dir.x / l) * 3.4 + (rand() - 0.5) * 2.5; h.vy = 10; h.vz = (dir.z / l) * 3.4 + (rand() - 0.5) * 2.5;
     if (by) { addScore(by, PTS.knock); tally(by, 'steals'); }
@@ -240,7 +248,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     if (scoring()) { const lost = Math.min(1, e.score); e.score -= lost; if (S.mode === 'team') S.team[e.team] -= lost; }
     ev('hit', e.id, r2(b.x), r2(b.y), r2(b.z));
     if (rand() < 0.5) botChat(e, 3); else botChat(thrower, 1);
-    if (!kept && S.hat.holder === e.id) knockHat(e, { x: b.vx, z: b.vz }, thrower);
+    if (!kept && wearing(e)) knockHat(e, { x: b.vx, z: b.vz }, thrower);
   }
 
   const nearestPile = (e) => PILES.reduce((b, p) => (hyp(p[0] - e.x, p[1] - e.z) < hyp(b[0] - e.x, b[1] - e.z) ? p : b));
@@ -248,7 +256,8 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
   const lead = (t, from, noise) => { const tt = d2(t, from) / K.BALL_SPEED; return [t.x + t.vx * tt * 0.8 + (rand() - 0.5) * noise, t.z + t.vz * tt * 0.8 + (rand() - 0.5) * noise]; };
 
   function ai(e) {
-    const h = S.hat, holder = h.st === 'head' ? byId(h.holder) : null, fs = foes(e);
+    const mine = wearing(e), h = mine || (S.hats.length > 1 ? nearest(e, S.hats.map((x) => ({ x: x.st === 'air' ? x.lx ?? S.landing.x : x.x, z: x.st === 'air' ? x.lz ?? S.landing.z : x.z, hat: x }))).hat : S.hat);
+    const holder = h.st === 'head' ? byId(h.holder) : null, fs = foes(e);
     let gx, gz;
     if (holder === e) {
       const f = nearest(e, fs) || { x: 0, z: 0 };
@@ -259,7 +268,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
       if (f && d2(f, e) < 8) throwBall(e, ...lead(f, e, 1.2));
     } else if (e.ammo === 0 && h.st === 'head') [gx, gz] = nearestPile(e);
     else if (h.st === 'ped') { gx = 0; gz = 0; }
-    else if (h.st === 'air') { gx = S.landing.x; gz = S.landing.z; }
+    else if (h.st === 'air') { gx = h === S.hat ? S.landing.x : h.lx; gz = h === S.hat ? S.landing.z : h.lz; }
     else if (h.st === 'ground') { gx = h.x; gz = h.z; }
     else if (holder && fs.includes(holder)) {
       let ox = e.x - holder.x, oz = e.z - holder.z; const l = hyp(ox, oz) || 1, k = (5 + Math.sin(e.wob) * 1.5) / l;
@@ -294,7 +303,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
       if (e.immune > 0) e.immune -= dt;
       if (e.stun > 0) { e.stun -= dt; const f = 1 - Math.min(1, dt * 4); e.vx *= f; e.vz *= f; }
       else if (e.bot) {
-        const want = moving() ? ai(e) : [0, 0], top = K.BOT_SPEED * (h.holder === e.id ? K.HOLD_SLOW : 1), k = Math.min(1, dt * 10);
+        const want = moving() ? ai(e) : [0, 0], top = K.BOT_SPEED * (wearing(e) ? K.HOLD_SLOW : 1), k = Math.min(1, dt * 10);
         e.vx += (want[0] * top - e.vx) * k; e.vz += (want[1] * top - e.vz) * k;
       } else if (!moving() || e.since > 0.4) { e.vx = 0; e.vz = 0; }
       if (!e.bot) e.since += dt;
@@ -343,12 +352,17 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
       if (S.zoneAcc >= 1) { S.zoneAcc -= 1; const inZone = S.ents.filter((e) => e.stun <= 0 && hyp(e.x, e.z) <= V().zoneOut);
         if (inZone.length === 1) { addScore(inZone[0], V().zonePts); ev('zone', inZone[0].id, V().zonePts); } }
     }
+    S.hats.forEach((hh, i) => stepHat(hh, i, dt)); // every hat (one, unless Hat Hunt)
+  }
+  // One hat's frame: on the gazebo (the main hat only), on a head (scores), in the air (caught by a free head), on the ground.
+  function stepHat(h, i, dt) {
+    if (h.st === 'ped' && i) { h.st = 'ground'; h.rest = 0; } // only the gazebo's own hat sits on the gazebo
     if (h.st === 'ped') {
       h.x = 0; h.y = K.PED_TOP; h.z = 0;
-      if (moving()) for (const e of S.ents) if (e.stun <= 0 && hyp(e.x, e.z) < 2.05) { giveHat(e, false); break; }
+      if (moving()) for (const e of S.ents) if (e.stun <= 0 && !wearing(e) && hyp(e.x, e.z) < 2.05) { giveHat(e, false, h); break; }
     } else if (h.st === 'head') {
       const e = byId(h.holder);
-      if (!e) { h.st = 'ped'; h.holder = -1; }
+      if (!e) { h.holder = -1; if (i) { h.st = 'ground'; h.rest = 0; } else h.st = 'ped'; } // its wearer left: an extra hat drops where it is
       else {
         h.x = e.x; h.y = K.HEAD_Y; h.z = e.z; h.acc += dt;
         // Hot Hat: the hat scores double (hatMult) and melts a snowball every meltEvery seconds worn
@@ -361,9 +375,9 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
       if (r > K.ARENA) { h.x *= K.ARENA / r; h.z *= K.ARENA / r; h.vx *= -0.6; h.vz *= -0.6; }
       if (h.vy < 0 && h.y < K.HEAD_Y + 0.35 && h.y > K.HEAD_Y - 0.4) {
         for (const e of S.ents) {
-          if ((e.id === h.last && h.cool > 0) || d2(e, h) > 0.8) continue;
+          if ((e.id === h.last && h.cool > 0) || d2(e, h) > 0.8 || wearing(e)) continue; // one hat per head: it passes a wearer by
           if (e.stun > 0) { h.vx = (rand() - 0.5) * 6; h.vy = 8; h.vz = (rand() - 0.5) * 6; h.last = e.id; h.cool = 0.3; ev('boing', e.id); }
-          else giveHat(e, true);
+          else giveHat(e, true, h);
           break;
         }
       }
@@ -374,12 +388,13 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
       }
       if (h.st === 'air') {
         const dy = h.y - K.HEAD_Y, tt = (h.vy + Math.sqrt(Math.max(0, h.vy * h.vy + 2 * K.HAT_G * dy))) / K.HAT_G;
-        S.landing.x = h.x + h.vx * tt; S.landing.z = h.z + h.vz * tt;
-        const l = hyp(S.landing.x, S.landing.z); if (l > K.ARENA) { S.landing.x *= K.ARENA / l; S.landing.z *= K.ARENA / l; }
+        const L = i ? h : S.landing, kx = i ? 'lx' : 'x', kz = i ? 'lz' : 'z'; // where it will come down (the main hat's: S.landing)
+        L[kx] = h.x + h.vx * tt; L[kz] = h.z + h.vz * tt;
+        const l = hyp(L[kx], L[kz]); if (l > K.ARENA) { L[kx] *= K.ARENA / l; L[kz] *= K.ARENA / l; }
       }
     } else if (h.st === 'ground') {
       h.rest += dt;
-      if (moving()) for (const e of S.ents) if (e.stun <= 0 && d2(e, h) < 1.0) { giveHat(e, false); break; }
+      if (moving()) for (const e of S.ents) if (e.stun <= 0 && !wearing(e) && d2(e, h) < 1.0) { giveHat(e, false, h); break; }
       if (h.st === 'ground' && h.rest > 5) { h.st = 'air'; h.last = -1; h.bounces = 3; h.vx = -h.x / 1.2; h.vy = 11; h.vz = -h.z / 1.2; }
     }
   }
@@ -393,6 +408,8 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
         // only a player wearing gear adds 2 numbers: their gear (gear.js gearMask, Present Box already resolved) and extra hits left
         ...(e.gear.length ? [gearMask(e.gear), e.xh] : [])]),
       H: [HAT.indexOf(h.st), r2(h.x), r2(h.y), r2(h.z), r2(h.vx), r2(h.vy), r2(h.vz), h.holder, r2(S.landing.x), r2(S.landing.z)],
+      // Hat Hunt's extra hats, the same numbers each (a plain match sends nothing here: its snapshots don't change)
+      X: S.hats.length > 1 ? S.hats.slice(1).map((x) => [HAT.indexOf(x.st), r2(x.x), r2(x.y), r2(x.z), r2(x.vx), r2(x.vy), r2(x.vz), x.holder, r2(x.lx || 0), r2(x.lz || 0)]) : undefined,
       // balls: … owner, stun ×, kind (BALL_KIND), size, split group: special balls keep their rule through a host handover
       B: S.balls.map((b) => [b.id, r2(b.x), r2(b.y), r2(b.z), r2(b.vx), r2(b.vy), r2(b.vz), b.owner, b.sm || 1, BALL_KIND[b.kind || ''] || 0, b.r || 1, b.g || 0, r2(b.age || 0)]),
       D: S.drops.map((p) => [r2(p.x), r2(p.z), r2(p.t), p.owner, DROP_KIND[p.kind] || 0]), // falling snowballs (Sky Ball, Rain)
@@ -416,6 +433,8 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     Object.assign(h, { st: HAT[H[0]] || 'ped', x: num(H[1]), y: num(H[2], K.PED_TOP), z: num(H[3]), vx: num(H[4]), vy: num(H[5]), vz: num(H[6]), holder: num(H[7], -1), acc: 0, cool: 0, bounces: 0, rest: 0 });
     if (h.st === 'head' && !byId(h.holder)) { h.st = 'ped'; h.holder = -1; }
     S.landing.x = num(H[8]); S.landing.z = num(H[9]);
+    S.hats = [h, ...(Array.isArray(snap.X) ? snap.X.slice(0, 2) : []).map((X) => { const x = { st: HAT[X[0]] || 'ground', x: num(X[1]), y: num(X[2], 0.15), z: num(X[3]), vx: num(X[4]), vy: num(X[5]), vz: num(X[6]), holder: num(X[7], -1), lx: num(X[8]), lz: num(X[9]), last: -1, cool: 0, bounces: 3, rest: 0, acc: 0, melt: 0 };
+      if (x.st === 'head' && !byId(x.holder)) { x.st = 'ground'; x.holder = -1; } if (x.st === 'ped') x.st = 'ground'; return x; })]; // Hat Hunt's extra hats
     S.balls = (snap.B || []).map((b) => { const kind = KIND_OF[num(b[9])] || '';
       return { id: b[0], x: b[1], y: b[2], z: b[3], vx: b[4], vy: b[5], vz: b[6], owner: b[7], sm: Number.isFinite(b[8]) ? b[8] : 1, life: 1, kind, r: num(b[10], 1) || 1,
         stunSec: SPECIALS[kind === 'piece' ? 'split' : kind]?.stunSec || 0, g: num(b[11]), age: num(b[12]) }; });

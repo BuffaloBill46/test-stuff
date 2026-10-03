@@ -54,6 +54,42 @@ const park = (e, x, z) => { e.x = x; e.z = z; e.vx = e.vz = 0; e.since = 9; };
 // --- the mode rides in snapshots: a page taking over as host keeps it
 { const sim = match('gazebo'), snap = sim.snapshot(); const s2 = createSim(rand); assert.ok(s2.load(snap));
   assert.equal(s2.S.variant, 'gazebo', 'a new host keeps the weekly mode'); assert.equal(match(null).snapshot().vr, 0, 'plain: vr 0'); }
+// --- HAT HUNT: three hats; every hat on a head scores; one hat per head; a hit knocks off the RIGHT hat; kept through a handover;
+// a full 8-player match keeps it all true every frame and its snapshots stay under the 4 KiB cap
+{ const sim = match('hathunt'), [a, b] = sim.S.ents, H = sim.S.hats;
+  assert.equal(H.length, 3, 'three hats'); assert.equal(H[0], sim.S.hat, 'the first is the gazebo hat');
+  assert.deepEqual(H.map((h) => h.st), ['ped', 'ground', 'ground'], 'one on the gazebo, two on the ground');
+  // a walks onto the first extra hat, b onto the second: both wear one and both score
+  run(sim, 0.2, () => { park(a, H[1].x, H[1].z); park(b, H[2].x, H[2].z); });
+  assert.deepEqual([H[1].holder, H[2].holder], [a.id, b.id], 'each picks up the hat they walk onto');
+  const s0 = [a.score, b.score];
+  run(sim, 3.05, () => { park(a, -9, -6); park(b, 9, -6); });
+  assert.deepEqual([a.score - s0[0], b.score - s0[1]], [3 * PTS.hatSec, 3 * PTS.hatSec], 'every hat on a head scores 10 a second');
+  // a walks to the gazebo wearing a hat: can't take a second one
+  run(sim, 0.3, () => { park(a, 1.6, 0); park(b, 9, -6); });
+  assert.equal(H[0].st, 'ped', 'one hat per head: the gazebo hat stays put');
+  assert.equal(H.filter((h) => h.holder === a.id).length, 1, 'a still wears exactly one');
+  // a hit knocks off a's hat, and only a's
+  const mine = H.find((h) => h.holder === a.id); a.immune = 0; a.xh = 0;
+  sim.S.balls.push({ id: 999, owner: b.id, sm: 1, kind: '', r: 1, stunSec: 0, g: 0, age: 0, x: a.x - 0.5, y: 1.2, z: a.z, vx: 18, vy: 0, vz: 0, life: 2 });
+  run(sim, 0.1, () => park(b, 9, -6));
+  assert.ok(mine.st === 'air' && H.find((h) => h.holder === b.id), 'the hit knocks the hat off a into the air; b keeps theirs');
+  // a page taking over as host keeps all three hats where they are
+  const snap = sim.snapshot(), s2 = createSim(rand); s2.load(snap);
+  assert.deepEqual(s2.S.hats.map((h) => [h.st, h.holder]), H.map((h) => [h.st, h.holder]), 'a new host keeps every hat');
+  assert.equal(match(null).snapshot().X, undefined, 'a plain match sends no extra hats'); }
+{ const sim = createSim(rand, { variant: 'hathunt' }); sim.syncRoster(Array.from({ length: 8 }, (_, i) => 'pppppppppppp' + i)); sim.startMatch('ffa');
+  let big = 0;
+  for (let f = 0; f < 60 * 30; f++) {
+    for (const e of sim.S.ents) if (!e.bot && f % 20 === 0) { e.x += (rand() - 0.5) * 3; e.z += (rand() - 0.5) * 3; }
+    sim.step(1 / 30);
+    const worn = sim.S.hats.filter((h) => h.st === 'head').map((h) => h.holder);
+    if (new Set(worn).size !== worn.length) throw new Error('a player wears two hats at frame ' + f);
+    if (sim.S.hats.length !== 3) throw new Error('hats lost');
+    if (sim.S.ents.some((e) => e.score < 0)) throw new Error('negative score');
+    big = Math.max(big, JSON.stringify(sim.snapshot()).length);
+  }
+  assert.ok(big < 4096, `snapshots under 4 KiB with three hats (${big} bytes)`); }
 // --- the rotation
 { const weeks = Array.from({ length: 6 }, (_, i) => weeklyAt(Date.UTC(2026, 9, 7) + i * 7 * 86400e3, ROTATION));
   assert.deepEqual(weeks, [0, 1, 2, 3, 4, 5].map((i) => ROTATION[(i + 1) % ROTATION.length]), `one mode a week, in order: ${weeks.join(', ')}`);
@@ -64,4 +100,5 @@ const park = (e, x, z) => { e.x = x; e.z = z; e.vx = e.vz = 0; e.since = 9; };
 { const t0 = Date.UTC(2026, 9, 7); assert.equal(weeklyAt(t0, []), null, 'all switched off: no weekly mode');
   for (let i = 0; i < 4; i++) assert.equal(weeklyAt(t0 + i * 7 * 86400e3, ['gazebo']), 'gazebo', 'only the Gazebo on: the Gazebo every week');
   assert.equal(weeklyAt(t0, ['hathunt']), null, 'Hat Hunt switched on but not built: still no weekly mode'); }
+console.log('OK: Hat Hunt: three hats, each on a head scores, one hat per head, a hit knocks off the right hat, kept through a handover, an 8-player match stays true every frame under 4 KiB');
 console.log('OK: weekly modes: Hot Hat (double hat points, a snowball melts every 2 s, never below 0), King of the Gazebo (5 a second alone in the ring, nobody when shared), Blizzard (2× refill), plain unchanged, kept through a host handover, one mode a game week (built modes only)');
