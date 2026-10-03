@@ -1,29 +1,29 @@
 // Santa Hat Legends (the Snowball Square game): lobby, rooms, referee hand-off, smoothing, HUD.
-import './buildcheck.js?v=02ed8fec10'; // first: the page and this code come from the same publish (buildcheck.js)
-import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo, Sparks, gearTick, GEAR_TINT, disposeTree } from './kit.js?v=02ed8fec10';
-import { buildPlaza, makeHat, shadowBlob } from './plaza.js?v=02ed8fec10';
-import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js?v=02ed8fec10';
-import { openRoom, accounts, findWallet, gamesBoard } from './net.js?v=02ed8fec10';
-import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js?v=02ed8fec10';
-import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js?v=02ed8fec10';
-import { initSeason, refreshSeason } from './seasonui.js?v=02ed8fec10';
-import { initMoneyStrips, refreshBurned } from './moneystrip.js?v=02ed8fec10';
-import { initWalletLines, refreshWallet } from './walletline.js?v=02ed8fec10';
-import { createCoach } from './coach.js?v=02ed8fec10';
-import { createCallouts } from './callouts.js?v=02ed8fec10';
-import { VARIANTS, VARIANT_IDS } from './weekly.js?v=02ed8fec10';
-import { initJackpotBar } from './jackpotbar.js?v=02ed8fec10';
-import { initShareWins } from './sharecard.js?v=02ed8fec10';
-import { TICKET_MAX } from './ranked.js?v=02ed8fec10';
-import { levelInfo, clampLevel } from './levels.js?v=02ed8fec10';
-import { SERVER, call, token as signInToken } from './gameserver.js?v=02ed8fec10';
-import { SPECIALS, cantThrow } from './specials.js?v=02ed8fec10';
-import { gearIn, effectsOf, heldWith, gearOfMask, statOf, RETIRED } from './gear.js?v=02ed8fec10';
-import { initLottery } from './lotteryui.js?v=02ed8fec10';
-import { play as sfx, initSoundButtons } from './sfx.js?v=02ed8fec10';
-import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js?v=02ed8fec10';
-import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js?v=02ed8fec10';
-import { snapMs, autoStartMs, isPublic, isWeekly, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js?v=02ed8fec10';
+import './buildcheck.js?v=f49f060705'; // first: the page and this code come from the same publish (buildcheck.js)
+import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo, Sparks, gearTick, GEAR_TINT, disposeTree } from './kit.js?v=f49f060705';
+import { buildPlaza, makeHat, shadowBlob } from './plaza.js?v=f49f060705';
+import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js?v=f49f060705';
+import { openRoom, accounts, findWallet, gamesBoard } from './net.js?v=f49f060705';
+import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js?v=f49f060705';
+import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js?v=f49f060705';
+import { initSeason, refreshSeason } from './seasonui.js?v=f49f060705';
+import { initMoneyStrips, refreshBurned } from './moneystrip.js?v=f49f060705';
+import { initWalletLines, refreshWallet } from './walletline.js?v=f49f060705';
+import { createCoach } from './coach.js?v=f49f060705';
+import { createCallouts } from './callouts.js?v=f49f060705';
+import { VARIANTS, VARIANT_IDS } from './weekly.js?v=f49f060705';
+import { initJackpotBar } from './jackpotbar.js?v=f49f060705';
+import { initShareWins } from './sharecard.js?v=f49f060705';
+import { TICKET_MAX } from './ranked.js?v=f49f060705';
+import { levelInfo, clampLevel } from './levels.js?v=f49f060705';
+import { SERVER, call, token as signInToken } from './gameserver.js?v=f49f060705';
+import { SPECIALS, cantThrow } from './specials.js?v=f49f060705';
+import { gearIn, effectsOf, heldWith, gearOfMask, statOf, RETIRED } from './gear.js?v=f49f060705';
+import { initLottery } from './lotteryui.js?v=f49f060705';
+import { play as sfx, initSoundButtons } from './sfx.js?v=f49f060705';
+import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js?v=f49f060705';
+import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js?v=f49f060705';
+import { snapMs, autoStartMs, isPublic, isWeekly, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js?v=f49f060705';
 
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
@@ -73,6 +73,9 @@ const sparks = new Sparks(1600); scene.add(sparks.points);
 const ballGeo = build([part(new THREE.IcosahedronGeometry(0.17, 0), C.brim, { jit: 0.02 })]);
 const hatMesh = makeHat(0.88); scene.add(hatMesh);
 const hatShadow = shadowBlob(); scene.add(hatShadow);
+// Hat Hunt: two more hats, each with its shadow and landing ring (hidden unless the match has them)
+const extraHats = [0, 1].map(() => { const mesh = makeHat(0.88), shadow = shadowBlob(), ring = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.86, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, depthWrite: false }));
+  for (const o of [mesh, shadow, ring]) { o.visible = false; scene.add(o); } return { mesh, shadow, ring }; });
 const hatGlow = glow(0xffd29a, 3.2, 0.3); scene.add(hatGlow);
 const landRing = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.86, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, depthWrite: false }));
 landRing.position.y = 0.06; scene.add(landRing);
@@ -119,6 +122,8 @@ function decode(s) {
       // special gear, as the REFEREE resolved it (a Present Box already turned into its pick) and extra hits left; none = []
       gear: gearOfMask(r[15]), xh: n(r[16]) })),
     hat: { st: ['ped', 'head', 'air', 'ground'][H[0]] || 'ped', x: n(H[1]), y: n(H[2], K.PED_TOP), z: n(H[3]), vx: n(H[4]), vy: n(H[5]), vz: n(H[6]), holder: n(H[7], -1), lx: n(H[8]), lz: n(H[9]) },
+    // Hat Hunt's extra hats (sim.js X), the same numbers; none in a plain match
+    xhats: (Array.isArray(s.X) ? s.X.slice(0, 2) : []).map((X) => ({ st: ['ped', 'head', 'air', 'ground'][X[0]] || 'ground', x: n(X[1]), y: n(X[2], 0.15), z: n(X[3]), vx: n(X[4]), vy: n(X[5]), vz: n(X[6]), holder: n(X[7], -1), lx: n(X[8]), lz: n(X[9]) })),
     balls: (Array.isArray(s.B) ? s.B : []).map((b) => ({ id: n(b[0]), x: n(b[1]), y: n(b[2]), z: n(b[3]), vx: n(b[4]), vy: n(b[5]), vz: n(b[6]), owner: n(b[7]), kind: KIND_OF[n(b[9])] || '', r: n(b[10], 1) || 1 })),
     drops: (Array.isArray(s.D) ? s.D : []).map((p) => ({ x: n(p[0]), z: n(p[1]), t: n(p[2]), owner: n(p[3]), kind: DROP_OF[n(p[4])] || 'rain' })),
     ev: Array.isArray(s.V) ? s.V : [], res: Array.isArray(s.R) ? { team: s.R[0], top: s.R[1], mvp: s.R[2] } : null,
@@ -312,7 +317,7 @@ function controls(dt, v) {
   if (w.length() > 1) w.normalize();
   if (!canMove) w.set(0, 0, 0);
   // Elf Shoes (+25%): the referee allows the extra speed (sim.js setReport), so my own page has to move me that much faster too.
-  const top = K.HUMAN_SPEED * fxOf(e).speedMult * (v.hat.st === 'head' && v.hat.holder === e.id ? K.HOLD_SLOW : 1), kk = Math.min(1, dt * 10);
+  const top = K.HUMAN_SPEED * fxOf(e).speedMult * ([v.hat, ...(v.xhats || [])].some((x) => x.st === 'head' && x.holder === e.id) ? K.HOLD_SLOW : 1), kk = Math.min(1, dt * 10);
   ctl.vx += (w.x * top - ctl.vx) * kk; ctl.vz += (w.z * top - ctl.vz) * kk;
   ctl.x += ctl.vx * dt; ctl.z += ctl.vz * dt; constrain(ctl);
   const sp = Math.hypot(ctl.vx, ctl.vz);
@@ -373,6 +378,25 @@ function interpolated(now) {
   return v;
 }
 
+// Draw one Santa hat where the match says it is: on a head (the wearer's size), flying (spinning, with its shadow and the ring
+// where it lands), on the gazebo (the main hat only: floating, big), or on the ground. Returns where it was drawn.
+function placeHat(h, mesh, ring, shadow, main, t, dt) {
+  let hx = h.x, hy = h.y, hz = h.z, rot = null, hs = 1;
+  ring.visible = shadow.visible = false;
+  // hs: the wearer's drawn size (Elf Hat: half), so the Santa hat sits on a half-size head at half size
+  if (h.st === 'head') { const w = views.get(h.holder); if (w) { hs = w.mesh.scale.x; hx = w.rx; hz = w.rz; hy = (K.HEAD_Y + w.mesh.userData.body.position.y) * hs; rot = [0, w.mesh.rotation.y + Math.PI / 2, w.mesh.rotation.z]; } }
+  else if (h.st === 'air') {
+    const a = Math.min(currentView?.age || 0, 1.2); hx = h.x + h.vx * a; hz = h.z + h.vz * a; hy = Math.max(0.15, h.y + h.vy * a - 0.5 * K.HAT_G * a * a);
+    mesh.rotation.x += dt * 7; mesh.rotation.z += dt * 5;
+    ring.visible = true; ring.position.set(h.lx, 0.06, h.lz); ring.scale.setScalar(1 + Math.sin(t * 14) * 0.12);
+    shadow.visible = true; shadow.position.set(hx, 0.04, hz); shadow.scale.setScalar(Math.max(0.3, 1.3 - hy * 0.12));
+  } else if (h.st === 'ped' && main) { hy = K.PED_TOP + 0.05 + Math.sin(t * 2) * 0.06; rot = [0, t * 0.8, 0]; }
+  else rot = [0, mesh.rotation.y, 0.4];
+  if (rot) mesh.rotation.set(...rot);
+  mesh.position.set(hx, hy, hz);
+  mesh.scale.setScalar(THREE.MathUtils.lerp(mesh.scale.x, h.st === 'ped' && main ? 2.2 : hs, Math.min(1, dt * 8)));
+  return [hx, hy, hz];
+}
 // ---------- events -> effects
 function entPos(id, v = currentView) {
   const view = views.get(id); if (view) return new V3(view.rx, 0, view.rz);
@@ -716,22 +740,11 @@ function draw(v, dt, t) {
     w.label.classList.toggle('say', !!say); w.label.classList.toggle('me', !!isMe); w.label.hidden = p.behind;
   }
   // hat
-  const h = v.hat; let hx = h.x, hy = h.y, hz = h.z, rot = null;
-  hatShadow.visible = landRing.visible = false;
-  for (const [id, w] of views) { const c = w.mesh.userData.hatMesh; if (c) c.visible = !(h.st === 'head' && h.holder === id); } // a worn cosmetic hat steps aside for the Santa hat
-  // hs: the wearer's drawn size (Elf Hat: half), so the Santa hat sits on a half-size head at half size
-  let hs = 1;
-  if (h.st === 'head') { const w = views.get(h.holder); if (w) { hs = w.mesh.scale.x; hx = w.rx; hz = w.rz; hy = (K.HEAD_Y + w.mesh.userData.body.position.y) * hs; rot = [0, w.mesh.rotation.y + Math.PI / 2, w.mesh.rotation.z]; } }
-  else if (h.st === 'air') {
-    const a = Math.min(v.age || 0, 1.2); hx = h.x + h.vx * a; hz = h.z + h.vz * a; hy = Math.max(0.15, h.y + h.vy * a - 0.5 * K.HAT_G * a * a);
-    hatMesh.rotation.x += dt * 7; hatMesh.rotation.z += dt * 5;
-    landRing.visible = true; landRing.position.set(h.lx, 0.06, h.lz); landRing.scale.setScalar(1 + Math.sin(t * 14) * 0.12);
-    hatShadow.visible = true; hatShadow.position.set(hx, 0.04, hz); hatShadow.scale.setScalar(Math.max(0.3, 1.3 - hy * 0.12));
-  } else if (h.st === 'ped') { hy = K.PED_TOP + 0.05 + Math.sin(t * 2) * 0.06; rot = [0, t * 0.8, 0]; }
-  else rot = [0, hatMesh.rotation.y, 0.4];
-  if (rot) hatMesh.rotation.set(...rot);
-  hatMesh.position.set(hx, hy, hz);
-  hatMesh.scale.setScalar(THREE.MathUtils.lerp(hatMesh.scale.x, h.st === 'ped' ? 2.2 : hs, Math.min(1, dt * 8)));
+  const h = v.hat, xh = v.xhats || [];
+  // a worn cosmetic hat steps aside for a Santa hat (any of them, in Hat Hunt)
+  for (const [id, w] of views) { const c = w.mesh.userData.hatMesh; if (c) c.visible = ![h, ...xh].some((x) => x.st === 'head' && x.holder === id); }
+  const [hx, hy, hz] = placeHat(h, hatMesh, landRing, hatShadow, true, t, dt);
+  extraHats.forEach((o, i) => { const x = xh[i]; o.mesh.visible = !!x; if (x) placeHat(x, o.mesh, o.ring, o.shadow, false, t, dt); else o.ring.visible = o.shadow.visible = false; });
   hatGlow.position.set(hx, hy + 0.5, hz); hatGlow.material.opacity = 0.22 + Math.sin(t * 4) * 0.08;
   // snowballs: the referee's (extrapolated), except my own, which I drew instantly
   const a = Math.min(v.age || 0, 1);
@@ -987,7 +1000,7 @@ const app = {
     watchWaiting(tab === 'play'); // the Play page's waiting games, live only while it shows
     if (tab === 'store' || tab === 'games') refreshBurned(); // the money strip's burned-so-far (kept a minute)
     if (tab === 'games') refreshWallet(true); // my wallet under the games
-    if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js?v=02ed8fec10')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
+    if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js?v=f49f060705')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
   },
 };
 let gamesMod = null; // Games tab code loads the first time it's opened
@@ -1012,7 +1025,7 @@ initLottery(); // the Store's Santa Lottery (lotteryui.js)
 $('#loading')?.remove();
 frame();
 
-window.__sq = { zoneRingShown: () => zoneRing.visible, fogNow: () => scene.fog && [scene.fog.near, scene.fog.far], // tests: weekly mode visuals
+window.__sq = { hatsDrawn: () => 1 + extraHats.filter((o) => o.mesh.visible).length, zoneRingShown: () => zoneRing.visible, fogNow: () => scene.fog && [scene.fog.near, scene.fog.far], // tests: weekly mode visuals
   get armed() { return armed; }, get locked() { return locked; }, get trial() { return trial && trial.kind; }, get myLook() { return { ...me.a }; }, throwAt: (x, z) => tryThrow(x, z), drawn: () => ({ drops: drawDrops.filter((m) => m.visible).length }), camDist: () => camera.position.distanceTo(camTarget), setZoom, get zoom() { return zoom; },
   // tests: where the ring's outer wall lands on screen (-1..1 = inside the view), all the way round, at the ground and wall top
   ringFit: (r = 15.0) => { let x0 = 9, x1 = -9, y0 = 9, y1 = -9; for (let i = 0; i < 72; i++) for (const y of [0, 1]) { const a = (i / 72) * Math.PI * 2, p = new V3(Math.cos(a) * r, y, Math.sin(a) * r).project(camera); x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); } return { x0, x1, y0, y1 }; }, get room() { return room; }, get isHost() { return isHost; }, get sim() { return sim; }, get view() { return currentView; }, me, ctl, enterRoom, leaveRoom, startPractice, idleFor: (ms) => { lastInput = performance.now() - ms; },
