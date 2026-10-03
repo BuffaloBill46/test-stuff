@@ -852,7 +852,9 @@ function setPreview(a) {
   // the preview wears what is in the gear slots (a Gift Box: a wrapped present); an Elf Hat or a Santa cap takes the hat's place
   const gear = GEAR_SLOTS.map((s) => BY_ID.get(cleanAvatar(a)[s])?.gear).filter(Boolean);
   const ch = avatarCharacter(a, { gear }); preview.userData.ch = ch; preview.add(ch);
-  previewHat.position.set(0, K.HEAD_Y, 0); previewHat.rotation.y = Math.PI / 2; preview.add(previewHat); previewHat.visible = !gear.some((k) => k === 'elfhat' || k === 'santa');
+  // a costume hat (the Nutcracker's shako, the Ice Crown) is shown instead of the Santa hat: they're tall and the Santa hat hid them
+  const costumeHat = !!BY_ID.get(cleanAvatar(a).hat)?.set;
+  previewHat.position.set(0, K.HEAD_Y, 0); previewHat.rotation.y = Math.PI / 2; preview.add(previewHat); previewHat.visible = !costumeHat && !gear.some((k) => k === 'elfhat' || k === 'santa');
 }
 setPreview(me.a);
 const acct = accounts({ local: LOCAL, rules: { SLOTS, SB_SLOTS, GEAR_SLOTS, statOf, BY_ID, usable, DEFAULT_AVATAR } });
@@ -882,6 +884,7 @@ window.__sq = { get armed() { return armed; }, throwAt: (x, z) => tryThrow(x, z)
   // tests: the size a player is drawn at (Elf Hat: 0.5)
   drawnScale: (id) => views.get(id)?.mesh.scale.x,
   // tests: a fingerprint of how a player is drawn (vertices, shapes, colours), the same for a gear list on the default look,
-  // and how many tracer/shimmer points were drawn last frame (plain snowballs and no gear: none)
-  look: (id) => lookSig(views.get(id)?.mesh), lookOf: (gear) => { const m = avatarCharacter(DEFAULT_AVATAR, { gear }), r = lookSig(m); disposeTree(m); return r; }, sparks: () => sparks.n,
+  // and how many tracer/shimmer points were drawn last frame (plain snowballs and no gear: none); whether a player's cosmetic
+  // hat is showing (it steps aside while they wear the Santa hat)
+  look: (id) => lookSig(views.get(id)?.mesh), hatShown: (id) => views.get(id)?.mesh.userData.hatMesh?.visible ?? null, lookOf: (gear) => { const m = avatarCharacter(DEFAULT_AVATAR, { gear }), r = lookSig(m); disposeTree(m); return r; }, sparks: () => sparks.n,
   get theme() { return theme; }, setTheme, gpu: () => ({ ...renderer.info.memory, kids: scene.children.length, fog: scene.fog && [scene.fog.color.getHex(), scene.fog.near, scene.fog.far] }) };

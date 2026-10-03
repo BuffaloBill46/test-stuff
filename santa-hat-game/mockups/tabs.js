@@ -6,7 +6,7 @@ import { GEAR_SLOTS } from './catalog.js';
 import { shopBuy, resumeShop } from './shopui.js';
 import { forSale } from './shoprules.js';
 import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS } from './gear.js';
-import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable } from './catalog.js';
+import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable, COSTUMES, costumeItems } from './catalog.js';
 import { SPECIALS } from './specials.js';
 import { settingsReady, call } from './gameserver.js';
 import { TICKET_MAX } from './ranked.js';
@@ -29,7 +29,10 @@ export function thumbnail(item) {
   if (!thumbR) { thumbR = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); thumbR.setSize(160, 160, false); }
   const scene = new THREE.Scene(); lights(scene, { hemi: 1.7, moonI: 1.6 });
   const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
-  if (item.slot === 'sball' && item.special) ballShot(scene, cam, item);
+  if (item.slot === 'costume') { // a whole costume (the Costumes tab): every piece on the model, turned so the back piece shows
+    const a = { ...DEFAULT_AVATAR }; for (const i of costumeItems(item.set)) a[i.slot] = i.id;
+    const ch = avatarCharacter(a); ch.rotation.y = -0.55; scene.add(ch); cam.position.set(0, 1.55, 5.4); cam.lookAt(0, 1.5, 0);
+  } else if (item.slot === 'sball' && item.special) ballShot(scene, cam, item);
   else if (item.slot === 'snow' || item.slot === 'sball') { // a snowball colour (and the empty special slot: faint grey)
     const ball = new THREE.Mesh(build([part(new THREE.IcosahedronGeometry(0.5, 1), item.color ?? 0x5a6688, { jit: 0.04 })]), new THREE.MeshToonMaterial({ vertexColors: true, transparent: item.id === 'sb_none', opacity: item.id === 'sb_none' ? 0.35 : 1 }));
     scene.add(ball); cam.position.set(0.4, 0.5, 2.4); cam.lookAt(0, 0, 0);
@@ -88,7 +91,9 @@ export function avatarCharacter(a, extra = {}) {
   const av = cleanAvatar(a), get = (s) => BY_ID.get(av[s]);
   const hat = get('hat'), pack = get('pack');
   // extra.gear: the special gear to dress them in (gear.js kinds); a team shirt (extra.shirt) keeps the team colour on the arms
+  // and drops a costume coat's trim (the team colour must read at a glance); costume trousers keep theirs
   return character({ keepSleeves: extra.shirt != null, shirt: extra.shirt ?? get('shirt').color, pants: get('pants').color, skin: get('skin').color, face: get('face').face, seed: 3,
+    shirtTrim: extra.shirt != null ? null : get('shirt').trim, pantsTrim: get('pants').trim,
     hat: hat.hat !== 'none' ? { shape: hat.hat, color: hat.color } : null, pack: pack.pack !== 'none' ? { shape: pack.pack, color: pack.color } : null, ...extra });
 }
 
@@ -142,7 +147,9 @@ export function initTabs(app) {
   const state = { tab: 'play', slot: 'shirt', sbSlot: 'sb1', gSlot: 'g1', draft: null, owned: new Set(), board: null };
   // The Avatar editor's tabs: the look slots, then Special Snowballs and Special Gear. Special Gear REPLACES Backpacks (Cody,
   // 2026-10-01: "it should also replace the backpack section"); a backpack already worn stays on (the pack slot is still saved).
-  const AV_TABS = [...SLOTS.filter((s) => s !== 'pack'), 'sball', 'gear'];
+  // Costumes (Cody, 2026-10-02: the level 5 and 10 rewards) get their own tab: wear a whole costume in one tap, and put on or
+  // take off a costume's back piece (the Toy Drum, the Ice Wings), since there's no Backpacks tab any more.
+  const AV_TABS = [...SLOTS.filter((s) => s !== 'pack'), 'costume', 'sball', 'gear'];
 
   // ---------- tabs
   function show(tab) {
@@ -379,14 +386,24 @@ export function initTabs(app) {
       sbBox.innerHTML = GEAR_SLOTS.map((s, i) => { const it = BY_ID.get(d.a[s] || 'gear_none'), lockedAt = i < gOpen ? 0 : Object.keys(LEVELS).find((L) => LEVELS[L].gear > i);
         return `<button type="button" data-gslot="${s}" aria-pressed="${state.gSlot === s}" ${lockedAt ? 'disabled' : ''}><b>G${i + 1}</b>${lockedAt ? 'Opens at level ' + lockedAt : esc(it.id === 'gear_none' ? 'Empty' : it.name)}</button>`; }).join('')
         + `<p class="avrule"><b>Lasts ${WEAR_DAYS} days</b> from your first match wearing it. <b>No stacking</b> ${esc(NO_STACK_NOTE)}</p>`; }
+    // Costumes: one card per costume (tap = wear every piece), then the back pieces (a costume's pack, or none)
+    const co = state.slot === 'costume';
+    if (co) { sbBox.hidden = false; sbBox.innerHTML = `<p class="avrule"><b>Free</b> ${Object.values(COSTUMES).map((c) => `level ${c.level}: ${esc(c.name)}`).join(', ')}. Each piece is also in its own tab, to mix and match.</p>`;
+      $('#avgrid').innerHTML = Object.entries(COSTUMES).map(([set, c]) => { const ps = costumeItems(set), ok = ps.every((i) => usable(i, lvl, state.owned)), on = ps.every((i) => d.a[i.slot] === i.id);
+        return `<button class="pick wide costume ${ok ? '' : 'locked'}" data-costume="${set}" aria-pressed="${on}"><img alt="" src="${thumbnail({ id: 'costume_' + set, slot: 'costume', set })}">${esc(c.name)}<small>${esc(ps.map((i) => i.name).join(' · '))}</small><small>${on ? 'Wearing the whole costume' : ok ? 'Tap to wear the whole costume' : `Level ${c.level} costume · tap to try it on`}</small></button>`; }).join('')
+        + ['pack_none', ...ITEMS.filter((i) => i.slot === 'pack' && i.set).map((i) => i.id)].map((id) => { const i = BY_ID.get(id), ok = usable(i, lvl, state.owned);
+          return `<button class="pick wide ${ok ? '' : 'locked'}" data-pick="${id}" aria-pressed="${d.a.pack === id}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${i.set ? 'The ' + esc(COSTUMES[i.set].name) + '\'s back piece' : 'Nothing on your back'}</small><small>${ok ? 'Unlocked' : 'Level ' + i.level}</small></button>`; }).join('');
+    } else
     $('#avgrid').innerHTML = ITEMS.filter((i) => i.slot === state.slot).map((i) => {
       const ok = usable(i, lvl, state.owned), on = sb ? d.a[state.sbSlot] === i.id : gr ? d.a[state.gSlot] === i.id : d.a[i.slot] === i.id, S = SPECIALS[i.special], G = GEAR[i.gear];
       if (gr) return `<button class="pick wide ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}">${G ? `<img alt="" src="${thumbnail(i)}">` : `<i class="chip" style="background:#${(i.color ?? 0x5a6688).toString(16).padStart(6, '0')}"></i>`}${esc(i.name)}<small>${G ? esc(G.note) : 'Leave this slot empty'}</small><small>${!ok ? '$' + i.price.toFixed(2) + ' in Store' : G?.minLevel && lvl < G.minLevel ? 'level ' + G.minLevel + '+' : G ? statName(i.gear) : ''}</small></button>`;
       if (sb) return `<button class="pick wide ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${S ? esc(S.note) : 'Leave this slot empty'}</small><small>${!ok ? '$' + i.price.toFixed(2) + ' in Store' : S ? costWords(S) + (S.minLevel && lvl < S.minLevel ? ' · level ' + S.minLevel : '') : 'empty slot'}</small></button>`;
       // look items are bought here on the Avatar screen, not in the Store (Cody, 2026-10-01)
-      return `<button class="pick ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${ok ? 'Unlocked' : i.price != null ? '$' + i.price.toFixed(2) : 'Level ' + i.level}</small></button>`;
+      // a costume piece wears a small tag saying which costume it belongs to (e.g. "Level 5 costume")
+      const tag = i.set && COSTUMES[i.set] ? `<em class="settag" data-set="${i.set}" title="${esc(COSTUMES[i.set].name)}">Level ${COSTUMES[i.set].level} costume</em>` : '';
+      return `<button class="pick ${ok ? '' : 'locked'}" data-pick="${i.id}" aria-pressed="${on}"><img alt="" src="${thumbnail(i)}">${tag}${esc(i.name)}<small>${ok ? 'Unlocked' : i.price != null ? '$' + i.price.toFixed(2) : 'Level ' + i.level}</small></button>`;
     }).join('');
-    $('#avgrid').classList.toggle('list', sb || gr); // special snowballs and gear: a list, so what each does can be read
+    $('#avgrid').classList.toggle('list', sb || gr || co); // special snowballs, gear and costumes: a list, so what each is can be read
     const blocked = [...SLOTS, ...SB_SLOTS, ...GEAR_SLOTS].map((s) => BY_ID.get(d.a[s] || (GEAR_SLOTS.includes(s) ? 'gear_none' : 'sb_none'))).filter((i) => !usable(i, lvl, state.owned));
     const pl = progressLine(app.profile || { level: 1, xp: 0 });
     $('#avlevel').innerHTML = `Level ${pl.level}<div class="bar"><div style="width:${pl.max ? 100 : Math.round((pl.xp / pl.need) * 100)}%"></div></div>${app.profile ? pl.text : 'Sign in to keep your level.'}`;
@@ -407,7 +424,11 @@ export function initTabs(app) {
   }
   $('#avtheme').addEventListener('click', (e) => { const b = e.target.closest('[data-theme]'); if (!b) return; app.setTheme(b.dataset.theme); renderThemes(); });
   $('#avslots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (b) { state.slot = b.dataset.slot; $('#avmsg').textContent = ''; renderAvatar(); } });
-  $('#avgrid').addEventListener('click', (e) => { const b = e.target.closest('[data-pick]'); if (!b) return; const it = BY_ID.get(b.dataset.pick); state.lastPick = b.dataset.pick;
+  $('#avgrid').addEventListener('click', (e) => {
+    // a costume card: put on every piece at once (a locked costume is previewed, like any locked item; Save waits for the level)
+    const c = e.target.closest('[data-costume]');
+    if (c) { const ps = costumeItems(c.dataset.costume); for (const i of ps) state.draft.a[i.slot] = i.id; state.lastPick = ps[0]?.id; $('#avmsg').textContent = ''; renderAvatar(); return; }
+    const b = e.target.closest('[data-pick]'); if (!b) return; const it = BY_ID.get(b.dataset.pick); state.lastPick = b.dataset.pick;
     $('#avmsg').textContent = '';
     if (it.slot === 'sball') withSpecial(state.draft.a, state.sbSlot, it.id);
     else if (it.slot === 'gear') { if (!withGear(state.draft.a, state.gSlot, it.id)) { $('#avmsg').textContent = `Can't stack: ${NO_STACK_NOTE}`; return; } }

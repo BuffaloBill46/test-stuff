@@ -5,7 +5,7 @@
 // other look is a LEVEL REWARD on levels 2, 3, 4, 6, 7, 8 and 9 (3–4 each); levels 5 and 10 each unlock a matching COSTUME
 // (one item per look slot, made to stand out). Special snowballs and gear are still sold: they change play.
 export const SLOTS = ['shirt', 'pants', 'face', 'skin', 'hat', 'pack', 'snow'];
-export const SLOT_NAMES = { shirt: 'Shirts', pants: 'Pants', face: 'Faces', skin: 'Skin', hat: 'Hats', pack: 'Backpacks', snow: 'Snowballs', sball: 'Special Snowballs', gear: 'Special Gear' };
+export const SLOT_NAMES = { shirt: 'Shirts', pants: 'Pants', face: 'Faces', skin: 'Skin', hat: 'Hats', pack: 'Backpacks', snow: 'Snowballs', costume: 'Costumes', sball: 'Special Snowballs', gear: 'Special Gear' };
 // SPECIAL SNOWBALLS (Cody, 2026-10-01): items of slot 'sball' (specials.js says what each does), kept forever once owned, put in the
 // player's slots SB1–SB3 (avatar keys sb1, sb2, sb3; how many open by level: levels.js). 'sb_none' = an empty slot.
 // Prices are placeholders (Cody: "set a base price, we will change later"). Snowball Rain also needs level 5 to use (specials.js).
