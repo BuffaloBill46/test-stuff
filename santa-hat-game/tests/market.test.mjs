@@ -1,7 +1,7 @@
 // Live price and tax: the pure rules, then (if the network answers) the real token.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { MINT, pickPrice, pickFee, feeOn, santaFor, livePrice, liveFee } from '../mockups/market.js';
+import { MINT, pickPrice, pickFee, feeOn, santaFor, livePrice, liveFee, keptFee } from '../mockups/market.js';
 
 // Deepest pool wins, other tokens ignored.
 const dex = { pairs: [
@@ -35,4 +35,16 @@ try {
   assert.equal(d.bps, 300, 'the devnet test token has a 3% tax'); assert.notEqual(d.epoch, f.epoch, 'read from devnet (its own epoch), not mainnet');
   console.log(`live devnet: test token tax ${d.bps / 100}% at devnet epoch ${d.epoch}`);
 } catch (e) { if (e.code === 'ERR_ASSERTION') throw e; console.log('live lookup skipped (network):', e.message); }
-console.log('OK: price pick, fee by epoch, fee rounding and cap');
+// keptFee: the server's remembered tax lookup (3 players buying at once got "too many requests" from Solana, 2026-10-03)
+{
+  let t = 0, asked = 0, fail = false;
+  const kept = keptFee(async () => { asked++; await null; if (fail) throw new Error('429'); return { bps: 300, max: asked }; }, { now: () => t });
+  const many = await Promise.all(Array.from({ length: 6 }, () => kept()));
+  assert.equal(asked, 1, '6 buyers at once: Solana is asked ONCE'); assert.ok(many.every((f) => f.max === 1));
+  t = 59_000; await kept(); assert.equal(asked, 1, 'within a minute: the remembered answer');
+  t = 61_000; assert.equal((await kept()).max, 2, 'after a minute: asked again'); assert.equal(asked, 2);
+  fail = true; t = 200_000; assert.equal((await kept()).max, 2, 'Solana busy: the last good answer (from the past 10 minutes) is used');
+  t = 61_000 + 600_001; await assert.rejects(kept, /429/, 'but never one older than 10 minutes');
+  fail = false; assert.equal((await kept()).max, 5, 'and it recovers when Solana answers again');
+}
+console.log('OK: price pick, fee by epoch, fee rounding and cap; the server\'s tax lookup is remembered a minute (one ask for many buyers, last good answer if Solana is busy)');

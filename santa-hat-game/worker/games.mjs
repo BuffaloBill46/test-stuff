@@ -24,7 +24,7 @@ import { createLevels } from '../server/levels.js';
 import { createLottery } from '../server/lottery.js';
 import { createShop } from '../server/shop.js';
 import { createAlerts, makeTelegram } from '../server/alerts.js';
-import { livePrice, liveFee } from '../mockups/market.js';
+import { livePrice, liveFee, keptFee } from '../mockups/market.js';
 
 const env = (k, d = '') => process.env[k] || d;
 if (!env('DATABASE_URL')) { console.error('games: DATABASE_URL is not set'); process.exit(2); }
@@ -64,7 +64,7 @@ async function latestBlock() {
   return { blockhash: j.result.value.blockhash, slot: j.result.context.slot };
 }
 const poolWallets = { spin: env('SPIN_POOL_WALLET') || null, slots: env('SLOTS_POOL_WALLET') || null }, mintOpt = env('SANTA_MINT') ? { mint: env('SANTA_MINT') } : {};
-const feeOfMint = () => liveFee(env('SANTA_MINT') || undefined, [rpcUrl]);
+const feeOfMint = keptFee(() => liveFee(env('SANTA_MINT') || undefined, [rpcUrl])); // remembered a minute (market.js keptFee)
 const cluster = env('SOLANA_CLUSTER') || (/devnet/.test(rpcUrl) ? 'devnet' : 'mainnet');
 const price = makePrice({ db, livePrice });
 const server = createGameServer({ db, chain, livePrice: price, liveFee: feeOfMint, poolWallets, ...mintOpt, cluster });

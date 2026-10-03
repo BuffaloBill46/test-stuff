@@ -99,7 +99,9 @@ export function makeHandler(deps) {
       return reply(origin, out?.error ? 400 : 200, out);
     } catch (e) {
       console.error('games server error', e); // details stay in the server log; players get a plain message
-      return reply(origin, 500, { error: 'something went wrong on our side; please try again' });
+      // retry: a failure on OUR side is never a refusal. The page keeps a paid run and asks again (found 2026-10-03: without it
+      // a payment check that hit a busy Solana node was taken as "refused for good" and the paid run was forgotten).
+      return reply(origin, 500, { error: 'something went wrong on our side; please try again', retry: true });
     }
   };
 }

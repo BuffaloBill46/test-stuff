@@ -24,6 +24,7 @@ for (const [body, action] of [[{ action: 'quote', kind: 'spin', n: 5, bet: 0.1 }
 assert.equal((await json(await req({ action: 'quote', kind: 'big', n: 11 }))).status, 400, 'game refusals come back as 400');
 const boom = await json(await req({ action: 'quote', kind: 'boom', n: 1 }));
 assert.equal(boom.status, 500); assert.ok(!JSON.stringify(boom.body).includes('secret'), 'server internals never reach the player');
+assert.equal(boom.body.retry, true, 'a failure on our side says "try again" (the page keeps a paid run and asks again, never forgets it)');
 // Admin: its own door (no player sign-in; the wallet signature is the proof, checked in server/admin.js).
 const h2 = makeHandler({ server, profileFor: async () => null, limiter: null, admin: { run: async (b) => (b.message === 'ok' ? { ok: true } : { error: 'not an admin message' }) } });
 const adm = (body) => h2(new Request('https://x/f', { method: 'POST', headers: { origin: 'https://buffalobill46.github.io', 'x-santa-admin': '1' }, body: JSON.stringify(body) }));

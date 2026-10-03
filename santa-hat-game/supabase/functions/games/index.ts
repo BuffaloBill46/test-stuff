@@ -23,7 +23,7 @@ import { createLevels } from '../../../server/levels.js';
 import { createLottery } from '../../../server/lottery.js';
 import { createShop } from '../../../server/shop.js';
 import { createAlerts, makeTelegram } from '../../../server/alerts.js';
-import { livePrice, liveFee } from '../../../mockups/market.js';
+import { livePrice, liveFee, keptFee } from '../../../mockups/market.js';
 
 const env = (k: string) => Deno.env.get(k) ?? '';
 // The database through Supabase's TRANSACTION POOLER when DB_POOLER_HOST is set (e.g. aws-0-us-east-1.pooler.supabase.com, from the
@@ -84,7 +84,7 @@ const auth = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'),
 // The game prices plays with the 10-minute median, not one live reading (audit: price manipulation).
 const poolWallets = { spin: env('SPIN_POOL_WALLET') || null, slots: env('SLOTS_POOL_WALLET') || null }, mintOpt = env('SANTA_MINT') ? { mint: env('SANTA_MINT') } : {};
 // The tax is read from the token this server accepts, on its own network (the test token on devnet), not always real SANTA.
-const feeOfMint = () => liveFee(env('SANTA_MINT') || undefined, [rpcUrl]);
+const feeOfMint = keptFee(() => liveFee(env('SANTA_MINT') || undefined, [rpcUrl])); // remembered a minute (market.js keptFee)
 // The network the page signs on: SOLANA_CLUSTER if set, else read from the RPC address (a devnet URL says devnet).
 const cluster = env('SOLANA_CLUSTER') || (/devnet/.test(rpcUrl) ? 'devnet' : 'mainnet');
 const server = createGameServer({ db, chain, livePrice: makePrice({ db, livePrice }), liveFee: feeOfMint, poolWallets, ...mintOpt, cluster });

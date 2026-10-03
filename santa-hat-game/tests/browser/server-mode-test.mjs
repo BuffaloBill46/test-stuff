@@ -29,7 +29,8 @@ await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin'
 // fake but realistically shaped Solana transaction signatures (base58, 88 characters)
 const S = (name) => (name + '5'.repeat(88)).slice(0, 88).replace(/[0OIl]/g, '9');
 const txs = new Map();
-const server = createGameServer({ retired: [], db, chain: { getTransaction: async (s) => txs.get(s) ?? null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: POOLS });
+let flaky = 0; // > 0: the next payment checks fail on OUR side (Solana "too many requests"), like 3 players buying at once on 2026-10-03
+const server = createGameServer({ retired: [], db, chain: { getTransaction: async (s) => { if (flaky > 0) { flaky--; throw new Error('https://api.devnet.solana.com answered 429'); } return txs.get(s) ?? null; } }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: POOLS });
 // The stand-in wallet: when the page asks it to pay a quote, it "sends" the payment and returns its signature (the chain
 // stand-in then reports a finalized transaction: the player's SANTA down, 10% burned, the rest arriving in the pool).
 let paid = 0;
@@ -122,6 +123,18 @@ await p.evaluate(() => document.querySelector('[data-proof="big"]').click()); aw
 await p.waitForFunction(() => /atch/.test(document.querySelector('#proofOut').textContent), null, { timeout: 15000 });
 check(/^Matches\./.test(await p.textContent('#proofOut')), 'Check this result matches the server\'s revealed secret');
 await p.evaluate(() => document.querySelector('#proofClose').click());
+// A paid pull whose payment check fails on the server (Solana busy: found live 2026-10-03, two paid pulls were dropped because
+// the page took the server's error as "refused for good" and forgot the payment): the page keeps asking, the pull is played.
+flaky = 2; const errs0 = errors.length, runs0 = (await db.query('select count(*)::int as n from public.runs where profile_id = $1', [me]))[0].n;
+await p.evaluate(() => document.querySelector('#slots [data-run="1"]').click());
+await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
+await p.evaluate(() => document.querySelector('#buyGo').click());
+await p.waitForFunction(() => window.__slots.busy, null, { timeout: 30000 }).catch(() => {});
+await p.waitForFunction(() => !window.__slots.busy, null, { timeout: 120000 }).catch(() => {}); // the check below says what went wrong
+const runs1 = (await db.query('select count(*)::int as n from public.runs where profile_id = $1', [me]))[0].n;
+check(flaky === 0 && runs1 === runs0 + 1, `the server failed twice checking a paid pull; the page kept asking and the pull was played (${await p.textContent('.machine .res')})`);
+check(await p.evaluate(() => localStorage.getItem('santa.pendingPayment')) === null, 'and the remembered payment is cleared once accepted');
+errors.splice(errs0); // the two 500 answers were on purpose
 // With no wallet connected, buying says so plainly, and nothing is charged or played.
 await p.evaluate(() => { delete window.santaPay; document.querySelector('#slots [data-run="1"]').click(); });
 await p.waitForFunction(() => document.querySelector('#buyDlg').open, null, { timeout: 10000 });
