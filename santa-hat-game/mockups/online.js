@@ -905,6 +905,8 @@ $('#joinBtn').addEventListener('click', () => { const c = cleanCode($('#code').v
 $('#practice').addEventListener('click', startPractice);
 $('#playUnranked').addEventListener('click', () => openLobby('unranked'));
 $('#playBig').addEventListener('click', () => { tabs.show('play'); scrollTo(0, 0); }); // Home's Play now: the Play page and its match types (Cody 2026-10-03)
+// the Games tab's jump buttons: scroll to that game (just under the sticky top bar)
+document.querySelectorAll('[data-jump]').forEach((b) => b.addEventListener('click', () => document.getElementById(b.dataset.jump)?.scrollIntoView({ behavior: 'smooth', block: 'start' })));
 $('#homeClose').addEventListener('click', closeLobby);
 $('#leave').addEventListener('click', () => leaveRoom());
 initSoundButtons();

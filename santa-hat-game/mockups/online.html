@@ -235,6 +235,12 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 .moneystrip .ms.lotto b { font: inherit; font-weight: 800; color: var(--lamp); }
 @media (max-width: 900px) { .moneystrip { grid-template-columns: repeat(2, minmax(0, 1fr)); } .moneystrip .ms:nth-child(3) { border-left: 0; } .moneystrip .ms:nth-child(n+3) { border-top: 2px solid var(--ink); } }
 @media (max-width: 420px) { .moneystrip .ms.total b { font-size: 15px; } .moneystrip .ms { padding: 8px 10px; gap: 8px; } .moneystrip .ms > b { font-size: 20px; } .moneystrip .ms span { font-size: 13px; } }
+/* Games tab: jump buttons and the folded notes */
+.jumps { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+.jumps button { font: 700 14px var(--body); color: var(--text); background: var(--plaque); border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); padding: 6px 12px; cursor: pointer; }
+.jumps button:hover, .jumps button:focus-visible { background: var(--plaque-hi); }
+#slots, #drop, #stocking, #winners { scroll-margin-top: 84px; } /* a jump lands below the fixed top bar */
+.goodtoknow { margin: 8px 0; } .goodtoknow summary { cursor: pointer; font-size: 14px; color: var(--frost); } .goodtoknow p { margin: 8px 0 0; }
 /* The Season card (seasonui.js). One accent per season: pumpkin for Halloween; the rest is the page's own plaque language. */
 .season { --ss: #f2862e; --ss-dim: rgba(242,134,46,.16); margin-bottom: 14px; }
 .season[data-season="thanksgiving"] { --ss: #d9a441; --ss-dim: rgba(217,164,65,.16); }
@@ -973,9 +979,13 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       <div class="ms total"><i>Burned so far</i><b data-burned>—</b></div>
     </section>
     <div class="hero"><div class="eyebrow">Santa Hat Games · single player</div><h1>Santa Hat Games</h1>
-      <p>Quick games you play on your own. Every entry: 10% burned, 90% into the one Game pool all three games pay from. <a href="./guide.html#games">How each game works</a></p>
-      <p class="taxnote" id="lockNote"><b>Price locked per run</b> The SANTA price is locked when you buy a run. Everything that run wins is paid in SANTA at that same price, even if the price moves while it plays.</p>
-      <p class="taxnote"><b>3% SANTA tax</b> Winnings are paid in SANTA and arrive 3% lighter; the token does that, not this game.</p>
+      <p>Quick games you play on your own, all paying from the one Game pool. <a href="./guide.html#games">How each game works</a></p>
+      <!-- Jump straight to a game (Cody's list, 2026-10-03: a tidier Games tab); buttons, since the address's #part picks the tab -->
+      <nav class="jumps" aria-label="Jump to a game"><button type="button" data-jump="slots">Big Hat</button><button type="button" data-jump="drop">Snowball Drop</button><button type="button" data-jump="stocking">Stocking Stuffer</button><button type="button" data-jump="winners">Recent winners</button></nav>
+      <details class="goodtoknow"><summary>Good to know: the price is locked per run · the 3% SANTA tax</summary>
+        <p class="taxnote" id="lockNote"><b>Price locked per run</b> The SANTA price is locked when you buy a run. Everything that run wins is paid in SANTA at that same price, even if the price moves while it plays.</p>
+        <p class="taxnote"><b>3% SANTA tax</b> Winnings are paid in SANTA and arrive 3% lighter; the token does that, not this game.</p>
+      </details>
       <p class="testnote"><b>Test version</b> These games use pretend money for now. Nothing costs SANTA and nothing pays out SANTA yet; real payments open after testing.</p>
       <p class="livechip" id="liveMarket" aria-live="polite">Checking the live SANTA price…</p></div>
     <section class="block plaque slotsbox fur" id="slots">
@@ -1110,7 +1120,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       <p class="dim">The full payout table and the 11 paylines are under the machine.</p>
       <p class="dim">Prizes are for a $1 pull. Winnings are paid in SANTA and arrive 3% lighter (the token's tax).</p>
     </dialog>
-    <section class="block plaque winners">
+    <section class="block plaque winners" id="winners">
       <h2>Recent winners</h2>
       <p class="dim" id="winNote">Every Santa Hat game. Demo: wins from this browser only; once payouts are real this shows everyone's.</p>
       <ol id="winList"></ol>
