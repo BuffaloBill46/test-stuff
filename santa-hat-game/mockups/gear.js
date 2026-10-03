@@ -35,9 +35,11 @@ const statTaken = (kinds, kind) => !!statOf(kind) && (kinds || []).some((k) => k
 export const WEAR_DAYS = 7; // the clock starts at the first match wearing it (015_special_gear.sql keeps it)
 
 // Can a player of this level wear this gear? (Santa Costume: level 3+.)
-// Retired gear (Cody 2026-10-02: Heated Coat removed from the game): kept in GEAR/GEAR_KINDS so the gear code doesn't shift,
-// but never worn and never what a Present Box becomes.
-export const RETIRED = new Set(['heated']);
+// Retired gear (Cody 2026-10-02: Heated Coat removed from the game; 2026-10-03: the Pumpkin Costume retired, its jack-o'-lantern
+// head lives on as the Pumpkin King costume's face, the Halloween pass reward): kept in GEAR/GEAR_KINDS so the gear code doesn't
+// shift, but never worn, never sold (shoprules.js forSale), never listed (Store, Avatar, guide), and never what a Present Box
+// becomes. The Pumpkin Costume's catalog item and database row stay (players own it; the row keeps its price) but do nothing.
+export const RETIRED = new Set(['heated', 'pumpkin']);
 export const gearAllowed = (kind, level) => !!GEAR[kind] && !RETIRED.has(kind) && (level || 1) >= (GEAR[kind].minLevel || 1);
 
 // Present Box: each one in the list becomes one random gear the level allows, never a Present Box itself and never one already

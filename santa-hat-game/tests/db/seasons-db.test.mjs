@@ -14,14 +14,9 @@ const FILES = ['001_profiles.sql', '002_items_seed.sql', '003_email_profiles.sql
   '008_hats_backpacks.sql', '009_lock_my_plays.sql', '010_levels.sql', '011_lottery.sql', '012_special_snowballs.sql', '013_match_stats.sql', '014_run_sizes.sql',
   '015_special_gear.sql', '016_shop.sql', '017_referee_role.sql', '018_ranked_results.sql', '019_ranked_board.sql', '020_worker_role.sql', '021_alerts.sql',
   '022_ticket_cap.sql', '023_item_prices.sql', '024_reward_claims.sql', '025_stocking.sql', '026_shared_pool.sql', '027_tester_feedback.sql', '028_look_rewards.sql',
-  '029_costumes.sql', '030_daily_reset.sql'];
+  '029_costumes.sql', '030_daily_reset.sql']; // then 032 (the Pumpkin King) and 033 below
 const db = await makeDb(FILES);
-// the Pumpkin King pieces, as 032_halloween_costume.sql makes them (season items: no level, no price)
-await db.pg.exec(`alter table public.items add column if not exists season text; alter table public.items drop constraint if exists items_check;
-  alter table public.items add constraint items_check check ((season is not null and unlock_level is null and price_usd is null) or (season is null and ((unlock_level is null) <> (price_usd is null))));
-  insert into public.items (id, slot, name, season) values ('face_pumpkinking','face','Pumpkin King','halloween'), ('hat_pumpkinking','hat','Pumpkin Hat','halloween'),
-    ('shirt_pumpkinking','shirt','Pumpkin Coat','halloween'), ('pants_pumpkinking','pants','Vine Trousers','halloween'), ('pack_pumpkinking','pack','Lantern','halloween'),
-    ('snow_pumpkinking','snow','Candy Glow','halloween') on conflict do nothing;`);
+await db.pg.exec(readFileSync(new URL('../../supabase/032_halloween_costume.sql', import.meta.url), 'utf8')); // the Pumpkin King pieces
 const sql033 = readFileSync(new URL('../../supabase/033_seasons.sql', import.meta.url), 'utf8');
 await db.pg.exec(sql033);
 await db.pg.exec(sql033); // safe to apply twice

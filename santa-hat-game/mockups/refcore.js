@@ -30,7 +30,7 @@ export const botName = (id) => BOT_NAMES[botHash(id) % BOT_NAMES.length];
 const botAvatars = new Map();
 // Bots look like players (a look picked from their id, same on every screen) so nobody can pick them out and farm them.
 // Never a costume piece (catalog.js `set`): the costumes are the level 5 and 10 rewards, and leaving them out keeps every
-// bot's look exactly what it was before they were added. The same for season rewards (`season`, 2026-10-03).
+// bot's look exactly what it was before they were added. Never a season-pass item either (catalog.js `season`: a reward).
 export function botAvatar(id) {
   if (!botAvatars.has(id)) {
     let h = botHash(id + 7); const a = {};

@@ -473,6 +473,9 @@ const HEADS = {
     ...[-0.12, -0.06, 0, 0.06, 0.12].map((x, i) => { const l = [0.1, 0.15, 0.19, 0.15, 0.1][i];
       return part(new G.ConeGeometry(0.035, l, 4), i % 2 ? 0xa8dcff : 0xe8f6ff, { pos: [x, 1.6 - l / 2 + 0.03, 0.2 - Math.abs(x) * 0.4], rot: [Math.PI, 0, 0] }); }),
   ] },
+  // The Pumpkin King (Halloween pass): the jack-o'-lantern head, the very one the retired Pumpkin Costume wore (jackHead), its
+  // carved face glowing and flickering (`glow`: unlit pieces, character() adds them to the glow mesh). Black gloves.
+  pumpkinking: { hands: 0x2b2433, parts: () => jackHead().body, glow: () => jackHead().glow },
 };
 export const HEAD_FACES = Object.keys(HEADS);
 
@@ -512,7 +515,35 @@ function hatPieces(shape, color) {
       ps.push(part(new G.OctahedronGeometry(0.05), i % 2 ? 0xe6f6ff : 0x6ab6ee, { pos: [Math.sin(b) * 0.28, 2.1, Math.cos(b) * 0.28], rot: [Math.cos(b) * 0.4, 0, -Math.sin(b) * 0.4], scale: [0.8, 1.8, 0.8] })); });
     return ps;
   }
+  // The Pumpkin King's crooked hat: a witch's hat whose tall crown bends over and kinks near the tip, a wide brim tipped a little
+  // off level, a purple band with an orange buckle, a green vine curling up the crown with two leaves, and a black bat perched
+  // on the brim's side. Brim at 2.06: on the jack-o'-lantern (top ~2.06, stem inside the crown) and on a plain head alike. The
+  // brim is NARROWER than the pumpkin (0.34 against 0.36) so the orange head still shows from the game's high camera.
+  if (shape === 'crooked') {
+    const vine = 0x4f7a2a, leaf = 0x6f9e38, bat = 0x15121b;
+    const ps = [part(new G.CylinderGeometry(0.34, 0.35, 0.035, 12), color, { pos: [0, 2.06, 0], rot: [0.06, 0, -0.07], jit: 0.01, seed: 131 }),
+      part(crookedCone(0.66), color, { pos: [0, 2.06 + 0.33, 0], rot: [0, 0.5, 0], jit: 0.012, seed: 132 }),
+      part(new G.CylinderGeometry(0.193, 0.207, 0.08, 10), 0x7b3fb0, { pos: [0, 2.12, 0] }),
+      part(new G.BoxGeometry(0.1, 0.09, 0.03), 0xe8812c, { pos: [0, 2.12, 0.207] }), part(new G.BoxGeometry(0.05, 0.045, 0.035), 0x7b3fb0, { pos: [0, 2.12, 0.212] })];
+    // the vine: short green lengths winding up the crown (which narrows as it rises), a leaf on two of them
+    [[0.0, 2.2, 0.175], [0.9, 2.3, 0.15], [1.9, 2.4, 0.125], [2.9, 2.5, 0.1]].forEach(([a, y, r], k) => {
+      ps.push(part(new G.BoxGeometry(0.035, 0.13, 0.035), vine, { pos: [Math.sin(a + 0.5) * r + (k * 0.03), y, Math.cos(a + 0.5) * r], rot: [0, a, 0.9] }));
+      if (k % 2 === 0) ps.push(part(new G.IcosahedronGeometry(0.05, 0), leaf, { pos: [Math.sin(a + 0.9) * (r + 0.03) + k * 0.03, y + 0.03, Math.cos(a + 0.9) * (r + 0.03)], scale: [1.4, 0.45, 0.9], rot: [0, a, 0.4] })); });
+    // the bat on the brim's left side: a round body, two pointed ears, two wings swept up and back, orange eyes
+    const bx = -0.26, by = 2.13, bz = 0.1;
+    ps.push(part(new G.IcosahedronGeometry(0.055, 0), bat, { pos: [bx, by, bz], scale: [1, 1.15, 0.9] }),
+      ...[-1, 1].map((s) => part(new G.ConeGeometry(0.018, 0.05, 3), bat, { pos: [bx + s * 0.025, by + 0.07, bz] })),
+      ...[-1, 1].map((s) => part(new G.CylinderGeometry(0.09, 0.09, 0.015, 3), bat, { pos: [bx + s * 0.1, by + 0.07, bz - 0.01], rot: [Math.PI / 2, 0, s * 0.9], scale: [1.4, 1, 0.75] })),
+      ...[-1, 1].map((s) => part(new G.BoxGeometry(0.015, 0.015, 0.01), 0xff9a1a, { pos: [bx + s * 0.02, by + 0.015, bz + 0.05] })));
+    return ps;
+  }
   return [];
+}
+// A crooked cone (the Pumpkin King's hat): leans over to one side as it rises, then kinks back at the tip.
+function crookedCone(h) {
+  const g = new G.CylinderGeometry(0.02, 0.2, h, 8, 6), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) { const t = (p.getY(i) + h / 2) / h; p.setX(i, p.getX(i) + 0.2 * t * t - (t > 0.75 ? (t - 0.75) * 0.5 : 0)); p.setY(i, p.getY(i) - 0.06 * t * t * t); }
+  return g;
 }
 // A thin box from point a to point b (ropes, cords).
 function stick(a, b, w, color) {
@@ -551,6 +582,24 @@ function packPieces(shape, color) {
       ps.push(part(new G.OctahedronGeometry(1), cols[k], { pos: [s * (0.1 + Math.cos(t) * r * Math.cos(sw)), 1.45 + Math.sin(t) * r, -0.27 - Math.cos(t) * r * Math.sin(sw)], rot: [0, s * sw, s * t], scale: [r, 0.085, 0.026] })); });
     return ps;
   }
+  // The Pumpkin King's lantern: an iron lantern on the back (base, four corner posts, a window bar round the middle, a pointed
+  // roof and a ring to carry it by) on two straps over the shoulders (none down the front: they crossed the jack-o'-lantern's
+  // grin and hid the patchwork coat). Its light, the glowing panes and the candle, is packGlow below.
+  if (shape === 'lantern') {
+    const y = 1.27, z = -0.42, strap = 0x3a2a1c;
+    return [part(new G.BoxGeometry(0.32, 0.05, 0.32), color, { pos: [0, y - 0.22, z] }),
+      ...[[-1, -1], [-1, 1], [1, -1], [1, 1]].map(([a, b]) => part(new G.BoxGeometry(0.045, 0.42, 0.045), color, { pos: [a * 0.13, y, z + b * 0.13] })),
+      part(new G.BoxGeometry(0.29, 0.03, 0.29), color, { pos: [0, y, z] }),
+      part(new G.ConeGeometry(0.25, 0.18, 4), color, { pos: [0, y + 0.3, z], rot: [0, Math.PI / 4, 0], jit: 0.01, seed: 141 }),
+      part(new G.TorusGeometry(0.06, 0.018, 4, 8), color, { pos: [0, y + 0.44, z] }),
+      ...[-0.15, 0.15].map((x) => part(new G.BoxGeometry(0.07, 0.03, 0.42), strap, { pos: [x, 1.575, -0.02] }))];
+  }
+  return [];
+}
+// A costume back piece's unlit pieces (character() puts them in the glow mesh, flickering with the jack-o'-lanterns: gearTick).
+function packGlow(shape) {
+  if (shape === 'lantern') { const y = 1.27, z = -0.42;
+    return [part(new G.BoxGeometry(0.225, 0.37, 0.225), 0xff9a1a, { pos: [0, y, z] }), part(new G.IcosahedronGeometry(0.05, 0), 0xffe9a0, { pos: [0, y + 0.05, z - 0.115], scale: [0.8, 1.4, 0.4] })]; }
   return [];
 }
 
@@ -580,12 +629,11 @@ function floppyCone(h) {
 }
 // A triangle prism (carved eyes and teeth): `up` points the tip up (true) or down.
 const tri = (s, color, pos, up = true, d = 0.06) => part(new G.CylinderGeometry(s, s, d, 3), color, { pos, rot: [Math.PI / 2, up ? Math.PI : 0, 0] });
-// Each gear: body (torso/head/back pieces), hat (replaces the cosmetic hat; steps aside for the Santa hat like one), arm/leg
-// (added to each limb, by side -1/+1), feet (replace the boots), sleeve/pants (recolour the limbs), noHead (the pumpkin is the
-// head), back (hides a cosmetic backpack), glow (unlit pieces).
-const GEAR_LOOKS = {
-  // Sits a little low (centre 1.77, on the shoulders) so the Santa hat, worn at the usual height, leaves the carved eyes showing.
-  pumpkin: () => ({ noHead: true, body: [
+// The jack-o'-lantern head: the retired Pumpkin Costume gear's, and the Pumpkin King costume's face (HEADS.pumpkinking), one
+// shape so it's the pumpkin players already know. body: the lit pumpkin; glow: the carved face (unlit, flickering: gearTick).
+// Sits a little low (centre 1.77, on the shoulders) so the Santa hat, worn at the usual height, leaves the carved eyes showing.
+function jackHead() {
+  return { body: [
     part(pumpkinBall(0.36), 0xf08a2a, { pos: [0, 1.77, 0], jit: 0.012, seed: 61 }),
     part(new G.CylinderGeometry(0.035, 0.06, 0.16, 5), 0x5d6b2a, { pos: [0.02, 2.09, 0], rot: [0.15, 0, -0.25] }),
     part(new G.TetrahedronGeometry(0.07), C.elfDark, { pos: [-0.07, 2.05, 0.03], rot: [0.5, 0.3, 0.9], scale: [1.4, 0.5, 1] }),
@@ -597,7 +645,13 @@ const GEAR_LOOKS = {
     part(new G.BoxGeometry(0.13, 0.085, 0.05), 0xffb030, { pos: [-0.125, 1.66, 0.305], rot: [0, 0.35, -0.4] }),
     part(new G.BoxGeometry(0.13, 0.085, 0.05), 0xffb030, { pos: [0, 1.635, 0.325] }),
     part(new G.BoxGeometry(0.13, 0.085, 0.05), 0xffb030, { pos: [0.125, 1.66, 0.305], rot: [0, -0.35, 0.4] }),
-  ] }),
+  ] };
+}
+// Each gear: body (torso/head/back pieces), hat (replaces the cosmetic hat; steps aside for the Santa hat like one), arm/leg
+// (added to each limb, by side -1/+1), feet (replace the boots), sleeve/pants (recolour the limbs), noHead (the pumpkin is the
+// head), back (hides a cosmetic backpack), glow (unlit pieces).
+const GEAR_LOOKS = {
+  pumpkin: () => ({ noHead: true, ...jackHead() }),
   kevlar: () => ({ body: [
     part(new G.BoxGeometry(0.68, 0.6, 0.44), 0x5d8db4, { pos: [0, 1.28, 0], jit: 0.015, seed: 62 }),
     // icy armour plates: four on the chest, one on the back, a pad on each shoulder; dark straps down the sides
@@ -741,6 +795,33 @@ const COSTUME_TRIMS = {
       feet: () => [part(new G.BoxGeometry(0.27, 0.2, 0.36), 0x8cc6f2, { pos: [0, -0.76, 0.04] }), part(new G.BoxGeometry(0.28, 0.05, 0.3), 0xf2fbff, { pos: [0, -0.655, 0] }),
         part(new G.OctahedronGeometry(0.06), 0xe6f6ff, { pos: [0, -0.77, 0.24], scale: [0.9, 0.8, 1.4] })] },
   },
+  pumpkinking: {
+    // a stitched patchwork coat: orange, black and lavender patches sewn on with pale cross-stitches, mismatched buttons, an
+    // orange sash for a belt, and a tattered hem of purple and black points below it (wide enough for the legs to swing
+    // inside); ragged orange cuffs
+    shirt: () => { const thread = 0xcbb894, ps = [];
+      const patch = (x, y, w, h, rz, col, zz = 0.2) => { const f = Math.sign(zz); ps.push(part(new G.BoxGeometry(w, h, 0.03), col, { pos: [x, y, zz], rot: [0, 0, rz], jit: 0.006 }));
+        for (const sx of [-1, 1]) for (let k = 0; k < 2; k++) { const dy = (k - 0.5) * h * 0.45, c = Math.cos(rz), sn = Math.sin(rz), ex = sx * w / 2;
+          ps.push(part(new G.BoxGeometry(0.05, 0.013, 0.01), thread, { pos: [x + ex * c - dy * sn, y + ex * sn + dy * c, zz + f * 0.018], rot: [0, 0, rz] })); } };
+      patch(-0.14, 1.38, 0.2, 0.18, 0.14, 0xe8812c); patch(0.15, 1.11, 0.17, 0.15, -0.18, 0x17141d); patch(0.16, 1.42, 0.11, 0.1, 0.3, 0x9a72c8);
+      patch(0.08, 1.28, 0.24, 0.2, -0.1, 0xd9701f, -0.2); patch(-0.13, 1.06, 0.15, 0.13, 0.2, 0x17141d, -0.2);
+      ps.push(part(new G.IcosahedronGeometry(0.035, 0), 0xe8812c, { pos: [0.0, 1.25, 0.205] }), part(new G.IcosahedronGeometry(0.03, 0), thread, { pos: [0.01, 1.0, 0.205] }),
+        part(new G.BoxGeometry(0.66, 0.1, 0.42), 0xe8812c, { pos: [0, 0.9, 0] }), part(new G.BoxGeometry(0.09, 0.2, 0.03), 0xc9661c, { pos: [0.18, 0.82, 0.215], rot: [0, 0, 0.2] }),
+        part(new G.CylinderGeometry(0.34, 0.41, 0.2, 7), 0x4a2a6e, { pos: [0, 0.76, 0], jit: 0.01, seed: 151 }));
+      for (let k = 0; k < 9; k++) { const a = (k / 9) * Math.PI * 2 + 0.2;
+        ps.push(part(new G.ConeGeometry(0.075, 0.17 + (k % 3) * 0.04, 3), k % 2 ? 0x17141d : 0x3a2058, { pos: [Math.sin(a) * 0.37, 0.6 - (k % 3) * 0.02, Math.cos(a) * 0.37], rot: [Math.PI, a, 0] })); }
+      return { body: ps, arm: () => [part(new G.BoxGeometry(0.24, 0.08, 0.24), 0xe8812c, { pos: [0, -0.57, 0] }),
+        ...[[0.08, 0.08], [-0.08, -0.08]].map(([x, zz]) => part(new G.ConeGeometry(0.045, 0.09, 3), 0xe8812c, { pos: [x, -0.64, zz], rot: [Math.PI, 0, 0] }))] }; },
+    // dark trousers wrapped in a winding green vine with leaves, pointed black boots curling up at the toe, orange buckles
+    pants: { leg: (s) => [0, 1, 2, 3, 4].flatMap((k) => { const a = k * 1.35 + (s > 0 ? 0 : Math.PI), r = 0.135, y = -0.08 - k * 0.13;
+        const out = [part(new G.BoxGeometry(0.04, 0.15, 0.04), 0x4f7a2a, { pos: [Math.sin(a) * r, y, Math.cos(a) * r], rot: [0, a, 0.85] })];
+        if (k % 2) out.push(part(new G.IcosahedronGeometry(0.045, 0), 0x6f9e38, { pos: [Math.sin(a + 0.4) * (r + 0.01), y + 0.04, Math.cos(a + 0.4) * (r + 0.01)], scale: [1.4, 0.45, 0.9], rot: [0, a, 0.5] }));
+        return out; }),
+      feet: () => [part(new G.BoxGeometry(0.26, 0.2, 0.32), 0x17141d, { pos: [0, -0.76, 0.03] }),
+        part(new G.ConeGeometry(0.085, 0.2, 5), 0x17141d, { pos: [0, -0.78, 0.26], rot: [Math.PI / 2 - 0.5, 0, 0] }),
+        part(new G.IcosahedronGeometry(0.035, 0), 0xe8812c, { pos: [0, -0.7, 0.35] }),
+        part(new G.BoxGeometry(0.1, 0.06, 0.02), 0xe8812c, { pos: [0, -0.72, 0.195] })] },
+  },
 };
 
 export function character(o = {}) {
@@ -775,7 +856,10 @@ export function character(o = {}) {
   // An Elf Hat or a Santa Costume's cap takes the cosmetic hat's place (and steps aside for the Santa hat the same way).
   const hp = look.hat.length ? look.hat : o.hat ? hatPieces(o.hat.shape, o.hat.color) : [];
   const hatMesh = hp.length ? toon(build(hp), 0.025) : null; if (hatMesh) body.add(hatMesh);
-  if (look.glow.length) body.add(new THREE.Mesh(build(look.glow), GEAR_GLOW));
+  // unlit pieces: gear (a jack-o'-lantern's face, a coil), a glowing costume head (the Pumpkin King's carved face, unless gear
+  // replaces the head) and a glowing costume back piece (the Pumpkin King's lantern, unless gear covers the back)
+  const glowParts = [...look.glow, ...(!look.noHead && fullHead?.glow ? fullHead.glow() : []), ...(o.pack && !look.back ? packGlow(o.pack.shape) : [])];
+  if (glowParts.length) body.add(new THREE.Mesh(build(glowParts), GEAR_GLOW));
   const limb = (w, h, color, x, y, extra = []) => {
     const geo = build([part(new G.BoxGeometry(w, h, w), color, { pos: [0, -h / 2, 0], jit: 0.02 }), ...extra]);
     const m = toon(geo, 0.028); m.position.set(x, y, 0); g.add(m); return m;

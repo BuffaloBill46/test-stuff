@@ -18,11 +18,11 @@ const mk = async (name, level, owns, gear) => { const id = (await db.query('inse
   await db.query('insert into public.profiles (id, wallet, name, avatar, level) values ($1, $2, $3, $4, $5)', [id, W(), name, JSON.stringify({ ...base, ...gear }), level]);
   await db.query(`insert into public.logins (user_id, profile_id, kind) values ($1, $1, 'wallet')`, [id]);
   for (const it of owns) await db.query('insert into public.inventory (profile_id, item_id) values ($1, $2)', [id, it]); return id; };
-// Hal (level 8): Toy Sack + Elf Shoes, both slots open. Fay (level 1): Pumpkin in G1 and Elf Shoes in G2, but G2 opens at level 8,
-// so only the Pumpkin is worn (an avatar saved back when she was level 8, say). Gil: a Gift Box (its own clock, whatever it
+// Hal (level 8): Toy Sack + Elf Shoes, both slots open. Fay (level 1): Kevlar Vest in G1 and Elf Shoes in G2, but G2 opens at level 8,
+// so only the Kevlar Vest is worn (an avatar saved back when she was level 8, say). Gil: a Gift Box (its own clock, whatever it
 // becomes). Pia: gear, but she only plays practice.
 const hal = await mk('Hal', 8, ['gear_sack', 'gear_shoes'], { g1: 'gear_sack', g2: 'gear_shoes' });
-const fay = await mk('Fay', 1, ['gear_pumpkin', 'gear_shoes'], { g1: 'gear_pumpkin', g2: 'gear_shoes' });
+const fay = await mk('Fay', 1, ['gear_kevlar', 'gear_shoes'], { g1: 'gear_kevlar', g2: 'gear_shoes' });
 const gil = await mk('Gil', 3, ['gear_gift'], { g1: 'gear_gift' });
 const pia = await mk('Pia', 3, ['gear_heated'], { g1: 'gear_heated' });
 const lv = createLevels({ db });
@@ -38,7 +38,7 @@ assert.deepEqual(await clocks(), {}, 'practice / private: no clock started');
 const r1 = await lv.finish(hal, { id: 'auto-gear-0001', auto: true, places: [hal, null, fay, gil] });
 assert.deepEqual(r1.counted.map((c) => c.place), [1, 3], 'level counts unchanged: 1st and 3rd with accounts');
 const c1 = await clocks();
-assert.deepEqual(Object.keys(c1), ['Fay:gear_pumpkin', 'Gil:gear_gift', 'Hal:gear_sack', 'Hal:gear_shoes'], 'each worn gear item, once (Fay\'s closed G2 not started; Gift Box runs its own clock)');
+assert.deepEqual(Object.keys(c1), ['Fay:gear_kevlar', 'Gil:gear_gift', 'Hal:gear_sack', 'Hal:gear_shoes'], 'each worn gear item, once (Fay\'s closed G2 not started; Gift Box runs its own clock)');
 
 // 3. A second finish (a later match, and the same match reported again) never restarts a clock.
 await new Promise((r) => setTimeout(r, 20));

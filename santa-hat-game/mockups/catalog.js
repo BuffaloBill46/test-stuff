@@ -4,6 +4,8 @@
 // LOOKS (Cody, 2026-10-02): skin tones free; only three faces are sold (Snowman $1.00, Panda $1.50, Gorilla $2.00); every
 // other look is a LEVEL REWARD on levels 2, 3, 4, 6, 7, 8 and 9 (3–4 each); levels 5 and 10 each unlock a matching COSTUME
 // (one item per look slot, made to stand out). Special snowballs and gear are still sold: they change play.
+// SEASON items (2026-10-03, `season: 'halloween'`): a season pass's reward, with NO level and NO price, so they are usable only
+// once owned (usable below; the pass grants them by id) and never sold (shoprules.js forSale). The one exception to "level OR price".
 export const SLOTS = ['shirt', 'pants', 'face', 'skin', 'hat', 'pack', 'snow'];
 export const SLOT_NAMES = { shirt: 'Shirts', pants: 'Pants', face: 'Faces', skin: 'Skin', hat: 'Hats', pack: 'Backpacks', snow: 'Snowballs', costume: 'Costumes', sball: 'Special Snowballs', gear: 'Special Gear' };
 // SPECIAL SNOWBALLS (Cody, 2026-10-01): items of slot 'sball' (specials.js says what each does), kept forever once owned, put in the
@@ -99,6 +101,9 @@ export const ITEMS = [
   // Prices and order (= their spot on the Store and Avatar pages): Cody's sheet, 2026-10-02. The Heated Coat is REMOVED from
   // the game (same sheet; nobody owned one): not sold, not wearable. Its gear kind stays in gear.js GEAR_KINDS on purpose
   // (that list's order is the matches' gear code; taking it out would shift every other gear).
+  // The Pumpkin Costume is RETIRED too (2026-10-03, gear.js RETIRED): its jack-o'-lantern head became the Pumpkin King costume's
+  // face (below). Its item stays, with its price as in the database, because players own it; but it isn't sold (forSale), isn't
+  // listed, and does nothing in a match.
   { id: 'gear_none', slot: 'gear', name: 'Empty slot', level: 1 },
   { id: 'gear_kevlar', slot: 'gear', name: 'I.C.E. Kevlar Vest', gear: 'kevlar', color: 0x9fd8ff, price: 0.50 },
   { id: 'gear_pumpkin', slot: 'gear', name: 'Pumpkin Costume', gear: 'pumpkin', color: 0xe8812c, price: 1.00 },
@@ -130,9 +135,23 @@ export const ITEMS = [
   { id: 'hat_icecrown', slot: 'hat', name: 'Ice Crown', hat: 'icecrown', color: 0x9fd8ff, set: 'frostking', level: 10 },
   { id: 'pack_icewings', slot: 'pack', name: 'Ice Wings', pack: 'icewings', color: 0xbfe6ff, set: 'frostking', level: 10 },
   { id: 'snow_crystal', slot: 'snow', name: 'Crystal', color: 0x2f9bff, set: 'frostking', level: 10 },
+  // The HALLOWEEN PASS reward (2026-10-03): the Pumpkin King. A SEASON costume: no level, no price, usable once owned (the pass
+  // grants these six by id), never sold, never on a bot. Stitched patchwork coat (purple, orange and black), vine-wrapped dark
+  // trousers and boots, the jack-o'-lantern head (the retired Pumpkin Costume's, glowing face and all), a crooked witch's hat with
+  // a vine and a bat, a glowing lantern on the back, glowing orange snowballs. supabase/032_halloween_costume.sql is the database's copy.
+  { id: 'shirt_pumpkinking', slot: 'shirt', name: 'Patchwork Coat', color: 0x4a2a6e, trim: 'pumpkinking', set: 'pumpkinking', season: 'halloween' },
+  { id: 'pants_pumpkinking', slot: 'pants', name: 'Vine Trousers', color: 0x262230, trim: 'pumpkinking', set: 'pumpkinking', season: 'halloween' },
+  { id: 'face_pumpkinking', slot: 'face', name: 'Pumpkin King', face: 'pumpkinking', set: 'pumpkinking', season: 'halloween' },
+  { id: 'hat_pumpkinking', slot: 'hat', name: 'Crooked Hat', hat: 'crooked', color: 0x1e1a26, set: 'pumpkinking', season: 'halloween' },
+  { id: 'pack_pumpkinking', slot: 'pack', name: 'Jack Lantern', pack: 'lantern', color: 0x2b2733, set: 'pumpkinking', season: 'halloween' },
+  { id: 'snow_pumpkinking', slot: 'snow', name: 'Lantern Glow', color: 0xffa31a, set: 'pumpkinking', season: 'halloween' },
 ];
-// The two costumes (above): what each is called and the level that unlocks every piece. COSTUME_SLOTS: one piece in each.
-export const COSTUMES = { nutcracker: { name: 'Nutcracker Soldier', level: 5 }, frostking: { name: 'Frost King', level: 10 } };
+// The costumes (above): what each is called and the level that unlocks every piece, or (a season costume) the season pass that
+// gives it. COSTUME_SLOTS: one piece in each. SEASONS: what each season's pass is called on the page.
+export const SEASONS = { halloween: { name: 'Halloween pass' } };
+export const COSTUMES = { nutcracker: { name: 'Nutcracker Soldier', level: 5 }, frostking: { name: 'Frost King', level: 10 }, pumpkinking: { name: 'Pumpkin King', season: 'halloween' } };
+// How a costume (or a costume piece) is earned, in words: "Level 5 costume" or "Halloween pass"
+export const costumeWord = (c) => (c?.season ? SEASONS[c.season]?.name || c.season : `Level ${c?.level} costume`);
 export const COSTUME_SLOTS = ['shirt', 'pants', 'face', 'hat', 'pack', 'snow'];
 // A costume's pieces, read from ITEMS each time (the admin's published store settings can replace ITEMS in place)
 export const costumeItems = (set) => ITEMS.filter((i) => i.set === set);

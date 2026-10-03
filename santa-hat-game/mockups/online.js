@@ -10,7 +10,7 @@ import { TICKET_MAX } from './ranked.js';
 import { levelInfo, clampLevel } from './levels.js';
 import { SERVER, call, token as signInToken } from './gameserver.js';
 import { SPECIALS, cantThrow } from './specials.js';
-import { gearIn, effectsOf, heldWith, gearOfMask, statOf } from './gear.js';
+import { gearIn, effectsOf, heldWith, gearOfMask, statOf, RETIRED } from './gear.js';
 import { initLottery } from './lotteryui.js';
 import { play as sfx, initSoundButtons } from './sfx.js';
 import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js';
@@ -888,7 +888,8 @@ const previewHat = toon(hatGeo({ scale: 0.88 }), 0.03);
 function setPreview(a) {
   if (preview.userData.ch) { preview.remove(preview.userData.ch); disposeTree(preview.userData.ch); }
   // the preview wears what is in the gear slots (a Gift Box: a wrapped present); an Elf Hat or a Santa cap takes the hat's place
-  const gear = GEAR_SLOTS.map((s) => BY_ID.get(cleanAvatar(a)[s])?.gear).filter(Boolean);
+  // (retired gear, gear.js RETIRED, isn't worn: an old saved Pumpkin Costume doesn't draw, as in a match)
+  const gear = GEAR_SLOTS.map((s) => BY_ID.get(cleanAvatar(a)[s])?.gear).filter((k) => k && !RETIRED.has(k));
   const ch = avatarCharacter(a, { gear }); preview.userData.ch = ch; preview.add(ch);
   // a costume hat (the Nutcracker's shako, the Ice Crown) is shown instead of the Santa hat: they're tall and the Santa hat hid them
   const costumeHat = !!BY_ID.get(cleanAvatar(a).hat)?.set;
