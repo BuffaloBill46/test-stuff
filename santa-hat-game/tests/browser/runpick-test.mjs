@@ -54,7 +54,8 @@ check(await counter('drop') === 'This run – won $0.00' && await counter('big')
 const facts = await p.evaluate(() => [...document.querySelectorAll('#slots .facts li')].map((li) => [...li.children].map((c) => c.textContent).join(': ')));
 check(JSON.stringify(facts) === JSON.stringify(['Jackpot odds (Top Line or Pool): about 1 in 7,665', 'Every Santa Hat on the grid: +6¢']), 'Big Hat facts: ' + facts.join(' | '));
 check(/^Top Line JackPot/.test(await txt(p, '#slots .jp.topline span')), 'the box says Top Line JackPot');
-check(await txt(p, '#dropOdds') === '1 in 5,000 to hit the 100× · 1 in 4.4 to win 2× or more', 'Drop: ' + await txt(p, '#dropOdds'));
+// the centre present is the POOL JACKPOT since 2026-10-02 (25% of the Game pool × the drop's size); its odds stay 1 in 5,000
+check(/^Pool jackpot \$[\d,.]+ on a 10¢ drop right now \(25% of the Game pool × your drop: the centre present\) 1 in 5,000 to hit it · 1 in 4\.4 to win 2× or more$/.test(await txt(p, '#dropOdds')), 'Drop: ' + await txt(p, '#dropOdds'));
 await p.evaluate(() => document.querySelector('#drop').scrollIntoView({ block: 'start' })); await p.screenshot({ path: `${OUT}/desk-box.png` });
 
 console.log('2. A run of 23 drops from the box: the counter above the buttons counts it, to the cent');
@@ -69,7 +70,8 @@ check(await txt(p, '#buyTitle') === 'Play 23 drops' && await txt(p, '#buyWhat') 
 await p.evaluate(() => document.querySelector('#buyGo').click());
 await p.waitForFunction(() => window.__drop.opening, null, { timeout: 5000 }).catch(() => {});
 check(await p.evaluate(() => document.querySelector('#drop .runpick input').disabled && document.querySelector('#drop .runpick [data-step="1"]').disabled), 'the box is locked while the run plays');
-check(await p.waitForFunction(() => /^[1-9]\d* \/ 23$/.test(document.querySelector('[data-runcount="drop"] b')?.textContent || ''), null, { timeout: 30000 }).then(() => true, () => false), 'the counter counts while it plays: ' + await counter('drop'));
+// the counter counts a drop when its ball LANDS (2026-10-03 fix), and the slow test browser (~3 frames a second) can take over 30 s
+check(await p.waitForFunction(() => /^[1-9]\d* \/ 23$/.test(document.querySelector('[data-runcount="drop"] b')?.textContent || ''), null, { timeout: 120000 }).then(() => true, () => false), 'the counter counts while it plays: ' + await counter('drop'));
 check(await between('drop'), 'the counter sits between the game and the buy buttons');
 await p.click('#drop .skip').catch(() => {});
 await p.waitForFunction(() => !window.__drop.opening && window.__drop.flying === 0, null, { timeout: 600000 }); // 17 hops a snowball at ~3 frames a second here await p.waitForTimeout(300);
