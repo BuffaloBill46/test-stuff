@@ -60,7 +60,9 @@
     could have bought plays there that got paid in real SANTA.
   - The switch-over script clears every test record that could ever be paid out. It was rehearsed on a full copy of today's
     data (backup in `C:\santa-devnet-keys\backups`).
-  - No new runs while a pool top-off waits for your deposit, so nobody plays on money that hasn't arrived.
+  - ~~No new runs while a pool top-off waits for your deposit.~~ **Turned off at Cody's request (2026-10-03):** a game that keeps
+    stopping is worse. Games keep running. The Telegram alert "needs a TOP-OFF" tells you to deposit, and until you do, a payout
+    could wait for that deposit (it retries and alerts; nothing is lost).
   - The pools' SOL can't be drained by players closing and reopening their SANTA account: the pool opens a winner's account at
     most once a day.
   - Prices: the server samples the SANTA price every minute and needs 5 samples before pricing a play, so a short pump does
