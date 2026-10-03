@@ -15,8 +15,12 @@ const { SHOP_BURN_BPS } = await import('../../mockups/shoprules.js');
 const ROOT = new URL('../../mockups', import.meta.url).pathname, fails = [], check = (ok, msg) => { if (!ok) fails.push(msg); console.log((ok ? '  ✓ ' : '  ✗ ') + msg); };
 
 // --- the server: the real shop on the real SQL
-const db = await makeDb(['001_profiles.sql', '002_items_seed.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '006_ranked_tickets.sql', '008_hats_backpacks.sql', '010_levels.sql', '012_special_snowballs.sql']);
-for (const f of ['015_special_gear.sql', '016_shop.sql']) await db.pg.exec(readFileSync(new URL(`../../supabase/${f}`, import.meta.url), 'utf8'));
+// every live database file in order (it used to stop at 016, so it still sold shirts after 028 made looks level rewards)
+const db = await makeDb(['001_profiles.sql', '002_items_seed.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '006_ranked_tickets.sql', '007_rate_limits.sql',
+  '008_hats_backpacks.sql', '009_lock_my_plays.sql', '010_levels.sql', '011_lottery.sql', '012_special_snowballs.sql', '013_match_stats.sql', '014_run_sizes.sql',
+  '015_special_gear.sql', '016_shop.sql', '017_referee_role.sql', '018_ranked_results.sql', '019_ranked_board.sql', '020_worker_role.sql', '021_alerts.sql',
+  '022_ticket_cap.sql', '023_item_prices.sql', '024_reward_claims.sql', '025_stocking.sql', '026_shared_pool.sql', '027_tester_feedback.sql', '028_look_rewards.sql',
+  '029_costumes.sql', '030_daily_reset.sql']);
 const PLAYER = 'PLAYERwa11et111111111111111111111111111111', TREASURY = 'TReASURYwa11et'.padEnd(44, '1').replace(/[0OIl]/g, '9'), PRICE = 0.00085, FEE = { bps: 300, max: 1e15 };
 const me = (await db.query('insert into auth.users default values returning id'))[0].id;
 await db.query(`insert into public.profiles (id, wallet, name, avatar) values ($1, $2, 'Cody', '{}')`, [me, PLAYER]);
@@ -86,13 +90,20 @@ console.log('1. Store: Buy a special snowball and a gear (server mode, real shop
   await p.click('#tickets .packs [data-tix="5"], .packs [data-tix="5"]');
   check(await waitNote(p, '#tixNote', /\+5 ranked tickets/), 'tickets: "+5 ranked tickets."');
   check(+(await db.query('select extra from public.tickets where profile_id = $1', [me]))[0]?.extra === 5, 'the database has 5 extra tickets');
+  { // the top bar's counter shows the new total straight away (live QA 2026-10-03: it stayed at 10/25 until the next sign-in)
+    const t = await p.evaluate(async () => (await import('./gameserver.js')).call('tickets')), want = `${t.free + t.extra}/25`; // the server's own count
+    const shown = await p.waitForFunction((w) => document.querySelector('#tixchip b')?.textContent === w, want, { timeout: 15000 }).then(() => true, () => false);
+    check(shown, `the ticket counter shows ${want} right after the buy (shows ${await p.textContent('#tixchip b')})`); }
   await p.click('#t-play'); await p.waitForTimeout(400); await p.click('#pgBuy');
   check(await waitNote(p, '#pgNote', /You're level 2/), 'Buy level: "You\'re level 2!"');
   check(+(await db.query('select level from public.profiles where id = $1', [me]))[0].level === 2, 'the database says level 2');
 
   console.log('4. Avatar screen: Buy the look being previewed');
-  const look = (await db.query(`select id, name from public.items where price_usd is not null and slot = 'shirt' order by id limit 1`))[0];
-  await p.click('#t-avatar'); await p.waitForTimeout(500); await p.click('[data-slot="shirt"]'); await p.waitForTimeout(300);
+  // since 028 the only looks for sale are the three faces (Cody: Snowman $1, Panda $1.50, Gorilla $2); everything else is a level reward
+  const forSale = await db.query(`select id, name, slot from public.items where price_usd is not null and slot not in ('sball', 'gear') order by id`);
+  check(forSale.length === 3 && forSale.every((x) => x.slot === 'face'), `only the 3 faces are sold as looks: ${forSale.map((x) => x.name).join(', ')}`);
+  const look = forSale[0];
+  await p.click('#t-avatar'); await p.waitForTimeout(500); await p.click(`[data-slot="${look.slot}"]`); await p.waitForTimeout(300);
   await p.click(`#avgrid [data-pick="${look.id}"]`); await p.waitForTimeout(300);
   check(!(await p.isHidden('#avbuy')) && new RegExp(look.name).test(await p.textContent('#avbuy')), `previewing ${look.name}: "${await p.textContent('#avbuy')}"`);
   await p.click('#avbuy');

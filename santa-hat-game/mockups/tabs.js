@@ -449,7 +449,8 @@ export function initTabs(app) {
   document.querySelector('.packs')?.addEventListener('click', async (e) => { const b = e.target.closest('[data-tix]'); if (!b) return;
     const say = (t) => { $('#tixNote').textContent = t; };
     if (!app.profile) return say('Sign in with your wallet first: tickets are paid from it.');
-    b.disabled = true; await shopBuy({ kind: 'tickets', n: +b.dataset.tix }, say); b.disabled = false; });
+    // the counters (top bar, Player Progress) show the new total right away (live QA 2026-10-03: they stayed at 10/25 after a buy)
+    b.disabled = true; const r = await shopBuy({ kind: 'tickets', n: +b.dataset.tix }, say); b.disabled = false; if (r) refreshTickets(app.profile); });
   $('#avsave').addEventListener('click', async () => {
     const d = state.draft, msg = $('#avmsg'), btn = $('#avsave');
     const name = d.name.trim().slice(0, 14) || app.me.n;
