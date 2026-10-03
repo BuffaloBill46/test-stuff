@@ -8,7 +8,7 @@ export const SUPABASE_GRANTS = `grant usage on schema public to anon, authentica
     alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
     alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
     alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;`;
-export const FILES = ['001_profiles.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '006_ranked_tickets.sql', '007_rate_limits.sql', '009_lock_my_plays.sql', '014_run_sizes.sql'];
+export const FILES = ['001_profiles.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '006_ranked_tickets.sql', '007_rate_limits.sql', '009_lock_my_plays.sql', '014_run_sizes.sql', '026_shared_pool.sql'];
 export async function makeDb(files = FILES) {
   const pg = new PGlite();
   await pg.exec(`create role anon; create role authenticated; create role service_role; create schema auth;

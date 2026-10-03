@@ -9,6 +9,8 @@ import { botSignals, BOT_RULES } from './bots.js';
 
 export const REPEAT_HOURS = 6, STUCK_MINUTES = 10;
 const RAW = 1e6, santa = (raw) => (Number(raw) / RAW).toLocaleString('en-US', { maximumFractionDigits: 0 });
+// The pools' names for Cody: 'spin' is the shared Game pool every game plays from (Cody, 2026-10-02); 'slots' the old Slots pool
+const POOL = (g) => (g === 'spin' ? 'Game' : g === 'slots' ? 'old Slots' : g);
 
 // telegram: { send(text) }; walletRaw(game) → the pool wallet's SANTA (raw) on the chain; refereeHealth() → throws if down.
 export function createAlerts({ db, telegram, walletRaw, refereeHealth, games = ['spin', 'slots'], now = () => Date.now() }) {
@@ -20,17 +22,18 @@ export function createAlerts({ db, telegram, walletRaw, refereeHealth, games = [
       const [s] = await db.query(`select count(*)::int as n from public.${t} where status in ('queued', 'sending') and created_at < now() - make_interval(mins => $1)`, [STUCK_MINUTES]);
       if (s.n) add(`stuck:${t}`, `${s.n} ${t.replace('_', ' ')} waiting over ${STUCK_MINUTES} minutes: is the payout worker running on the Droplet?`);
     }
-    for (const t of await db.query(`select id, game, amount_raw from public.pool_transfers where kind = 'top-off' and status = 'needs_approval' order by id`)) add(`topoff:${t.id}`, `The ${t.game === 'spin' ? 'Drop' : 'Slots'} pool needs a TOP-OFF of ${santa(t.amount_raw)} SANTA from the treasury. Send it, then record the deposit in the admin screen.`);
-    for (const p of await db.query(`select game from public.pools where (rules->>'paused')::boolean is true`)) add(`paused:${p.game}`, `EMERGENCY STOP is on for the ${p.game === 'spin' ? 'Drop' : 'Slots'} pool (plays refused). Resume it in the admin screen when ready.`);
+    for (const t of await db.query(`select id, game, amount_raw from public.pool_transfers where kind = 'top-off' and status = 'needs_approval' order by id`)) add(`topoff:${t.id}`, `The ${POOL(t.game)} pool needs a TOP-OFF of ${santa(t.amount_raw)} SANTA from the treasury. Send it, then record the deposit in the admin screen.`);
+    for (const p of await db.query(`select game from public.pools where (rules->>'paused')::boolean is true`)) add(`paused:${p.game}`, `EMERGENCY STOP is on for the ${POOL(p.game)} pool (plays refused). Resume it in the admin screen when ready.`);
     if (refereeHealth) { try { await refereeHealth(); } catch (e) { add('referee-down', `The MATCH SERVER isn't answering (${String(e.message).slice(0, 80)}). Players can't join matches.`); } }
     if (walletRaw) for (const game of games) {
       const [pool] = await db.query('select santa_raw from public.pools where game = $1', [game]); if (!pool) continue;
       let wallet; try { wallet = await walletRaw(game); } catch { continue; } // the chain didn't answer: try again next time, not an alarm
       if (wallet === null || wallet === undefined) continue;
-      const payouts = await db.query(`select po.id, po.status, po.amount_raw from public.payouts po join public.runs r on r.id = po.run_id where (case when r.kind = 'big' then 'slots' else 'spin' end) = $1 and po.status <> 'sent'`, [game]);
+      // every run's payout is sent from the shared Game pool's wallet (worker gameOfRun; 026), so they all count against 'spin'
+      const payouts = await db.query(`select po.id, po.status, po.amount_raw from public.payouts po where $1 = 'spin' and po.status <> 'sent'`, [game]);
       const transfers = await db.query(`select id, kind, status, amount_raw from public.pool_transfers where game = $1 and status <> 'sent'`, [game]);
       const r = reconcile({ bookRaw: +pool.santa_raw, walletRaw: Number(wallet), payouts, transfers });
-      if (!r.ok) add(`drift:${game}:${r.drift}`, `BOOKS DON'T MATCH the ${game === 'spin' ? 'Drop' : 'Slots'} pool wallet: the wallet has ${santa(Math.abs(r.drift))} SANTA ${r.drift > 0 ? 'MORE' : 'LESS'} than the books say. (More: a deposit not recorded yet? Less: look now.)`);
+      if (!r.ok) add(`drift:${game}:${r.drift}`, `BOOKS DON'T MATCH the ${POOL(game)} pool wallet: the wallet has ${santa(Math.abs(r.drift))} SANTA ${r.drift > 0 ? 'MORE' : 'LESS'} than the books say. (More: a deposit not recorded yet? Less: look now.)`);
     }
     const rows = await db.query(`select r.profile_id, pr.name, pr.wallet, q.created_at as quote_at, r.paid_at from public.runs r
       join public.payments pa on pa.signature = r.signature join public.quotes q on q.id = pa.quote_id join public.profiles pr on pr.id = r.profile_id

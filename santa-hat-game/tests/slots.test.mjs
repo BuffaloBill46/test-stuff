@@ -62,7 +62,7 @@ for (const m of Object.values(MACHINES)) {
     `100× line about 1 in ${Math.round(1 / (s.topPerLine * s.lines)).toLocaleString()}; pool jackpot about 1 in ${Math.round(N / Math.max(1, jp)).toLocaleString()} (set 1 in ${Math.round(1 / m.poolJackpotOdds).toLocaleString()})`);
 }
 
-// Slots pool over long runs: never negative, never pays beyond the pool, skims $25 to the treasury at $325.
+// Big Hat alone on the Game pool over long runs: never negative, never pays beyond the pool, skims $25 to the treasury at $1,025.
 let paused = 0, capped = 0, jackpots = 0, skims = 0, topOffs = 0, lowest = Infinity; const ends = [], jackAmts = []; let treasuryNet = 0;
 for (let run = 0; run < 200; run++) {
   const st = { pool: START_POOL };
@@ -70,7 +70,10 @@ for (let run = 0; run < 200; run++) {
     const before = st.pool, r = pull(st, 'big', rand);
     if (r.paused) { paused++; continue; }
     if (r.capped) capped++;
-    if (r.jackpot) { jackpots++; jackAmts.push(r.pay); }
+    if (r.jackpot) { jackpots++; jackAmts.push(r.pay);
+      // the pool jackpot = 25% of the pool AT THAT MOMENT (after this pull's entry), recorded with the result for re-checks
+      if (Math.abs(r.jackpotPool - (before + (r.topOff && before < POOL_RULES.topOffBelow ? POOL_RULES.topOffTo - before : 0) + MACHINES.big.bet * IN_PER_DOLLAR)) > 1e-9) fail('jackpot must record the pool at that moment');
+      if (r.pay !== r.jackpotPool * 0.25 || r.pct !== 0.25) fail('the pool jackpot must pay exactly 25% of the recorded pool'); }
     if (r.topOff) { topOffs++; if (Math.abs(st.pool - POOL_RULES.topOffTo) > 1e-9) fail('top-off should bring the pool to topOffTo'); }
     if (st.pool < POOL_RULES.topOffBelow - 1e-9) fail('pool left below the top-off level');
     lowest = Math.min(lowest, st.pool);
@@ -83,6 +86,12 @@ for (let run = 0; run < 200; run++) {
   ends.push(st.pool); treasuryNet += st.treasury || 0;
 }
 if (paused) fail(`${paused} pulls refused: with the top-off the game must never lock`);
+if (!jackpots) fail('no pool jackpot in 4 million pulls: the jackpot check above checked nothing');
+// ONE GAME POOL (Cody, 2026-10-02): Slots plays by the shared pool's rules, the same object as the Drop/Stocking pool's
+{ const { SPIN_RULES } = await import('../mockups/spin.js');
+  if (SPIN_RULES !== POOL_RULES) fail('the Slots and Drop/Stocking pool rules must be ONE object (one shared pool)');
+  const want = { start: 500, skimAt: 1025, skim: 25, topOffBelow: 200, topOffTo: 500, paused: false };
+  if (JSON.stringify(POOL_RULES) !== JSON.stringify(want)) fail(`the Game pool rules must be Cody's: ${JSON.stringify(want)}`); }
 ends.sort((a, b) => a - b); jackAmts.sort((a, b) => a - b);
 console.log(`Slots pool, 200 runs × 20,000 pulls from $${START_POOL}: median end $${ends[100].toFixed(0)}, lowest after any pull $${lowest.toFixed(0)}; ${skims} skims of $${SKIM}; ${topOffs} top-offs; treasury net about $${(treasuryNet / 200).toFixed(0)} per 20,000 pulls; ${jackpots} pool jackpots (median $${(jackAmts[jackAmts.length >> 1] || 0).toFixed(2)}); ${paused} paused pulls; ${capped} capped wins`);
 // Stress: start the pool low so the top-off has to work. It must fire, and no pull may ever be refused.

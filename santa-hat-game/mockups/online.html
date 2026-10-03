@@ -398,6 +398,8 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
 /* Snowball Drop's one odds line (Cody, 2026-10-01: in place of the presents list) */
 .dropodds { margin: 12px 0 0; padding: 8px 10px; background: var(--ink); border: 2px solid #c98a1b; border-radius: 3px; font-size: 15px; color: #d6ddf0; }
 .dropodds b { font: 700 18px/1 var(--digits); color: var(--lamp); margin-right: 4px; }
+/* Board 3 (Cody, 2026-10-02): the centre present is the pool jackpot; its live amount leads the odds line */
+.dropodds .jpline { display: block; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid #3a4570; } .dropodds .jpline b { color: var(--hat); text-shadow: 0 0 1px var(--ink); } .dropodds .jpline .dim { font-size: 13px; color: var(--dim); }
 @media (min-width: 821px) {
   .wheelcard { grid-template-rows: auto auto auto auto auto 1fr; }
   .wheelcard .screen { grid-row: 1 / span 6; }
@@ -651,13 +653,17 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 .giftrow li.got i { border: 2px solid var(--ink); background: linear-gradient(90deg, transparent 41%, var(--hat) 41% 59%, transparent 59%), linear-gradient(transparent 38%, var(--hat) 38% 58%, transparent 58%), #ffc94a; }
 .giftrow li.now { border-color: var(--lamp); box-shadow: 0 0 0 2px rgba(255,190,92,.28); } .giftrow li.now b { color: var(--lamp); }
 .giftrow li.end:not(.win) { border-color: #6f7ba8; box-shadow: none; } .giftrow li.end:not(.win) b { color: #d6ddf0; }
+/* the 8th slot: 8 gifts in a row win the POOL JACKPOT (Cody, 2026-10-02): a gold frame and a red JP, like the Slots jackpot bar */
+.giftrow li.jpslot { border-color: #c98a1b; } .giftrow li.jpslot b { color: var(--hat); } .giftrow li.jpslot.got { border-color: var(--lamp); box-shadow: 0 0 0 2px rgba(255,190,92,.45); }
+.stockdesc b { color: var(--lamp); }
 .giftrow .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 #stockHistory li { display: inline-flex; gap: 4px; align-items: center; justify-content: center; background: #151a30; color: #6f7ba8; }
 #stockHistory li i { width: 11px; height: 10px; border: 1px solid var(--ink); background: linear-gradient(90deg, transparent 38%, var(--hat) 38% 62%, transparent 62%), linear-gradient(transparent 38%, var(--hat) 38% 62%, transparent 62%), #ffc94a; }
 #stockHistory .g1 { background: #2e3a6e; color: #b9cdf2; } #stockHistory .g2 { background: #6f8fd0; color: var(--ink); }
 #stockHistory .g3, #stockHistory .g4 { background: #c98a1b; color: var(--ink); } #stockHistory .g5 { background: var(--lamp); color: #7a1414; }
+#stockHistory .gjp { background: var(--hat); color: #ffc94a; outline: 2px solid var(--lamp); }
 .stockhow .body > p { margin: 8px 0 0; line-height: 1.4; color: #d6ddf0; } .stockhow .body > p b { color: var(--lamp); }
-.stockhow .pays td:first-child { display: table-cell; } .stockhow tr.win td { color: var(--lamp); } .stockhow .pays td .dim { font: 400 12px/1.2 var(--body); }
+.stockhow .pays td:first-child { display: table-cell; } .stockhow tr.win td { color: var(--lamp); } .stockhow tr.jprow td { color: #ffc94a; font-weight: 700; } .stockhow .pays td .dim { font: 400 12px/1.2 var(--body); }
 .stockhow .howrules { margin-top: 8px; }
 @media (max-width: 600px) { #stocking.block { padding: 12px 8px 14px; } .stockhow .pays th, .stockhow .pays td { padding: 3px 4px; font-size: 12px; } }
 @media (max-width: 420px) { .giftrow { gap: 2px; } .giftrow b { font: 700 12px/1 var(--body); letter-spacing: -.2px; } } /* narrow phones: "1.75×" in the pixel font is wider than its slot */
@@ -801,14 +807,14 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 
   <section id="tab-games" class="page" role="tabpanel" aria-labelledby="t-games" hidden>
     <div class="hero"><div class="eyebrow">Santa Hat Games · single player</div><h1>Santa Hat Games</h1>
-      <p>Quick games you play on your own. Every entry: 10% burned, 90% into that game's prize pool.</p>
+      <p>Quick games you play on your own. Every entry: 10% burned, 90% into the one Game pool all three games pay from.</p>
       <p class="taxnote" id="lockNote"><b>Price locked per run</b> The SANTA price is locked when you buy a run. Everything that run wins is paid in SANTA at that same price, even if the price moves while it plays.</p>
       <p class="taxnote"><b>3% SANTA tax</b> Winnings are paid in SANTA and arrive 3% lighter; the token does that, not this game.</p>
       <p class="testnote"><b>Test version</b> These games use pretend money for now. Nothing costs SANTA and nothing pays out SANTA yet; real payments open after testing.</p>
       <p class="livechip" id="liveMarket" aria-live="polite">Checking the live SANTA price…</p></div>
     <section class="block plaque slotsbox fur" id="slots">
       <div class="slotshead">
-        <div><h2>Slots</h2><div class="pool"><i>Total pool</i><b id="slotPool">$500.00</b></div></div>
+        <div><h2>Slots</h2><div class="pool"><i>Game pool</i><b id="slotPool">$500.00</b></div></div>
         <div class="demo"><span class="stamp">Demo</span><p>Play money only; payments open later.<br>Demo balance <b id="demoBal">$100.00</b> <button class="sec" id="demoReset">Reset</button></p></div>
       </div>
       <article class="machine big" data-m="big">
@@ -828,7 +834,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
         <h4>The 11 paylines: straight or diagonal, from the first reel</h4><div id="payLines"></div>
         <p class="dim">Wins count from the leftmost reel. A Santa Hat is wild: it stands in for any symbol except Coal. Every Santa Hat anywhere also pays <span class="hatc">6¢</span>. All winning lines add up. Winnings arrive 3% lighter (SANTA's token tax).</p></details>
     </section>
-    <!-- Santa Hat Spin: removed from the page (Cody, 2026-10-01: "not very fun"). Kept hidden: its code holds the pool Snowball Drop plays from. -->
+    <!-- Santa Hat Spin: removed from the page (Cody, 2026-10-01: "not very fun"). Kept hidden: its code holds the shared Game pool every game plays from. -->
     <section class="block plaque slotsbox fur" id="spin" hidden>
       <div class="slotshead">
         <div><h2>Santa Hat Spin</h2><div class="pool"><i>Spin pool</i><b id="spinPool">$50.00</b></div></div>
@@ -851,14 +857,14 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
     </section>
     <section class="block plaque slotsbox fur" id="drop">
       <div class="slotshead">
-        <div><h2>Snowball Drop</h2><div class="pool"><i>Drop pool</i><b id="dropPool">$50.00</b></div></div>
-        <div class="demo"><span class="stamp">Demo</span><p>Same demo balance as Slots.<br>Its own prize pool (not the Slots pool).</p></div>
+        <div><h2>Snowball Drop</h2><div class="pool"><i>Game pool</i><b id="dropPool">$500.00</b></div></div>
+        <div class="demo"><span class="stamp">Demo</span><p>Same demo balance as Slots.<br>Same Game pool as every game.</p></div>
       </div>
       <article class="machine wheelcard dropcard">
-        <header><h3>Present Board</h3><em>10¢ or $1 a drop · up to 10×</em></header>
+        <header><h3>Present Board</h3><em>10¢ or $1 a drop · up to 25× + the pool jackpot</em></header>
         <div class="bets" role="radiogroup" aria-label="Drop size">
-          <button role="radio" aria-checked="true" data-dbet="0.1"><b>10¢</b><small>win up to $1</small></button>
-          <button role="radio" aria-checked="false" data-dbet="1"><b>$1</b><small>win up to $10</small></button>
+          <button role="radio" aria-checked="true" data-dbet="0.1"><b>10¢</b><small>up to $2.50 + jackpot</small></button>
+          <button role="radio" aria-checked="false" data-dbet="1"><b>$1</b><small>up to $25 + jackpot</small></button>
         </div>
         <div class="screen"><canvas aria-label="Snowball Drop board: tap to drop a snowball"></canvas><div class="flash" aria-hidden="true"></div></div>
         <div class="pullrow"><div class="runcount" data-runcount="drop" aria-live="polite"><i>This run</i><b>–</b><span>won $0.00</span></div><div class="runbtns" role="group" aria-label="Buy and play"><button class="go dropbtn" data-run="1"><b>Drop 1</b><small>10¢</small></button><button class="go" data-run="5"><b>Drop 5</b><small>50¢</small></button><button class="go" data-run="10"><b>Drop 10</b><small>$1</small></button></div>
@@ -869,18 +875,18 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
         <div class="history"><h4>Your last drops</h4><ol id="dropHistory"></ol></div>
       </article>
     </section>
-    <!-- Stocking Stuffer (Cody's brief, 2026-10-02): plays from the Drop pool, like Snowball Drop. Logic: stockingui.js -->
+    <!-- Stocking Stuffer (Cody's brief, 2026-10-02): plays from the shared Game pool, like every game. Logic: stockingui.js -->
     <section class="block plaque slotsbox fur" id="stocking">
       <div class="slotshead">
-        <div><h2>Stocking Stuffer</h2><div class="pool"><i>Drop pool</i><b id="stockPool">$300.00</b></div></div>
-        <div class="demo"><span class="stamp">Demo</span><p>Same demo balance as Slots.<br>Plays from the Drop pool.</p></div>
+        <div><h2>Stocking Stuffer</h2><div class="pool"><i>Game pool</i><b id="stockPool">$500.00</b></div></div>
+        <div class="demo"><span class="stamp">Demo</span><p>Same demo balance as Slots.<br>Same Game pool as every game.</p></div>
       </div>
       <article class="machine wheelcard stockcard">
-        <header><h3>The Mantel</h3><em>10¢ or $1 a turn · up to 250×</em></header>
-        <p class="stockdesc">8 stockings hide a gift, 12 hide coal. Santa opens them until the first coal: the more gifts before it, the bigger the prize. Winnings arrive 3% lighter (SANTA's token tax).</p>
+        <header><h3>The Mantel</h3><em>10¢ or $1 a turn · up to 50× + the pool jackpot</em></header>
+        <p class="stockdesc" id="stockDesc">9 stockings hide a gift, 11 hide coal. Open them until the first coal: the more gifts before it, the bigger the prize, and 8 gifts in a row win the pool jackpot. Winnings arrive 3% lighter (SANTA's token tax).</p>
         <div class="bets" role="radiogroup" aria-label="Turn size">
-          <button role="radio" aria-checked="true" data-sbet="0.1"><b>10¢</b><small>win up to $25</small></button>
-          <button role="radio" aria-checked="false" data-sbet="1"><b>$1</b><small>win up to $250</small></button>
+          <button role="radio" aria-checked="true" data-sbet="0.1"><b>10¢</b><small>up to $5 + jackpot</small></button>
+          <button role="radio" aria-checked="false" data-sbet="1"><b>$1</b><small>up to $50 + jackpot</small></button>
         </div>
         <div class="screen"><canvas aria-label="Stocking Stuffer: 20 stockings on a fireplace mantel"></canvas><div class="flash" aria-hidden="true"></div></div>
         <ol class="giftrow" id="stockLadder" aria-label="Gifts found this turn, and what stopping at each one pays"></ol>
@@ -895,7 +901,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
     <dialog id="buyDlg" class="plaque howdlg buydlg" aria-labelledby="buyTitle">
       <div class="eyebrow" id="buyEyebrow">Big Hat · $1 a pull</div><h2 id="buyTitle">Play 1 pull</h2>
       <div class="counter"><b id="buyWhat" aria-live="polite">1 × $1 = $1.00</b></div>
-      <p>One payment in SANTA. 10% is burned and the rest goes into the <b id="buyPool">Slots</b> prize pool right away. Your plays
+      <p>One payment in SANTA. 10% is burned and the rest goes into the <b id="buyPool">Game</b> prize pool right away. Your plays
         start straight away, and when the last one is done everything you won is sent to your wallet automatically. Nothing is kept on an account.</p>
       <p class="buysanta" id="buySanta"></p>
       <p class="dim" id="buyDemo">Demo: paid from your demo balance. Winnings arrive 3% lighter (SANTA's token tax).</p>

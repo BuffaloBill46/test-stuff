@@ -5,7 +5,7 @@
 // Rules:
 //  - One payment buys a RUN: 1 to 100 plays (buttons for 1, 5, 10; any number in the box) of one game at one size (Spin / Snowball Drop: 10¢ or $1; Big Hat: $1).
 //  - The money moves at purchase: 10% burned, the rest (after SANTA's 3% tax) lands in that game's pool right away
-//    (Spin and Snowball Drop: the Spin pool; Big Hat: the Slots pool).
+//    (every game: the one shared Game pool, Cody 2026-10-02; it was Spin/Drop: Spin pool, Big Hat: Slots pool).
 //  - The plays are made right after the payment is confirmed (each gets its secret locked then) and play straight away.
 //    Nothing is left over: a run has no balance to keep.
 //  - When the run's last play is done, its winnings (plus the price of any play the pool refused: emergency stop, pool
@@ -17,11 +17,13 @@ import { IN_PER_DOLLAR } from './slots.js';
 
 // kind → the pool it pays, and the sizes it can be played at. Spin's sizes come from the game settings (settings.js
 // applyToGame keeps SIZES.spin in step with the prices spin10 / spin100); Snowball Drop's and Big Hat's are fixed here.
+// ONE GAME POOL (Cody, 2026-10-02): every game pays into and out of the shared pool, key 'spin' (shown as "Game pool"). The
+// old 'slots' pool is no longer used by any game. (`game` is the POOL; to tell the games apart, test the kind itself.)
 export const KINDS = {
   spin: { game: 'spin', bet: 0.10, name: 'Santa Hat Spin', one: 'spin', many: 'spins' },
-  big: { game: 'slots', bet: 1.00, name: 'Big Hat', one: 'pull', many: 'pulls' },
+  big: { game: 'spin', bet: 1.00, name: 'Big Hat', one: 'pull', many: 'pulls' },
   drop: { game: 'spin', bet: 0.10, name: 'Snowball Drop', one: 'drop', many: 'drops' },
-  // Stocking Stuffer (Cody, 2026-10-02) plays from the Drop pool too; a "turn" = Santa opening stockings until the first coal
+  // Stocking Stuffer (Cody, 2026-10-02) plays from the Game pool too; a "turn" = opening stockings until the first coal
   stocking: { game: 'spin', bet: 0.10, name: 'Stocking Stuffer', one: 'turn', many: 'turns' },
 };
 export const SIZES = { spin: [0.10, 1.00], drop: [0.10, 1.00], big: [1.00], stocking: [0.10, 1.00] };

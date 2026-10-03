@@ -1,7 +1,7 @@
 // Stocking Stuffer on the Games tab (demo), on a 390 px phone, a 320 px phone and a desktop: the card and its labels (from
-// the rules: 250×, the computed payback, the 3% tax); a Play 5 run with forced turns (coal first, 1, 2, 3 and all 8 gifts):
+// the rules: 50× + the pool jackpot, the computed payback with the live jackpot, the 3% tax); a Play 5 run with forced turns (coal first, 1, 2, 3 gifts and 8 in a row = the POOL JACKPOT):
 // each turn decided before its first stocking opens, only real wins celebrated (1 gift never), demo money and the shared
-// Drop pool to the cent; a $1 turn; cancel charges nothing; Play 10 with Skip ahead; "Check this result" replays the same
+// Game pool to the cent; a $1 turn; cancel charges nothing; Play 10 with Skip ahead; "Check this result" replays the same
 // stockings with the coal map; the result line above the tab bar; nothing wider than the screen; no page errors.
 // Serves the game from a plain local web server (no request interception: LESSONS). Screenshots in out/stocking/, including
 // all 20 stockings opened at once (the worst case for the fire's glow).
@@ -53,13 +53,18 @@ for (const [label, vp] of [['phone390', { width: 390, height: 844 }], ['phone320
   })();
 
   // 0. The card at rest, labelled from the rules.
-  check(await txt('#stocking header em') === '10¢ or $1 a turn · up to 250×', `${label}: header: ${await txt('#stocking header em')}`);
-  check(await txt('#stocking [data-sbet="1"] small') === 'win up to $250' && await txt('#stocking [data-sbet="0.1"] small') === 'win up to $25', `${label}: size chips say the top prize`);
+  check(await txt('#stocking header em') === '10¢ or $1 a turn · up to 50× + the pool jackpot', `${label}: header: ${await txt('#stocking header em')}`);
+  check(await txt('#stocking [data-sbet="1"] small') === 'up to $50 + jackpot' && await txt('#stocking [data-sbet="0.1"] small') === 'up to $5 + jackpot', `${label}: size chips say the top fixed prize + the jackpot`);
   const steps = await p.evaluate(() => [...document.querySelectorAll('#stockLadder li b')].map((b) => b.textContent));
-  check(steps.join(' ') === '0.5× 2.5× 6× 10× 20× 40× 90× 250×', `${label}: 8 gift slots carry the pay table: ${steps.join(' ')}`);
-  const how = await p.evaluate(() => document.querySelector('#stockHow .body').textContent.replace(/\s+/g, ' '));
-  check(/Pays back 78\.1% /.test(how) && /3% SANTA tax/.test(how) && /Check it yourself/.test(how) && /1 in 125,970/.test(how) && /25¢/.test(how), `${label}: How to win: payback 78.1% (computed), tax note, odds, check-it-yourself`);
-  check(/3% lighter/.test(await txt('#stocking .stockdesc')), `${label}: the description says winners absorb the 3% tax`);
+  check(steps.join(' ') === '0.5× 1.5× 3× 7× 15× 25× 50× JP', `${label}: 8 gift slots carry the pay table, the 8th the pool jackpot: ${steps.join(' ')}`);
+  // How to win: fixed payback 72.4% and the payback with the jackpot at today's pool, both computed; the jackpot row's live
+  // amounts (2.5% / 25% of the pool) and its 1 in 13,997; the tax note; check-it-yourself
+  const how = await p.evaluate(() => document.querySelector('#stockHow .body').textContent.replace(/\s+/g, ' ')), pool0h = await pool();
+  const jpTxt = (b) => '$' + (Math.floor(0.25 * pool0h * b * 100 + 1e-6) / 100).toFixed(2);
+  check(/fixed prizes pay back 72\.4% /.test(how) && new RegExp(`with the pool jackpot at today's Game pool \\(\\$${pool0h.toFixed(2)}\\) about 73\\.3%`).test(how) && /3% SANTA tax/.test(how) && /Check it yourself/.test(how)
+    && /1 in 13,997/.test(how) && how.includes(`Pool jackpot (25% of the Game pool × the turn)${jpTxt(0.1)}${jpTxt(1)}`) && /15¢/.test(how), `${label}: How to win: fixed 72.4% + jackpot 73.3% at the $${pool0h.toFixed(2)} pool (computed), the jackpot row ${jpTxt(0.1)} / ${jpTxt(1)}, odds, tax note, check-it-yourself: ${how.slice(0, 120)}`);
+  { const desc = await txt('#stocking .stockdesc');
+    check(/3% lighter/.test(desc) && /^9 stockings hide a gift, 11 hide coal/.test(desc) && desc.includes(`pool jackpot: ${jpTxt(1)} on a $1 turn right now`), `${label}: the description: 9 gifts, the live jackpot (${jpTxt(1)} on $1) and the 3% tax: ${desc}`); }
   check(await txt('#stocking [data-run="10"] small') === '$1' && await txt('#stocking [data-run="1"] b') === 'Play 1', `${label}: Play 1 / 5 / 10 at 10¢ ($1 for 10)`);
   await p.evaluate(() => document.querySelector('#stocking canvas').scrollIntoView({ block: 'start' })); await p.waitForTimeout(1500);
   // at rest the mantel is drawn, not a blank box (a first version was blank until a stocking opened): sample the canvas
@@ -86,18 +91,20 @@ for (const [label, vp] of [['phone390', { width: 390, height: 844 }], ['phone320
   check(log.map((x) => x.found).join() === '0,1,2,3,8', `${label}: the five forced turns: ${log.map((x) => x.found)}`);
   check(/Coal first/.test(log[0].text) && !log[0].celebrated, `${label}: coal first: "${log[0].text}"`);
   check(/1 gift, then coal: 0\.5× back .*Less than the 10¢ turn/.test(log[1].text) && !log[1].celebrated, `${label}: 1 gift is a loss and said plainly, never celebrated: "${log[1].text}"`);
-  check(/2 gifts: 2\.5× back/.test(log[2].text) && !log[2].celebrated && /3% tax/.test(log[2].text), `${label}: 2 gifts: a light touch (no stamp): "${log[2].text}"`);
-  check(/3 gifts! 6× win/.test(log[3].text) && log[3].celebrated && /6× WIN/.test(log[3].stamp) && /after SANTA's 3% tax/.test(log[3].text), `${label}: 3 gifts celebrated, with the tax: "${log[3].text}" / ${log[3].stamp}`);
-  check(/8 gifts! 250× win: \$25\.00/.test(log[4].text) && log[4].celebrated && /ALL 8! 250×/.test(log[4].stamp), `${label}: all 8 gifts: "${log[4].text}" / ${log[4].stamp}`);
-  const won = 0 + 0.05 + 0.25 + 0.6 + 25; // 0, 1, 2, 3 and 8 gifts on 10¢ at Cody's table (raised to ~78%)
-  check(Math.abs((await bal()) - (b0 - 0.5 + won * 0.97)) < 1e-9, `${label}: demo money: −$0.50, then +$25.90 less 3% at the end (${await bal()})`);
-  check(Math.abs((await pool()) - (pool0 + 0.5 * IN - won)) < 1e-9, `${label}: the Drop pool got the $0.50 (after burn and tax) and paid $25.90`);
-  check(await txt('#stockPool') === await txt('#dropPool'), `${label}: Stocking Stuffer and Snowball Drop show the same shared pool`);
-  check(/5 turns: \$25\.90 back/.test(await txt('#stocking .res')), `${label}: run summary: ${await txt('#stocking .res')}`);
-  check(await p.locator('#stockLadder li.got').count() === 8 && await p.locator('#stockLadder li.now').count() === 1, `${label}: all 8 gift slots filled, the 250× step lit`);
-  check((await p.locator('#stockHistory li:not(.empty)').count()) === 5, `${label}: last turns strip has the 5`);
+  check(/2 gifts: 1\.5× back/.test(log[2].text) && !log[2].celebrated && /3% tax/.test(log[2].text), `${label}: 2 gifts: a light touch (no stamp): "${log[2].text}"`);
+  check(/3 gifts! 3× win/.test(log[3].text) && log[3].celebrated && /3× WIN/.test(log[3].stamp) && /after SANTA's 3% tax/.test(log[3].text), `${label}: 3 gifts celebrated, with the tax: "${log[3].text}" / ${log[3].stamp}`);
+  // the 8-in-a-row jackpot on a 10¢ turn: 2.5% of the Game pool at that moment (after this run's entry and the 4 turns before it)
+  const jp = 0.25 * (pool0 + 0.5 * IN - (0 + 0.05 + 0.15 + 0.3)) * 0.1, jpS = '$' + (Math.floor(jp * 100 + 1e-6) / 100).toFixed(2);
+  check(log[4].text.startsWith(`8 gifts in a row! POOL JACKPOT: ${jpS}`) && log[4].celebrated && log[4].stamp === `POOL JACKPOT ${jpS}`, `${label}: 8 gifts in a row: the pool jackpot, biggest celebration with its amount ${jpS}: "${log[4].text}" / ${log[4].stamp}`);
+  const won = 0 + 0.05 + 0.15 + 0.3 + jp; // 0, 1, 2, 3 gifts and the jackpot on 10¢ at Cody's table
+  check(Math.abs((await bal()) - (b0 - 0.5 + won * 0.97)) < 1e-9, `${label}: demo money: −$0.50, then +$${won.toFixed(2)} less 3% at the end (${await bal()})`);
+  check(Math.abs((await pool()) - (pool0 + 0.5 * IN - won)) < 1e-9, `${label}: the shared Game pool got the $0.50 (after burn and tax) and paid $${won.toFixed(2)}`);
+  check(await txt('#stockPool') === await txt('#dropPool') && await txt('#slotPool') === await txt('#dropPool'), `${label}: Stocking Stuffer, Snowball Drop and Slots show the same Game pool`);
+  check(new RegExp(`5 turns: \\$${(Math.floor(won * 100 + 1e-6) / 100).toFixed(2)} back, with a POOL JACKPOT`).test(await txt('#stocking .res')), `${label}: run summary keeps the jackpot: ${await txt('#stocking .res')}`);
+  check(await p.locator('#stockLadder li.got').count() === 8 && await p.locator('#stockLadder li.now.jpslot').count() === 1, `${label}: all 8 gift slots filled, the JP step lit`);
+  check((await p.locator('#stockHistory li:not(.empty)').count()) === 5 && (await p.locator('#stockHistory li.gjp').count()) === 1, `${label}: last turns strip has the 5, the jackpot marked`);
   const winners = await p.evaluate(() => [...document.querySelectorAll('#winList li')].map((li) => li.textContent.replace(/\s+/g, ' ')));
-  check(winners.some((w) => /Stocking Stuffer 10¢/.test(w) && /8 gifts · 250×/.test(w)), `${label}: the all-8 win in Recent winners: ${JSON.stringify(winners.slice(0, 1))}`);
+  check(winners.some((w) => /Stocking Stuffer 10¢/.test(w) && /pool jackpot/.test(w)), `${label}: the jackpot in Recent winners: ${JSON.stringify(winners.slice(0, 1))}`);
   check(!winners.some((w) => /1 gifts|1 gift ·/.test(w)), `${label}: 1 gift (a loss) never reaches Recent winners`);
   const sounds = await p.evaluate(() => window.__sfx?.stats.byName || {});
   check(sounds.jiggle >= 14 && sounds.gift >= 14 && sounds.coal >= 4 && sounds.jackpot >= 1, `${label}: sounds: jiggle ${sounds.jiggle}, gift ${sounds.gift}, coal ${sounds.coal}, jackpot ${sounds.jackpot}`);
@@ -126,9 +133,9 @@ for (const [label, vp] of [['phone390', { width: 390, height: 844 }], ['phone320
   await p.waitForFunction(() => /atch/.test(document.querySelector('#proofOut').textContent), null, { timeout: 15000 });
   const proof = await p.evaluate(() => ({ text: document.querySelector('#proofOut').textContent, cells: document.querySelectorAll('#proofOut .stockmap > span').length, coal: document.querySelectorAll('#proofOut .stockmap .c').length,
     opened: [...document.querySelectorAll('#proofOut .stockmap .o')].map((s) => [+s.querySelector('small').textContent, +s.lastChild.textContent]).sort((a, b) => a[0] - b[0]).map((x) => x[1] - 1) }));
-  check(/^Matches\..*the sequence (gift|coal)(, (gift|coal))*: \d gifts? before .*×.*You opened stockings [\d, ]+, in that order/.test(proof.text), `${label}: a real turn re-checks: ${proof.text.slice(0, 200)}`);
+  check(/^Matches\..*the sequence (gift|coal)(, (gift|coal))*: (\d gifts? before the coal, a [\d.]+× result|8 gifts in a row, the pool jackpot) \(9 gifts on the mantel\)\. You opened stockings [\d, ]+, in that order/.test(proof.text), `${label}: a real turn re-checks: ${proof.text.slice(0, 200)}`);
   // tap to open: the map shows the turn on the stockings the player TAPPED, in tap order (not the shuffle's own order)
-  check(proof.cells === 20 && proof.coal === 12 && JSON.stringify(proof.opened) === JSON.stringify(lastTurn.taps), `${label}: the map: 20 stockings, 12 coal, the stockings you tapped in the order you tapped them (${proof.opened} vs ${lastTurn.taps})`);
+  check(proof.cells === 20 && proof.coal === 11 && JSON.stringify(proof.opened) === JSON.stringify(lastTurn.taps), `${label}: the map: 20 stockings, 11 coal, the stockings you tapped in the order you tapped them (${proof.opened} vs ${lastTurn.taps})`);
   await p.screenshot({ path: `${OUT}/${label}-3-check.png` });
   await p.evaluate(() => document.querySelector('#proofClose').click());
   // 5. Layout: nothing wider than the screen; thumb-sized buttons; the run buttons and gift slots inside the card.

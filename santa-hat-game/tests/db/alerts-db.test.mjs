@@ -7,7 +7,7 @@ import { createAlerts, makeTelegram, REPEAT_HOURS } from '../../server/alerts.js
 
 const ALL = ['001_profiles.sql', '002_items_seed.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '006_ranked_tickets.sql', '007_rate_limits.sql',
   '008_hats_backpacks.sql', '009_lock_my_plays.sql', '010_levels.sql', '011_lottery.sql', '012_special_snowballs.sql', '013_match_stats.sql', '014_run_sizes.sql',
-  '015_special_gear.sql', '016_shop.sql', '017_referee_role.sql', '018_ranked_results.sql', '019_ranked_board.sql', '020_worker_role.sql', '021_alerts.sql'];
+  '015_special_gear.sql', '016_shop.sql', '017_referee_role.sql', '018_ranked_results.sql', '019_ranked_board.sql', '020_worker_role.sql', '021_alerts.sql', '026_shared_pool.sql'];
 const db = await makeDb(ALL);
 const PLAYER = 'ALwa11etAAAA'.padEnd(44, '1');
 const uid = (await db.query('insert into auth.users default values returning id'))[0].id;
@@ -25,7 +25,7 @@ await db.query(`update public.pool_transfers set created_at = now() - interval '
 let t = Date.now(); const sent = [];
 let failNext = false, refereeUp = false, slotsOwedExtra = 0;
 const telegram = { async send(text) { if (failNext) { failNext = false; throw new Error('network'); } sent.push(text); } };
-// wallets: Drop pool wallet = books + the held payout (owed out) − the waiting top-off (owed in) + 7 SANTA nobody booked
+// wallets: the Game pool wallet (every run payout comes from it since 2026-10-02) = books + the held payout (owed out) − the waiting top-off (owed in) + 7 SANTA nobody booked
 const heldRaw = +(await db.query('select amount_raw from public.payouts where id = $1', [payoutId]))[0].amount_raw;
 const bookSpin = +(await db.query("select santa_raw from public.pools where game = 'spin'"))[0].santa_raw; // the run's entry already arrived in the books
 const expectSpin = bookSpin + heldRaw - 300000000 + 25000, walletRaw = async (g) => (g === 'spin' ? expectSpin + 7000000 : 500000000 + 1000 + slotsOwedExtra);
@@ -34,9 +34,9 @@ let r = await alerts.run();
 const has = (re) => sent.some((x) => re.test(x));
 assert.ok(has(/FROZEN.*payout #/), 'held payout'); assert.ok(has(/FAILED 5 times: pool_transfers/), 'failed send');
 assert.ok(has(/waiting over 10 minutes: is the payout worker running/), 'stuck queue'); assert.ok(has(/TOP-OFF of 300 SANTA/), 'top-off waiting');
-assert.ok(has(/EMERGENCY STOP is on for the Slots pool/), 'emergency stop'); assert.ok(has(/MATCH SERVER isn't answering/), 'match server down');
-assert.ok(has(/BOOKS DON'T MATCH the Drop pool wallet: the wallet has 7 SANTA MORE/), 'drift found, with direction and size: ' + sent.filter((x) => /BOOKS/.test(x)));
-assert.ok(!has(/BOOKS DON'T MATCH the Slots/), 'the Slots pool matches (books + its unsent skim)');
+assert.ok(has(/EMERGENCY STOP is on for the old Slots pool/), 'emergency stop'); assert.ok(has(/MATCH SERVER isn't answering/), 'match server down');
+assert.ok(has(/BOOKS DON'T MATCH the Game pool wallet: the wallet has 7 SANTA MORE/), 'drift found, with direction and size: ' + sent.filter((x) => /BOOKS/.test(x)));
+assert.ok(!has(/BOOKS DON'T MATCH the old Slots/), 'the old Slots pool matches (books + its unsent skim)');
 assert.ok(sent.every((x) => x.startsWith('🎅 Santa Hat: ')));
 const first = sent.length; assert.equal(r.sent, first);
 // 5 minutes later: nothing new is sent (still the same problems)
@@ -46,7 +46,7 @@ refereeUp = true; await db.query(`insert into public.pool_transfers (game, kind,
 t += 60e3; r = await alerts.run(); assert.equal(r.sent, 1, 'only the new problem'); assert.ok(/FAILED/.test(sent.at(-1)));
 // a failed Telegram send isn't recorded: it goes out next time
 await db.query(`update public.pools set rules = '{"paused": true}' where game = 'spin'`); failNext = true;
-t += 60e3; r = await alerts.run(); assert.equal(r.sent, 0, 'send failed'); t += 60e3; r = await alerts.run(); assert.equal(r.sent, 1, 'retried'); assert.ok(/Drop pool \(plays refused\)/.test(sent.at(-1)));
+t += 60e3; r = await alerts.run(); assert.equal(r.sent, 0, 'send failed'); t += 60e3; r = await alerts.run(); assert.equal(r.sent, 1, 'retried'); assert.ok(/Game pool \(plays refused\)/.test(sent.at(-1)));
 // after REPEAT_HOURS the lasting ones come again
 t += (REPEAT_HOURS + 0.1) * 3600e3; r = await alerts.run(); assert.ok(r.sent >= 6, 'lasting problems repeated after ' + REPEAT_HOURS + ' h: ' + r.sent);
 // off without a token
