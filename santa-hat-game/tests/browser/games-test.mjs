@@ -17,8 +17,10 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
     if (url.includes('cdn.jsdelivr.net/npm/three@')) return route.fulfill({ body: readFileSync(path.resolve('node_modules/three/build', url.split('/build/')[1])), contentType: 'text/javascript' });
     if (/cdn\.jsdelivr\.net\/npm\/|fonts\.googleapis|fonts\.gstatic/.test(url)) { try { return route.fulfill({ body: fetchCurl(url), contentType: url.includes('googleapis') ? 'text/css' : url.includes('gstatic') ? 'font/woff2' : 'text/javascript' }); } catch { return route.abort(); } }
     if (url.startsWith('http://localhost/')) { const p = url.replace('http://localhost/', '').split(/[?#]/)[0], f = path.join(ROOT, p); if (!existsSync(f)) return route.fulfill({ status: 404, body: 'nf' }); return route.fulfill({ body: readFileSync(f), contentType: p.endsWith('.js') ? 'text/javascript' : p.endsWith('.png') ? 'image/png' : 'text/html' }); }
+    // the demo page reads the live SANTA price (market.js): a fixed stand-in answer, not a blocked request (it was the test's only "error")
+    if (url.startsWith('https://api.dexscreener.com/')) return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ pairs: [{ baseToken: { address: '3c7mmVSyEH8jfZXgxvpLsETtko1Y16DyRJ5XYB4snhGt' }, priceUsd: '0.00034', liquidity: { usd: 30000 }, dexId: 'raydium' }] }) });
     return route.abort(); });
-  const p = await ctx.newPage(); p.on('pageerror', (e) => errors.push(label + ': ' + e.message)); p.on('console', (m) => { if (m.type() === 'error') errors.push(label + ': ' + m.text()); });
+  const p = await ctx.newPage(); p.on('pageerror', (e) => errors.push(label + ': ' + e.message)); p.on('console', (m) => { if (m.type() === 'error') errors.push(label + ': ' + m.text()); }); p.on('requestfailed', (r) => console.log('  (blocked by the test network: ' + r.url().slice(0, 120) + ')'));
   await p.goto('http://localhost/online.html?net=local'); await p.waitForFunction(() => window.__sq, null, { timeout: 60000 }); await p.waitForTimeout(1200);
   await p.evaluate(() => document.querySelector('#t-games').click());
   await p.waitForFunction(() => window.__slots, null, { timeout: 90000 }).catch((e) => { console.log('errors so far:', errors); throw e; });
@@ -77,6 +79,10 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
 
   // 3) teaser: 3 Santa Hats on line 1, then not (slow-down should kick in, result unchanged)
   ({ exp, before } = await forcedPull(function () { return m.stopsShowing('big', 0, 'hat', 3); }));
+  // the lines clear when the reels start (slots3d.js spin → drawOverlay(null)); buying takes a few steps first, so wait for the
+  // spin to begin (busy) and give it a moment, then the lines must be gone. (Read straight after the click, at 60 fps in real
+  // Chrome, it caught the page before the spin had begun.)
+  await p.waitForFunction(() => window.__slots.busy, null, { timeout: 10000 }).catch(() => {}); await p.waitForTimeout(400);
   const ov = await p.evaluate(() => { const v = window.__slots.view.debug, d = v.overlay.getContext('2d').getImageData(0, 0, v.overlay.width, v.overlay.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return { visible: v.overlayMesh.visible, inked: n }; });
   check(!ov.visible && ov.inked === 0, `${label}: the last win's lines must be gone when the next spin starts (${JSON.stringify(ov)})`);
   await p.waitForTimeout(1500); await p.screenshot({ path: `${OUT}/${label}-4-teaser.png` });
