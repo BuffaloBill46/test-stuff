@@ -160,7 +160,17 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
-### 2026-10-03 night (NEWEST): SEASONS LIVE (Halloween calendar + $5 Pumpkin King pass), big Play button, safe publishing
+### 2026-10-03 late night (NEWEST): HOME PAGE + MONEY STRIPS LIVE
+- The site opens on **Home** (intro, Player Progress, the season calendar); Home's Play now → the **Play** page (match types).
+  Player Progress is ONE box (`#progress`) that `tabs.js show()` moves to the top of Home or Play. Old `#play` links still work.
+- **Money strips** (`mockups/moneystrip.js`) at the top of Games (10% burned / 90% Game pool, the pool and its jackpots, burned so
+  far) and Store (50% burned / 50% treasury, lottery 10% / 90%, burned so far). Shares come from the rules files
+  (`credits.js GAME_BURN_BPS`, `shoprules.js`, `lottery.js`); burned-so-far from the new public `burned` action
+  (`server/games.js`, kept a minute; checked in `tests/db/shop-db`). Tests: `browser/home-test`.
+- On the test site the strip's pool and jackpots are the demo pool, the same numbers the games below show (no game server on the
+  page until `LAUNCHED`). The burned total is real (devnet: ~84K test SANTA).
+
+### 2026-10-03 night: SEASONS LIVE (Halloween calendar + $5 Pumpkin King pass), big Play button, safe publishing
 - **Seasons** (rules in `mockups/seasons.js`, ONE place): Halloween Oct 1–31, Thanksgiving Nov, Christmas Dec 1–Jan 1 (the last
   two have no rewards yet: `free: {}`, `gold: []`, the pass says "opens soon"). 3 tasks a day (game day 9 PM–9 PM Indiana); all 3
   open the day's door. Free track: 5 Halloween looks (doors 2, 5, 9, 14, 20), +1 level step on every other door, +1 every 7 days
