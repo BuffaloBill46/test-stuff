@@ -207,6 +207,45 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 #progress .pgor { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0; font-size: 14px; color: var(--dim); }
 .progress .pgor b { font: 700 15px/1 var(--digits); font-variant-numeric: tabular-nums; color: var(--lamp); white-space: nowrap; }
 @media (max-width: 640px) { .progress { grid-template-columns: auto minmax(0, 1fr); } .progress .pgside { grid-column: 1 / -1; } }
+/* The Season card (seasonui.js). One accent per season: pumpkin for Halloween; the rest is the page's own plaque language. */
+.season { --ss: #f2862e; --ss-dim: rgba(242,134,46,.16); margin-bottom: 14px; }
+.season[data-season="thanksgiving"] { --ss: #d9a441; --ss-dim: rgba(217,164,65,.16); }
+.season[data-season="christmas"] { --ss: var(--pine); --ss-dim: rgba(127,224,160,.14); }
+.season .sshead { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 12px; border-bottom: 2px solid var(--ink); padding-bottom: 10px; }
+.season h2 { font: 400 30px/1 var(--display); margin: 2px 0 0; color: var(--ss); }
+.season h3 { font: 700 11px/1.3 var(--digits); letter-spacing: 1px; text-transform: uppercase; color: var(--frost); margin: 0 0 8px; }
+.season .ssreset { text-align: right; } .season .ssreset i { display: block; font-style: normal; font-size: 12px; color: var(--dim); }
+.season .ssreset b { font: 700 18px/1.2 var(--digits); color: var(--lamp); font-variant-numeric: tabular-nums; }
+.season .ssbody { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.2fr); gap: 18px; }
+.season ol { list-style: none; margin: 0; padding: 0; }
+.season #ssTasks { display: grid; gap: 8px; }
+.season #ssTasks li { position: relative; display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px 12px; background: var(--ink); border: 1px solid rgba(185,205,242,.14); font-size: 15px; }
+.season #ssTasks li b { font: 700 14px/1.3 var(--digits); color: var(--dim); white-space: nowrap; }
+.season #ssTasks li i { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: linear-gradient(90deg, var(--ss) var(--p), transparent var(--p)); }
+.season #ssTasks li.done { border-color: var(--ss); } .season #ssTasks li.done b { color: var(--ss); }
+.season #ssTasks li.done span::before { content: '\2713'; color: var(--ss); font-weight: 800; margin-right: 6px; }
+.season .ssnote { font-size: 13px; color: var(--dim); margin: 8px 0 0; }
+.season .sswk, .season #ssCal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.season .sswk li { text-align: center; font: 700 10px/1.6 var(--digits); color: var(--dim); }
+.season #ssCal li { aspect-ratio: 1.3; display: grid; place-items: center; font: 700 13px/1 var(--digits); font-variant-numeric: tabular-nums; background: var(--ink); color: var(--dim); border: 1px solid rgba(185,205,242,.12); }
+.season #ssCal li.pad { background: none; border: 0; }
+.season #ssCal li.open { background: var(--ss); color: var(--ink); border-color: var(--ink); box-shadow: inset 0 -3px 0 rgba(0,0,0,.25); }
+.season #ssCal li.today { color: var(--text); border: 2px solid var(--lamp); }
+.season #ssCal li.missed { opacity: .45; text-decoration: line-through; }
+.season .ssstreak { font-size: 14px; margin: 10px 0 0; color: var(--dim); } .season .ssstreak b { font-family: var(--digits); color: var(--text); }
+.season .ssstreak span { display: block; font-size: 12px; }
+.season .ssrow { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 58px); gap: 6px; }
+.season .ssrow li { min-width: 0; text-align: center; padding: 4px 2px 3px; background: var(--ink); border: 1px solid rgba(185,205,242,.12); opacity: .55; }
+.season .ssrow li.own { opacity: 1; border-color: var(--ss); }
+.season .ssrow img { width: 100%; max-width: 46px; aspect-ratio: 1; height: auto; display: block; margin: 0 auto; }
+.season .ssrow small { display: block; white-space: nowrap; letter-spacing: -.3px; font: 700 9px/1.4 var(--digits); color: var(--dim); text-transform: uppercase; } .season .ssrow li.own small { color: var(--ss); }
+.season .ssq { display: grid; place-items: center; width: 100%; max-width: 46px; aspect-ratio: 1; margin: 0 auto; color: var(--dim); font: 700 18px var(--digits); }
+.season .ssgold { margin-top: 14px; padding: 10px; background: var(--ss-dim); border: 1px dashed var(--ss); }
+.season .ssgold.has { border-style: solid; }
+.season .ssgold #ssGoldHead { color: var(--ss); }
+.season #ssBuy { margin-top: 10px; width: 100%; }
+@media (max-width: 900px) { .season .ssbody { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .season .sstrack { grid-column: 1 / -1; } }
+@media (max-width: 600px) { .season .ssbody { grid-template-columns: minmax(0, 1fr); } .season h2 { font-size: 25px; } .season .ssrow { grid-auto-columns: minmax(0, 1fr); } .season .ssq { width: 100%; height: auto; aspect-ratio: 1; } .season #ssCal li { aspect-ratio: 1; } }
 .modes3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .mode { padding: 14px 16px 16px; display: flex; flex-direction: column; background: rgba(27,35,68,.94); }
 .mode h3 { font: 800 32px/1 var(--display); margin: 0; color: var(--brim); text-shadow: 2px 2px 0 var(--ink); }
@@ -749,17 +788,48 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       </div>
       <div class="pgside">
         <div><i>Special gear</i><b id="pgGear">None yet</b></div>
-        <div><i>Season pass</i><b>Coming soon</b></div>
+        <div><i>Season</i><b id="pgSeason">—</b></div>
         <div><i>Rank points</i><b id="pgPts">—</b></div>
         <div><i>Ranked tickets</i><b id="pgTix">—</b></div>
         <button class="sec" id="pgBuy">Buy level 2 · $1.00</button><p class="pgnote" id="pgNote" aria-live="polite"></p>
         <p class="pgor" id="pgOr">or win 5 matches top 3 or better <b id="pgOrN">0 / 5</b></p>
       </div>
     </section>
+    <!-- The Season (Cody, 2026-10-03): daily tasks open a door a day; free rewards for everyone, the costume with the $5 pass.
+         Rules in seasons.js, filled by seasonui.js. -->
+    <section class="block plaque season" id="season" aria-label="Season calendar" hidden>
+      <header class="sshead">
+        <div><div class="eyebrow" id="ssEyebrow">Season</div><h2 id="ssTitle">The Calendar</h2></div>
+        <div class="ssreset"><i>New tasks in</i><b id="ssReset">—</b></div>
+      </header>
+      <div class="ssbody">
+        <div class="sstasks">
+          <h3>Today's tasks</h3>
+          <ol id="ssTasks"></ol>
+          <p class="ssnote" id="ssNote" aria-live="polite"></p>
+        </div>
+        <div class="sscal">
+          <ol class="sswk" aria-hidden="true"><li>S</li><li>M</li><li>T</li><li>W</li><li>T</li><li>F</li><li>S</li></ol>
+          <ol id="ssCal"></ol>
+          <p class="ssstreak" id="ssStreak"></p>
+        </div>
+        <div class="sstrack">
+          <h3>Free rewards</h3>
+          <ol class="ssrow" id="ssFree"></ol>
+          <p class="ssnote" id="ssFreeNote"></p>
+          <div class="ssgold" id="ssGoldBox">
+            <h3 id="ssGoldHead">Season pass</h3>
+            <ol class="ssrow" id="ssGold"></ol>
+            <p class="ssnote" id="ssGoldNote"></p>
+            <button class="go" id="ssBuy" hidden>Get the pass</button><p class="ssnote" id="ssBuyNote" aria-live="polite"></p>
+          </div>
+        </div>
+      </div>
+    </section>
     <div class="modes3">
       <article class="mode plaque fur">
         <h3>Unranked</h3><p class="tagline">Free · no sign-in needed</p>
-        <ul><li>Practice against bots</li><li>Play friends, with bots filling in</li><li>Player vs player</li><li>Free-for-all or Nice vs Naughty teams</li></ul>
+        <ul><li>Practice against bots</li><li>Play friends, with bots filling in</li><li>Player vs player</li><li>Free-for-all</li></ul>
         <button class="go" id="playUnranked">Play now</button>
       </article>
       <article class="mode plaque fur">

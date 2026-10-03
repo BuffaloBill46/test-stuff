@@ -12,6 +12,7 @@ import { settingsReady, call } from './gameserver.js';
 import { TICKET_MAX } from './ranked.js';
 import { dayStart, weekStart } from './gameclock.js';
 import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js';
+import { refreshSeason } from './seasonui.js';
 import { THEMES, THEME_IDS } from './themes.js';
 
 const $ = (s) => document.querySelector(s);
@@ -130,6 +131,7 @@ export function renderProgress(profile) {
   // the free way to the same level, with the count so far (Auto match top-3 finishes; guests: sign in to count them)
   const or = el.querySelector('#pgOr'); or.hidden = price === null;
   if (price !== null) { or.firstChild.textContent = `or win ${pl.need} matches top 3 or better `; el.querySelector('#pgOrN').textContent = `${pl.xp} / ${pl.need}`; }
+  refreshSeason(profile); // the Season card below (seasonui.js): my tasks and doors, or the guest view
 }
 // Put a special in a slot; if it was already in another slot it MOVES (the same special can't fill two slots; database 012).
 function withSpecial(a, slot, id) { for (const s of SB_SLOTS) if (s !== slot && a[s] === id && id !== 'sb_none') a[s] = 'sb_none'; a[slot] = id; return a; }
@@ -502,7 +504,7 @@ export function initTabs(app) {
   })();
   renderWho();
   show((location.hash || '#play').slice(1));
-  return { show, get tab() { return state.tab; } };
+  return { show, reloadMine, get tab() { return state.tab; } };
 }
 
 function safeJSON(s) { try { return JSON.parse(s); } catch { return null; } }
