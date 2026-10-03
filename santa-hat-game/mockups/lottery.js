@@ -1,7 +1,7 @@
 // SANTA LOTTERY rules (Cody, 2026-10-01; DESIGN_NOTES → "Santa Lottery"). Pure: no network, no graphics. The server, the page
 // and the "check this draw" panel all use these, so a draw can be re-checked by anyone from public facts.
 //   Five lotteries: Daily 10¢ / Daily $1 (1 winner), Weekly 10¢ / Weekly $1 and Christmas $1 (top 3: 60 / 25 / 15).
-//   Draws at 00:00 UTC; weekly on Sunday; Christmas once, at 00:00 UTC on December 24, 2026 (7 PM US Eastern on the 23rd).
+//   Weekly draws Sunday 9 PM Indiana time (nextDraw); Christmas once, at 00:00 UTC on December 24, 2026 (7 PM US Eastern on the 23rd).
 //   Sales close 5 minutes before a draw. No ticket cap. 10% of each ticket is burned at purchase; the pot is what ARRIVED.
 //   Each ticket is one equal chance; a wallet wins at most one place; places nobody can fill go to 1st.
 //   The draw: sha256(secret | blockhash after sales close | the ticket list) → numbers → winning tickets (fair.js style).
@@ -19,14 +19,30 @@ export const SALES_CLOSE_MS = 5 * 60 * 1000, BURN_BPS = 1000;
 export const LIVE_LOTTERIES = Object.keys(LOTTERIES).filter((k) => !LOTTERIES[k].off);
 const DAY = 86_400_000;
 
+// WEEKLY DRAWS: Sunday 9 PM Indiana time (Cody, 2026-10-02), with daylight saving: 01:00 UTC Monday in summer (EDT),
+// 02:00 UTC Monday in winter (EST). Worked out with the time zone itself, so the clock changes need nothing by hand.
+export const WEEKLY_ZONE = 'America/Indiana/Indianapolis', WEEKLY_DAY = 0, WEEKLY_HOUR = 21; // Sunday, 21:00 local
+const zoneParts = (t, tz) => Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric',
+  day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric', weekday: 'short' }).formatToParts(new Date(t)).map((p) => [p.type, p.value]));
+// The UTC instant of a wall-clock time in a zone (y, mo 1–12, d, h): guess, read the zone's offset there, correct, re-check.
+export function zonedTime(y, mo, d, h, tz) {
+  let t = Date.UTC(y, mo - 1, d, h);
+  for (let i = 0; i < 2; i++) { const p = zoneParts(t, tz), asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second); t += Date.UTC(y, mo - 1, d, h) - asUTC; }
+  return t;
+}
 // The next draw time (ms, UTC) strictly after `now` for this lottery, or null when there's none (Christmas, after it ran).
 export function nextDraw(kind, now) {
   const L = LOTTERIES[kind]; if (!L) throw new Error('unknown lottery ' + kind);
   if (L.every === 'once') return now < L.at ? L.at : null;
-  const midnight = Math.floor(now / DAY) * DAY + DAY; // the next 00:00 UTC after now
-  if (L.every === 'day') return midnight;
-  const dow = new Date(midnight).getUTCDay(); // 0 = Sunday
-  return midnight + ((7 - dow) % 7) * DAY;
+  if (L.every === 'day') return Math.floor(now / DAY) * DAY + DAY; // the next 00:00 UTC after now (daily lotteries are off)
+  // weekly: the first Sunday 9 PM (Indiana) strictly after now, looking at today and the next 7 local days
+  const p = zoneParts(now, WEEKLY_ZONE), WD = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  for (let k = 0; k <= 7; k++) {
+    if ((WD[p.weekday] + k) % 7 !== WEEKLY_DAY) continue;
+    const day = new Date(Date.UTC(+p.year, +p.month - 1, +p.day + k)), t = zonedTime(day.getUTCFullYear(), day.getUTCMonth() + 1, day.getUTCDate(), WEEKLY_HOUR, WEEKLY_ZONE);
+    if (t > now) return t;
+  }
+  throw new Error('no weekly draw found'); // can't happen: a Sunday is always within 7 days
 }
 // Which draw a ticket bought at `now` belongs to, and whether sales are open for it. A ticket in the last 5 minutes is refused
 // (no quote), so a payment can't race the draw.

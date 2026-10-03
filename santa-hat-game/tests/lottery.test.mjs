@@ -5,15 +5,19 @@ import { LOTTERIES, nextDraw, salesFor, splitPot, pickWinners, drawWinners, SALE
 import { newSeed } from '../mockups/fair.js';
 
 const T = (s) => Date.parse(s), DAY = 86_400_000;
-// 1. Schedule: daily at the next 00:00 UTC; weekly on Sunday 00:00 UTC; Christmas once, Dec 24 2026 00:00 UTC.
+// 1. Schedule: daily at the next 00:00 UTC (dailies are off); WEEKLY on Sunday 9 PM Indiana time (Cody 2026-10-02), with
+// daylight saving: 01:00 UTC Monday in summer (EDT), 02:00 UTC in winter (EST); Christmas once, Dec 24 2026 00:00 UTC.
 assert.equal(nextDraw('daily-10', T('2026-10-01T15:00:00Z')), T('2026-10-02T00:00:00Z'));
 assert.equal(nextDraw('daily-100', T('2026-10-01T23:59:59Z')), T('2026-10-02T00:00:00Z'));
 assert.equal(nextDraw('daily-100', T('2026-10-02T00:00:00Z')), T('2026-10-03T00:00:00Z'), 'exactly at a draw: the next one');
-assert.equal(new Date(nextDraw('weekly-10', T('2026-10-01T15:00:00Z'))).toISOString(), '2026-10-04T00:00:00.000Z', 'Thursday → Sunday');
-assert.equal(new Date(nextDraw('weekly-100', T('2026-10-04T00:00:00Z'))).toISOString(), '2026-10-11T00:00:00.000Z', 'at Sunday\'s draw → the next Sunday');
-assert.equal(new Date(nextDraw('weekly-100', T('2026-10-03T23:00:00Z'))).toISOString(), '2026-10-04T00:00:00.000Z', 'Saturday night → that Sunday');
-for (let t = T('2026-10-01T00:00:00Z'); t < T('2026-12-31T00:00:00Z'); t += 3_600_000 * 7) { // every 7 hours for 3 months
-  const w = nextDraw('weekly-10', t); assert.equal(new Date(w).getUTCDay(), 0); assert.ok(w > t && w - t <= 7 * DAY);
+assert.equal(new Date(nextDraw('weekly-10', T('2026-10-01T15:00:00Z'))).toISOString(), '2026-10-05T01:00:00.000Z', 'Thursday → Sunday 9 PM EDT');
+assert.equal(new Date(nextDraw('weekly-100', T('2026-10-05T01:00:00Z'))).toISOString(), '2026-10-12T01:00:00.000Z', 'at Sunday\'s draw → the next Sunday');
+assert.equal(new Date(nextDraw('weekly-100', T('2026-10-05T00:59:59Z'))).toISOString(), '2026-10-05T01:00:00.000Z', 'Sunday 8:59 PM → that evening');
+assert.equal(new Date(nextDraw('weekly-100', T('2026-10-31T12:00:00Z'))).toISOString(), '2026-11-02T02:00:00.000Z', 'the clocks go back Nov 1: 9 PM EST = 02:00 UTC');
+assert.equal(new Date(nextDraw('weekly-100', T('2027-03-13T12:00:00Z'))).toISOString(), '2027-03-15T01:00:00.000Z', 'the clocks go forward Mar 14: 9 PM EDT = 01:00 UTC');
+const indiana = (t) => new Date(t).toLocaleString('en-US', { timeZone: 'America/Indiana/Indianapolis', weekday: 'short', hour: 'numeric', minute: '2-digit', hourCycle: 'h23' });
+for (let t = T('2026-10-01T00:00:00Z'); t < T('2027-12-31T00:00:00Z'); t += 3_600_000 * 7) { // every 7 hours for 15 months (both clock changes)
+  const w = nextDraw('weekly-10', t); assert.equal(indiana(w), 'Sun 21:00', 'always Sunday 9 PM in Indiana: ' + new Date(w).toISOString()); assert.ok(w > t && w - t <= 7 * DAY);
   const d = nextDraw('daily-10', t); assert.ok(d > t && d - t <= DAY && d % DAY === 0);
 }
 assert.equal(new Date(nextDraw('christmas', T('2026-10-01T00:00:00Z'))).toISOString(), '2026-12-24T00:00:00.000Z', 'Christmas closes Dec 23 (7 PM Eastern)');
