@@ -54,7 +54,8 @@ const M1 = build(V1).machine;
 // The real server always has a lottery (supabase/functions/games/index.ts); without one the page's public "lottery" request got
 // 400 "unknown action". This payment test needs no real draws (lottery-test.mjs covers them), so: none open.
 const noDraws = { draws: async () => ({ open: [], recent: [] }), tickets: async () => ({ error: 'no such draw' }) };
-const handle = makeHandler({ lottery: noDraws, limiter: makeLimiter({ store: memoryStore() }), server, profileFor: async (t) => (t === 'test-token' ? me : null) }); // the real speed limit and numbers: a player clicking through must never be slowed
+const noShop = { tickets: async () => ({ free: 10, extra: 0, held: 0, resetsAt: Date.now() + 864e5 }) }; // the ticket counter asks for it (shop-db.test.mjs covers the real one)
+const handle = makeHandler({ lottery: noDraws, shop: noShop, limiter: makeLimiter({ store: memoryStore() }), server, profileFor: async (t) => (t === 'test-token' ? me : null) }); // the real speed limit and numbers: a player clicking through must never be slowed
 // One local address serves the page AND the game server (like the real site + Edge Function, both https in real life).
 const web = http.createServer(async (req, res) => {
   if (req.method === 'GET') { const pth = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]).replace(/^\//, '') || 'online.html');

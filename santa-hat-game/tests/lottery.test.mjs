@@ -6,7 +6,7 @@ import { newSeed } from '../mockups/fair.js';
 
 const T = (s) => Date.parse(s), DAY = 86_400_000;
 // 1. Schedule: daily at the next 00:00 UTC (dailies are off); WEEKLY on Sunday 9 PM Indiana time (Cody 2026-10-02), with
-// daylight saving: 01:00 UTC Monday in summer (EDT), 02:00 UTC in winter (EST); Christmas once, Dec 24 2026 00:00 UTC.
+// daylight saving: 01:00 UTC Monday in summer (EDT), 02:00 UTC in winter (EST); Christmas once, Dec 23 2026 9 PM Indiana (02:00 UTC Dec 24).
 assert.equal(nextDraw('daily-10', T('2026-10-01T15:00:00Z')), T('2026-10-02T00:00:00Z'));
 assert.equal(nextDraw('daily-100', T('2026-10-01T23:59:59Z')), T('2026-10-02T00:00:00Z'));
 assert.equal(nextDraw('daily-100', T('2026-10-02T00:00:00Z')), T('2026-10-03T00:00:00Z'), 'exactly at a draw: the next one');
@@ -20,13 +20,13 @@ for (let t = T('2026-10-01T00:00:00Z'); t < T('2027-12-31T00:00:00Z'); t += 3_60
   const w = nextDraw('weekly-10', t); assert.equal(indiana(w), 'Sun 21:00', 'always Sunday 9 PM in Indiana: ' + new Date(w).toISOString()); assert.ok(w > t && w - t <= 7 * DAY);
   const d = nextDraw('daily-10', t); assert.ok(d > t && d - t <= DAY && d % DAY === 0);
 }
-assert.equal(new Date(nextDraw('christmas', T('2026-10-01T00:00:00Z'))).toISOString(), '2026-12-24T00:00:00.000Z', 'Christmas closes Dec 23 (7 PM Eastern)');
-assert.equal(nextDraw('christmas', T('2026-12-24T00:00:00Z')), null, 'and runs once');
+assert.equal(new Date(nextDraw('christmas', T('2026-10-01T00:00:00Z'))).toISOString(), '2026-12-24T02:00:00.000Z', 'Christmas draws Dec 23 at 9 PM Indiana (EST)');
+assert.equal(nextDraw('christmas', T('2026-12-24T02:00:00Z')), null, 'and runs once');
 
 // 2. Sales close 5 minutes before a draw.
 assert.equal(salesFor('daily-10', T('2026-10-01T23:54:59Z')).open, true);
 assert.equal(salesFor('daily-10', T('2026-10-01T23:55:00Z')).open, false, 'last 5 minutes: closed');
-assert.equal(salesFor('christmas', T('2026-12-23T23:56:00Z')).open, false);
+assert.equal(salesFor('christmas', T('2026-12-24T01:56:00Z')).open, false);
 assert.equal(salesFor('christmas', T('2026-12-25T00:00:00Z')).why, 'this lottery has been drawn');
 assert.equal(SALES_CLOSE_MS, 300_000);
 

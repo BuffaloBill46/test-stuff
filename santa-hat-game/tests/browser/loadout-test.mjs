@@ -44,7 +44,8 @@ console.log('3. The match: the SB buttons are the saved loadout');
 await p.evaluate(() => window.__sq.startPractice()); await p.waitForTimeout(2500); await p.evaluate(() => document.querySelector('#start')?.click());
 await p.waitForFunction(() => { const s = window.__sq; if (/^(intro|count)$/.test(s.sim?.S.phase)) s.sim.S.time = 0; return s.view?.phase === 'play'; }, null, { timeout: 60000 });
 await p.waitForFunction(() => document.querySelectorAll('#hud .sbrow button').length > 0, null, { timeout: 20000 }).catch(() => {});
-const btns = await p.evaluate(() => [...document.querySelectorAll('#hud .sbrow button')].map((b) => b.textContent.replace(/\s+/g, ' ').trim()));
+// the ball's picture replaced the SB1/SB2/SB3 letters (Cody, 2026-10-02): the slot number is the picture's label
+const btns = await p.evaluate(() => [...document.querySelectorAll('#hud .sbrow button')].map((b) => ((b.querySelector('img')?.alt || '') + ' ' + b.textContent).replace(/\s+/g, ' ').trim()));
 check(btns.length === 2 && /^SB2 Sky Ball/.test(btns[0]) && /^SB3 Ice Ball/.test(btns[1]), 'buttons keep their slot numbers (SB1 is empty): ' + btns.join(' | '));
 await p.click('#leave').catch(() => {}); await p.waitForTimeout(800);
 
@@ -52,7 +53,8 @@ console.log('4. The Store has a Special Snowballs shelf');
 await p.click('#t-store'); await p.waitForTimeout(1500);
 await p.waitForFunction(() => document.querySelectorAll('#carousels .shop').length, null, { timeout: 30000 });
 const shelf = await p.evaluate(() => { const c = [...document.querySelectorAll('#carousels .shop')].find((x) => /Special Snowballs/.test(x.querySelector('h3')?.textContent || '')); return c ? [...c.querySelectorAll('.shopitem b')].map((b) => b.textContent) : []; });
-check(shelf.join() === 'Ice Ball,Split Ball,Giant Ball,Fire Ball,Sky Ball,Snowball Rain', 'shelf: ' + shelf.join(', '));
+// Cody's price-sheet order (2026-10-02)
+check(shelf.join() === 'Ice Ball,Fire Ball,Giant Ball,Split Ball,Sky Ball,Snowball Rain', 'shelf: ' + shelf.join(', '));
 check(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
 console.log(fails.length ? 'FAILED:\n - ' + fails.join('\n - ') : 'ALL CHECKS PASSED');
 await browser.close(); process.exit(0);

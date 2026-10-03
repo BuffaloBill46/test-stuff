@@ -232,7 +232,7 @@ Costume looks like one), not just an icon.
 - **One lottery wallet for all five pots,** each draw with its own books. Fewer keys and less SOL for fees; the
   reconciliation checks that every draw's pot adds up to the wallet.
 - **Draw times: 00:00 UTC** (7 PM US Eastern in winter, 8 PM in summer). Daily: every day. Weekly: Sunday 00:00 UTC (Saturday
-  evening in the US). Christmas: sales close and it draws at 00:00 UTC on December 24, 2026 (= 7 PM Eastern on the 23rd).
+  evening in the US). Christmas: sales close 5 minutes before and it draws at 9 PM Indiana on December 23, 2026 (02:00 UTC on the 24th; Cody moved it from 7 PM on 2026-10-03).
 - **A wallet wins at most one place per draw;** each ticket is one equal chance. If a draw has fewer wallets than places, the
   unfilled places' shares go to 1st (nothing is left over or stuck). A draw with no tickets pays nothing and holds nothing.
 - **Fair draw:** when a draw opens, the server makes its secret and publishes the fingerprint (hash) before any ticket is sold.

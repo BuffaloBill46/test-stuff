@@ -20,7 +20,7 @@ const EVERY = 15000, CLOSE = 2000; // a draw every 15 s, sales close 2 s before 
 const schedule = { nextDraw: (k, t) => (k === 'christmas' ? null : (Math.floor(t / EVERY) + 1) * EVERY),
   salesFor: (k, t) => { const at = schedule.nextDraw(k, t); return at === null ? { open: false, why: 'drawn' } : at - t <= CLOSE ? { open: false, at, why: 'Sales are closed for this draw.' } : { open: true, at }; } };
 const lot = createLottery({ db, chain, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, wallet: LOT, mint: MINT, cluster: 'devnet', schedule });
-const handle = makeHandler({ server: { winners: async () => [], settings: async () => ({}), pools: async () => ({}) }, lottery: lot, limiter: null, profileFor: async (t) => (t === 'test-token' ? me : null) });
+const handle = makeHandler({ server: { winners: async () => [], settings: async () => ({}), pools: async () => ({}), market: async () => ({}) }, lottery: lot, limiter: null, profileFor: async (t) => (t === 'test-token' ? me : null) });
 function payFor(q) { // what the chain records for the page's one payment: 10% burned, the rest arriving in the lottery wallet
   const sig = ('LotPay' + (++n)).padEnd(88, '5'), sp = splitPayment(q.santaRaw, 1000, FEE), b = (i, o, a) => ({ accountIndex: i, mint: MINT, owner: o, uiTokenAmount: { amount: String(a) } });
   txs.set(sig, { blockTime: Math.floor(Date.now() / 1000), meta: { err: null, innerInstructions: [], preTokenBalances: [b(1, PLAYER, 1e13), b(2, q.pool, 1e12)], postTokenBalances: [b(1, PLAYER, 1e13 - q.santaRaw), b(2, q.pool, 1e12 + sp.arrives)] },
@@ -55,7 +55,9 @@ console.log('1. Without a game server (today\'s site): the lotteries show, buyin
   // the daily lotteries are switched off for now (Cody, 2026-10-01): not on the page at all
   check(cards.join() === 'Weekly 10¢,Weekly $1,Christmas' && !(await p.$('.lotcard[data-lot^="daily"]')) && !/Daily/.test(await p.textContent('#lottery')), `three lotteries, no daily: ${cards.join(', ')}`);
   const target = +(await p.getAttribute('.lotcard[data-lot="weekly-10"] [data-left]', 'data-left')), d = new Date(target);
-  check(d.getUTCDay() === 0 && d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && target > Date.now() && target - Date.now() <= 7 * 86400000, `Weekly counts down to the next Sunday 00:00 UTC (${d.toISOString()})`);
+  // Sunday 9 PM Indiana time since 2026-10-03 (Cody: every timer at 9 PM Indiana)
+  const ind = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Indiana/Indianapolis', weekday: 'short', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).format(d);
+  check(ind === 'Sun 21:00' && target > Date.now() && target - Date.now() <= 7 * 86400000, `Weekly counts down to the next Sunday 9 PM Indiana (${d.toISOString()} = ${ind})`);
   await p.fill('.lotcard[data-lot="weekly-10"] input', '37'); await p.evaluate(() => window.__lottery.render());
   check(await p.inputValue('.lotcard[data-lot="weekly-10"] input') === '37', 'a number being typed survives a refresh');
   await p.evaluate(() => { document.querySelector('.lotcard [data-amt="5"]').click(); document.querySelector('.lotcard [data-buy="custom"]').click(); }); await p.waitForTimeout(400);

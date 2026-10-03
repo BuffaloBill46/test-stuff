@@ -1,7 +1,7 @@
 // SANTA LOTTERY rules (Cody, 2026-10-01; DESIGN_NOTES → "Santa Lottery"). Pure: no network, no graphics. The server, the page
 // and the "check this draw" panel all use these, so a draw can be re-checked by anyone from public facts.
 //   Five lotteries: Daily 10¢ / Daily $1 (1 winner), Weekly 10¢ / Weekly $1 and Christmas $1 (top 3: 60 / 25 / 15).
-//   Weekly draws Sunday 9 PM Indiana time (nextDraw); Christmas once, at 00:00 UTC on December 24, 2026 (7 PM US Eastern on the 23rd).
+//   Weekly draws Sunday 9 PM Indiana time (nextDraw); Christmas once, 9 PM Indiana on December 23, 2026 (02:00 UTC on the 24th).
 //   Sales close 5 minutes before a draw. No ticket cap. 10% of each ticket is burned at purchase; the pot is what ARRIVED.
 //   Each ticket is one equal chance; a wallet wins at most one place; places nobody can fill go to 1st.
 //   The draw: sha256(secret | blockhash after sales close | the ticket list) → numbers → winning tickets (fair.js style).
@@ -12,7 +12,7 @@ export const LOTTERIES = {
   'daily-100': { name: 'Daily $1', ticket: 1, every: 'day', split: [100], off: true },
   'weekly-10': { name: 'Weekly 10¢', ticket: 0.1, every: 'week', split: [60, 25, 15] },
   'weekly-100': { name: 'Weekly $1', ticket: 1, every: 'week', split: [60, 25, 15] },
-  christmas: { name: 'Christmas', ticket: 1, every: 'once', at: Date.UTC(2026, 11, 24), split: [60, 25, 15] },
+  christmas: { name: 'Christmas', ticket: 1, every: 'once', at: Date.UTC(2026, 11, 24, 2), split: [60, 25, 15] }, // 9 PM Indiana (EST) on Dec 23 (Cody, 2026-10-03)
 };
 export const SALES_CLOSE_MS = 5 * 60 * 1000, BURN_BPS = 1000;
 // The lotteries that are running (not switched off).
