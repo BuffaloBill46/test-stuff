@@ -77,6 +77,11 @@ header.bar { position: fixed; left: 0; right: 0; top: 0; z-index: 5; display: fl
 .eyebrow { font: 700 11px/1.3 var(--digits); letter-spacing: 1px; color: var(--frost); text-transform: uppercase; }
 h1, h2 { font: 800 38px/1 var(--display); margin: 6px 0 8px; color: var(--brim); text-wrap: balance; text-shadow: 2px 2px 0 var(--ink); }
 #home p, #panel p { margin: 0 0 10px; line-height: 1.4; color: #d6ddf0; }
+/* the results card's next step and the guest nudge (online.js endActions) */
+#panel .endacts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 10px; } #panel .endacts p { flex: 1 1 100%; margin: 0; font-size: 14px; }
+#panel .endacts .go { font-size: 22px; padding: 8px 20px; }
+#panel .nudge { margin-top: 10px; padding: 10px 12px; background: rgba(255,190,92,.12); border: 1px solid var(--lamp); font-size: 14px; line-height: 1.35; }
+#panel .nudge b { color: var(--lamp); } #panel .nudge button { display: block; margin-top: 8px; }
 .dim { color: var(--dim) !important; font-size: 14px; }
 label { display: block; font: 700 11px/1 var(--body); text-transform: uppercase; letter-spacing: 1.4px; color: var(--dim); margin: 10px 0 5px; }
 input[type=text], input[type=number] { width: 100%; font: 500 17px/1.2 var(--body); color: var(--text); background: #0e1328; border: 2px solid var(--ink); box-shadow: inset 0 0 0 1px rgba(185,205,242,.2); border-radius: 3px; padding: 9px 10px; -webkit-user-select: text; user-select: text; }

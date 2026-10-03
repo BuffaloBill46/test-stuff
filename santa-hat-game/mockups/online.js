@@ -201,6 +201,29 @@ async function enterRoom(code, quick, opts = {}) {
   renderChrome();
 }
 
+// THE RESULTS CARD'S NEXT STEP (Cody, 2026-10-03), true to what each room does after a match: practice waits for Start, so
+// "Play again" starts the next one at once; a public Auto match starts its next match by itself (no button needed, Leave
+// offered); ranked closes the room, so "Play again" queues the next ranked match (1 ticket); a friends' room goes back to its
+// warm-up. A guest who placed top 3 in a public match is told what signing in would have kept.
+let againWanted = false;
+function endActions(v, sorted) {
+  const secs = Math.ceil(v.time), place = sorted.findIndex((e) => e.peer === me.id) + 1;
+  const nudge = !profile && !me.w && !practice && autoStart && !v.rk && place >= 1 && place <= 3
+    ? `<div class="nudge"><b>You finished ${['1st', '2nd', '3rd'][place - 1]}!</b> Sign in and finishes like this count: top 3 moves your level up and counts toward the daily tasks. <button class="sec" data-act="signin">Sign in</button></div>` : '';
+  if (me.w) return `${nudge}<p class="dim">Next match in ${secs}s</p>`;
+  if (practice) return `${nudge}<div class="endacts"><button class="go" data-act="again">Play again</button><button class="sec" data-act="leave">Leave</button></div>`;
+  if (v.rk) return `${nudge}<div class="endacts"><button class="go" data-act="again-ranked">Play again · 1 ticket</button><button class="sec" data-act="leave">Leave</button></div>`;
+  if (autoStart) return `${nudge}<div class="endacts"><p>Next match starts by itself in about ${secs}s. Stay to play again.</p><button class="sec" data-act="leave">Leave</button></div>`;
+  return `${nudge}<div class="endacts"><p>Back to the warm-up in ${secs}s.</p><button class="sec" data-act="leave">Leave</button></div>`;
+}
+$('#panel').addEventListener('click', (e) => {
+  const act = e.target.closest('[data-act]')?.dataset.act; if (!act) return;
+  if (act === 'again' && practice && sim) { againWanted = true; sim.S.time = 0; } // end → warm-up now, then straight into the next match
+  else if (act === 'again-ranked') { leaveRoom(); enterRoom('', false, { ranked: true }); }
+  else if (act === 'leave') leaveRoom();
+  else if (act === 'signin') $('#signin')?.click();
+});
+
 function startPractice() {
   if (!profile) { me.n = cleanName($('#name')?.value) || me.n; store.set('sq_name', me.n); }
   practice = true; room = null; roomCode = ''; isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)), startOf, specialsOf, levelOf, gearOf }); me.j = Date.now(); me.w = false; ctl.ep = -1; snaps = []; lastEv = 0;
@@ -226,6 +249,7 @@ function tryInPractice(kind) {
 }
 
 function leaveRoom(reason) {
+  againWanted = false;
   endTrial();
   const was = roomCode;
   if (isHost) board.unpublish();
@@ -592,7 +616,7 @@ function renderChrome() {
       ${mvp ? `<div class="verdict">MVP: ${esc(nameOf(mvp))} with ${mvp.score}</div>` : ''}
       ${v.rk && rankNews ? `<div class="verdict">Rank points ${rankNews.change >= 0 ? '+' : '−'}${Math.abs(rankNews.change)}${Number.isFinite(rankNews.points) ? ` · now ${rankNews.points}` : ''}</div>` : ''}
       <ol class="final">${sorted.map((e) => `<li><span>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}</span><b>${e.score}</b></li>`).join('')}</ol>
-      <p class="dim">Back to the lobby in ${Math.ceil(v.time)}s</p>`;
+      ${endActions(v, sorted)}`;
   }
   if (card !== ui.lastCard) {
     ui.lastCard = card; const p = $('#panel'); p.hidden = !card; p.innerHTML = card; p.classList.toggle('intro', v.phase === 'intro');
@@ -769,6 +793,7 @@ function frame() {
         if (cdEnd === null || cdEnd - now > want) cdEnd = now + want;
         if (now >= cdEnd) { sim.introMatch(sim.S.mode); cdEnd = null; }
       } else cdEnd = null;
+      if (practice && againWanted && sim.S.phase === 'lobby') { againWanted = false; sim.introMatch(sim.S.mode); } // results card: Play again
       if (ctl.ep >= 0) sim.setReport(me.id, report());
       sim.step(dt);
       const s = sim.snapshot(); s.hid = me.id; s.hj = me.j; s.pub = autoStart ? 1 : 0; s.cd = cdEnd ? Math.max(0, (cdEnd - now) / 1000) : 0;
