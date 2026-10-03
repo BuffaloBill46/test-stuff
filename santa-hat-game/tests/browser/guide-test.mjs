@@ -22,6 +22,11 @@ for (const [label, vp] of [['phone', { width: 390, height: 844 }], ['desktop', {
   const odds = r.text.match(/1 in [\d,]+/g) || [];
   check(odds.length === 4 && !/payback|chance of/i.test(r.text), `${label}: only the jackpots' odds (${odds.join(' · ')})`);
   check(/9 PM Eastern/.test(r.text) && /December 23 at 9 PM/.test(r.text), `${label}: resets and draws at 9 PM Indiana time`);
+  // the season and weekly modes (seasons.js, weekly.js), read from the rules files
+  const has = (...xs) => xs.every((x) => r.text.includes(x));
+  check(has('Halloween (October 1 to October 31)', 'Thanksgiving (November 1 to November 30)', 'Christmas (December 1 to January 1)'), `${label}: the three seasons and their dates`);
+  check(has('Play 2 Auto matches', 'Halloween, door 2: Candy Corn', 'costs $5', 'Pumpkin King'), `${label}: tasks, free looks by door, the $5 pass`);
+  check(has('Hot Hat:', 'King of the Gazebo:', 'Blizzard:', 'Hat Hunt:', 'Auto match together'), `${label}: weekly modes and playing with friends`);
   check(!errs.length, `${label}: no page errors ${errs.join(' | ')}`);
   await p.close();
 }
