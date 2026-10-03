@@ -71,7 +71,7 @@ function paytable() {
     const p = M.pays[s.id];
     return `<tr><td><img alt="" src="${src(s.id)}">${esc(s.name)}${s.id === 'hat' ? ' <span class="dim">(wild)</span>' : ''}</td><td>${p[3] ? usd(p[3]) : '—'}</td><td>${p[4] ? usd(p[4]) : '—'}</td><td>${p[5] ? usd(p[5]) : '—'}</td></tr>`;
   }).join('');
-  // (the separate paytable under the machine went, Cody 2026-10-03: one "How to play & win" spot per game; the win table is in it)
+  $('#payRows').innerHTML = winTable(src, usd); // the Payout table under the machine (Cody, 2026-10-03: prizes, no odds)
   $('#payLines').innerHTML = M.lines.map((rows, i) => `<figure><div class="mini">${Array.from({ length: M.rows * M.reels }, (_, k) => {
     const row = Math.floor(k / M.reels), r = k % M.reels; return `<i class="${rows[r] === row ? 'on' : ''}"></i>`; }).join('')}</div>Line ${i + 1}</figure>`).join('');
 }
