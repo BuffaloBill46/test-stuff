@@ -160,7 +160,38 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
-### Costumes (2026-10-02, built by a helper Claude on a worktree branch; NOT published, 029 NOT applied anywhere)
+### 2026-10-03 (newest): game server on the Droplet, shared pool live, fake-player money test
+- **Game server moved to the Droplet.** Fake players now play through https://api.santahatgames.com: `worker/games.mjs`,
+  systemd `santa-games` on 127.0.0.1:8082, behind Caddy. Its settings are in /etc/santa/games.env. It uses its own DB login,
+  `santa_games` (031, applied). The tester link is `?server=https://api.santahatgames.com`.
+  - Why: the Supabase Edge Function froze 75–150 s on fresh starts.
+  - The Edge Function `games` is only a FALLBACK now (v33; it doesn't have keptFee).
+  - The diagnostic Edge Function `ping` is still deployed; delete it.
+  - Update the Droplet: `runuser -u santa -- git -C /opt/santa/repo fetch` + `checkout <commit>`, then
+    `systemctl restart santa-games` (santa-worker / santa-referee too if their code changed).
+- **Applied live:**
+  - 026: one shared Game pool for Drop, Stocking and Big Hat; each game's jackpot is 25% of the pool.
+  - 028 (level-reward looks) and 029 (costumes).
+  - 030: every reset is at 9 PM Indiana time.
+  - The weekly lottery runs itself on Sunday at 9 PM Indiana (from the Droplet timer).
+- **Fake players with devnet money on the live site** (`tests/browser/live-money-test.mjs`, real Chrome, 3 players):
+  - What they did: wallet sign-in, then Drop 5×10¢, Stocking (tapping the stockings) and Big Hat, all paid with real devnet
+    transactions.
+  - Bug found: 2 of 3 Big Hat pulls bought in the same second were paid but never played (LESSONS, 2026-10-03).
+  - Fixed in 4242f43 (page published, Droplet updated). The 2 stranded pulls were handed back through the page's own recovery
+    (`live-resume.mjs`), played as runs 14 and 15, and their winnings paid.
+  - After the fix: all 15 runs settled; all 11 payouts sent by the Droplet worker; both pools' books equal their wallets to the unit.
+- **Alerts are off** (no Telegram bot yet), so nothing checks books against wallets automatically. Check them by hand
+  (pools.santa_raw vs the pool wallet's balance) until Cody sets up the bot.
+- **Next:**
+  - Prove one real automatic Sunday lottery draw (buy test tickets first).
+  - Write the player guide.
+  - Money soak test with more players.
+  - Security review.
+  - Delete `ping`.
+- **Waiting on Cody:** reopening ranked (still paused: /etc/santa/ranked-paused), the Telegram bot.
+
+### Costumes (2026-10-02, built by a helper Claude on a worktree branch; 029 applied and published 2026-10-03)
 - Cody: "make a special level 5 and a level 10 costume, build 1 for each slot that matches itself ... They will be free."
   **Level 5 Nutcracker Soldier**: Nutcracker Coat (red, gold cords/buttons/collar/epaulettes, white belt, coat tails), Nutcracker
   Trousers (white, red side stripe, tall black boots), Nutcracker face (square painted wooden head, moustache, teeth jaw, white

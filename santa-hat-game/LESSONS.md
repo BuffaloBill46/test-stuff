@@ -389,3 +389,19 @@ The Avatar screen puts the Santa hat on every preview, so a tall costume hat (th
 poking through it, while the Hats-tab picture looked fine. Only the full-page screenshot showed it. The preview now shows a
 costume hat instead of the Santa hat; the older cosmetic hats are unchanged (Cody's call whether they should do the same).
 Any new hat or head piece: check the Avatar page screenshot AND the faces lineup (tests/browser/faces.mjs) with the hat on.
+
+## A server error is not a refusal: never forget a PAID run (2026-10-03, fake players with devnet money on the live site)
+Three test players bought Big Hat pulls in the same second. The server checks each payment and also looks up the token tax
+on Solana. The public devnet node answered "too many requests" (429), and the server replied 500. The page's retry loop
+only retried "not finalized / not found", so it took the 500 as "refused for good", cleared the remembered payment, and
+2 paid pulls were never played. Nothing showed it except the run count. Single-player tests never hit it.
+Fixed three ways:
+- the server's 500 says retry: true;
+- the page (runs, Store, lottery) treats any server-side failure as "keep the payment, ask again";
+- the tax lookup is remembered for a minute (market.js keptFee).
+Rules:
+- Any "paid but not yet accepted" state is only dropped on a definite refusal from the server.
+- Test money paths with SEVERAL players at once, not one.
+- Free public RPCs rate-limit: cache what can be cached.
+tests/browser/live-money-test.mjs is the several-players check. live-resume.mjs hands a stranded payment back through the
+page's own recovery.
