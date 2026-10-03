@@ -6,7 +6,7 @@ launch. Each line says what already exists, what's missing, and how it will be r
 
 ## A. Focus group (real people, devnet money)
 - Who: 5–10 people Cody picks; phones and computers both; at least two who have never used a Solana wallet.
-- They get: the test link (`https://santahatgames.com/?server=https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games`),
+- They get: the test link (`https://santahatgames.com/?server=https://api.santahatgames.com`),
   Phantom set to Devnet, test SANTA + devnet SOL sent with `tests/solana/devnet-gift.mjs <their address>` (capped, devnet only).
 - A one-page tester script (to write): sign in (wallet and email), play an Auto match, buy an item and wear it, a Slots pull,
   a Drop, Stocking Stuffer, a lottery ticket, check a result, the guide. Then a short feedback form (to write; an artifact

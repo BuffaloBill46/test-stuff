@@ -325,7 +325,7 @@ Everything else on the launch path is built, tested and live. In the order to do
 
 **D. Play once on the test network (about 10 minutes):** set Phantom to devnet, import a test player (Settings → Add / Connect
    wallet → Import private key → the contents of `C:\santa-devnet-keys\players\testPlayer1.phantom.txt`), open
-   https://santahatgames.com/?server=https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games , sign in with the wallet and buy
+   https://santahatgames.com/?server=https://api.santahatgames.com , sign in with the wallet and buy
    a Big Hat pull or a Snowball Drop. A win should arrive in that wallet by itself within a minute. Tell Claude how it went.
 
 **E. Real money (each step needs your OK; Claude walks you through):**
@@ -367,7 +367,7 @@ the locked joystick.
   writes it only while the domain points at GitHub); the old github.io address forwards to it. The match server: Caddy serves
   play.santahatgames.com (sslip.io name kept as a fallback). Supabase Auth: Site URL https://santahatgames.com/, redirects
   santahatgames.com/**, www.santahatgames.com/**, the old github.io/test-stuff/**. Game server and match server accept it.
-  Live links: https://santahatgames.com and, for the devnet server, https://santahatgames.com/?server=https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games
+  Live links: https://santahatgames.com and, for the devnet server, https://santahatgames.com/?server=https://api.santahatgames.com
 - **Match referee server LIVE on the Droplet (2026-10-02, phase 1, opt-in):** service `santa-referee` (worker/referee.mjs on
   127.0.0.1:8081) behind Caddy at `wss://147-182-219-161.sslip.io` (free automatic certificate; health:
   https://147-182-219-161.sslip.io/health). Try it: add `&ref=wss://147-182-219-161.sslip.io` to the game's address (needs the

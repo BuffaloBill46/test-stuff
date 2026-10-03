@@ -405,3 +405,22 @@ Rules:
 - Free public RPCs rate-limit: cache what can be cached.
 tests/browser/live-money-test.mjs is the several-players check. live-resume.mjs hands a stranded payment back through the
 page's own recovery.
+
+## A rule change must update every test that encodes the old rule (QA pass, 2026-10-03)
+The full QA after the server move found 6 browser tests still checking rules Cody had changed:
+- shirts for sale (now level rewards);
+- 10 gear (the Heated Coat was retired);
+- the old special-snowball order;
+- "SB2" letters on the match buttons (now the ball's picture);
+- the weekly draw at Sunday midnight UTC (now 9 PM Indiana);
+- Drop's "100×" (now the pool jackpot).
+These tests aren't in the per-change set, so nobody saw them fail. Two test servers also lacked actions the real one always has
+(the Store's ticket count, market), so the page got 400/500 answers that the real site never gives.
+Rules:
+- When Cody changes a rule, grep tests/ for the old value: numbers, names, wording, times.
+- Keep a test's stand-in server in step with server/http.js.
+- On a slow machine, run the browser suite with nothing else running (page loads time out otherwise).
+Also learned this pass:
+- Chrome never retries a failed dynamic import() for the life of the page, so a "try again" message after one has to say
+  "reload".
+- The worker's payout memo is "Santa Hat payouts #<id>" (plural).
