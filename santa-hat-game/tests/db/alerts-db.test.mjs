@@ -66,3 +66,18 @@ const tg2 = makeTelegram({ token: 'test-token', db, fetchFn: fakeFetch }); await
 const none = makeTelegram({ token: 'x', db: { query: async () => [] }, fetchFn: async () => ({ json: async () => ({ ok: true, result: [] }) }) });
 await assert.rejects(() => none.send('x'), /send your Santa Hat bot \/start/);
 console.log(`OK: alerts: ${first} problems found and sent once (frozen payout, failed send, stuck queue, top-off, emergency stop, match server down, books ≠ wallet), not every 5 min, new ones at once, failed sends retried, repeated after ${REPEAT_HOURS} h, off without a token, chat found from /start and remembered`);
+
+// POOL JACKPOTS (Cody's list, 2026-10-03): good news is sent too, once per jackpot, only for ones won in the last 3 hours
+{ const jq = (await db.query(`insert into public.quotes (profile_id, kind, n, bet, usd, santa_raw, price_usd) values ($1, 'drop', 1, 1, 1, 1000000, 0.001) returning id`, [uid]))[0].id;
+  const jr = (await db.query(`select public.buy_run($1, $2, 1000000, 100000, 873000) as id`, [jq, 'AlertsJack' + '5'.repeat(78)]))[0].id;
+  await db.query(`update public.plays set state = 'settled', commit = $2, secret = 's', player_seed = 'p', result = '{"jackpot":true,"mult":125}', pay = 125, pay_raw = 125000000, price_usd = 0.001, settled_at = now() where run_id = $1`, [jr, 'e'.repeat(64)]);
+  const oq = (await db.query(`insert into public.quotes (profile_id, kind, n, bet, usd, santa_raw, price_usd) values ($1, 'drop', 1, 1, 1, 1000000, 0.001) returning id`, [uid]))[0].id;
+  const or = (await db.query(`select public.buy_run($1, $2, 1000000, 100000, 873000) as id`, [oq, 'AlertsOld' + '5'.repeat(79)]))[0].id;
+  await db.query(`update public.plays set state = 'settled', commit = $2, secret = 's', player_seed = 'p', result = '{"jackpot":true,"mult":99}', pay = 99, pay_raw = 99000000, price_usd = 0.001, settled_at = now() - interval '4 hours' where run_id = $1`, [or, 'd'.repeat(64)]);
+  const before = sent.length; t += 60e3; await alerts.run();
+  const jack = sent.slice(before).filter((s) => /POOL JACKPOT/.test(s));
+  assert.equal(jack.length, 1, `one jackpot message: ${JSON.stringify(jack)}`);
+  assert.ok(/Tester won \$125\.00 on Snowball Drop \(a \$1\.00 play\)/.test(jack[0]), jack[0]);
+  t += 3600e3; const b2 = sent.length; await alerts.run();
+  assert.equal(sent.slice(b2).filter((s) => /POOL JACKPOT/.test(s)).length, 0, 'never sent twice'); }
+console.log('OK: pool jackpots: one cheerful message each (name, prize, game, play size), never repeated, old ones (over 3 h) not sent');

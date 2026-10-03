@@ -163,7 +163,7 @@ export async function playRun(kind, bet, n, onPlay, forced = []) {
     // demo: the house "sends" the run's winnings to the demo balance, 3% lighter (SANTA's tax), all at once
     if (!serverMode && sent) wallet.add(sent * (1 - FEE));
     onChange();
-    return { n, results, won: Math.round(won * 100) / 100, sent: sent ?? 0, received: (sent ?? 0) * (1 - FEE), held };
+    return { n, kind, bet, cost: costOf(n, bet), results, won: Math.round(won * 100) / 100, sent: sent ?? 0, received: (sent ?? 0) * (1 - FEE), held }; // kind, bet, cost: the share-a-win card
   } finally { busy[kind] = false; }
 }
 export const short = (h) => h.slice(0, 8);

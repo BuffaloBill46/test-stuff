@@ -75,7 +75,7 @@ export function makeHandler(deps) {
       try { return reply(origin, 200, await deps.server.burned()); } catch (e) { console.error('burned error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
     }
     if (body?.action === 'winners') { // public: the shared Recent winners list (names and amounts only)
-      try { return reply(origin, 200, { winners: await deps.server.winners() }); } catch (e) { console.error('winners error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
+      try { return reply(origin, 200, { winners: await deps.server.winners(), week: deps.server.weekWinners ? await deps.server.weekWinners() : [] }); } catch (e) { console.error('winners error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
     }
     const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
     const profile = token ? await deps.profileFor(token).catch(() => null) : null;

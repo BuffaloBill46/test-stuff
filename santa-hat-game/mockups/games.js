@@ -14,6 +14,7 @@ import { FEE } from './slots.js';
 import { play as sfx } from './sfx.js';
 import { SERVER, call, settingsReady } from './gameserver.js';
 import { refreshWallet } from './walletline.js';
+import { weekStart } from './gameclock.js';
 import { KINDS, SIZES } from './credits.js';
 import { initRunPick, priceLabel } from './runpick.js';
 import { topMult } from './spin.js';
@@ -130,12 +131,21 @@ function howToWin() {
 }
 function openHow() { howToWin(); const d = $('#howDlg'); if (d.showModal) d.showModal(); else d.setAttribute('open', ''); }
 
+// BIGGEST THIS WEEK (Cody's list, 2026-10-03): the winners list's second tab. Server mode: everyone's, from the server
+// (server/games.js weekWinners). Demo: this browser's wins since the game week began (gameclock weekStart), biggest first.
+let winTab = 'recent', weekList = [];
+function shownWins() {
+  if (winTab === 'recent') return state.winners;
+  if (SERVER) return weekList;
+  return state.winners.filter((w) => w.at >= weekStart()).sort((a, b) => b.amount - a.amount).slice(0, 10);
+}
 function renderWinners() {
   const list = $('#winList'); if (!list) return;
-  if (!state.winners.length) { list.innerHTML = '<li class="empty">No wins over the pull price yet. Be the first.</li>'; return; }
-  list.innerHTML = state.winners.map((w) => {
-    const when = new Date(w.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-    return `<li class="${w.big ? 'big' : ''}">${ICONS[w.game] || ''}<span class="who">${esc(w.name)}<small>${GAME_NAMES[w.game] || w.game} · ${when}${w.note ? ' · ' + esc(w.note) : ''}</small></span><b>${money(w.amount)}</b><span class="gain">+${Math.round(w.gainPct).toLocaleString()}%</span></li>`;
+  const wins = shownWins();
+  if (!wins.length) { list.innerHTML = `<li class="empty">${winTab === 'week' ? 'No wins this week yet. Be the first.' : 'No wins over the pull price yet. Be the first.'}</li>`; return; }
+  list.innerHTML = wins.map((w, i) => {
+    const when = winTab === 'week' ? new Date(w.at).toLocaleDateString([], { weekday: 'short' }) + ' ' + new Date(w.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : new Date(w.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    return `<li class="${w.big ? 'big' : ''}">${winTab === 'week' ? `<span class="rank">${i + 1}</span>` : ''}${ICONS[w.game] || ''}<span class="who">${esc(w.name)}<small>${GAME_NAMES[w.game] || w.game} · ${when}${w.note ? ' · ' + esc(w.note) : ''}</small></span><b>${money(w.amount)}</b><span class="gain">+${Math.round(w.gainPct).toLocaleString()}%</span></li>`;
   }).join('');
 }
 // Shared by every Santa Hat game: `game` is 'slots', 'spin10', 'spin100', 'drop10', 'drop100', 'stock10' or 'stock100'.
@@ -143,6 +153,7 @@ function renderWinners() {
 async function loadWinners() {
   if (!SERVER) return;
   const r = await call('winners').catch(() => ({}));
+  if (Array.isArray(r.week)) weekList = r.week;
   if (Array.isArray(r.winners)) { state.winners = r.winners.slice(0, MAX_WINNERS); renderWinners(); }
 }
 export function addWinner(game, amount, bet, note) {
@@ -208,6 +219,8 @@ function toggleFull() {
 
 export async function initGames(opts = {}) {
   if (inited) return; inited = true;
+  // the winners list's tabs: Latest / Biggest this week
+  document.querySelectorAll('[data-wins]').forEach((b) => b.addEventListener('click', () => { winTab = b.dataset.wins; document.querySelectorAll('[data-wins]').forEach((x) => x.setAttribute('aria-selected', String(x === b))); renderWinners(); }));
   if (opts.name) nameOf = opts.name;
   // Server mode: draw the machine, wheel and prices from the published settings (Cody's admin screen), not the built-in ones.
   if (SERVER && (await settingsReady)) labelsFromSettings();

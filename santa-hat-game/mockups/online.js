@@ -11,6 +11,8 @@ import { initMoneyStrips, refreshBurned } from './moneystrip.js';
 import { initWalletLines, refreshWallet } from './walletline.js';
 import { createCoach } from './coach.js';
 import { createCallouts } from './callouts.js';
+import { initJackpotBar } from './jackpotbar.js';
+import { initShareWins } from './sharecard.js';
 import { TICKET_MAX } from './ranked.js';
 import { levelInfo, clampLevel } from './levels.js';
 import { SERVER, call, token as signInToken } from './gameserver.js';
@@ -983,6 +985,9 @@ const tabs = initTabs(app);
 initSeason({ thumbnail, onBought: () => tabs.reloadMine() }); // the Season card (seasonui.js); a bought pass reloads what I own
 initMoneyStrips(); // the Store and Games pages' money strip (moneystrip.js): burn, treasury, pool, burned so far
 initWalletLines(); // my wallet's SANTA under each game's play buttons (walletline.js)
+// the pool jackpot banner for everyone (jackpotbar.js); its button opens Games at that game
+initShareWins(); // Share this win buttons after a winning run (sharecard.js)
+initJackpotBar({ el: $('#jpbar'), inMatch: () => inRoom(), go: (id) => { tabs.show('games'); setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 700); } });
 renderProgress(app.profile); // the Play page's Player Progress box (guests: level 1; updated on sign-in)
 initLottery(); // the Store's Santa Lottery (lotteryui.js)
 $('#loading')?.remove();

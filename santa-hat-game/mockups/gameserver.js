@@ -52,7 +52,7 @@ export function forPlayer(err, closeDialog) {
 // server either way: the test link's ?server=, else the live one.
 const LIVE_GAMES = 'https://api.santahatgames.com';
 // read-only actions that always reach the live game server (my tickets, my season: the match server records them there)
-const READ_LIVE = ['tickets', 'season', 'burned', 'wallet'];
+const READ_LIVE = ['tickets', 'season', 'burned', 'wallet', 'winners'];
 export async function call(action, body = {}) {
   const t = await token();
   if (!t && !PUBLIC_ACTIONS.includes(action)) return { error: 'sign in first' };

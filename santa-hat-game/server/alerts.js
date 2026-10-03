@@ -16,6 +16,13 @@ const POOL = (g) => (g === 'spin' ? 'Game' : g === 'slots' ? 'old Slots' : g);
 export function createAlerts({ db, telegram, walletRaw, refereeHealth, games = ['spin', 'slots'], now = () => Date.now() }) {
   async function findings() {
     const out = [], add = (key, text) => out.push({ key, text });
+    // Good news too (Cody's list, 2026-10-03): every POOL JACKPOT won in the last 3 hours, once each (3 h < REPEAT_HOURS, so it
+    // is never repeated), for Cody to cheer and share.
+    for (const j of await db.query(`select pl.id, pr.name, pl.kind, pl.pay, pl.bet, pl.result from public.plays pl join public.profiles pr on pr.id = pl.profile_id
+        where pl.state = 'settled' and (pl.result ->> 'jackpot')::boolean is true and pl.settled_at > now() - interval '3 hours' order by pl.id`)) {
+      const prize = typeof j.result?.mult === 'number' ? j.result.mult * +j.bet : +j.pay, game = { big: 'Big Hat', drop: 'Snowball Drop', stocking: 'Stocking Stuffer', spin: 'Spin' }[j.kind] || j.kind;
+      add(`jackpot:${j.id}`, `🎉 POOL JACKPOT! ${j.name || 'A player'} won $${prize.toFixed(2)} on ${game} (a $${(+j.bet).toFixed(2)} play).`);
+    }
     for (const p of await db.query(`select id, amount_usd from public.payouts where status = 'held' order by id`)) add(`held:${p.id}`, `A payout is HELD for you: payout #${p.id}, $${(+p.amount_usd).toFixed(2)} (the safety cap froze it, or the winner closed their SANTA account again within a day; the server log says which). Look at it in the admin screen (Release if it's real).`);
     for (const t of ['payouts', 'pool_transfers', 'lottery_payouts']) {
       for (const p of await db.query(`select id from public.${t} where status = 'failed' order by id`)) add(`failed:${t}:${p.id}`, `A send FAILED 5 times: ${t} #${p.id}. It needs a look (wallet empty? network down?).`);

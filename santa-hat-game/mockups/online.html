@@ -261,6 +261,15 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 #waitList .wg button { grid-column: 2; grid-row: 1 / 3; font-size: 20px; padding: 6px 18px; }
 #waitList p { margin: 0; } #waitList p button { margin-left: 8px; }
 #panel .together { margin: 10px 0; padding: 10px; border: 1px dashed rgba(185,205,242,.35); } #panel .together p { margin: 6px 0 0; font-size: 13px; } #panel .together .note { color: var(--lamp); }
+.wintabs { display: flex; gap: 6px; margin: 0 0 10px; } .wintabs button { font: 700 14px var(--body); color: var(--dim); background: none; border: 0; border-bottom: 3px solid transparent; padding: 4px 6px; cursor: pointer; }
+.wintabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--lamp); }
+#winList li .rank { font: 700 13px var(--digits); color: var(--lamp); min-width: 1.6em; }
+/* the pool jackpot banner (jackpotbar.js): under the fixed top bar, everyone sees it */
+#jpbar { position: fixed; z-index: 8; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 72px); width: min(720px, calc(100% - 24px)); box-sizing: border-box;
+  display: flex; align-items: center; gap: 6px 14px; flex-wrap: wrap; padding: 8px 10px 8px 14px; border-color: var(--lamp); background: linear-gradient(90deg, rgba(207,49,40,.92), rgba(27,35,68,.96) 55%); animation: coIn .3s ease-out; }
+#jpbar b { font: 400 22px/1 var(--display); color: var(--brim); } #jpbar span { flex: 1 1 200px; font-size: 15px; } #jpbar em { font-style: normal; font-weight: 800; color: var(--lamp); }
+#jpbar .go { font-size: 18px; padding: 6px 14px; } #jpbar .x { background: none; border: 0; color: var(--dim); font-size: 22px; cursor: pointer; padding: 0 4px; }
+@media (max-width: 600px) { #jpbar { top: calc(env(safe-area-inset-top, 0px) + 60px); } #jpbar b { font-size: 18px; } #jpbar span { font-size: 14px; } }
 /* Games tab: jump buttons and the folded notes */
 .jumps { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
 .jumps button { font: 700 14px var(--body); color: var(--text); background: var(--plaque); border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); padding: 6px 12px; cursor: pointer; }
@@ -1156,7 +1165,8 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       <p class="dim">Prizes are for a $1 pull. Winnings are paid in SANTA and arrive 3% lighter (the token's tax).</p>
     </dialog>
     <section class="block plaque winners" id="winners">
-      <h2>Recent winners</h2>
+      <h2>Winners</h2>
+      <div class="wintabs" role="tablist" aria-label="Which winners"><button role="tab" type="button" data-wins="recent" aria-selected="true">Latest</button><button role="tab" type="button" data-wins="week" aria-selected="false">Biggest this week</button></div>
       <p class="dim" id="winNote">Every Santa Hat game. Demo: wins from this browser only; once payouts are real this shows everyone's.</p>
       <ol id="winList"></ol>
     </section>
@@ -1265,6 +1275,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 <section id="panel" class="plaque" hidden></section>
 <div id="coach" class="plaque" hidden aria-live="polite"></div>
 <div id="feed" aria-live="polite"></div>
+<div id="jpbar" class="plaque" role="status" hidden></div>
 <div id="emotes" hidden></div>
 <div id="joy" hidden></div>
 <div id="zoom" hidden><button id="zoomIn" aria-label="Zoom in">+</button><button id="zoomOut" aria-label="Zoom out">−</button></div>

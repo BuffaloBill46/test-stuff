@@ -64,7 +64,7 @@ for (let i = 0; i < 60; i++) assert.equal((await from(lim, { action: 'winners' }
 assert.equal((await from(lim, { action: 'winners' }, { addr: '5.6.7.8', token: '' })).status, 429, 'public answers are limited per connection too');
 assert.equal((await from(lim, { action: 'pools' }, { addr: '5.6.7.8', token: '' })).status, 429);
 assert.equal((await from(lim, settle, { addr: '5.6.7.8' })).status, 429, 'and signed-in requests from that connection');
-assert.equal(calls.length, 60, 'slowed before any database work');
+assert.equal(calls.length, 120, 'slowed before any database work (each winners answer reads 2 lists: latest and this week, server/games.js)');
 assert.equal((await from(lim, { action: 'winners' }, { addr: '9.9.9.9', token: '' })).status, 200, 'other connections unaffected');
 // Many accounts from one computer: the connection limit catches them even though each player is under their own.
 clock = Date.UTC(2026, 9, 1, 12, 3, 0); lim = limited(); let codes = [];

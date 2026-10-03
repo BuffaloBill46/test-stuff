@@ -104,6 +104,9 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   check(Math.abs(after.pool - (before.pool + IN - exp.pay)) < 1e-6, `${label}: jackpot pool math`);
   check(Math.abs(after.bal - (before.bal - 1 + exp.pay * 0.97)) < 1e-6, `${label}: jackpot balance`);
   check((await p.evaluate(() => window.__slots.view.shown())).flat().every((s) => s === 0), `${label}: jackpot grid should be all Santa Hats`);
+  // Share this win (sharecard.js): a run that won more than it cost carries a share button with the run's own numbers
+  { const sw = await p.evaluate(() => document.querySelector('#slots .machine .res [data-share-win]')?.dataset.shareWin || null), d = sw && JSON.parse(sw);
+    check(d && d.kind === 'big' && d.cost === 1 && Math.abs(d.sent - exp.pay) < 0.01 && d.jackpot > 0, `${label}: Share this win carries the run's numbers (${sw})`); }
   check(r.stamp === 'JACKPOT!', `${label}: jackpot stamp`);
   check(Math.abs(+r.jp.slice(1) - Math.floor(after.pool * 0.25 * 100) / 100) < 0.011, `${label}: jackpot readout = 25% of pool`);
   await p.screenshot({ path: `${OUT}/${label}-5-jackpot.png` });

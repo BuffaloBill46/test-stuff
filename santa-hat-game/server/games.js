@@ -20,6 +20,7 @@ import { NUMS, proofExtras } from '../mockups/house.js';
 import { MINT, QUOTE_SECONDS, CUSHION, splitPayment } from '../mockups/market.js';
 import { SHOP_BURN_BPS } from '../mockups/shoprules.js';
 import { verifyPayment } from './verify.js';
+import { weekStart } from '../mockups/gameclock.js';
 
 // The most ONE play can ever pay (jackpot aside), worked out from the prize table the play ran on, never from what a
 // simulation happened to see (Cody, 2026-10-01: "I don't want a hold on a player that wins"). Big Hat: every line at the top
@@ -227,16 +228,28 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     join public.quotes q on q.id = pa.quote_id where r.id = $1`, [runId]))[0].price_usd;
   // Recent winners for everyone: settled plays that paid more than they cost (display names only, never wallets).
   let winnersCache = { at: 0, list: null };
+  // one finished winning play → a winners-list row (the exact prize where the result has a multiplier: Stocking Stuffer's
+  // 1.75 × 10¢ = 17.5¢ is stored as 18¢, but the SANTA sent is the exact 17.5¢)
+  const toWinner = (w) => { const bet = +w.bet || KINDS[w.kind].bet, pay = typeof w.result?.mult === 'number' ? w.result.mult * bet : +w.pay;
+      return { game: w.kind === 'big' ? 'slots' : w.kind === 'drop' ? (bet >= 1 ? 'drop100' : 'drop10') : w.kind === 'stocking' ? (bet >= 1 ? 'stock100' : 'stock10') : w.kind === 'spin' ? (bet >= 1 ? 'spin100' : 'spin10') : w.kind, name: w.name, amount: pay, gainPct: ((pay - bet) / bet) * 100, at: new Date(w.settled_at).getTime(),
+        note: w.result?.jackpot ? 'pool jackpot' : w.kind === 'stocking' && w.result?.found ? `${w.result.found} gifts · ${w.result.mult}×` : w.result?.mult ? `${w.result.mult}×` : '', big: pay >= 10 * bet }; };
   async function winners(limit = 30) {
     if (winnersCache.list && Date.now() - winnersCache.at < 10_000) return winnersCache.list; // public: cached 10 s
     const rows = await db.query(`select pr.name, pl.kind, pl.pay, pl.bet, pl.settled_at, pl.result from public.plays pl join public.profiles pr on pr.id = pl.profile_id
       where pl.state = 'settled' and pl.pay > pl.bet order by pl.settled_at desc, pl.id desc limit $1`, [limit]);
     // the exact prize where the result has a multiplier (the pay column is whole cents: Stocking Stuffer's 1.75 × 10¢ = 17.5¢
     // is stored as 18¢, but the SANTA sent is the exact 17.5¢)
-    const list = rows.map((w) => { const bet = +w.bet || KINDS[w.kind].bet, pay = typeof w.result?.mult === 'number' ? w.result.mult * bet : +w.pay;
-      return { game: w.kind === 'big' ? 'slots' : w.kind === 'drop' ? (bet >= 1 ? 'drop100' : 'drop10') : w.kind === 'stocking' ? (bet >= 1 ? 'stock100' : 'stock10') : w.kind === 'spin' ? (bet >= 1 ? 'spin100' : 'spin10') : w.kind, name: w.name, amount: pay, gainPct: ((pay - bet) / bet) * 100, at: new Date(w.settled_at).getTime(),
-        note: w.result?.jackpot ? 'pool jackpot' : w.kind === 'stocking' && w.result?.found ? `${w.result.found} gifts · ${w.result.mult}×` : w.result?.mult ? `${w.result.mult}×` : '', big: pay >= 10 * bet }; });
+    const list = rows.map(toWinner);
     winnersCache = { at: Date.now(), list }; return list;
+  }
+  // Public: the BIGGEST wins of this game week (Cody's list, 2026-10-03; the week starts like the lottery's: gameclock weekStart),
+  // biggest first, 10 at most. Kept 30 s.
+  let weekCache = { at: 0, list: null };
+  async function weekWinners() {
+    if (weekCache.list && Date.now() - weekCache.at < 30_000) return weekCache.list;
+    const rows = await db.query(`select pr.name, pl.kind, pl.pay, pl.bet, pl.settled_at, pl.result from public.plays pl join public.profiles pr on pr.id = pl.profile_id
+      where pl.state = 'settled' and pl.pay > pl.bet and pl.settled_at >= $1 order by pl.pay desc, pl.settled_at asc limit 10`, [new Date(weekStart())]);
+    weekCache = { at: Date.now(), list: rows.map(toWinner) }; return weekCache.list;
   }
   // Public pool status (for the admin screen, and for anyone who wants to check): balances, settings, pending transfers, log.
   async function pools() {
@@ -297,5 +310,5 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     burnKept = { at: Date.now(), v: { gamesRaw: games, lotteryRaw: lottery, storeRaw: store, totalRaw: games + lottery + store } };
     return burnKept.v;
   }
-  return { quote, buy, settle, tidy, winners, pools, settings, market, burned, wallet, settingsChanged };
+  return { quote, buy, settle, tidy, winners, weekWinners, pools, settings, market, burned, wallet, settingsChanged };
 }
