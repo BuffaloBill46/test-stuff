@@ -176,4 +176,9 @@ do $$ begin
     grant execute on function public.season_record(uuid, text, date, jsonb, jsonb) to santa_referee;
     grant select on public.seasons to santa_referee;
   end if;
+  -- the game server's own login (031): reads the season for the page (server/seasons.js), sells the pass (shop_buy). Explicit, so it
+  -- never depends on who ran this file (031's default grants cover only tables made by postgres)
+  if exists (select 1 from pg_roles where rolname = 'santa_games') then
+    grant select on public.seasons, public.season_rewards, public.season_days, public.season_progress, public.season_passes, public.season_grants to santa_games;
+  end if;
 end $$;
