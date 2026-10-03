@@ -57,6 +57,7 @@ console.log('1. No game server: Start opens the load screen; nobody moves or thr
   await p.evaluate(() => { window.__sq.sim.S.time = 1.5; });
   check(await until(p, () => document.querySelector('#count').textContent === '2'), 'and counts down (2)');
   await p.screenshot({ path: 'out/intro-count.png' });
+  await p.evaluate(() => { window.__sq.sim.S.time = 1.5; }); // 1.5 s left again right before the hold (under load the waits above ate into it)
   const at2 = await mine(p); await p.keyboard.down('KeyD'); await p.waitForTimeout(500); await p.keyboard.up('KeyD'); // well inside the 1.5 s left (at 60 fps a longer hold ran into round 1)
   check(JSON.stringify(await mine(p)) === JSON.stringify(at2), 'no moving during the countdown');
   await p.evaluate(() => { window.__sq.sim.S.time = 0; }); // to round 1
