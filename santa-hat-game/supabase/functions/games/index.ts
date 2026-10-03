@@ -12,9 +12,7 @@
 //   TELEGRAM_CHAT_ID                     optional: where alerts go (else the chat that sent the bot /start, remembered)
 //   REFEREE_HEALTH_URL                   optional: the match server's health check (default https://play.santahatgames.com/health)
 // Pool wallet KEYS are not used here (payouts are sent by a separate worker) and never go in the website.
-// The Deno-native build of postgres.js (same API): the npm build runs through Deno's Node compatibility layer, and a fresh
-// connection to the pooler sometimes froze the whole copy of this server (2026-10-03: even a 6 s timer never fired).
-import postgres from 'https://deno.land/x/postgresjs@v3.4.5/mod.js';
+import postgres from 'npm:postgres@3.4.5';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { createGameServer } from '../../../server/games.js';
 import { makeHandler } from '../../../server/http.js';
@@ -66,7 +64,7 @@ const seen = <T>(p: Promise<T>) => p.then((r) => { answeredAt = Date.now(); retu
 const db = {
   query: async (q: string, p: unknown[] = []) => seen((await ready()).unsafe(q, p as never[])),
   tx: async (fn: (t: { query: (q: string, p?: unknown[]) => Promise<unknown[]> }) => Promise<unknown>) =>
-    seen((await ready()).begin((t: any) => fn({ query: (q: string, p: unknown[] = []) => t.unsafe(q, p as never[]) }))),
+    seen((await ready()).begin((t) => fn({ query: (q: string, p: unknown[] = []) => t.unsafe(q, p as never[]) }))),
 };
 const rpcUrl = env('SOLANA_RPC_URL') || 'https://solana-rpc.publicnode.com';
 const chain = {
