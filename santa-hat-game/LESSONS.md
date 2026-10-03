@@ -383,3 +383,9 @@ price); the cents column is for books at a glance only.
 The "decided before it was shown" check waited for "4 turns done and 1 stocking shown", but the shown-counter still held turn 4's
 value until turn 5 reset it, so it read turn 4's board. Wait on a counter that changes at the START of the thing you mean
 (`live.started`), not on one that is reset somewhere inside it.
+
+## The Avatar preview always wears the Santa hat (2026-10-02, costumes)
+The Avatar screen puts the Santa hat on every preview, so a tall costume hat (the Nutcracker's shako) showed only as a plume
+poking through it, while the Hats-tab picture looked fine. Only the full-page screenshot showed it. The preview now shows a
+costume hat instead of the Santa hat; the older cosmetic hats are unchanged (Cody's call whether they should do the same).
+Any new hat or head piece: check the Avatar page screenshot AND the faces lineup (tests/browser/faces.mjs) with the hat on.
