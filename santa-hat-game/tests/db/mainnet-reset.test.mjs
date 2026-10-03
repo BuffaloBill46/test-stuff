@@ -38,9 +38,22 @@ const before = { profiles: await count('profiles'), logins: await count('logins'
   settings: (await db.query('select payout_mode from public.lottery_settings'))[0]?.payout_mode, feedback: await count('tester_feedback') };
 assert.ok(before.payouts > 0 && before.draws > 0, 'the copy really has test payouts and lottery draws to clear');
 
+// SEASONS (supabase/033, after this backup was made): plant what a devnet tester could have, a $5 pass bought with test
+// SANTA, a granted costume piece and look, opened doors, so the switch-over is proven to clear them (2026-10-03)
+const tester = (await db.query('select id from public.profiles limit 1'))[0]?.id;
+assert.ok(tester, 'the backup has a profile to plant season rows on');
+await db.query(`insert into public.season_passes (profile_id, season, signature, usd, paid_raw) values ($1, 'halloween', $2, 5, 1000) on conflict do nothing`, [tester, 'TestPass'.padEnd(88, '9')]);
+await db.query(`insert into public.season_progress (profile_id, season, day, door) values ($1, 'halloween', '2026-10-01', true), ($1, 'halloween', '2026-10-02', true), ($1, 'halloween', '2026-10-03', true) on conflict do nothing`, [tester]);
+await db.query(`insert into public.season_grants (profile_id, season, door, track, xp) values ($1, 'halloween', 1, 'free', 1), ($1, 'halloween', 7, 'streak', 1) on conflict do nothing`, [tester]); // (the backup's item list predates the Halloween items: level-step rewards)
+await db.query(`insert into public.season_days (season, day, tasks) values ('halloween', '2026-10-03', '[]') on conflict do nothing`);
+
 // the switch-over itself, exactly the file that runs live
 const script = readFileSync(new URL('../../supabase/ops/mainnet_reset.sql', import.meta.url), 'utf8');
 await db.pg.exec(script);
+for (const t of ['season_passes', 'season_grants', 'season_progress', 'season_days'])
+  assert.equal((await db.query(`select count(*)::int n from public.${t}`))[0].n, 0, `${t}: test season records cleared (a test pass would keep granting on mainnet)`);
+await db.query(`select public.season_grant($1, 'halloween')`, [tester]);
+assert.equal((await db.query('select count(*)::int n from public.inventory where profile_id = $1', [tester]))[0].n, 0, 'nothing is re-granted after the switch-over (no pass, no doors)');
 
 // nothing left to PAY, by the real code (each would call the chain stand-in if it found anything)
 const paid = []; const chain = { async sign(w) { paid.push(w); return { signature: 'x'.repeat(88), tx: 't', blockhash: 'b' }; }, async send() {}, async status() { return 'landed'; } };

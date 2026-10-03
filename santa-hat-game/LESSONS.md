@@ -473,3 +473,10 @@ field), does the line through any new-prop vertex carry on INTO the field (insid
 in seconds. Broken on purpose (a zombie moved onto the field), it went red. Also learned: the match camera looks down so steeply
 that even a figure right outside the south wall can't hide the field, so "keep the south side clear" is a safety margin, not
 the reason nothing blocks. (tests/browser/halloween-spooky-shots.mjs)
+
+## 2026-10-03: a new table that holds anything bought or earned must go into the mainnet reset
+supabase/ops/mainnet_reset.sql was written before the season system; it cleared inventory but not season_passes /
+season_grants / season_progress / season_days. On mainnet a pass bought with TEST SANTA would have kept granting costume
+pieces, and a grant record without its item would have blocked that reward for good. Rule: every new table that records a
+purchase, a reward or progress gets added to mainnet_reset.sql (and a planted row in tests/db/mainnet-reset.test.mjs) in the
+same change that creates it.

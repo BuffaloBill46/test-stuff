@@ -8,6 +8,9 @@
 --   lottery_draws / lottery_buys                            : a due draw with test tickets would pay a test pot in real SANTA
 --   pools.santa_raw                                          : the books must start at 0 and count Cody's real deposit only
 --   payments / quotes / runs / plays                         : test plays (and the winners list built from them)
+--   season_passes / season_grants / season_progress / season_days (supabase/033, added 2026-10-03): a pass bought with test
+--     SANTA would keep granting costume pieces on mainnet; a grant record without its item (inventory is cleared) would block
+--     that reward for good; test doors would count toward mainnet rewards. The season starts over for everyone.
 -- Also reset for a fair start: everything test purchases granted (items, levels, extra tickets), and the test matches'
 -- standings (levels from finishes, rank points, match stats). Kept: accounts and their logins, the item catalogue, settings
 -- (lottery payout mode, alerts), tester feedback, speed-limit counters, and the price samples (the REAL SANTA price from
@@ -22,6 +25,7 @@ truncate table
   public.reward_sweeps, public.reward_claims,
   public.inventory, public.tickets, public.gear_wear,
   public.match_results, public.level_finishes, public.ranked_results,
+  public.season_passes, public.season_grants, public.season_progress, public.season_days,
   public.alerts_sent;
 
 update public.pools set santa_raw = 0, treasury_net_raw = 0, updated_at = now();
@@ -37,6 +41,8 @@ begin
   if n <> 0 then raise exception 'mainnet reset: % test rows left that could pay out', n; end if;
   if exists (select 1 from public.pools where santa_raw <> 0 or treasury_net_raw <> 0) then raise exception 'mainnet reset: a pool book is not zero'; end if;
   if exists (select 1 from public.profiles where level <> 1 or xp <> 0 or rank_points <> 0) then raise exception 'mainnet reset: a profile kept test progress'; end if;
+  if exists (select 1 from public.season_passes) or exists (select 1 from public.season_grants) or exists (select 1 from public.season_progress) then
+    raise exception 'mainnet reset: test season passes, rewards or doors are left'; end if;
 end $$;
 
 commit;
