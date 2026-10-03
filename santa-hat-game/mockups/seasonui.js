@@ -49,22 +49,28 @@ function draw(st) {
     const label = `${x.day}: ${x.door ? 'door opened' : x.day === st.day ? 'today' : i < idx ? 'missed' : 'not yet'}`;
     return `<li class="${cls}" title="${label}" aria-label="${label}">${+x.day.slice(8)}</li>`;
   }).join('');
-  $('#ssStreak').innerHTML = `<b>${st.doors}</b> door${st.doors === 1 ? '' : 's'} opened · streak <b>${alive}</b> day${alive === 1 ? '' : 's'} <span>(+1 level step every ${STREAK_EVERY} in a row)</span>`;
+  $('#ssStreak').innerHTML = `<b>${st.doors}</b> door${st.doors === 1 ? '' : 's'} opened · <b>${alive}</b> day${alive === 1 ? '' : 's'} in a row <span>Bonus: +1 level step every ${STREAK_EVERY} days in a row</span>`;
   // the rewards: the free looks by door, then the pass's costume by door
   const got = new Set(st.granted.map((g) => g.track + ':' + g.door));
   const freeLooks = st.plan.free.map((r, i) => (r.kind === 'item' ? { door: i + 1, item: r.item } : null)).filter(Boolean);
   const gold = st.plan.gold.map((r, i) => (r ? { door: i + 1, item: r.item } : null)).filter(Boolean);
   const cell = (r, track) => { const own = got.has(track + ':' + r.door); return `<li class="${own ? 'own' : ''}" title="Door ${r.door}: ${esc(nameOf(r.item))}${own ? ' (yours)' : ''}">${thumb(r.item)}<small>${own ? 'Yours' : 'Door ' + r.door}</small></li>`; };
   $('#ssFree').innerHTML = freeLooks.map((r) => cell(r, 'free')).join('');
-  $('#ssGold').innerHTML = gold.map((r) => cell(r, 'gold')).join('');
+  // the pass: the whole outfit as a picture, then each piece by name and the door that unlocks it
+  $('#ssGold').innerHTML = gold.map((r) => { const own = got.has('gold:' + r.door);
+    return `<li class="${own ? 'own' : ''}">${thumb(r.item)}<span>${esc(nameOf(r.item))}</span><small>${own ? 'Yours' : 'Door ' + r.door}</small></li>`; }).join('');
+  const set = gold.length && BY_ID.get(gold[0].item)?.set;
+  $('#ssOutfit').innerHTML = set && opts.thumbnail ? `<img alt="The ${esc(S.costume)} outfit" src="${opts.thumbnail({ id: 'costume_' + set, slot: 'costume', set })}">` : '<span class="ssq">?</span>';
+  $('#ssOutName').textContent = S.costume ? `The ${S.costume}` : 'The season costume';
   const nextFree = freeLooks.find((r) => r.door > st.doors);
-  $('#ssFreeNote').textContent = nextFree ? `Next look at door ${nextFree.door}: ${nameOf(nextFree.item)}. Every other door: +1 level step.` : 'Every look collected. Each door still gives +1 level step.';
+  $('#ssFreeNote').textContent = nextFree ? `Next free look: ${nameOf(nextFree.item)} at door ${nextFree.door}.` : 'Every free look collected.';
   const pieces = gold.filter((r) => got.has('gold:' + r.door)).length, gl = $('#ssGoldBox');
   gl.classList.toggle('has', st.pass);
-  $('#ssGoldHead').textContent = `${S.costume || 'Season'} pass · ${st.pass ? `${pieces} of ${gold.length} pieces` : `$${S.passPrice.toFixed(2)}`}`;
+  $('#ssGoldHead').textContent = st.pass ? `Season pass · yours · ${pieces} of ${gold.length} pieces` : `Season pass · $${S.passPrice.toFixed(2)}`;
+  $('#ssGoldLead').innerHTML = gold.length ? `A ${gold.length}-piece outfit, only in ${esc(S.name)}. <em>1 piece every ${PIECE_EVERY} doors</em> you open. Yours to keep forever.` : '';
   $('#ssGoldNote').textContent = !gold.length ? 'This season\'s pass opens soon.' : st.pass
-    ? (pieces < gold.length ? `Next piece at door ${gold[pieces].door}.` : 'The whole outfit is yours. Wear it from the Avatar tab.')
-    : `One piece every ${PIECE_EVERY} doors, ${gold.length} pieces in all. Doors you've already opened count.`;
+    ? (pieces < gold.length ? `Next piece: ${nameOf(gold[pieces].item)} at door ${gold[pieces].door}.` : 'The whole outfit is yours. Wear it from the Avatar tab.')
+    : 'Buy it any time: doors you already opened count.';
   const buy = $('#ssBuy'); buy.hidden = st.pass || !gold.length; if (st.pass || !st.guest) { const n = $('#ssBuyNote'); if (/^Sign in first/.test(n.textContent)) n.textContent = ''; }
   buy.textContent = `Get the pass · $${S.passPrice.toFixed(2)}`; buy.disabled = busy;
   tick();

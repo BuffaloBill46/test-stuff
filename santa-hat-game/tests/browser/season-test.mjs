@@ -48,6 +48,8 @@ const read = () => p.evaluate(() => ({
   goldHead: document.querySelector('#ssGoldHead').textContent, buyHidden: document.querySelector('#ssBuy').hidden, buyText: document.querySelector('#ssBuy').textContent,
   streak: document.querySelector('#ssStreak').textContent, reset: document.querySelector('#ssReset').textContent, side: document.querySelector('#pgSeason').textContent,
   accent: document.querySelector('#season').dataset.season,
+  how: [...document.querySelectorAll('.sshow li')].map((l) => l.textContent.trim()), outName: document.querySelector('#ssOutName').textContent, outfitImg: !!document.querySelector('#ssOutfit img'),
+  pieceNames: [...document.querySelectorAll('#ssGold li > span:not(.ssq)')].map((s) => s.textContent),
   overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth }));
 
 console.log('1. A guest: the real tasks and calendar, nothing opened, both reward tracks, the pass for sale');
@@ -57,6 +59,8 @@ check(JSON.stringify(v.tasks.map((t) => t[0])) === JSON.stringify(TASKS.map((t) 
 check(/Sign in to open doors/.test(v.note), 'tells a guest to sign in');
 check(v.cal.length === ALL.length && v.cal[IDX] === 'today' && v.cal.slice(0, IDX).every((c) => c === 'missed') && v.cal.slice(IDX + 1).every((c) => c === 'shut'), `${ALL.length} days, today (${DAY}) ringed, earlier days missed, later ones shut`);
 const [y, m, d] = ALL[0].split('-').map(Number); check(v.pads === new Date(Date.UTC(y, m - 1, d)).getUTCDay(), `the 1st sits under its weekday (${v.pads} blanks)`);
+check(v.how.length === 3 && /3 tasks/.test(v.how[0]) && /door opens/.test(v.how[1]) && /reward/.test(v.how[2]), 'how it works, in 3 steps: ' + v.how.join(' / '));
+check(v.outName === `The ${S.costume}` && v.outfitImg && v.pieceNames.length === S.gold.length && !v.pieceNames.includes('a costume piece'), `the pass preview: "${v.outName}", pieces ${v.pieceNames.join(', ')} (outfit picture: ${v.outfitImg})`);
 check(v.free.length === Object.keys(S.free).length && v.free.every((f) => f[1] && /^Door \d+$/.test(f[2])), `free looks with thumbnails and door numbers (${v.free.map((f) => f[2]).join(', ')})`);
 check(v.gold.length === S.gold.length && v.gold.map((g) => g[2]).join() === S.gold.map((_, i) => 'Door ' + (i + 1) * 3).join(), `the pass: ${S.gold.length} pieces at doors 3, 6, … (${v.gold.filter((g) => g[1]).length} with pictures)`);
 check(!v.buyHidden && v.buyText === 'Get the pass · $5.00' && /\$5\.00/.test(v.goldHead), `"${v.buyText}" (${v.goldHead})`);
@@ -75,8 +79,8 @@ check(/Finish all 3/.test(v.note), 'today not done yet: says what opens the door
 check(v.cal.slice(0, IDX).every((c) => c === 'open') && v.cal[IDX] === 'today', `opened days lit (${IDX})`);
 const looksEarned = Object.keys(S.free).filter((k) => +k <= opened.length).length, piecesEarned = Math.floor(opened.length / 3);
 check(v.free.filter((f) => f[0] === 'own' && f[2] === 'Yours').length === looksEarned, `earned looks marked Yours (${looksEarned})`);
-check(v.gold.filter((g) => g[0] === 'own').length === piecesEarned && v.goldHead.includes(`${piecesEarned} of ${S.gold.length} pieces`) && v.buyHidden, `pass owned: "${v.goldHead}", no buy button`);
-check(v.streak.includes(`${opened.length} door`) && v.streak.includes(`streak ${opened.length} day`), `"${v.streak.slice(0, 50)}"`);
+check(v.gold.filter((g) => g[0] === 'own').length === piecesEarned && v.goldHead.includes(`yours · ${piecesEarned} of ${S.gold.length} pieces`) && v.buyHidden, `pass owned: "${v.goldHead}", no buy button`);
+check(v.streak.includes(`${opened.length} door`) && v.streak.includes(`${opened.length} days in a row`), `"${v.streak.slice(0, 50)}"`);
 check(v.side.startsWith(S.name) && v.side.includes(`${opened.length} door`) && v.side.includes('pass'), `Player Progress line: "${v.side}"`);
 await p.screenshot({ path: 'out/season-signed-in.png', clip: await p.locator('#season').boundingBox() });
 
