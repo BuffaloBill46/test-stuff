@@ -3,7 +3,7 @@
 // Message plan (Supabase counts every delivery): the host sends snapshots on the room channel;
 // each player sends their moves on their own channel, which only the host listens to.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm';
-import { humanToken, resetHumanCheck } from './human.js?v=810de0dff9';
+import { humanToken, resetHumanCheck } from './human.js?v=ecda0eab50';
 
 const SB_URL = 'https://olganobdypnxfpmsxibe.supabase.co';
 const SB_KEY = 'sb_publishable_eLn_YYzLDOTuUAOTZLeyKQ_PLGT8B6N'; // publishable key: meant to be public
@@ -128,6 +128,8 @@ function refereeRoom(url, code, me, token, ranked = false, auto = null) {
       else if (m.t === 'counted') L.fire('counted', m.d); // my Auto match finish, recorded by the server
       else if (m.t === 'rank') L.fire('rank', m.d); // my ranked points change
       else if (m.t === 'closed') { left = true; L.fire('closed', m.why); } // the server closed the room (a ranked match is over)
+      else if (m.t === 'goto') L.fire('goto', m.code); // Auto match together: the group's seats are held in this public room
+      else if (m.t === 'err' && joined) L.fire('err', m.why); // a refusal while in the room (e.g. Auto match together)
       else if (m.t === 'err' && !joined) { left = true; clearTimeout(t); ws.close(); const e = new Error(m.why); e.why = m.why; reject(e); }
     };
     ws.onclose = () => { if (!joined) { clearTimeout(t); if (!left) reject(new Error('closed')); } else if (!left) L.fire('gone'); };
@@ -136,6 +138,7 @@ function refereeRoom(url, code, me, token, ranked = false, auto = null) {
       peers: () => peers, on: L.on,
       owner: () => own, code: () => at, // the room the server put us in (ranked: its pick) // the room's controls (mode, Start) belong to the earliest player still in it, by the server's clock
       start: () => send({ t: 'start' }), mode: (mode) => send({ t: 'mode', mode }),
+      together: (modes, styles) => send({ t: 'together', modes, styles }), // the host takes the friends' room into a public Auto match
       sendSnap() {}, setHost() {}, // the server is the referee
       sendRep: (r) => send({ t: 'rep', d: r }),
       sendEmote: (e) => send({ t: 'emote', d: e }),

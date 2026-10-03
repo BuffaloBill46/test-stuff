@@ -1,7 +1,7 @@
 // Snowball Drop preview page: draws the board and animates each drop along the path the rules already decided (plinko.js).
-import { PAYS, WAYS, TOTAL, JACKPOT_BIN, JP, payback, paybackAt, jackpotOdds, realWin, play } from './plinko.js?v=810de0dff9';
+import { PAYS, WAYS, TOTAL, JACKPOT_BIN, JP, payback, paybackAt, jackpotOdds, realWin, play } from './plinko.js?v=ecda0eab50';
 
-import { createBoard } from './plinkoboard.js?v=810de0dff9';
+import { createBoard } from './plinkoboard.js?v=ecda0eab50';
 
 const $ = (s) => document.querySelector(s);
 const cv = $('#board'), board = createBoard(cv);

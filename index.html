@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="810de0dff9">
+<html lang="en" data-build="ecda0eab50">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -252,6 +252,15 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 .walletline { margin: 6px 0 0; font-size: 14px; color: var(--dim); display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
 .walletline b { font: 700 15px/1.2 var(--digits); color: var(--lamp); font-variant-numeric: tabular-nums; } .walletline em { font-style: normal; color: var(--text); }
 .walletline button { background: none; border: 0; padding: 0; color: var(--frost); text-decoration: underline; font: inherit; cursor: pointer; }
+/* Play page: games waiting for players (online.js renderWaiting) */
+.waiting { margin-bottom: 14px; } .waiting h2 { margin: 0 0 10px; }
+#waitList { display: grid; gap: 8px; }
+#waitList .wg { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; padding: 8px 12px; background: var(--ink); border: 1px solid rgba(185,205,242,.14); }
+#waitList .wg b { font-size: 16px; } #waitList .wg span { grid-column: 1; font-size: 14px; color: var(--dim); }
+#waitList .wg .seats { font: 700 13px/1.2 var(--digits); color: var(--lamp); }
+#waitList .wg button { grid-column: 2; grid-row: 1 / 3; font-size: 20px; padding: 6px 18px; }
+#waitList p { margin: 0; } #waitList p button { margin-left: 8px; }
+#panel .together { margin: 10px 0; padding: 10px; border: 1px dashed rgba(185,205,242,.35); } #panel .together p { margin: 6px 0 0; font-size: 13px; } #panel .together .note { color: var(--lamp); }
 /* Games tab: jump buttons and the folded notes */
 .jumps { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
 .jumps button { font: 700 14px var(--body); color: var(--text); background: var(--plaque); border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); padding: 6px 12px; cursor: pointer; }
@@ -927,6 +936,11 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
   </section>
 
   <section id="tab-play" class="page" hidden role="tabpanel" aria-labelledby="t-play">
+    <!-- Games waiting for players (Cody, 2026-10-03): public Auto match rooms filling up right now, live, with Join -->
+    <section class="block plaque waiting" id="waiting" aria-label="Games waiting for players">
+      <h2>Games waiting for players</h2>
+      <div id="waitList" aria-live="polite"><p class="dim">Looking for games…</p></div>
+    </section>
     <div class="modes3">
       <article class="mode plaque fur">
         <h3>Unranked</h3><p class="tagline">Free · no sign-in needed</p>
@@ -1254,6 +1268,6 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 <div id="emotes" hidden></div>
 <div id="joy" hidden></div>
 <div id="zoom" hidden><button id="zoomIn" aria-label="Zoom in">+</button><button id="zoomOut" aria-label="Zoom out">−</button></div>
-<script type="module" src="./online.js?v=810de0dff9"></script>
+<script type="module" src="./online.js?v=ecda0eab50"></script>
 </body>
 </html>

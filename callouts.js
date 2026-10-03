@@ -23,6 +23,7 @@ export function createCallouts({ el, nameOf, banner }) {
   function onEvent(k, a, by, v) {
     if (k === 'intro' || k === 'round') { if (!counts || k === 'intro' || +a === 1) reset(true); return; }
     if (!counts) reset(false);
+    if (k !== 'end' && v && v.phase !== 'play') return; // the warm-up's goings-on aren't the match: no lines, no counts
     if (k === 'knock') { if (by) { add(counts.knocks, by); line(`${b(by, v)} knocked the hat off ${b(a, v)}`); } }
     else if (k === 'catch') { add(counts.catches, a); line(`${b(a, v)} caught the hat!`); }
     else if (k === 'grab') line(`${b(a, v)} grabbed the hat`);

@@ -1,26 +1,26 @@
 // Santa Hat Legends (the Snowball Square game): lobby, rooms, referee hand-off, smoothing, HUD.
-import './buildcheck.js?v=810de0dff9'; // first: the page and this code come from the same publish (buildcheck.js)
-import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo, Sparks, gearTick, GEAR_TINT, disposeTree } from './kit.js?v=810de0dff9';
-import { buildPlaza, makeHat, shadowBlob } from './plaza.js?v=810de0dff9';
-import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js?v=810de0dff9';
-import { openRoom, accounts, findWallet, gamesBoard } from './net.js?v=810de0dff9';
-import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js?v=810de0dff9';
-import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js?v=810de0dff9';
-import { initSeason, refreshSeason } from './seasonui.js?v=810de0dff9';
-import { initMoneyStrips, refreshBurned } from './moneystrip.js?v=810de0dff9';
-import { initWalletLines, refreshWallet } from './walletline.js?v=810de0dff9';
-import { createCoach } from './coach.js?v=810de0dff9';
-import { createCallouts } from './callouts.js?v=810de0dff9';
-import { TICKET_MAX } from './ranked.js?v=810de0dff9';
-import { levelInfo, clampLevel } from './levels.js?v=810de0dff9';
-import { SERVER, call, token as signInToken } from './gameserver.js?v=810de0dff9';
-import { SPECIALS, cantThrow } from './specials.js?v=810de0dff9';
-import { gearIn, effectsOf, heldWith, gearOfMask, statOf, RETIRED } from './gear.js?v=810de0dff9';
-import { initLottery } from './lotteryui.js?v=810de0dff9';
-import { play as sfx, initSoundButtons } from './sfx.js?v=810de0dff9';
-import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js?v=810de0dff9';
-import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js?v=810de0dff9';
-import { snapMs, autoStartMs, isPublic, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js?v=810de0dff9';
+import './buildcheck.js?v=ecda0eab50'; // first: the page and this code come from the same publish (buildcheck.js)
+import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo, Sparks, gearTick, GEAR_TINT, disposeTree } from './kit.js?v=ecda0eab50';
+import { buildPlaza, makeHat, shadowBlob } from './plaza.js?v=ecda0eab50';
+import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js?v=ecda0eab50';
+import { openRoom, accounts, findWallet, gamesBoard } from './net.js?v=ecda0eab50';
+import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js?v=ecda0eab50';
+import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js?v=ecda0eab50';
+import { initSeason, refreshSeason } from './seasonui.js?v=ecda0eab50';
+import { initMoneyStrips, refreshBurned } from './moneystrip.js?v=ecda0eab50';
+import { initWalletLines, refreshWallet } from './walletline.js?v=ecda0eab50';
+import { createCoach } from './coach.js?v=ecda0eab50';
+import { createCallouts } from './callouts.js?v=ecda0eab50';
+import { TICKET_MAX } from './ranked.js?v=ecda0eab50';
+import { levelInfo, clampLevel } from './levels.js?v=ecda0eab50';
+import { SERVER, call, token as signInToken } from './gameserver.js?v=ecda0eab50';
+import { SPECIALS, cantThrow } from './specials.js?v=ecda0eab50';
+import { gearIn, effectsOf, heldWith, gearOfMask, statOf, RETIRED } from './gear.js?v=ecda0eab50';
+import { initLottery } from './lotteryui.js?v=ecda0eab50';
+import { play as sfx, initSoundButtons } from './sfx.js?v=ecda0eab50';
+import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js?v=ecda0eab50';
+import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js?v=ecda0eab50';
+import { snapMs, autoStartMs, isPublic, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js?v=ecda0eab50';
 
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
@@ -195,6 +195,9 @@ async function enterRoom(code, quick, opts = {}) {
   room.on('counted', (d) => { if (profile && d && Number.isInteger(d.level)) { profile.level = d.level; profile.xp = d.xp; me.l = d.level; renderProgress(profile); } });
   room.on('rank', (d) => { if (d && Number.isFinite(d.change)) { rankNews = d; if (profile && Number.isFinite(d.points)) profile.rank_points = d.points; } });
   room.on('closed', (why) => { leaveRoom(); openLobby('ranked'); status(String(why || 'Match over.')); }); // the server ended a ranked room
+  // AUTO MATCH TOGETHER: the server held seats for this friends' room in a public room; everyone moves there (watchers keep watching)
+  room.on('goto', (code) => { const watching = !!me.w; leaveRoom(); enterRoom(code, false, watching ? { watch: true } : {}); banner('Off to a public match together'); });
+  room.on('err', (why) => { togetherNote = String(why || ''); ui.lastCard = ''; });
   room.on('gone', () => { leaveRoom(); status('Lost the connection to the game server. Try again.'); }); // referee server only
   room.peers().forEach((p) => names.set(p.id, cleanName(p.n) || 'Player'));
   rankNews = null;
@@ -208,7 +211,7 @@ async function enterRoom(code, quick, opts = {}) {
 // "Play again" starts the next one at once; a public Auto match starts its next match by itself (no button needed, Leave
 // offered); ranked closes the room, so "Play again" queues the next ranked match (1 ticket); a friends' room goes back to its
 // warm-up. A guest who placed top 3 in a public match is told what signing in would have kept.
-let againWanted = false;
+let againWanted = false, togetherNote = ''; // togetherNote: the last answer to Auto match together, shown in the warm-up card
 function endActions(v, sorted) {
   const secs = Math.ceil(v.time), place = sorted.findIndex((e) => e.peer === me.id) + 1;
   const nudge = !profile && !me.w && !practice && autoStart && !v.rk && place >= 1 && place <= 3
@@ -224,6 +227,7 @@ $('#panel').addEventListener('click', (e) => {
   if (act === 'again' && practice && sim) { againWanted = true; sim.S.time = 0; } // end → warm-up now, then straight into the next match
   else if (act === 'again-ranked') { leaveRoom(); enterRoom('', false, { ranked: true }); }
   else if (act === 'leave') leaveRoom();
+  else if (act === 'together' && room?.together) { togetherNote = 'Finding a public game with room for all of you…'; ui.lastCard = ''; room.together(autoModes, autoStyles); }
   else if (act === 'signin') $('#signin')?.click();
 });
 
@@ -252,7 +256,7 @@ function tryInPractice(kind) {
 }
 
 function leaveRoom(reason) {
-  againWanted = false; callouts.reset(false);
+  againWanted = false; togetherNote = ''; callouts.reset(false);
   endTrial();
   const was = roomCode;
   if (isHost) board.unpublish();
@@ -610,6 +614,7 @@ function renderChrome() {
     card = `<div class="eyebrow">Warm-up · run around, throw, grab the hat</div><h2>Snowball Square</h2>${share}
       <ul class="roster">${roster}</ul><p class="dim">${bots ? `${bots} elf bot${bots > 1 ? 's' : ''} fill empty spots.` : ''} Up to 8 players.</p>
       ${canRun() && !me.w ? `<div class="modes" role="radiogroup" aria-label="Match mode"><button data-mode="ffa" aria-checked="${v.mode === 'ffa'}" role="radio">Everyone vs the hat</button>${TEAM_PAUSED ? '' : `<button data-mode="team" aria-checked="${v.mode === 'team'}" role="radio">Nice vs Naughty</button>`}</div>
+      ${room?.kind === 'server' ? `<div class="together"><button class="sec" data-act="together">Auto match together</button><p class="dim">Take everyone here into a public match (bots and other players fill it up). Public matches count for levels and daily tasks; this room's matches don't.</p>${togetherNote ? `<p class="note">${esc(togetherNote)}</p>` : ''}</div>` : ''}
       <button class="go" id="start">Start match</button>` : `<p class="wait">Mode: <b>${v.mode === 'team' ? 'Nice vs Naughty' : 'Everyone vs the hat'}</b>. Waiting for the referee to start…</p>`}`;
   } else if (v.phase === 'intro') {
     loadStats(v);
@@ -862,6 +867,27 @@ async function showTickets(ranked) {
 }
 // ---------- lobbies: Unranked (FFA / TEAM) and FFA RANKED, each with a live games list and Watch now
 let stopBoard = null;
+// GAMES WAITING FOR PLAYERS (Cody, 2026-10-03) on the Play page: public Auto match rooms (not ranked) still in their waiting
+// room, with someone in them and a free seat (seats held for a friends' group count as taken). Live while the Play page shows.
+let stopWait = null;
+function renderWaiting(list = []) {
+  const el = $('#waitList'); if (!el) return;
+  const wait = list.filter((g) => !g.ranked && g.phase === 'lobby' && isPublic(cleanCode(g.code)) && (Number(g.humans) || 0) > 0 && (g.free ?? K.MAX_HUMANS - (Number(g.humans) || 0)) > 0)
+    .sort((a, b) => (Number(b.humans) || 0) - (Number(a.humans) || 0));
+  el.innerHTML = wait.length ? wait.map((g) => `<div class="wg"><b>${g.mode === 'team' ? 'Nice vs Naughty' : 'Free-for-all'} · ${(g.style || 'gear') === 'normal' ? 'Normal play' : 'Special gear'}</b>
+      <span><em class="seats">${Number(g.humans) || 0}/${K.MAX_HUMANS}</em> players · ${Number.isFinite(g.starts) && g.starts !== null ? `starts in ${g.starts}s` : 'waiting for more'}</span>
+      <button class="go" data-join="${esc(cleanCode(g.code))}">Join</button></div>`).join('')
+    : '<p class="dim">Nobody is waiting right now. <button class="sec" data-act-start>Start one</button> and others will join you.</p>';
+}
+function watchWaiting(on) {
+  if (on && !stopWait) board.watch(renderWaiting).then((stop) => { if (stopWait === 'pending') stopWait = stop; else stop(); }).catch(() => { $('#waitList').innerHTML = '<p class="dim">Could not load the waiting games right now.</p>'; });
+  if (on && !stopWait) stopWait = 'pending';
+  if (!on && stopWait) { if (typeof stopWait === 'function') stopWait(); stopWait = null; }
+}
+$('#waitList').addEventListener('click', (e) => {
+  const j = e.target.closest('[data-join]'); if (j) return enterRoom(j.dataset.join);
+  if (e.target.closest('[data-act-start]')) { openLobby('unranked'); $('#quick').click(); }
+});
 function openLobby(kind) {
   lobbyKind = kind; const ranked = kind === 'ranked';
   $('#lobbyEyebrow').textContent = ranked ? 'Ranked · 1 ticket · sign-in needed' : 'Unranked · free';
@@ -946,9 +972,10 @@ const app = {
   get theme() { return theme; }, setTheme,
   onTab: (tab) => {
     ui.lastBoard = '';
+    watchWaiting(tab === 'play'); // the Play page's waiting games, live only while it shows
     if (tab === 'store' || tab === 'games') refreshBurned(); // the money strip's burned-so-far (kept a minute)
     if (tab === 'games') refreshWallet(true); // my wallet under the games
-    if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js?v=810de0dff9')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
+    if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js?v=ecda0eab50')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
   },
 };
 let gamesMod = null; // Games tab code loads the first time it's opened

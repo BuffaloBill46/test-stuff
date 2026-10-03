@@ -20,8 +20,8 @@
 // POOL: Stocking Stuffer plays from the shared Game pool (SPIN_RULES = slots.js POOL_RULES). A turn only starts if the pool
 // covers the biggest FIXED prize (50×: $50 on a $1 turn); the top-off ($200 → $500) always does, so turns are never refused
 // for lack of pool. The jackpot is a share of the pool, so it can always be paid.
-import { SPIN_RULES, topOff } from './spin.js?v=810de0dff9';
-import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot } from './slots.js?v=810de0dff9';
+import { SPIN_RULES, topOff } from './spin.js?v=ecda0eab50';
+import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot } from './slots.js?v=ecda0eab50';
 
 export const BOARD = 2; // results carry it, so "Check this result" re-runs the layout the turn was played on
 export const STOCKINGS = 20, ROW = 10, MAX_OPEN = 8;
