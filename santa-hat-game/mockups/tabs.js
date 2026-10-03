@@ -255,12 +255,26 @@ export function initTabs(app) {
   }
   $('#signin').addEventListener('click', () => { linkBox = null; openAcct(); });
   $('#acctClose').addEventListener('click', () => { $('#acct').hidden = true; });
+  // OPEN IN A WALLET APP (TEST_PLAN finding, 2026-10-02): a phone's normal browser (Chrome, Safari) has no Solana wallet, and
+  // most players are on phones. The wallet apps' own "browse" links open THIS page (with its ?server= etc.) inside their app,
+  // where the wallet is: Phantom (docs.phantom.com, browse deeplink) and Solflare. Shown on touch screens with no wallet found,
+  // and after any "no wallet" sign-in.
+  const walletApps = (always) => {
+    const box = $('#walletBtn')?.parentElement; if (!box || box.querySelector('.walletapps')) return;
+    if (!always && (app.hasWallet?.() || !matchMedia('(pointer: coarse)').matches)) return;
+    const here = encodeURIComponent(location.href), ref = encodeURIComponent(location.origin), div = document.createElement('div');
+    div.className = 'row walletapps';
+    div.innerHTML = `<a class="sec" style="text-decoration:none" href="https://phantom.com/ul/browse/${here}?ref=${ref}">Open in Phantom</a><a class="sec" style="text-decoration:none" href="https://solflare.com/ul/v1/browse/${here}?ref=${ref}">Open in Solflare</a>`;
+    box.append(div);
+  };
+  setTimeout(() => walletApps(false), 1500); // wallets announce themselves a moment after the page loads
   $('#walletBtn').addEventListener('click', async () => {
     const btn = $('#walletBtn'); btn.disabled = true; acctMsg('Check your wallet to approve the sign-in…');
     try { await app.accounts.signIn(); await afterAuth(); if (!$('#acctMsg').textContent.startsWith('Linked') && !$('#acctMsg').textContent.startsWith("Couldn't")) $('#acct').hidden = true; }
     catch (e) {
+      if (e.message === 'NO_WALLET') walletApps(true);
       acctMsg(e.message === 'NO_WALLET'
-        ? "No Solana wallet found. Install Phantom, or on a phone open this page inside the Phantom app's browser, then try again."
+        ? "No Solana wallet found in this browser. On a phone, tap Open in Phantom (or Solflare) below to play inside the wallet app; on a computer, install Phantom and try again."
         : `Sign-in didn't finish: ${e.message}`);
     } finally { btn.disabled = false; }
   });
