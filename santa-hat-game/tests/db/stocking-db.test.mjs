@@ -1,8 +1,9 @@
 // Stocking Stuffer through the REAL server code (server/games.js) on real Postgres (PGlite) with the project's SQL + 025:
 // quote → pay (a finalized-transaction stand-in) → buy a run → settle each turn → ONE payout at the end; every turn re-checks
-// to the same stockings; money lands in the Drop pool; the payout cap is 250× the turn (a real all-8-gifts win is never
-// frozen, an impossible amount is); $1 turns are refused up front while the Drop pool is between $100 and $250 (the open
-// question for Cody); a published pay table is used by new turns and by their re-checks. Without 025 the database refuses
+// to the same stockings (board 2: 9 gifts); money lands in the shared Game pool; the payout cap is each turn's own most (50×,
+// or a pool jackpot's recorded share), so a real jackpot is never frozen and an impossible amount is; a board-1 turn from
+// before keeps its 250× cap and re-checks on 8 gifts; $1 turns are never refused for lack of pool (the top-off covers 50×);
+// a published pay table is used by new turns and by their re-checks. Without 025 the database refuses
 // the new kind; 025 can be run twice.
 // REALPG=1: the same steps on a throwaway REAL Postgres server (realpg.mjs; in WSL on Windows), else PGlite.
 import assert from 'node:assert/strict';
@@ -48,10 +49,10 @@ console.log(REAL ? 'on a REAL Postgres server' : 'on PGlite');
   await assert.rejects(db.query(`insert into public.quotes (profile_id, kind, n, bet, usd, santa_raw, price_usd) values ($1, 'stockings', 1, 1, 1, 1, 1)`, [me]), /quotes_kind_check/, 'a made-up kind is still refused');
   console.log('025: needed (the database refused the kind before it), idempotent, keeps the old kinds'); }
 
-const db = await makeDb([...FILES, '025_stocking.sql']);
+const db = await makeDb([...FILES, '025_stocking.sql']); // FILES includes 026 (one shared Game pool)
 const one = async (q, p) => (await db.query(q, p))[0];
 const me = await db.player(PLAYER);
-await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', $1, '{}'), ('slots', $2, '{}')`, [raw(300), raw(500)]);
+await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', $1, '{}'), ('slots', $2, '{}')`, [raw(500), raw(500)]); // the Game pool starts at $500
 const server = mkServer(db);
 const pool = async (g) => +(await one('select santa_raw from public.pools where game = $1', [g])).santa_raw;
 let sigN = 0;
@@ -62,7 +63,7 @@ async function buyRun(kind, n, bet, srv = server) {
 }
 
 // 1. The cap: the most one turn can pay is all 8 gifts, 250× the turn, from the prize table the play ran on.
-assert.equal(maxPerPlay(build(DEFAULT_SETTINGS), 'stocking', 1), 250); assert.equal(maxPerPlay(build(DEFAULT_SETTINGS), 'stocking', 0.1), 25);
+assert.equal(maxPerPlay(build(DEFAULT_SETTINGS), 'stocking', 1), 50); assert.equal(maxPerPlay(build(DEFAULT_SETTINGS), 'stocking', 0.1), 5); // 7 gifts, 50× (8 = the pool jackpot, capped by its own share)
 assert.match((await server.quote(me, 'stocking', 1, 0.37)).error, /size/, 'only 10¢ or $1');
 assert.match((await server.quote(me, 'stocking', 101, 1)).error, /1 to 100/);
 
@@ -76,9 +77,9 @@ for (const bet of [0.1, 1]) {
     const s = await server.settle(me, p.ticket, newSeed(16)); assert.ok(s.r, JSON.stringify(s));
     assert.equal(s.proof.commit, p.commit, 'the fingerprint locked at purchase');
     const c = await check(s.proof, build(DEFAULT_SETTINGS)); assert.ok(c.matches);
-    assert.deepEqual([c.outcome.opened, c.outcome.coal, c.outcome.found, c.outcome.mult], [s.r.opened, s.r.coal, s.r.found, s.r.mult], 'the re-check opens the same stockings');
+    assert.deepEqual([c.outcome.opened, c.outcome.coal, c.outcome.found, c.outcome.mult ?? s.r.mult, !!c.outcome.jackpot, s.proof.board], [s.r.opened, s.r.coal, s.r.found, s.r.mult, !!s.r.jackpot, 2], 'the re-check opens the same stockings (board 2)');
     const row = await one('select result, pay, pay_raw from public.plays where id = $1', [p.ticket]);
-    assert.deepEqual([row.result.found, row.result.mult, row.result.opened], [s.r.found, s.r.mult, s.r.opened], 'the database keeps what was opened');
+    assert.deepEqual([row.result.found, row.result.mult, row.result.opened, row.result.board], [s.r.found, s.r.mult, s.r.opened, 2], 'the database keeps what was opened, and on which board');
     assert.ok(Math.abs(+row.pay_raw - raw(s.r.pay)) <= 1, 'SANTA paid = the exact prize at the locked price (17.5¢ is not rounded first)');
     expect += s.poolDelta; wonRaw += s.payRaw; assert.equal(await pool('spin'), expect);
     if (i < 9) assert.equal(s.runDone, undefined, 'nothing sent mid-run');
@@ -87,59 +88,76 @@ for (const bet of [0.1, 1]) {
   if (wonRaw) assert.deepEqual([+po.amount_raw, po.status], [wonRaw, 'queued'], 'ONE payout of the whole run'); else assert.equal(po, undefined);
 }
 
-// 3. A real top win is never frozen; an amount no turn can pay is. A $1 run of 2: one turn is made an all-8-gifts win (250×)
-//    after it settles, as if it had happened; the run's payout ($250 + the other turn) is queued. Then $600 from one $1 turn
-//    (impossible: more than 250×) is held for Cody.
-for (const [label, fake, want] of [['all 8 gifts', 250, 'queued'], ['an impossible $600', 600, 'held']]) {
+// 3. A real top win is never frozen; an amount no turn can pay is. $1 runs of 2: one turn is made a given result after it
+//    settles, as if it had happened. A pool jackpot of 25% of the $1,000 pool it recorded ($250) and a 7-gift 50× ($50) are
+//    queued; more than the run could pay (the cap is per run: each turn's own most, summed) is held for Cody.
+for (const [label, patch, fake, want] of [
+  ['a pool jackpot (25% of a $1,000 pool)', { found: 8, jackpot: true, pool: 1000, pct: 0.25, board: 2 }, 250, 'queued'],
+  ['7 gifts, 50×', { found: 7, mult: 50, board: 2 }, 50, 'queued'],
+  ['a jackpot more than its pool share + the other turn could pay ($301)', { found: 8, jackpot: true, pool: 1000, pct: 0.25, board: 2 }, 301, 'held'],
+  ['an impossible fixed $101 (two turns can pay at most 2 × 50×)', { found: 7, mult: 101, board: 2 }, 101, 'held']]) {
   const b = await buyRun('stocking', 2, 1);
   await server.settle(me, b.plays[0].ticket, newSeed(16));
-  await db.query(`update public.plays set pay = $2, pay_raw = $3, result = result || '{"found": 8, "mult": 250}' where id = $1`, [b.plays[0].ticket, fake, raw(fake)]);
+  await db.query(`update public.plays set pay = $2, pay_raw = $3, result = result - 'mult' || $4::jsonb where id = $1`, [b.plays[0].ticket, fake, raw(fake), JSON.stringify(patch)]);
   const last = await server.settle(me, b.plays[1].ticket, newSeed(16)); assert.equal(last.runDone, true);
   const po = await one('select status, amount_usd from public.payouts where run_id = $1', [b.run]);
-  assert.equal(po.status, want, `${label}: ${want} (run cap 2 × 250 × $1 = $500)`);
-  if (want === 'queued') await db.query(`update public.pools set santa_raw = $1 where game = 'spin'`, [raw(600)]); // put the pool back for the next steps
+  assert.equal(po.status, want, `${label}: ${want}`);
+  await db.query(`update public.pools set santa_raw = $1 where game = 'spin'`, [raw(600)]); // put the pool back for the next steps
 }
+// A turn played on BOARD 1 before the change (no board in its result; all 8 gifts = 250×) in a run that finishes after it: its
+// own board's cap (250×) applies, so it is queued, not frozen; and it re-checks on board 1's 8 gifts.
+{ const { directRun } = await import('./setup.mjs'), r = await directRun(db, me, 'stocking', 2, 1);
+  const s1 = await server.settle(me, r.tickets[0], newSeed(16));
+  await db.query(`update public.plays set pay = 250, pay_raw = $2, result = (result - 'board' - 'jackpot' - 'pool' - 'pct') || '{"found": 8, "mult": 250}' where id = $1`, [r.tickets[0], raw(250)]);
+  await server.settle(me, r.tickets[1], newSeed(16));
+  assert.equal((await one('select status from public.payouts where run_id = $1', [r.run])).status, 'queued', 'a board-1 250× win is never frozen');
+  const c = await check({ ...s1.proof, board: undefined }, build(DEFAULT_SETTINGS));
+  assert.equal(c.outcome.board, 1); assert.equal(c.outcome.gifts.filter(Boolean).length, 8, 'board-1 turns re-check on 8 gifts'); assert.equal(c.outcome.mult, [0, 0.5, 2.5, 6, 10, 20, 40, 90, 250][c.outcome.found], 'and Cody\'s board-1 table');
+  await db.query(`update public.pools set santa_raw = $1 where game = 'spin'`, [raw(600)]); }
 
-// 4. Cody's open question, as the server enforces it today: a $1 turn needs $250 in the Drop pool; between $100 and $250 it is
-//    refused BEFORE any payment (below $100 the top-off to $300 comes first). 10¢ turns still sell.
+// 4. The cover rule on ONE Game pool (Cody, 2026-10-02): a $1 turn needs $50 (its 50× top fixed prize); the top-off point ($200 →
+//    $500) is above it, so a turn is never refused for lack of pool. Refused before any payment only if the top-off is set lower.
 await db.query(`update public.pools set santa_raw = $1 where game = 'spin'`, [raw(200)]);
-assert.deepEqual(await server.quote(me, 'stocking', 1, 1), { refused: true, stopped: false }, 'a $200 pool refuses a $1 turn (it could not cover 250×)');
+assert.ok((await server.quote(me, 'stocking', 1, 1)).id, 'a $200 pool sells a $1 turn (was refused under the 250× table)');
+await db.query(`update public.pools set santa_raw = $1 where game = 'spin'`, [raw(60)]);
+assert.ok((await server.quote(me, 'stocking', 1, 1)).id, 'a $60 pool is topped up to $500 first, so a $1 turn sells');
+assert.ok((await server.quote(me, 'big', 1, 1)).id && (await server.quote(me, 'drop', 1, 1)).id, 'and Big Hat and Snowball Drop sell from the same pool');
+await db.query(`update public.pools set santa_raw = $1, rules = '{"topOffBelow": 10, "topOffTo": 30}' where game = 'spin'`, [raw(40)]);
+assert.deepEqual(await server.quote(me, 'stocking', 1, 1), { refused: true, stopped: false }, 'with a lowered top-off, a $40 pool refuses a $1 turn (it could not cover 50×)');
 assert.ok((await server.quote(me, 'stocking', 1, 0.1)).id, 'a 10¢ turn still sells');
-assert.ok((await server.quote(me, 'drop', 1, 1)).id, 'and a $1 Snowball Drop (100×) still sells from the same pool');
-await db.query(`update public.pools set santa_raw = $1 where game = 'spin'`, [raw(99)]);
-assert.ok((await server.quote(me, 'stocking', 1, 1)).id, 'a $99 pool is topped up to $300 first, so a $1 turn sells');
 await db.query(`update public.pools set santa_raw = $1, rules = '{"paused": true}' where game = 'spin'`, [raw(600)]);
 assert.deepEqual(await server.quote(me, 'stocking', 1, 0.1), { refused: true, stopped: true }, 'the emergency stop stops it');
 await db.query(`update public.pools set rules = '{}' where game = 'spin'`);
 
-// 5. A pay table Cody publishes (settings version 1: 1 gift pays 0.6× instead of 0.5×) is used by new turns, by the cap, and by
-//    their re-checks (on the version each turn ran on).
-{ const v1 = structuredClone(DEFAULT_SETTINGS); delete v1.version; v1.stocking.pays = [0, 0.6, 1.75, 4, 8, 16, 40, 90, 200];
+// 5. A pay table Cody publishes (settings version 1: 1 gift pays 0.6× instead of 0.5×, 7 gifts 40×) is used by new turns, by the
+//    cap, and by their re-checks (on the version each turn ran on).
+{ const v1 = structuredClone(DEFAULT_SETTINGS); delete v1.version; v1.stocking2.pays = [0, 0.6, 1.5, 3, 7, 15, 25, 40];
   await db.query(`insert into public.game_settings (version, settings, by_wallet, nonce, message, signature) values (1, $1, 'codyAdmin', 'n1', 'm', 's')`, [JSON.stringify(v1)]);
   const srv = mkServer(db), b = await buyRun('stocking', 30, 0.1, srv);
   let ones = 0;
   for (const p of b.plays) {
     const s = await srv.settle(me, p.ticket, newSeed(16));
-    assert.equal(s.proof.settingsVersion, 1); assert.equal(s.r.mult, v1.stocking.pays[s.r.found], 'paid on the published table');
-    const c = await check(s.proof, build(v1)); assert.equal(c.outcome.mult, s.r.mult, 're-checks on the table it ran on');
+    assert.equal(s.proof.settingsVersion, 1); if (!s.r.jackpot) assert.equal(s.r.mult, v1.stocking2.pays[s.r.found], 'paid on the published table');
+    const c = await check(s.proof, build(v1)); assert.equal(c.outcome.mult ?? s.r.mult, s.r.mult, 're-checks on the table it ran on');
     if (s.r.found === 1) { ones++; assert.ok(Math.abs(s.r.pay - 0.06) < 1e-12, '1 gift now 6¢'); }
   }
   assert.ok(ones > 0, 'at least one 1-gift turn in 30 (75% chance each to miss: 1 in 5,600 to fail)');
-  assert.equal(maxPerPlay(build(v1), 'stocking', 1), 200, 'the cap follows the published top prize'); }
+  assert.equal(maxPerPlay(build(v1), 'stocking', 1), 40, 'the cap follows the published top fixed prize'); }
 
 // 6. The public winners list names the game and the gifts, never a wallet.
 const w = (await server.winners()).filter((x) => /^stock/.test(x.game));
-assert.ok(w.every((x) => (x.game === 'stock10' || x.game === 'stock100') && / gifts · /.test(x.note) && x.gainPct > 0), JSON.stringify(w.slice(0, 2)));
+assert.ok(w.every((x) => (x.game === 'stock10' || x.game === 'stock100') && (/ gifts · /.test(x.note) || x.note === 'pool jackpot') && x.gainPct > 0), JSON.stringify(w.slice(0, 2)));
+assert.ok(w.some((x) => x.note === 'pool jackpot' && x.amount === 250), 'the pool jackpot winner is listed at its amount');
 assert.ok(!JSON.stringify(w).includes('wa11et'));
 // every winner is shown at its EXACT prize (multiple × the turn), not the database's rounded cents (half-cent prizes like
 // 1.75 × 10¢ = 17.5¢ under a published table); checked on every win, never on an empty list (it once filtered on a prize the
 // table no longer had, which passed with nothing checked)
 assert.ok(w.length > 0, 'there are stocking winners to check');
-for (const x of w) { const mult = +/ ([\d.]+)×/.exec(x.note)[1], bet = x.game === 'stock100' ? 1 : 0.1;
+for (const x of w.filter((x) => x.note !== 'pool jackpot')) { const mult = +/ ([\d.]+)×/.exec(x.note)[1], bet = x.game === 'stock100' ? 1 : 0.1;
   assert.ok(Math.abs(x.amount - mult * bet) < 1e-12 && Math.abs(x.gainPct - (mult - 1) * 100) < 1e-6, 'winner shown at the exact prize: ' + JSON.stringify(x)); }
 // every finished run paid exactly its plays' total
 const bad = await db.query(`select r.id from public.runs r left join public.payouts po on po.run_id = r.id
   where r.paid_at is not null and coalesce(po.amount_raw, 0) <> (select coalesce(sum(pay_raw), 0) from public.plays where run_id = r.id)`);
 assert.equal(bad.length, 0);
 for (const s of servers) await s.stop();
-console.log(`OK: Stocking Stuffer on ${REAL ? 'a REAL Postgres server' : 'real Postgres (PGlite)'}: quote → pay → buy → settle (10¢ and $1 runs), every turn re-checked, Drop pool exact, ONE payout per run; cap 250× ($250 win queued, $600 held); $1 refused at a $200 pool, sold at $99 (top-off) ; published pay table used and re-checked; winners list ${w.length} stocking wins`);
+console.log(`OK: Stocking Stuffer on ${REAL ? 'a REAL Postgres server' : 'real Postgres (PGlite)'}: quote → pay → buy → settle (10¢ and $1 runs), every turn re-checked, Game pool exact, ONE payout per run; caps: a $250 pool jackpot and a 50× queued, impossible amounts held, a board-1 250× queued and re-checked on 8 gifts; $1 sold at $200 and $60 (top-off), refused only under a lowered top-off; published pay table used and re-checked; winners list ${w.length} stocking wins`);

@@ -18,7 +18,7 @@ await pg.exec(`
   create table auth.identities (id uuid primary key default gen_random_uuid(), provider_id text, user_id uuid references auth.users, identity_data jsonb,
     provider text, last_sign_in_at timestamptz, created_at timestamptz default now(), updated_at timestamptz default now(), email text);
   create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.uid', true), '')::uuid $$;`);
-for (const f of ['001_profiles.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '014_run_sizes.sql']) await pg.exec(readFileSync(new URL(`../../supabase/${f}`, import.meta.url), 'utf8'));
+for (const f of ['001_profiles.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '014_run_sizes.sql', '026_shared_pool.sql']) await pg.exec(readFileSync(new URL(`../../supabase/${f}`, import.meta.url), 'utf8'));
 const db = { query: async (q, p) => (await pg.query(q, p)).rows, tx: (fn) => pg.transaction((t) => fn({ query: async (q, p) => (await t.query(q, p)).rows })) };
 const one = async (q, p) => (await db.query(q, p))[0];
 
@@ -27,7 +27,8 @@ const POOLS = { spin: 'SPINpoo1wa11et11111111111111111111111111111', slots: 'SLO
 const FEE = { bps: 300, max: 1e15 }; let PRICE = 0.0008508; // changes mid-test: the pools float with it
 const mk = async (wallet) => { const id = (await one('insert into auth.users default values returning id')).id; await db.query(`insert into public.profiles (id, wallet, name, avatar) values ($1, $2, 'P', '{}')`, [id, wallet]); return id; };
 const me = await mk(PLAYER), them = await mk(OTHER);
-const START = { spin: Math.round(300 / PRICE * 1e6), slots: Math.round(500 / PRICE * 1e6) }; // $300 (Drop board 2 start) / $500 of SANTA at today's price
+// ONE GAME POOL (Cody, 2026-10-02): the 'spin' row is the shared pool every game plays from ($500 start); the old 'slots' row keeps its $500 untouched (no game routes to it: asserted below)
+const START = { spin: Math.round(500 / PRICE * 1e6), slots: Math.round(500 / PRICE * 1e6) };
 await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', $1, '{}'), ('slots', $2, '{}')`, [START.spin, START.slots]);
 
 // Finalized transactions the stand-in chain returns (shaped like Solana's getTransaction jsonParsed).
@@ -46,7 +47,7 @@ const payoutOf = async (run) => one('select * from public.payouts where run_id =
 let sigN = 0;
 async function buyRun(who, wallet, kind, n, bet) {
   const q = await server.quote(who, kind, n, bet); assert.ok(q.id, JSON.stringify(q));
-  const sig = S('Run' + 'abcdefghjkmnpqrstuvwxyz'[sigN % 23] + (sigN++)); pay(sig, { from: wallet, to: POOLS[kind === 'big' ? 'slots' : 'spin'], total: q.santaRaw });
+  const sig = S('Run' + 'abcdefghjkmnpqrstuvwxyz'[sigN % 23] + (sigN++)); assert.equal(q.pool, POOLS.spin, kind + ' is paid into the shared Game pool wallet'); pay(sig, { from: wallet, to: POOLS.spin, total: q.santaRaw });
   const b = await server.buy(who, q.id, sig); assert.ok(b.ok, JSON.stringify(b)); return { ...b, q };
 }
 const settleAll = async (who, b) => { const out = []; for (const p of b.plays) out.push(await server.settle(who, p.ticket, newSeed(16))); return out; };
@@ -103,16 +104,20 @@ const others = [];
 // fake wallet addresses must be valid base58: no 0, O, I or l
 for (let i = 0; i < 10; i++) { const w = 'PLAYR' + 'abcdefghjk'[i].repeat(3) + 'wa11et'.padEnd(34, '1'); others.push([await mk(w), w]); }
 const bought = []; for (const [id, w] of others) bought.push(await buyRun(id, w, 'big', 1, 1));
-const startSlots = await pool('slots');
+const startShared = await pool('spin');
 const settled = await Promise.all(bought.map((x, i) => server.settle(others[i][0], x.plays[0].ticket, newSeed(16))));
-assert.equal(await pool('slots'), startSlots + settled.reduce((a, x) => a + x.poolDelta, 0), 'settles at the same time: every SANTA movement counted');
+assert.equal(await pool('spin'), startShared + settled.reduce((a, x) => a + x.poolDelta, 0), 'settles at the same time: every SANTA movement counted, in the shared Game pool');
+assert.equal(await pool('slots'), START.slots, 'Big Hat no longer touches the old Slots pool (buys or settles)');
+{ // a Big Hat payment sent to the OLD Slots wallet is refused (the quote names the Game pool wallet)
+  const who = await mk('B1GCHEATwa11et1111111111111111111111111111'), q3 = await server.quote(who, 'big', 1, 1);
+  pay(S('OldSlots'), { from: 'B1GCHEATwa11et1111111111111111111111111111', to: POOLS.slots, total: q3.santaRaw }); assert.match((await server.buy(who, q3.id, S('OldSlots'))).error, /pool received/); }
 assert.ok(settled.every((x) => x.runDone), 'a run of 1 is done after its play');
 
 // Snowball Drop runs at both sizes, paid into the Spin pool; each re-checks.
 for (const bet of [0.1, 1]) {
-  const d = await buyRun(me, PLAYER, 'drop', 5, bet); assert.equal(d.q.pool, POOLS.spin, 'Snowball Drop pays the Spin pool');
+  const d = await buyRun(me, PLAYER, 'drop', 5, bet); assert.equal(d.q.pool, POOLS.spin, 'Snowball Drop pays the shared Game pool');
   const out = await settleAll(me, d);
-  for (const s of out) { assert.equal(s.proof.bet, bet); const c = await check(s.proof); assert.deepEqual([c.outcome.path, c.outcome.mult], [s.r.path, s.r.mult]); }
+  for (const s of out) { assert.equal(s.proof.bet, bet); const c = await check(s.proof); assert.deepEqual([c.outcome.path, c.outcome.mult ?? s.r.mult, !!c.outcome.jackpot], [s.r.path, s.r.mult, !!s.r.jackpot]); assert.equal(s.proof.board, 3, 'played on board 3'); }
   assert.ok(out.at(-1).runDone);
 }
 
@@ -122,7 +127,7 @@ for (const bet of [0.1, 1]) {
   PRICE /= 2;
   assert.equal(await pool('spin'), rawBefore, 'a price move changes no balance');
   const { jackpotAmount } = await import('../../mockups/slots.js');
-  console.log(`price halved: Spin pool now worth $${(rawBefore / 1e6 * PRICE).toFixed(2)} (was $${usdBefore.toFixed(2)}); Slots pool jackpot now about $${jackpotAmount('big', (await pool('slots')) / 1e6 * PRICE).toFixed(2)}`);
+  console.log(`price halved: Spin pool now worth $${(rawBefore / 1e6 * PRICE).toFixed(2)} (was $${usdBefore.toFixed(2)}); Big Hat's pool jackpot now about $${jackpotAmount('big', (await pool('spin')) / 1e6 * PRICE).toFixed(2)}`);
   const x = await buyRun(me, PLAYER, 'spin', 1, 1);
   assert.equal(x.q.santaRaw, Math.round(1 / PRICE * 1e6), 'a $1 spin now costs twice the SANTA');
   const [ss] = await settleAll(me, x);
