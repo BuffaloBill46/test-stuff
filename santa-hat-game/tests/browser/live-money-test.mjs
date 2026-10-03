@@ -29,6 +29,7 @@ async function player(n) {
   const p = await ctx.newPage(), errors = [];
   p.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   p.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text().slice(0, 200)); });
+  p.on('response', async (r) => { if (r.status() >= 400) say(`HTTP ${r.status()} ${r.request().method()} ${r.url().slice(0, 120)} ${r.request().postData()?.slice(0, 80) || ''} → ${(await r.text().catch(() => '')).slice(0, 160)}`); });
   const shot = (name) => p.screenshot({ path: `${OUT}P${n}-${name}.png` }).catch(() => {});
   const txt = (sel) => p.locator(sel).first().textContent().then((t) => t.trim(), () => '');
   const tap = async (sel) => { const l = p.locator(sel).first(); await l.scrollIntoViewIfNeeded().catch(() => {}); if (phone) await l.tap(); else await l.click(); };
@@ -115,7 +116,9 @@ async function player(n) {
   await p.evaluate(() => document.querySelector('#slots').scrollIntoView({ block: 'start' })); await p.waitForTimeout(500);
   await tap('#slots [data-run="1"]');
   if (await buy('slots', 'Big Hat 1 pull')) {
-    const done = await p.waitForFunction(() => !window.__slots.busy, null, { timeout: 300000 }).then(() => true, () => false);
+    // the pull starts only once the payment is final and accepted (busy is still false while it finalizes)
+    await p.waitForFunction(() => window.__slots.busy || /back|no win/.test(document.querySelector('#slots .res').textContent), null, { timeout: 180000 }).catch(() => {});
+    const done = await p.waitForFunction(() => !window.__slots.busy && /back|no win/.test(document.querySelector('#slots .res').textContent), null, { timeout: 300000 }).then(() => true, () => false);
     check(done, `Big Hat finished: "${await txt('#slots .res')}"`);
     await shot('slots-done');
   }

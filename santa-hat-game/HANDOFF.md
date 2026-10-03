@@ -189,6 +189,10 @@ between two devices has never been tested from here. Cody and friends testing on
   - Money soak test with more players.
   - Security review.
   - Delete `ping`.
+  - Before mainnet, give the page its own Solana node address, e.g. a Helius key locked to santahatgames.com.
+    - Why: the page checks that a payment is confirmed by asking a FREE public Solana node from the player's browser.
+    - What happened: with 5 fake players on one connection, that node answered "too many requests" hundreds of times.
+      Nothing was lost; payments were just slower.
 - **Waiting on Cody:** reopening ranked (still paused: /etc/santa/ranked-paused), the Telegram bot.
 
 ### Costumes (2026-10-02, built by a helper Claude on a worktree branch; 029 applied and published 2026-10-03)
