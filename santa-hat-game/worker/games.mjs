@@ -25,6 +25,7 @@ import { createLottery } from '../server/lottery.js';
 import { createShop } from '../server/shop.js';
 import { createAlerts, makeTelegram } from '../server/alerts.js';
 import { livePrice, liveFee, keptFee } from '../mockups/market.js';
+import { existsSync } from 'fs';
 
 const env = (k, d = '') => process.env[k] || d;
 if (!env('DATABASE_URL')) { console.error('games: DATABASE_URL is not set'); process.exit(2); }
@@ -97,7 +98,8 @@ const handle = makeHandler({
   alerts, server,
   limiter: makeLimiter({ store: memoryStore() }),
   levels: createLevels({ db }),
-  shop: createShop({ db, chain, livePrice: price, liveFee: feeOfMint, treasury: env('TREASURY_WALLET') || null, ...mintOpt, cluster }),
+  shop: createShop({ db, chain, livePrice: price, liveFee: feeOfMint, treasury: env('TREASURY_WALLET') || null, ...mintOpt, cluster,
+    rankedPaused: () => existsSync(env('RANKED_PAUSE_FILE') || '/etc/santa/ranked-paused') }), // no ticket sales while ranked is paused
   lottery: createLottery({ db, chain: { ...chain, latestBlock }, livePrice: price, liveFee: feeOfMint, wallet: env('LOTTERY_WALLET') || null, ...mintOpt, cluster }),
   admin: createAdmin({ db, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), chain,
     poolWallets: { ...poolWallets, lottery: env('LOTTERY_WALLET') || null, treasury: env('TREASURY_WALLET') || null }, ...mintOpt }),

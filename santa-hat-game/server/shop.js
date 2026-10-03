@@ -16,7 +16,9 @@ import { verifyPayment } from './verify.js';
 const DEC = 1e6, QUOTES_PER_HOUR = 60, isSignature = (s) => /^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(String(s));
 
 // treasury: the treasury wallet's address (null = the shop isn't open: nothing can be paid in).
-export function createShop({ db, chain, livePrice, liveFee, treasury, mint = MINT, cluster = 'mainnet' }) {
+// rankedPaused() → true while Cody has ranked paused (the Droplet's /etc/santa/ranked-paused, like the match server): tickets
+// can't be used then, so they aren't sold (launch 2026-10-03). Sales come back by themselves when ranked reopens.
+export function createShop({ db, chain, livePrice, liveFee, treasury, mint = MINT, cluster = 'mainnet', rankedPaused = () => false }) {
   const row = async (q, p) => (await db.query(q, p))[0];
   // the items as published from Cody's admin screen (the newest settings), so the Store and the charge always agree
   async function items() {
@@ -43,6 +45,7 @@ export function createShop({ db, chain, livePrice, liveFee, treasury, mint = MIN
       usd = price; cols = { to_level: p.level + 1 };
     } else if (what.kind === 'tickets') {
       const n = Number(what.n);
+      if (rankedPaused()) return { error: 'Ranked is paused right now, so tickets are not on sale. They will be again when it reopens.' };
       if (!TICKET_PACKS[n]) return { error: 'buy 1, 5 or 10 tickets' };
       const used = (await row(`select coalesce(sum(n), 0)::int as n from public.ticket_purchases where profile_id = $1 and at >= public.game_day_start(now())`, [profile]).catch(() => ({ n: 0 }))).n;
       if (used + n > 10) return { error: `at most 10 extra tickets a day, resetting at 9 PM Indiana time (${10 - used} left)` };

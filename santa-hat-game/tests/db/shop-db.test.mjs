@@ -69,6 +69,15 @@ assert.match((await shop.quote(A.id, { kind: 'item', id: 'shirt_red' })).error, 
   const tx = await shop.tickets(A.id);
   assert.deepEqual([tx.free, tx.extra, tx.held], [10, 5, 0], JSON.stringify(tx)); assert.ok(tx.resetsAt > Date.now(), 'the free ones refill later');
   assert.match((await shop.quote(A.id, { kind: 'tickets', n: 3 })).error, /1, 5 or 10/);
+  { // ranked paused (the Droplet's pause file): no ticket sales, refused BEFORE any payment; other things still sell; back on reopening
+    let paused = true; const s2 = createShop({ db, chain, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, treasury: TREASURY, mint: MINT, cluster: 'devnet', rankedPaused: () => paused });
+    const before = (await db.query('select count(*)::int n from public.shop_quotes'))[0].n;
+    assert.match((await s2.quote(A.id, { kind: 'tickets', n: 1 })).error, /Ranked is paused/, 'tickets refused while ranked is paused');
+    assert.equal((await db.query('select count(*)::int n from public.shop_quotes'))[0].n, before, 'no price was made, so nothing can be paid');
+    { const owned = new Set((await db.query('select item_id from public.inventory where profile_id = $1', [A.id])).map((x) => x.item_id));
+      const free = (await db.query(`select id from public.items where price_usd is not null and slot in ('sball', 'gear', 'face') order by id`)).map((x) => x.id).find((id) => !owned.has(id));
+      const r = await s2.quote(A.id, { kind: 'item', id: free }); assert.ok(free && !r.error, `items still sell while ranked is paused (${free}): ${r.error}`); }
+    paused = false; assert.ok(!(await s2.quote(A.id, { kind: 'tickets', n: 1 })).error, 'tickets sell again once ranked reopens'); }
   assert.ok((await buy(A, { kind: 'tickets', n: 5 })).r.ok, 'up to 10 a day');
   // 25 at once (022): a day later, with 8 bought, a 5-pack would pass the 10-bought cap: refused at the QUOTE, before paying
   await db.query(`update public.ticket_purchases set at = at - interval '2 days' where profile_id = $1`, [A.id]); await db.query('update public.tickets set extra = 8 where profile_id = $1', [A.id]);
