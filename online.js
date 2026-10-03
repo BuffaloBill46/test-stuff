@@ -14,7 +14,7 @@ import { initLottery } from './lotteryui.js';
 import { play as sfx, initSoundButtons } from './sfx.js';
 import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js';
 import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js';
-import { snapMs, autoStartMs, isPublic, styleOf, botAvatar, botName, refereeOpts } from './refcore.js';
+import { snapMs, autoStartMs, isPublic, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js';
 
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
@@ -83,7 +83,7 @@ let rankNews = null; // ranked: { change, points } from the referee server after
 let roomMode = null, autoStart = false, cdEnd = null, boardAt = 0, lobbyKind = 'unranked';
 // Auto match game types (Cody, 2026-10-02: tick boxes under Auto match, 1 or both; remembered). lobbyMode: the first ticked
 // (what Practice and a new private room start in).
-let autoModes = (() => { try { const v = JSON.parse(store.get('sq_amodes') || '["ffa"]'); return Array.isArray(v) && v.length ? v.filter((x) => x === 'ffa' || x === 'team') : ['ffa']; } catch { return ['ffa']; } })();
+let autoModes = (() => { try { const v = JSON.parse(store.get('sq_amodes') || '["ffa"]'); return Array.isArray(v) && v.length ? v.filter(modeAllowed) : ['ffa']; } catch { return ['ffa']; } })(); // team play paused: a saved TEAM tick is dropped
 if (!autoModes.length) autoModes = ['ffa'];
 let lobbyMode = autoModes[0];
 // …and the style: normal play (plain snowballs) and/or special gear (Cody, 2026-10-02); both ticked at first
@@ -179,7 +179,7 @@ async function enterRoom(code, quick, opts = {}) {
     room = r; roomCode = opts.ranked || serverPicks ? r.code() : c; practice = false; break;
   }
   if (!room) { status('All public rooms are full right now. Try a private room.'); return; }
-  roomMode = isPublic(roomCode) ? (roomCode[1] === 'T' ? 'team' : 'ffa') : null; autoStart = isPublic(roomCode); cdEnd = null;
+  roomMode = isPublic(roomCode) ? (roomCode[1] === 'T' && modeAllowed('team') ? 'team' : 'ffa') : null; autoStart = isPublic(roomCode); cdEnd = null;
   closeLobby();
   room.on('snap', onSnap);
   room.on('rep', (id, r) => { if (isHost && sim) sim.setReport(id, r); });
@@ -350,7 +350,7 @@ function handleEvents(v) {
     else if (k === 'pts') { const at = entPos(a, v); if (at) pop(at.setY(2.9), '+' + (+b || 0), mine(a) ? '' : 'green'); }
     else if (k === 'emote') showEmote('b' + a, +b); // a bot's emote (bots have no player id, so key by entity)
     else if (k === 'splat') burst.spawn(new V3(+a || 0, 0.1, +b || 0), 6, 0xffffff, 2, 1.5);
-    else if (k === 'round') { sfx('round'); banner(`Round ${+a || 1} of ${K.ROUNDS}`); }
+    else if (k === 'round') { sfx('round'); banner(K.ROUNDS > 1 ? `Round ${+a || 1} of ${K.ROUNDS}` : 'Go!'); } // one round (Cody 2026-10-03): just "Go!"
     else if (k === 'break') banner(`Round ${+a || 1} done`);
     else if (k === 'end') banner('Match over');
   }
@@ -573,7 +573,7 @@ function renderChrome() {
     const bots = v.ents.length - humans.length;
     card = `<div class="eyebrow">Warm-up · run around, throw, grab the hat</div><h2>Snowball Square</h2>${share}
       <ul class="roster">${roster}</ul><p class="dim">${bots ? `${bots} elf bot${bots > 1 ? 's' : ''} fill empty spots.` : ''} Up to 8 players.</p>
-      ${canRun() && !me.w ? `<div class="modes" role="radiogroup" aria-label="Match mode"><button data-mode="ffa" aria-checked="${v.mode === 'ffa'}" role="radio">Everyone vs the hat</button><button data-mode="team" aria-checked="${v.mode === 'team'}" role="radio">Nice vs Naughty</button></div>
+      ${canRun() && !me.w ? `<div class="modes" role="radiogroup" aria-label="Match mode"><button data-mode="ffa" aria-checked="${v.mode === 'ffa'}" role="radio">Everyone vs the hat</button>${TEAM_PAUSED ? '' : `<button data-mode="team" aria-checked="${v.mode === 'team'}" role="radio">Nice vs Naughty</button>`}</div>
       <button class="go" id="start">Start match</button>` : `<p class="wait">Mode: <b>${v.mode === 'team' ? 'Nice vs Naughty' : 'Everyone vs the hat'}</b>. Waiting for the referee to start…</p>`}`;
   } else if (v.phase === 'intro') {
     loadStats(v);
@@ -593,14 +593,14 @@ function renderChrome() {
   }
   if (card !== ui.lastCard) {
     ui.lastCard = card; const p = $('#panel'); p.hidden = !card; p.innerHTML = card; p.classList.toggle('intro', v.phase === 'intro');
-    p.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { if (room?.kind === 'server') room.mode(b.dataset.mode); else if (isHost && sim) { sim.S.mode = b.dataset.mode; sim.syncRoster(sim.S.ents.filter((e) => !e.bot).map((e) => e.peer)); } }));
+    p.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { if (!modeAllowed(b.dataset.mode)) return; if (room?.kind === 'server') room.mode(b.dataset.mode); else if (isHost && sim) { sim.S.mode = b.dataset.mode; sim.syncRoster(sim.S.ents.filter((e) => !e.bot).map((e) => e.peer)); } }));
     p.querySelector('#start')?.addEventListener('click', () => { if (room?.kind === 'server') room.start(); else if (isHost && sim) sim.introMatch(sim.S.mode); });
   }
   // HUD
   if (v.phase === 'play' || v.phase === 'break') {
     if (armed && !mySpecials().includes(armed)) armed = '';
     if (locked && !mySpecials().includes(locked)) locked = '';
-    setHud(`<div class="stat plaque"><i>Round</i><b>${v.round}/${K.ROUNDS}</b></div>
+    setHud(`${K.ROUNDS > 1 ? `<div class="stat plaque"><i>Round</i><b>${v.round}/${K.ROUNDS}</b></div>` : ''}
       <div class="stat plaque ${v.time < 10 && v.phase === 'play' ? 'warn' : ''}"><i>${v.phase === 'break' ? 'Next round' : 'Time'}</i><b>${Math.ceil(v.time)}</b></div>
       ${m ? `<div class="stat plaque nice"><i>You${hitsLeft(m)}</i><b>${m.score}</b></div>` : ''}
       ${m ? `<div class="stat plaque"><i>Snowballs</i><div class="pips">${Array.from({ length: maxOf(m) }, (_, i) => `<u class="${i < m.ammo ? '' : 'off'}"></u>`).join('')}</div>${sbRow(m)}</div>` : ''}`);
@@ -856,10 +856,11 @@ function renderGames(list = lastGames) {
 }
 $('#gamesList').addEventListener('click', (e) => { const b = e.target.closest('[data-watch]'); if (b) enterRoom(b.dataset.watch, false, { watch: true }); });
 // the tick boxes: at least one stays ticked (unticking the last one is undone); remembered
+if (TEAM_PAUSED) document.querySelector('[data-amode="team"]')?.closest('label')?.setAttribute('hidden', ''); // team play paused (Cody 2026-10-03)
 document.querySelectorAll('[data-amode]').forEach((b) => b.addEventListener('change', () => {
   const next = [...document.querySelectorAll('[data-amode]')].filter((x) => x.checked).map((x) => x.dataset.amode);
   if (!next.length) { b.checked = true; return; }
-  autoModes = next; lobbyMode = autoModes[0]; store.set('sq_amodes', JSON.stringify(autoModes)); renderGames();
+  autoModes = next.filter(modeAllowed); if (!autoModes.length) autoModes = ['ffa']; lobbyMode = autoModes[0]; store.set('sq_amodes', JSON.stringify(autoModes)); renderGames();
 }));
 document.querySelectorAll('[data-astyle]').forEach((b) => b.addEventListener('change', () => {
   const next = [...document.querySelectorAll('[data-astyle]')].filter((x) => x.checked).map((x) => x.dataset.astyle);

@@ -82,7 +82,7 @@
     </ul>
     <h3>A match</h3>
     <ul>
-      <li><b data-k="rounds">3</b> rounds of <b data-k="roundTime">60</b> seconds. Most points at the end wins.</li>
+      <li id="matchLen">One round of 60 seconds. Most points at the end wins.</li>
       <li><b>Free-for-all:</b> everyone chases whoever wears the hat. <b>Nice vs Naughty:</b> two teams, and team points add up.</li>
       <li>A snowball hit knocks a player down for a moment. Hit whoever wears the hat and it flies off; catch it on your head to take it.</li>
       <li>Your snowball counter refills by itself, and much faster when you stand next to a snow pile.</li>
@@ -184,7 +184,8 @@
   const jpRow = (label, p, what) => `<tr><td>${label}</td><td colspan="2" class="jp">Pool jackpot: ${pct(p)} of the Game pool × your ${what}'s size</td></tr>`;
 
   // the match
-  for (const [k, v] of Object.entries({ maxHumans: K.MAX_HUMANS, rounds: K.ROUNDS, roundTime: K.ROUND_TIME })) document.querySelectorAll(`[data-k="${k}"]`).forEach((e) => { e.textContent = v; });
+  $('#matchLen').innerHTML = K.ROUNDS > 1 ? `<b>${K.ROUNDS}</b> rounds of <b>${K.ROUND_TIME}</b> seconds. Most points at the end wins.` : `<b>One round</b> of <b>${K.ROUND_TIME}</b> seconds. Most points at the end wins.`;
+  for (const [k, v] of Object.entries({ maxHumans: K.MAX_HUMANS })) document.querySelectorAll(`[data-k="${k}"]`).forEach((e) => { e.textContent = v; });
   $('#pts').innerHTML = head(['Do this', 'Points'], ['', 'n']) + '<tbody>' + [['Wearing the hat', `${PTS.hatSec} / sec`], ['Catching the flying hat on your head', PTS.header], ['Knocking the hat off someone', PTS.knock], ['Any snowball hit', PTS.hit]].map((r) => row(r, ['', 'n'])).join('') + '</tbody>';
 
   // special snowballs: price from the catalog, cost and effect from specials.js
