@@ -202,6 +202,12 @@ for (const bet of [0.1, 1]) {
   const since = await db.query(`select status, amount_raw from public.payouts where run_id = $1`, [x.run]);
   const rc = reconcile({ bookRaw: await pool('spin'), walletRaw: spinAfterForce, payouts: since, transfers: tr.filter((t) => t.kind === 'top-off') });
   assert.ok(rc.ok, `books vs wallet after a top-off play: drift ${rc.drift}`);
+  // while that top-off waits for Cody's deposit, no NEW runs on that pool (security review 2026-10-03: the books hold money the
+  // wallet doesn't have yet); nothing is priced, so nothing can be paid. Back as soon as the deposit is recorded.
+  await db.query(`update public.pools set rules = '{}' where game = 'spin'`);
+  for (const k of ['big', 'drop', 'stocking']) { const q = await server.quote(me, k, 1, k === 'big' ? 1 : 0.1); assert.ok(q.refused && q.refilling && !q.id, `${k}: refused while the top-off waits: ${JSON.stringify(q)}`); }
+  await db.query(`update public.pool_transfers set status = 'sent' where kind = 'top-off' and status = 'needs_approval'`); // what record-deposit does
+  assert.ok((await server.quote(me, 'drop', 1, 0.1)).id, 'runs sell again once the deposit is recorded');
 }
 // The shared winners list: only plays that paid more than they cost, newest first, names only (never a wallet).
 const wins = await server.winners();
