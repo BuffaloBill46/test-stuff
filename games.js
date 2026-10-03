@@ -35,7 +35,10 @@ let inited = false, view = null, busy = false, nameOf = () => 'You';
 const saved = store.get();
 const state = saved && Number.isFinite(saved.pool) && Number.isFinite(saved.bal)
   ? { treasury: 0, winners: [], ...saved } : { pool: POOL_RULES.start, bal: DEMO_START, treasury: 0, winners: [] };
-let shownPool = state.pool; // readouts update when the reels land, so a result isn't spoiled early
+// ONE GAME POOL (Cody, 2026-10-02): Big Hat plays from the shared pool (spinui.js spinState(), the same one Snowball Drop and
+// Stocking Stuffer use), so the Slots readouts show that pool. state.pool (the old demo Slots pool) is no longer played from.
+const shared = () => spinState();
+let shownPool = shared().pool; // readouts update when the reels land, so a result isn't spoiled early
 const test = { run: undefined }; // tests only: the next run's pulls, one each ('JACKPOT' or an array of 5 reel stops)
 
 function render() {
@@ -165,8 +168,8 @@ async function showPull(p, i, n) {
   card.classList.remove('won', 'jackpot'); $('#slots .machine .flash').classList.remove('show');
   res.textContent = `Spinning… result locked (${short(p.proof.commit)}).`;
   const go = view.spin(r.stops, r); if (fast) view.slam(); await go;
-  if (p.poolUsd !== undefined) state.pool = p.poolUsd; // server mode: the server's pool
-  shownPool = state.pool;
+  if (p.poolUsd !== undefined) shared().pool = p.poolUsd; // server mode: the server's pool
+  shownPool = shared().pool; refreshSpin(); refreshDrop(); refreshStocking(); // the other games show the same pool
   const lines = r.wins.length, hatsTxt = r.hats ? `${r.hats} Santa Hat${r.hats > 1 ? 's' : ''} +${money(r.hatPay)}` : '';
   if (r.jackpot) {
     card.classList.add('jackpot'); stamp('JACKPOT!'); sfx('jackpot');
@@ -217,20 +220,20 @@ export async function initGames(opts = {}) {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#slots .machine').classList.remove('max'); });
   $('#demoReset').addEventListener('click', () => {
     if (busy) return;
-    Object.assign(state, { pool: POOL_RULES.start, bal: DEMO_START, treasury: 0 }); shownPool = state.pool; store.set(state); render(); resetSpin(); resetDrop(); resetStocking(); resetCredits();
+    Object.assign(state, { pool: POOL_RULES.start, bal: DEMO_START, treasury: 0 }); resetSpin(); shownPool = shared().pool; store.set(state); render(); resetDrop(); resetStocking(); resetCredits();
     $('#slots .machine .res').textContent = 'Pull the pom-pom, or tap the machine. Tap again to stop the reels early.';
   });
   paytable(); facts(); render();
   // Santa Hat Spin shares the demo balance and the Recent winners list.
   const wallet = { get: () => state.bal, add: (x) => { state.bal += x; store.set(state); $('#demoBal').textContent = money(state.bal); } };
   initSpin({ wallet, addWinner });
-  // Snowball Drop plays from the Spin pool (Cody): its readout is the Spin pool's, and a drop updates both cards.
-  const sp = spinState();
-  initDrop({ wallet, addWinner, pool: () => sp.pool, onPool: (usd) => { if (usd !== undefined) sp.pool = usd; refreshSpin(); refreshDrop(); refreshStocking(); } });
-  // Stocking Stuffer plays from that same pool too (Cody, 2026-10-02)
-  initStocking({ addWinner, pool: () => sp.pool, onPool: (usd) => { if (usd !== undefined) sp.pool = usd; refreshSpin(); refreshDrop(); refreshStocking(); } });
+  // Snowball Drop and Stocking Stuffer play from the shared Game pool too (Cody, 2026-10-02): a play on any card updates every
+  // card's pool readout (Big Hat's waits while its reels are still turning, so a pull's result isn't given away early).
+  const sp = spinState(), poolMoved = (usd) => { if (usd !== undefined) sp.pool = usd; refreshSpin(); refreshDrop(); refreshStocking(); if (!busy) { shownPool = sp.pool; render(); } };
+  initDrop({ wallet, addWinner, pool: () => sp.pool, onPool: poolMoved });
+  initStocking({ addWinner, pool: () => sp.pool, onPool: poolMoved });
   // Runs: buying moves the entry money into that game's pool straight away, so the pool readouts update on purchase.
-  initCredits({ wallet, pools: { slots: state, spin: spinState() }, onChange: () => { shownPool = state.pool; store.set(state); render(); refreshSpin(); refreshDrop(); refreshStocking(); } });
+  initCredits({ wallet, pools: { slots: state, spin: spinState() }, onChange: () => { shownPool = shared().pool; store.set(state); render(); refreshSpin(); refreshDrop(); refreshStocking(); } });
   refreshCredits();
   // A payment from an earlier visit the server never received (closed tab, dropped network): hand it over and play it now.
   if (SERVER) resumePaid().then((r) => { if (r) { console.info('finished a paid run from an earlier visit', r.run); refreshCredits(); } }).catch(() => {});

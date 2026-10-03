@@ -8,5 +8,8 @@ export function runSummary(out, one, many) {
   // Frozen by the safety cap (more than the run could possibly win: a fault, never a big win): say so plainly, not "sent".
   if (out.held) return `<span><b>${what}: ${money(out.sent)} back</b> · being checked before it's sent (an amount the game can't normally pay). It goes to your wallet once it's cleared.</span>`;
   const where = serverMode ? 'sent to your wallet' : 'added to your demo balance';
+  // a run that hit a POOL JACKPOT (any game, Cody 2026-10-02) keeps saying so after its last play, so the summary doesn't hide it
+  const jp = (out.results || []).filter((s) => s?.r?.jackpot).reduce((a, s) => a + s.r.pay, 0);
+  if (jp) return `<span><b>${what}: ${money(out.sent)} back, with a POOL JACKPOT of ${money(jp)}!</b> · ${where} <span class="dim">(you get ${money(out.received)} after SANTA's 3% tax)</span></span>`;
   return `<span><b>${what}: ${money(out.sent)} back</b> · ${where} <span class="dim">(you get ${money(out.received)} after SANTA's 3% tax)</span></span>`;
 }

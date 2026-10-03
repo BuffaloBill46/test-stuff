@@ -1,8 +1,9 @@
-// Snowball Drop on the Games tab: size chips, Drop 1 / 5 / 10 (a run that plays straight away, Cody 2026-10-01), the shared
-// Spin pool readout, odds, last drops. Every drop runs in the house's order (paid → secret locked → drawn → revealed;
+// Snowball Drop on the Games tab: size chips, Drop 1 / 5 / 10 (a run that plays straight away, Cody 2026-10-01), the shared Game
+// pool readout and its jackpot (board 3: the centre present), odds, last drops. Every drop runs in the house's order (paid → secret locked → drawn → revealed;
 // playcredits.js / house.js), on the Spin pool (shared, Cody); the run's winnings are sent at the end. The board only
 // animates the path the draw already decided. DEMO: the same demo balance as Slots.
-import { realWin, jackpotOdds } from './plinko.js';
+import { realWin, jackpotOdds, JP } from './plinko.js';
+import { poolJackpot } from './slots.js';
 import { createBoard } from './plinkoboard.js';
 import { playRun, short } from './playcredits.js';
 import { runSummary } from './runui.js';
@@ -13,21 +14,25 @@ import { play as sfx } from './sfx.js';
 const $ = (s, el = document) => el.querySelector(s);
 const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);
 const MAX_HISTORY = 16;
-const STYLE = (m) => (m >= 100 ? ['#ffbe5c', '#7a1414'] : m >= 10 ? ['#cf3128', '#f5f1e8'] : m >= 5 ? ['#c98a1b', '#0c0f1a'] : m >= 1 ? ['#6f8fd0', '#0c0f1a'] : m > 0 ? ['#2e3a6e', '#b9cdf2'] : ['#151a30', '#6f7ba8']);
+const STYLE = (m) => (m === 'JP' || m >= 100 ? ['#ffbe5c', '#7a1414'] : m >= 10 ? ['#cf3128', '#f5f1e8'] : m >= 5 ? ['#c98a1b', '#0c0f1a'] : m >= 1 ? ['#6f8fd0', '#0c0f1a'] : m > 0 ? ['#2e3a6e', '#b9cdf2'] : ['#151a30', '#6f7ba8']);
 let board = null, bet = 0.1, wallet = null, addWinner = () => {}, pool = () => 0, onPool = () => {}, opening = false, flying = 0, fast = false;
 const history = [], test = { run: undefined }; // tests only: the next run's paths, one per drop (16 × 0/1)
 
 function render() {
-  $('#dropPool').textContent = money(pool());
-  $('#dropHistory').innerHTML = history.length ? history.map((m) => { const [bg, fg] = STYLE(m); return `<li style="background:${bg};color:${fg}">${m}×</li>`; }).join('')
+  $('#dropPool').textContent = money(pool()); odds(); // the jackpot line follows the pool
+  $('#dropHistory').innerHTML = history.length ? history.map((m) => { const [bg, fg] = STYLE(m); return `<li style="background:${bg};color:${fg}">${m === 'JP' ? 'JP' : m + '×'}</li>`; }).join('')
     : '<li class="empty">No drops yet.</li>';
 }
 // One odds line (Cody, 2026-10-01: in place of the list of presents), from the board's real odds table (board 2, 2026-10-02).
-function odds() { $('#dropOdds').innerHTML = `<b>1 in ${Math.round(1 / jackpotOdds()).toLocaleString('en-US')}</b> to hit the 100× · <b>1 in ${(1 / realWin()).toFixed(1)}</b> to win 2× or more`; }
+// Board 3 (Cody, 2026-10-02): the centre present is the POOL JACKPOT, 25% of the Game pool at that moment × the drop's size; the
+// line shows what it is worth right now at the chosen size, from the live pool (never typed in).
+function odds() { $('#dropOdds').innerHTML = `<span class="jpline">Pool jackpot <b>${money(poolJackpot(pool(), JP.pct, bet))}</b> on a ${cents(bet)} drop right now <span class="dim">(${+(JP.pct * 100).toFixed(2)}% of the Game pool × your drop: the centre present)</span></span> <b>1 in ${Math.round(1 / jackpotOdds()).toLocaleString('en-US')}</b> to hit it · <b>1 in ${(1 / realWin()).toFixed(1)}</b> to win 2× or more`; }
+const cents = (v) => (v < 1 ? Math.round(v * 100) + '¢' : '$' + (Number.isInteger(v) ? v : v.toFixed(2)));
 function stamp(text) { const fl = $('#drop .flash'); fl.textContent = text; fl.classList.remove('show'); void fl.offsetWidth; fl.classList.add('show'); }
 function setBet(b) {
   bet = b; document.querySelectorAll('#drop .bets button').forEach((x) => x.setAttribute('aria-checked', String(+x.dataset.dbet === b)));
   document.querySelectorAll('#drop [data-run]').forEach((x) => { $('small', x).textContent = priceLabel(b * +x.dataset.run); }); // incl. the custom one ($2.50, not $2.5)
+  if (inited) odds(); // the jackpot at this size
 }
 
 // A run of n drops at the chosen size: pay once, then the snowballs drop one after another; winnings are sent at the end.
@@ -58,10 +63,14 @@ function landed(r, p) {
   flying--; if (!flying) wake(); landedWon += r.pay;
   const res = $('#drop .res'), card = $('#drop .dropcard');
   onPool(p.poolUsd);
-  history.unshift(r.mult); history.length = Math.min(history.length, MAX_HISTORY);
+  history.unshift(r.jackpot ? 'JP' : r.mult); history.length = Math.min(history.length, MAX_HISTORY);
   card.classList.remove('won', 'jackpot');
-  if (r.ahead) {
-    sfx(r.mult >= 10 ? 'bigWin' : 'smallWin'); card.classList.add(r.mult >= 10 ? 'jackpot' : 'won'); stamp(r.mult >= 100 ? '100× JACKPOT' : `${r.mult}× WIN`);
+  if (r.jackpot) { // THE POOL JACKPOT (board 3's centre): the biggest celebration, with the real dollar amount
+    sfx('jackpot'); card.classList.add('jackpot'); stamp(`POOL JACKPOT ${money(r.pay)}`);
+    res.innerHTML = `<span><b>POOL JACKPOT! ${money(r.pay)}</b> <span class="dim">(${+(r.pct * 100).toFixed(2)}% of the ${money(r.jackpotPool)} Game pool × your ${cents(r.bet)} drop; ${money(r.pay * 0.97)} after SANTA's 3% tax)</span></span>`;
+    addWinner(r.bet >= 1 ? 'drop100' : 'drop10', r.pay, r.bet, 'pool jackpot');
+  } else if (r.ahead) {
+    sfx(r.mult >= 10 ? 'bigWin' : 'smallWin'); card.classList.add(r.mult >= 10 ? 'jackpot' : 'won'); stamp(`${r.mult}× WIN`);
     res.innerHTML = `<b>${r.mult}× win!</b> ${money(r.pay)}`;
     addWinner(r.bet >= 1 ? 'drop100' : 'drop10', r.pay, r.bet, `${r.mult}×`);
   } else if (r.mult === 1) res.innerHTML = `<span class="dim">Money back: ${money(r.pay)}.</span>`;

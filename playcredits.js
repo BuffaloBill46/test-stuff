@@ -17,7 +17,8 @@ export const serverMode = !!SERVER; // ?server=<address>: plays come from the ga
 const $ = (s, el = document) => el.querySelector(s);
 const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);
 const cents = (v) => (v < 1 ? Math.round(v * 100) + '¢' : '$' + (Number.isInteger(v) ? v : v.toFixed(2)));
-const POOL_NAME = { spin: 'Spin', slots: 'Slots' };
+// ONE GAME POOL (Cody, 2026-10-02): every game's money goes into the shared pool (key 'spin'), shown as "Game"
+const POOL_NAME = { spin: 'Game', slots: 'Slots' };
 
 let ledger = newLedger(), house, wallet, onChange = () => {}, last = {}, price = null; // last proof per game
 const busy = {}; // a run in progress, per game
@@ -191,16 +192,21 @@ async function recheck() {
     const o = c.outcome, n = (s) => s + 1, seq = o.opened.map((s) => (o.gifts[s] ? 'gift' : 'coal')).join(', ');
     // tap to open (Cody 2026-10-02): the k-th stocking tapped held the k-th item; without taps (a turn from before), Santa's own order
     const taps = Array.isArray(p.taps) && p.taps.length === o.opened.length ? p.taps : o.opened, shown = taps === o.opened ? o.gifts : asTapped(o, taps);
-    what = `the sequence ${seq}: ${o.found} gift${o.found === 1 ? '' : 's'} before ${o.found === 8 ? 'running out of gifts' : 'the coal'}, a ${o.mult}× result. You opened stockings ${taps.map(n).join(', ')}, in that order`;
+    what = `the sequence ${seq}: ${o.found === 8 ? `${o.found} gifts in a row${o.jackpot ? ', the pool jackpot' : `, a ${o.mult}× result`}` : `${o.found} gift${o.found === 1 ? '' : 's'} before the coal, a ${o.mult}× result`} (${o.gifts.filter(Boolean).length} gifts on the mantel${o.board === 1 ? ', the layout before 2026-10-02' : ''}). You opened stockings ${taps.map(n).join(', ')}, in that order`;
     map = `<span class="stockmap" aria-label="The turn laid out on the stockings you opened: gifts gold, coal black; the ones you opened are outlined and numbered in the order you opened them">${shown.map((g, s) => { const at = taps.indexOf(s);
       return `<span class="${g ? 'g' : 'c'}${at >= 0 ? ' o' : ''}">${at >= 0 ? `<small>${at + 1}</small>` : ''}${n(s)}</span>`; }).join('')}</span>`;
   } else if (p.kind === 'drop') what = c.outcome.board === 1 ? `the bounces ${c.outcome.path.map((x) => (x ? 'R' : 'L')).join(' ')} (one per row of pegs), present ${c.outcome.bin + 1} of 9: a ${c.outcome.mult}× result`
-    : `present ${c.outcome.bin + 1} of 17 from the published odds table (a ${c.outcome.mult}× result), reached by the bounces ${c.outcome.path.map((x) => (x ? 'R' : 'L')).join(' ')}`;
-  else if (K.game === 'spin') what = c.outcome.bonusSlice !== undefined ? `main-wheel segment ${c.outcome.slice + 1} of 40 (a gold star), then bonus-wheel segment ${c.outcome.bonusSlice + 1} of 12: a ${c.outcome.mult}× result`
+    : `present ${c.outcome.bin + 1} of 17 from the published odds table (${c.outcome.jackpot ? 'the centre: the pool jackpot' : `a ${c.outcome.mult}× result`}${c.outcome.board === 2 ? ', on the board before 2026-10-02' : ''}), reached by the bounces ${c.outcome.path.map((x) => (x ? 'R' : 'L')).join(' ')}`;
+  else if (p.kind === 'spin') what = c.outcome.bonusSlice !== undefined ? `main-wheel segment ${c.outcome.slice + 1} of 40 (a gold star), then bonus-wheel segment ${c.outcome.bonusSlice + 1} of 12: a ${c.outcome.mult}× result`
     : `main-wheel segment ${c.outcome.slice + 1} of 40, a ${c.outcome.mult}× result`;
   else if (c.outcome.jackpot) what = 'the pool jackpot (all 25 squares Santa Hats)';
   else what = `reel stops ${c.outcome.stops.join(', ')} (one per reel, each 0–75)`;
+  // A pool jackpot's AMOUNT, re-worked (house.js jackpotCheck): the % from the settings the play ran on × the Game pool at that
+  // moment (recorded with the result) × the play's size; and whether it is what was paid.
+  const j = c.jackpot, pc = (x) => +(x * 100).toFixed(4) + '%';
+  const jp = !j ? '' : !j.known ? ' <span class="dim">(This jackpot is from before 2026-10-02, when the pool amount wasn\'t recorded with the result; its amount can\'t be re-worked here.)</span>'
+    : ` The pool jackpot: ${pc(j.pct)} of the ${money(j.pool)} Game pool at that moment${j.scale !== 1 ? ` × your ${cents(j.scale)} play` : ''} = <b>${money(j.expected)}</b>; you were paid ${money(j.paid)}${j.ok ? '' : ' <b class="bad">(that doesn\'t match)</b>'}.${j.pctFromSettings ? ` ${pc(j.pct)} is the published setting this play ran on.` : ` <b>Note:</b> the published setting was ${pc(j.settingsPct)}; ${pc(j.pct)} was Cody's pool setting on the admin screen at the time.`}`;
   $('#proofOut').innerHTML = c.matches
-    ? `<b class="ok">Matches.</b> The revealed secret gives the fingerprint you were shown before the play, and with your number it gives ${what}. That's what you got.${map}`
+    ? `<b class="ok">Matches.</b> The revealed secret gives the fingerprint you were shown before the play, and with your number it gives ${what}. That's what you got.${jp}${map}`
     : '<b class="bad">Doesn\'t match.</b> The secret doesn\'t give the fingerprint shown before the play.';
 }

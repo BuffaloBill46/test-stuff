@@ -42,7 +42,7 @@ export function forPlayer(err, closeDialog) {
 }
 // Ranked tickets are real even on the demo site (the match server uses the real database), so they're read from the game
 // server either way: the test link's ?server=, else the live one.
-const LIVE_GAMES = 'https://olganobdypnxfpmsxibe.supabase.co/functions/v1/games';
+const LIVE_GAMES = 'https://api.santahatgames.com';
 export async function call(action, body = {}) {
   const t = await token();
   if (!t && !PUBLIC_ACTIONS.includes(action)) return { error: 'sign in first' };

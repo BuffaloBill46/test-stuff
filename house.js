@@ -10,9 +10,9 @@
 // before step 4. `steps` records the order for the tests.
 import { KINDS, buyRun, credit, payRun } from './credits.js';
 import { spin, STAR, DEFAULT_WHEEL } from './spin.js';
-import { pull, MACHINES } from './slots.js';
-import { play as dropPlay, outcome as dropOutcome, BOARD as DROP_BOARD } from './plinko.js';
-import { play as stockPlay, outcome as stockOutcome, DEFAULT_PAYS as STOCK_PAYS } from './stocking.js';
+import { pull, MACHINES, poolJackpot } from './slots.js';
+import { play as dropPlay, outcome as dropOutcome, BOARD as DROP_BOARD, JP as DROP_JP } from './plinko.js';
+import { play as stockPlay, outcome as stockOutcome, PAYS as STOCK_LIVE, BOARD1_PAYS, BOARD as STOCK_BOARD, JP as STOCK_JP } from './stocking.js';
 import * as fair from './fair.js';
 import { randFrom } from './fair.js';
 
@@ -59,7 +59,9 @@ export function createHouse(ledger, pools, f = fair) {
       const nums = await f.numbers(t.secret, playerSeed, t.playNo, NUMS);
       steps.push('drawn');
       const rand = randFrom(nums);
-      r = t.kind === 'drop' ? dropPlay(pools.spin, t.bet, rand, forced) : t.kind === 'stocking' ? stockPlay(pools.spin, t.bet, rand, forced) : K.game === 'spin' ? spin(pools.spin, t.bet, rand, forced) : pull(pools.slots, t.kind, rand, forced);
+      // every game plays from its kind's pool (since 2026-10-02 all of them: the one shared Game pool, pools.spin)
+      const P = pools[K.game];
+      r = t.kind === 'drop' ? dropPlay(P, t.bet, rand, forced) : t.kind === 'stocking' ? stockPlay(P, t.bet, rand, forced) : t.kind === 'spin' ? spin(P, t.bet, rand, forced) : pull(P, t.kind, rand, forced);
     } catch (e) { return refuse(e.message); }
     if (r.paused) { // the pool can't take it: the price comes back (the entry already reached the pool, so it pays it)
       pools[K.game].pool -= t.bet; return refuse(null, r.stopped);
@@ -67,22 +69,29 @@ export function createHouse(ledger, pools, f = fair) {
     t.run.played++;
     if (r.pay > 0) credit(t.run, r.pay);
     steps.push('revealed');
-    return done({ r, proof: { kind: t.kind, bet: t.bet, commit: t.commit, secret: t.secret, playerSeed, playNo: t.playNo, forced: forced !== undefined, ...(t.kind === 'drop' ? { board: r.board || DROP_BOARD } : {}) } });
+    return done({ r, proof: { kind: t.kind, bet: t.bet, commit: t.commit, secret: t.secret, playerSeed, playNo: t.playNo, forced: forced !== undefined, ...proofExtras(t.kind, r) } });
   }
   return { buy, settle, steps, pending: () => open_.size };
 }
 
+// What the proof carries besides the fair numbers: the board/layout the play ran on (Snowball Drop, Stocking Stuffer), and for
+// a pool jackpot the Game pool at that moment, the % and what was paid, so "Check this result" can re-work the amount.
+export function proofExtras(kind, r) {
+  return { ...(kind === 'drop' ? { board: r.board || DROP_BOARD } : kind === 'stocking' ? { board: r.board || STOCK_BOARD } : {}),
+    ...(r.jackpot && r.jackpotPool !== undefined ? { jackpot: { pool: r.jackpotPool, pct: r.pct, pay: r.pay } } : {}) };
+}
 // What a play's numbers must produce, worked out from the numbers alone (anyone can re-run this).
 // cfg (optional): the settings the play ran on (settings.js build()); without it, the built-in game.
 export function outcomeFrom(kind, nums, cfg = null) {
-  const K = KINDS[kind];
   // Snowball Drop, on the board the drop was played on (cfg.board from the proof; none = board 1, the 8-row 50/50 board):
-  // board 2: the first number picks the present from the published table, the next 16 draw the path to it (plinko.js)
+  // boards 2 and 3: the first number picks the present from the published table, the next 16 draw the path to it (plinko.js);
+  // board 3's centre is the pool jackpot
   if (kind === 'drop') return dropOutcome(nums, cfg?.board ?? 1);
   // Stocking Stuffer: 19 numbers shuffle the gifts and coal into the stockings, 19 more the order they're opened (stocking.js),
-  // paid on the pay table the play ran on (cfg.stocking from its settings version; without it, Cody's built-in table)
-  if (kind === 'stocking') return stockOutcome(nums, cfg?.stocking?.pays || STOCK_PAYS);
-  if (K.game === 'spin') { // the first number picks the main segment; on a star, the second picks the bonus segment
+  // on the layout the turn was played on (cfg.board from the proof; none = board 1, 8 gifts) and the pay table it ran on (its
+  // settings version: board 1 `stocking.pays`, board 2 `stocking2.pays`; without settings, the built-in tables)
+  if (kind === 'stocking') { const b = cfg?.board ?? 1; return stockOutcome(nums, b === 1 ? cfg?.stocking?.pays || BOARD1_PAYS : cfg?.stocking2?.pays || STOCK_LIVE, b); }
+  if (kind === 'spin') { // the first number picks the main segment; on a star, the second picks the bonus segment
     const W = cfg?.wheel || DEFAULT_WHEEL, slice = Math.floor(nums[0] * W.main.length);
     if (W.main[slice] !== STAR) return { slice, mult: W.main[slice] };
     const bonusSlice = Math.floor(nums[1] * W.bonus.length); return { slice, bonusSlice, mult: W.bonus[bonusSlice] };
@@ -95,5 +104,16 @@ export function outcomeFrom(kind, nums, cfg = null) {
 export async function check(proof, cfg = null) {
   const matches = (await fair.fingerprint(proof.secret)) === proof.commit;
   const nums = await fair.numbers(proof.secret, proof.playerSeed, proof.playNo, NUMS);
-  return { matches, outcome: outcomeFrom(proof.kind, nums, proof.kind === 'drop' ? { ...(cfg || {}), board: proof.board ?? 1 } : cfg) };
+  const outcome = outcomeFrom(proof.kind, nums, ['drop', 'stocking'].includes(proof.kind) ? { ...(cfg || {}), board: proof.board ?? 1 } : cfg);
+  return { matches, outcome, ...(outcome.jackpot ? { jackpot: jackpotCheck(proof, cfg) } : {}) };
+}
+// A pool jackpot's amount, re-worked: the % from the settings the play ran on (Big Hat machine.jackpotPct, Snowball Drop
+// drop.jackpotPct, Stocking Stuffer stocking2.jackpotPct) × the Game pool at that moment × (bet ÷ $1; Big Hat: × 1). If the
+// play recorded a different % (Cody's pool-rule override on the admin screen), the check says so (pctFromSettings false).
+// Old Big Hat jackpots (before 2026-10-02) carry no pool amount: `known: false`, the amount can't be re-worked.
+export function jackpotCheck(proof, cfg = null) {
+  const settingsPct = proof.kind === 'big' ? (cfg?.machine || MACHINES.big).jackpotPct : proof.kind === 'drop' ? (cfg?.drop?.jackpotPct ?? DROP_JP.pct) : (cfg?.stocking2?.jackpotPct ?? STOCK_JP.pct);
+  const j = proof.jackpot; if (!j || !(j.pool >= 0)) return { known: false, settingsPct };
+  const scale = proof.kind === 'big' ? 1 : proof.bet, expected = poolJackpot(j.pool, j.pct, scale);
+  return { known: true, pool: j.pool, pct: j.pct, settingsPct, pctFromSettings: Math.abs(j.pct - settingsPct) < 1e-12, scale, expected, paid: j.pay, ok: Math.abs(expected - j.pay) < 1e-6 };
 }

@@ -11,8 +11,12 @@ import { SYMBOLS } from './slots.js';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; };
 const SERVER = new URLSearchParams(location.search).get('server');
-const DEFAULTS = { slots: { ...POOL_RULES, jackpotPct: 0.25 }, spin: SPIN_RULES };
-const FIELDS = { start: 'Starting amount ($)', skimAt: 'Skim when the pool reaches ($)', skim: 'Skim amount ($)', topOffBelow: 'Top off below ($)', topOffTo: 'Top off up to ($)', jackpotPct: 'Pool jackpot (share, 0–0.5)' };
+// ONE GAME POOL (Cody, 2026-10-02): 'spin' is the shared pool every game plays from; 'slots' the old Slots pool (no game uses it).
+// Both start from the same rules (POOL_RULES = SPIN_RULES). jackpotPct on a pool is an OVERRIDE of every game's published %
+// (empty = each game's own % from the game settings).
+const DEFAULTS = { slots: { ...POOL_RULES }, spin: { ...SPIN_RULES } };
+const POOL_LABEL = { spin: 'Game pool · Big Hat, Snowball Drop, Stocking Stuffer', slots: 'Old Slots pool · no game plays from it' };
+const FIELDS = { start: 'Starting amount ($)', skimAt: 'Skim when the pool reaches ($)', skim: 'Skim amount ($)', topOffBelow: 'Top off below ($)', topOffTo: 'Top off up to ($)', jackpotPct: 'Pool jackpot override (share 0.01–0.5; empty = the % each game publishes)' };
 let wallet = null, address = null, state = null;
 const msg = (t, cls = '') => { $('#msg').textContent = t; $('#msg').className = cls; };
 const post = async (body, admin) => (await fetch(SERVER, { method: 'POST', headers: { 'content-type': 'application/json', ...(admin ? { 'x-santa-admin': '1' } : {}) }, body: JSON.stringify(body) })).json();
@@ -23,9 +27,9 @@ async function load() {
   if (!SERVER) { $('#pools').innerHTML = '<p class="dim">Open this page with ?server=&lt;the game server address&gt;.</p>'; return; }
   state = await post({ action: 'pools' });
   $('#pools').innerHTML = state.pools.map((p) => { const R = { ...DEFAULTS[p.game], ...p.rules };
-    return `<article class="plaque pool"><div class="eyebrow">${esc(p.game)} pool</div><b class="big">${(p.santaRaw / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })} SANTA</b>
+    return `<article class="plaque pool"><div class="eyebrow">${esc(POOL_LABEL[p.game] || p.game + ' pool')}</div><b class="big">${(p.santaRaw / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })} SANTA</b>
       <p><span class="state ${R.paused ? 'off' : 'on'}">${R.paused ? 'Stopped' : 'Running'}</span></p>
-      <p class="dim">Skim $${R.skim} at $${R.skimAt} · top off below $${R.topOffBelow} to $${R.topOffTo}${p.game === 'slots' ? ` · jackpot ${Math.round(R.jackpotPct * 100)}%` : ''}</p>
+      <p class="dim">Skim $${R.skim} at $${R.skimAt} · top off below $${R.topOffBelow} to $${R.topOffTo}${R.jackpotPct !== undefined ? ` · jackpot override ${+(R.jackpotPct * 100).toFixed(2)}%` : ''}</p>
       <div class="row"><button type="button" class="${R.paused ? '' : 'stop'}" data-act="${R.paused ? 'resume' : 'pause'}" data-game="${esc(p.game)}">${R.paused ? 'Resume' : 'Stop (emergency)'}</button></div></article>`; }).join('');
   // Frozen run payouts: who, how much, which game, and a Release button (wallet-signed, like every action here).
   const held = state.held || [], NAMES = { spin: 'Spin', drop: 'Snowball Drop', big: 'Big Hat', stocking: 'Stocking Stuffer' }, $usd = (v) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -41,7 +45,7 @@ async function load() {
 }
 function fields() {
   const g = $('#game').value, p = state?.pools.find((x) => x.game === g), R = { ...DEFAULTS[g], ...(p?.rules || {}) };
-  $('#fields').innerHTML = Object.keys(FIELDS).filter((k) => k in DEFAULTS[g]).map((k) => `<label>${FIELDS[k]}<input type="number" step="any" data-k="${k}" value="${R[k]}"></label>`).join('');
+  $('#fields').innerHTML = Object.keys(FIELDS).filter((k) => k in DEFAULTS[g] || k === 'jackpotPct').map((k) => `<label>${FIELDS[k]}<input type="number" step="any" data-k="${k}" value="${R[k] ?? ''}"></label>`).join('');
 }
 async function act(action, game, settings = {}) {
   if (!wallet) return msg('Connect the admin wallet first.', 'bad');
@@ -81,7 +85,7 @@ function shopList(r) {
 $('#shopLoad').addEventListener('click', () => act('shop-owed', 'shop'));
 // Claim rewards (024): the claims and what each sent (known reward tokens by name; others by their mint)
 const REWARD_NAMES = { HTmQz7My6MehV7bjhJ6jde8nDND1yvsz68d24LP7YgUQ: 'GP', Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re: 'GLDX' };
-const POOL_NAMES = { spin: 'Drop pool', slots: 'Slots pool', lottery: 'Lottery wallet' };
+const POOL_NAMES = { spin: 'Game pool', slots: 'Old Slots pool', lottery: 'Lottery wallet' };
 function rewardsList(r) {
   const tok = (m) => REWARD_NAMES[m] || m.slice(0, 4) + '…' + m.slice(-4), amt = (w) => (Number(w.raw) / 10 ** w.decimals).toLocaleString(undefined, { maximumFractionDigits: w.decimals });
   const empty = r.claims.filter((c) => c.status === 'queued' && !(c.found || []).length).length;
@@ -109,7 +113,7 @@ $('#game').addEventListener('change', fields);
 $('#depSave').addEventListener('click', () => { const tx = $('#depTx').value.trim(); if (!tx) return msg('Paste the transaction signature first.', 'bad'); act('record-deposit', $('#depGame').value, { tx }); });
 $('#save').addEventListener('click', () => {
   const g = $('#game').value, p = state?.pools.find((x) => x.game === g), R = { ...DEFAULTS[g], ...(p?.rules || {}) }, changed = {};
-  for (const el of document.querySelectorAll('#fields [data-k]')) { const v = Number(el.value); if (v !== R[el.dataset.k]) changed[el.dataset.k] = v; }
+  for (const el of document.querySelectorAll('#fields [data-k]')) { if (el.value.trim() === '') continue; const v = Number(el.value); if (v !== R[el.dataset.k]) changed[el.dataset.k] = v; } // empty: unchanged
   if (!Object.keys(changed).length) return msg('Nothing changed.');
   act('set-rules', g, changed);
 });
@@ -119,7 +123,9 @@ const PRICE_LABEL = { spin10: 'Small spin', spin100: 'Big spin', big: 'Big Hat p
 const numInput = (k, v, step = 'any') => `<input type="number" step="${step}" data-gs="${k}" value="${v}">`;
 async function loadSettings() {
   const r = await post({ action: 'settings' }); gs = r.settings || structuredClone(DEFAULT_SETTINGS); added = [];
-  gs.stocking ||= structuredClone(DEFAULT_SETTINGS.stocking); // settings published before Stocking Stuffer: start from Cody's table
+  gs.stocking ||= structuredClone(DEFAULT_SETTINGS.stocking); // settings published before Stocking Stuffer: board 1's table (old turns re-check on it)
+  gs.stocking2 ||= structuredClone(DEFAULT_SETTINGS.stocking2); // before 2026-10-02's shared pool: Cody's 9-gift table and 25%
+  gs.drop ||= structuredClone(DEFAULT_SETTINGS.drop);
   $('#gsVer').textContent = `· version ${r.version ?? 0}`;
   $('#gsPrices').innerHTML = Object.entries(gs.prices).map(([k, v]) => `<label>${PRICE_LABEL[k] || k}${numInput('prices.' + k, v)}</label>`).join('');
   const segLabel = (m) => (m === 'star' ? '★ gold star (to the bonus wheel)' : `${m}× ${m === '0' ? '(no win)' : m === '1' ? '(money back)' : ''}`);
@@ -130,7 +136,9 @@ async function loadSettings() {
   $('#gsCounts').innerHTML = SYMBOLS.map((x) => `<label>${x.name}${numInput('counts.' + x.id, gs.big.counts[x.id], 1)}</label>`).join('');
   $('#gsPays').innerHTML = `<div class="pays"><b class="dim">Line prize</b><b class="dim">3 in a row</b><b class="dim">4</b><b class="dim">5</b>${
     SYMBOLS.filter((x) => x.id !== 'coal').map((x) => `<span>${x.name}</span>${[3, 4, 5].map((n) => numInput(`pays.${x.id}.${n}`, gs.big.pays[x.id]?.[n] ?? '')).join('')}`).join('')}</div>`;
-  $('#gsStock').innerHTML = gs.stocking.pays.map((x, k) => `<label>${k} gift${k === 1 ? '' : 's'}${k === 0 ? ' (coal first)' : k === 8 ? ' (all 8)' : ''}${numInput('stock.' + k, x)}</label>`).join('');
+  $('#gsStock').innerHTML = gs.stocking2.pays.map((x, k) => `<label>${k} gift${k === 1 ? '' : 's'}${k === 0 ? ' (coal first)' : ''}${numInput('stock.' + k, x)}</label>`).join('')
+    + `<label>8 gifts in a row: pool jackpot, share of the pool (0.01–0.5; × the turn's size)${numInput('stock2.jackpotPct', gs.stocking2.jackpotPct)}</label>`;
+  $('#gsDrop').innerHTML = `<label>Centre present: pool jackpot, share of the pool (0.01–0.5; × the drop's size)${numInput('drop.jackpotPct', gs.drop.jackpotPct)}</label>`;
   renderItems();
   $('#gsNew').innerHTML = `<label>Id (e.g. shirt_mint)<input data-new="id"></label><label>Name<input data-new="name"></label>
     <label>Slot<select data-new="slot">${['shirt', 'pants', 'snow'].map((x) => `<option>${x}</option>`).join('')}</select></label><label>Colour<input type="color" data-new="color" value="#98e0c0"></label>
@@ -153,7 +161,8 @@ function gather() {
   for (const k of ['jackpotPct', 'jackpotOdds', 'hatBonus']) s.big[k] = Number(v('big.' + k));
   for (const x of SYMBOLS) s.big.counts[x.id] = Number(v('counts.' + x.id));
   s.big.pays = {}; for (const x of SYMBOLS) for (const n of [3, 4, 5]) { const raw = v(`pays.${x.id}.${n}`); if (raw !== undefined && raw !== '') (s.big.pays[x.id] ||= {})[n] = Number(raw); }
-  s.stocking = { pays: s.stocking.pays.map((_, k) => Number(v('stock.' + k))) };
+  s.stocking2 = { pays: s.stocking2.pays.map((_, k) => Number(v('stock.' + k))), jackpotPct: Number(v('stock2.jackpotPct')) }; // board 1's s.stocking stays as published
+  s.drop = { jackpotPct: Number(v('drop.jackpotPct')) };
   // store: an entry for every item whose price/level differs from the built-in catalog, plus the new ones
   const byId = Object.fromEntries(ITEMS.map((x) => [x.id, x])), out = [];
   for (const tr of document.querySelectorAll('#gsItems tr[data-item]')) {
@@ -173,10 +182,12 @@ function preview() {
     const s = gather(), sum = (o) => Object.values(o).reduce((a, b) => a + b, 0);
     $('#gsSliceTotal').textContent = `(${sum(s.spin.main)} of ${MAIN_SLICES})`; $('#gsBonusTotal').textContent = `(${sum(s.spin.bonus)} of ${BONUS_SLICES})`;
     const rules = Object.fromEntries((state?.pools || []).map((p) => [p.game, { ...DEFAULTS[p.game], ...p.rules }]));
-    const c = check({ ...s, version: 0 }, { spin: rules.spin || SPIN_RULES, slots: rules.slots || POOL_RULES }), r = c.report;
+    const G = rules.spin || SPIN_RULES, c = check({ ...s, version: 0 }, { spin: G, slots: G }), r = c.report; // one Game pool's rules for every game
+    const pb = (x) => `<b>${(x.payback * 100).toFixed(1)}%</b> (fixed prizes ${(x.fixed * 100).toFixed(1)}% + the pool jackpot at the $${x.at} start; ${(x.low * 100).toFixed(1)}% at $${x.lowPool}, ${(x.high * 100).toFixed(1)}% at $${x.highPool.toLocaleString()})`;
     $('#gsPreview').innerHTML = (r ? `<p>Spin pays back <b>${(r.spin.payback * 100).toFixed(1)}%</b>; a real win (2× or more) <b>1 in ${(1 / r.spin.realWin).toFixed(1)}</b> spins; top prize ${r.spin.top}×.</p>
-      <p>Big Hat pays back <b>${(r.big.payback * 100).toFixed(1)}%</b>; a win over the pull price about <b>1 in ${(1 / r.big.realWin).toFixed(1)}</b> pulls; top line prize <b>$${r.big.topPrize.toFixed(2)}</b>${r.big.top100 ? ` (about 1 in ${Math.round(r.big.top100).toLocaleString()})` : ''}; jackpot ${esc(r.big.jackpot)}.</p>
-      <p>Stocking Stuffer pays back <b>${(r.stocking.payback * 100).toFixed(1)}%</b>; a real win (more back than the turn cost) <b>1 in ${(1 / r.stocking.realWin).toFixed(1)}</b> turns; top prize ${r.stocking.top}× ($${r.stocking.top} on a $1 turn).</p>` : '')
+      <p>Big Hat pays back ${pb(r.big)}; a win over the pull price about <b>1 in ${(1 / r.big.realWin).toFixed(1)}</b> pulls; top line prize <b>$${r.big.topPrize.toFixed(2)}</b>${r.big.top100 ? ` (about 1 in ${Math.round(r.big.top100).toLocaleString()})` : ''}; jackpot ${esc(r.big.jackpot)}.</p>
+      <p>Snowball Drop pays back ${pb(r.drop)}; a real win <b>1 in ${(1 / r.drop.realWin).toFixed(1)}</b> drops; top fixed prize ${r.drop.top}×; jackpot ${esc(r.drop.jackpot)}.</p>
+      <p>Stocking Stuffer pays back ${pb(r.stocking)}; a real win (more back than the turn cost) <b>1 in ${(1 / r.stocking.realWin).toFixed(1)}</b> turns; top fixed prize ${r.stocking.top}× ($${r.stocking.top} on a $1 turn); jackpot ${esc(r.stocking.jackpot)}.</p>` : '')
       + (c.ok ? '<p class="dim">These settings are safe to publish.</p>' : `<p class="bad">Can't publish yet:</p><ul class="bad">${c.problems.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`);
     $('#gsSave').disabled = !c.ok;
   }, 250);

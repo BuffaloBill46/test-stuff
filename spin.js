@@ -6,8 +6,8 @@
 // the main segment; on a star, the next fair number picks the bonus segment. The wheels land exactly there.
 //   0× 50% · 1× 30% · 2× 12.5% · 3× 5.625% · 4× 1.25% · 5× 0.625%                                  → pays back 80.0%
 // (Cody, 2026-09-30: "around 80%, remember we lose 16% to fees": 10% burn + 3% tax in + 3% tax out.)
-// Spin has its OWN pool (not the Slots pool). Both spin sizes ($0.10 and $1.00) share it.
-import { FEE, IN_PER_DOLLAR } from './slots.js';
+// Spin (retired) played from the pool that is now the shared Game pool. Both spin sizes ($0.10 and $1.00) shared it.
+import { FEE, IN_PER_DOLLAR, POOL_RULES } from './slots.js';
 
 export const MAIN_SLICES = 40, BONUS_SLICES = 12;
 export const STAR = -1;                     // a main-wheel segment that sends you to the bonus wheel
@@ -43,11 +43,11 @@ export function odds(w = DEFAULT_WHEEL) {
 export const payback = (w = DEFAULT_WHEEL) => Object.entries(odds(w)).reduce((a, [m, p]) => a + m * p, 0);
 export const starChance = (w = DEFAULT_WHEEL) => w.main.filter((m) => m === STAR).length / w.main.length;
 
-// Spin pool rules (all adjustable, like the Slots POOL_RULES). Snowball Drop plays from this pool (Spin itself is retired).
-// Cody, 2026-10-02 (Drop board 2, top prize 100×): the pool starts at $300 (he said $300–500; the low end, his money) and
-// $25 goes to the treasury when it reaches $1,025. Below $100 (a $1 drop's 100× prize) the treasury tops it back to $300,
-// so both drop sizes always play the same board. (Was: start $50, skim at $175, top-off below $10 to $50.)
-export const SPIN_RULES = { start: 300, skimAt: 1025, skim: 25, topOffBelow: 100, topOffTo: 300, paused: false };
+// The pool rules. This pool (key 'spin') is now THE Game pool (Cody, 2026-10-02): Big Hat, Snowball Drop and Stocking Stuffer
+// all play from it (Spin itself is retired). Its rules are slots.js POOL_RULES, the SAME object (one source of truth): start
+// $500, $25 skim at $1,025, top-off below $200 back to $500. (Was: start $300, skim at $1,025, top-off below $100 to $300;
+// before that start $50, skim at $175, top-off below $10 to $50.)
+export const SPIN_RULES = POOL_RULES;
 
 // One spin. `rand` gives uniform numbers in [0,1) (server-seeded in the real version): the first picks the main segment;
 // on a star, the second picks the bonus segment. forced (tests only): a main segment, or [main, bonus].

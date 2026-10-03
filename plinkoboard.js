@@ -1,7 +1,7 @@
 // Snowball Drop board (canvas): the hat, the pegs, the presents and their prizes, snowballs hopping along a path the RULES
 // already decided (plinko.js / the fair draw). Used by the Games tab (dropui.js) and the preview page (plinko-page.js).
 // createBoard(canvas) → { launch(path, bin) → Promise (resolves when that snowball lands), setActive(on), hurry(), flying() }
-import { ROWS, BINS, PAYS, WIDTHS } from './plinko.js';
+import { ROWS, BINS, PAYS, WIDTHS, JACKPOT_BIN } from './plinko.js';
 
 // Board 2 (2026-10-02): 16 rows of pegs over 17 presents. Presents are drawn a little narrower the rarer they are (plinko.js
 // WIDTHS: similar sizes, Cody), spread over the same width as the bottom row of pegs.
@@ -11,7 +11,7 @@ const SPAN = BINS * GAP, UNIT = SPAN / WIDTHS.reduce((a, b) => a + b, 0);
 const BIN_L = WIDTHS.reduce((a, w, k) => (a.push(k ? a[k - 1] + WIDTHS[k - 1] * UNIT : CX - SPAN / 2), a), []);
 const pegX = (i, j) => CX + (j - i / 2) * GAP, pegY = (i) => TOP + i * ROW_H, binW = (k) => WIDTHS[k] * UNIT, binX = (k) => BIN_L[k] + binW(k) / 2;
 export const ASPECT = H / W;
-// Colours per prize: the 100× centre gold with a red ribbon; 25× and 10× Santa-hat red with a white brim; 5× gold; 2× frost;
+// Colours per prize: the centre (board 3: the POOL JACKPOT; was 100×) gold with a red ribbon and a star; 25× and 10× Santa-hat red with a white brim; 5× gold; 2× frost;
 // 0× coal.
 const TIER = (m) => (m >= 100 ? { box: '#ffbe5c', rib: '#cf3128' } : m >= 10 ? { box: '#cf3128', rib: '#f5f1e8' } : m >= 5 ? { box: '#c98a1b', rib: '#fff6c8' }
   : m >= 2 ? { box: '#6f8fd0', rib: '#f5f1e8' } : { box: '#151a30', rib: '#26305a' });
@@ -44,22 +44,36 @@ export function createBoard(cv) {
   ctx.restore();
 }
   function present(k, now) {
-  const m = PAYS[k], c = TIER(m), since = (now - binHit[k]) / 1000, pop = since < 0.5 ? Math.sin((since / 0.5) * Math.PI) * 8 : 0;
+  const jp = k === JACKPOT_BIN, m = jp ? 100 : PAYS[k], c = TIER(m), since = (now - binHit[k]) / 1000, pop = since < 0.5 ? Math.sin((since / 0.5) * Math.PI) * 8 : 0;
   const w = binW(k) - 5, x = binX(k) - w / 2, y = BIN_Y - pop;
   ctx.fillStyle = '#0c0f1a'; ctx.fillRect(x + 3, y + 3, w, BIN_H);
   ctx.fillStyle = c.box; ctx.fillRect(x, y, w, BIN_H);
   ctx.fillStyle = c.rib; ctx.fillRect(binX(k) - 3, y, 6, BIN_H);                      // ribbon
   if (m >= 10 && m < 100) { ctx.fillStyle = '#f5f1e8'; ctx.fillRect(x, y, w, 12); ctx.fillStyle = '#d9d2c2'; ctx.fillRect(x, y + 9, w, 3); } // the hat's brim
   ctx.lineWidth = 2; ctx.strokeStyle = '#0c0f1a'; ctx.strokeRect(x, y, w, BIN_H);
+  if (jp) jackpotTop(binX(k), y, now);                                                   // board 3: the pool jackpot's star
   if (since < 0.9) { ctx.fillStyle = `rgba(255,226,168,${0.5 * (1 - since / 0.9)})`; ctx.fillRect(x, y, w, BIN_H); }
   // the prize, big and dark on the snow bank under its present (readable at phone size). Prizes only: each sits between two
   // coal presents, which get a small grey 0, so 17 labels never crowd each other.
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (jp) { // the centre: the POOL JACKPOT (Cody, 2026-10-02), its word in two short lines so it fits between the two coal 0s
+    ctx.fillStyle = '#cf3128'; ctx.font = "800 13px 'Alegreya Sans', sans-serif"; ctx.fillText('POOL', binX(k), LABEL_Y - 9 - (since < 0.5 ? pop : 0));
+    ctx.font = "800 15px 'Alegreya Sans', sans-serif"; ctx.fillText('JACKPOT', binX(k), LABEL_Y + 7 - (since < 0.5 ? pop : 0)); return; }
   if (m === 0) { ctx.font = "700 15px 'Alegreya Sans', sans-serif"; ctx.fillStyle = '#8a93b3'; ctx.fillText('0', binX(k), LABEL_Y); return; }
   ctx.font = `800 ${m >= 100 ? 27 : m >= 10 ? 25 : 22}px 'Alegreya Sans', sans-serif`;
   ctx.fillStyle = m >= 10 ? '#cf3128' : m >= 5 ? '#9a6510' : '#34539a';
   ctx.fillText(`${m}×`, binX(k), LABEL_Y - (since < 0.5 ? pop : 0));
 }
+  // The jackpot present's crest: a five-point gold star with an ink outline sitting on its lid (the game's own star shape), and a
+  // slow twinkle (two crossed white glints) that never adds glow to the snow around it. Still when reduced motion is asked for.
+  function jackpotTop(cx, y, now) {
+    const t = reduce ? 0 : now / 1000, r = 11, cy = y - 7;
+    ctx.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, d = i % 2 ? r * 0.45 : r; ctx.lineTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); } ctx.closePath();
+    ctx.fillStyle = '#ffc94a'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#0c0f1a'; ctx.stroke();
+    const s = 0.5 + 0.5 * Math.sin(t * 3); if (s < 0.15) return;
+    ctx.strokeStyle = `rgba(255,255,255,${0.85 * s})`; ctx.lineWidth = 1.5; ctx.beginPath();
+    ctx.moveTo(cx + 8, cy - 9 - 4 * s); ctx.lineTo(cx + 8, cy - 9 + 4 * s); ctx.moveTo(cx + 8 - 4 * s, cy - 9); ctx.lineTo(cx + 8 + 4 * s, cy - 9); ctx.stroke();
+  }
   function draw(now, dt) {
   const s = cv.width / W; ctx.setTransform(s, 0, 0, s, 0, 0);
   const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#16204a'); g.addColorStop(1, '#0f1530'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
