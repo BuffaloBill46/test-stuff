@@ -23,6 +23,9 @@ const addressOf = (req) => { const direct = req.socket.remoteAddress || ''; retu
 const SB_URL = process.env.SUPABASE_URL || 'https://olganobdypnxfpmsxibe.supabase.co';
 const SB_KEY = process.env.SUPABASE_KEY || 'sb_publishable_eLn_YYzLDOTuUAOTZLeyKQ_PLGT8B6N'; // publishable: meant to be public
 let identify = null, finish = null, ranked = null;
+// WEEKLY MODES Cody has switched on (supabase/034; the admin screen), read once a minute. Unreadable (no database, 034 not yet
+// applied, a network hiccup): kept as last read, and [] at the start = every weekly mode OFF (never on by accident).
+let weeklyOnList = [], readWeekly = null;
 // Whether special snowballs count in RANKED (Cody's open question, HANDOFF): RANKED_SPECIALS=0 turns them off there.
 const rankedSpecials = process.env.RANKED_SPECIALS !== '0';
 if (process.env.DATABASE_URL) {
@@ -38,6 +41,8 @@ if (process.env.DATABASE_URL) {
     return p ? { pid: p.id, l: p.level, a: p.avatar, n: p.name, rp: p.rank_points } : null;
   };
   finish = createLevels({ db }).finishByReferee;
+  readWeekly = async () => { try { weeklyOnList = (await db.query('select id from public.weekly_modes where "on"')).map((r) => r.id); } catch (e) { console.error('referee: weekly modes read failed:', e.message); } };
+  readWeekly(); setInterval(readWeekly, 60_000);
   // Ranked (supabase/006 tickets + 018 results), through the same limited login.
   const one = async (q, p) => Object.values((await db.query(q, p))[0] || {})[0];
   ranked = {
@@ -51,7 +56,7 @@ if (process.env.DATABASE_URL) {
 } else console.log('referee: no DATABASE_URL: phase-1 rooms (the page word is used, nothing recorded)');
 // Ranked paused while this file exists (Cody, 2026-10-02): touch it to pause, delete it to reopen; no restart needed.
 const PAUSE_FILE = process.env.RANKED_PAUSE_FILE || '/etc/santa/ranked-paused';
-const ref = createReferee({ identify, finish, ranked, rankedSpecials, rankedPaused: () => existsSync(PAUSE_FILE) });
+const ref = createReferee({ identify, finish, ranked, rankedSpecials, rankedPaused: () => existsSync(PAUSE_FILE), weeklyOn: () => weeklyOnList });
 const perAddress = new Map();
 const server = http.createServer((req, res) => {
   if (req.url === '/health') {

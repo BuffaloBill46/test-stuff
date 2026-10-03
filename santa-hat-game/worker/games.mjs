@@ -110,7 +110,7 @@ const handle = makeHandler({
   shop: createShop({ db, chain, livePrice: price, liveFee: feeOfMint, treasury: env('TREASURY_WALLET') || null, ...mintOpt, cluster,
     rankedPaused: () => existsSync(env('RANKED_PAUSE_FILE') || '/etc/santa/ranked-paused') }), // no ticket sales while ranked is paused
   lottery: createLottery({ db, chain: { ...chain, latestBlock }, livePrice: price, liveFee: feeOfMint, wallet: env('LOTTERY_WALLET') || null, ...mintOpt, cluster }),
-  admin: createAdmin({ db, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), chain,
+  admin: createAdmin({ db, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), onWeekly: () => server.weeklyChanged(), chain,
     poolWallets: { ...poolWallets, lottery: env('LOTTERY_WALLET') || null, treasury: env('TREASURY_WALLET') || null }, ...mintOpt }),
   profileFor,
 });

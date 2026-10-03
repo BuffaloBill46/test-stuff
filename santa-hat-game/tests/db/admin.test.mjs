@@ -157,3 +157,25 @@ assert.equal(await logs(), 4, 'every applied change is in the public log: pause,
 console.log('OK: frozen payouts: a real big win is never frozen; an impossible amount is, shows player + amount, and only Cody can release it (once, logged)');
 console.log('OK: deposits (Cody pays top-offs himself): booked exactly as arrived on the chain, short and extra deposits, books = wallet at every step, no double recording');
 console.log('OK: admin controls: wallet-signed only; replay, stranger, tampering, stale and bad settings refused; stop really stops plays; jackpot % adjustable; all logged');
+
+// WEEKLY MODES (supabase/034; Cody 2026-10-03: a switch for each, all off to start): signed on/off, logged; Hat Hunt (not built)
+// can't be switched on; a stranger can't switch anything; the game server's public answer follows at once.
+{ await pg.exec(readFileSync(new URL('../../supabase/034_weekly_modes.sql', import.meta.url), 'utf8'));
+  await pg.exec(readFileSync(new URL('../../supabase/034_weekly_modes.sql', import.meta.url), 'utf8')); // safe twice
+  const { createGameServer } = await import('../../server/games.js');
+  const gs = createGameServer({ retired: [], db, chain: {}, livePrice: async () => ({ usd: 0.001 }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: {} });
+  const adm = createAdmin({ db, adminWallets: [cody.address], onWeekly: () => gs.weeklyChanged() });
+  let w = await gs.weekly();
+  assert.deepEqual([w.modes.every((m) => !m.on), w.now], [true, null], 'all four start OFF: no weekly mode');
+  const n0 = await logs();
+  let r = await adm.run(await signed(cody, { action: 'weekly-mode', game: 'weekly', settings: { mode: 'gazebo', on: true } }));
+  assert.ok(r.ok, JSON.stringify(r)); w = await gs.weekly();
+  assert.deepEqual([w.modes.find((m) => m.id === 'gazebo').on, w.now], [true, 'gazebo'], 'the Gazebo on: it is this week\'s mode (the only one on)');
+  assert.equal(await logs(), n0 + 1, 'the switch is in the public log');
+  r = await adm.run(await signed(cody, { action: 'weekly-mode', game: 'weekly', settings: { mode: 'hathunt', on: true } }));
+  assert.ok(/isn't built yet/.test(r.error || ''), 'Hat Hunt can\'t be switched on yet');
+  r = await adm.run(await signed(stranger, { action: 'weekly-mode', game: 'weekly', settings: { mode: 'hothat', on: true } }));
+  assert.ok(r.error, 'a stranger can\'t switch a mode');
+  r = await adm.run(await signed(cody, { action: 'weekly-mode', game: 'weekly', settings: { mode: 'gazebo', on: false } }));
+  w = await gs.weekly(); assert.deepEqual([r.ok, w.now], [true, null], 'switched off again: no weekly mode'); }
+console.log('OK: weekly modes: all off to start; Cody switches each on/off (signed, logged); Hat Hunt refused until built; strangers refused; the public answer follows');

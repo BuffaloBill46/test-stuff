@@ -19,7 +19,7 @@ import { check as checkSettings, DEFAULT_SETTINGS } from '../mockups/settings.js
 import { MINT } from '../mockups/market.js';
 import { botSignals, BOT_RULES } from './bots.js';
 
-export const ACTIONS = ['pause', 'resume', 'set-rules', 'set-settings', 'record-deposit', 'release-payout', 'bot-signals', 'lottery-mode', 'lottery-paid', 'lottery-owed', 'shop-owed', 'shop-refund-paid', 'claim-rewards', 'rewards-status']; // set-settings: prices, odds, prizes, store (game 'all')
+export const ACTIONS = ['pause', 'resume', 'weekly-mode', 'set-rules', 'set-settings', 'record-deposit', 'release-payout', 'bot-signals', 'lottery-mode', 'lottery-paid', 'lottery-owed', 'shop-owed', 'shop-refund-paid', 'claim-rewards', 'rewards-status']; // set-settings: prices, odds, prizes, store (game 'all')
 export const FRESH_SECONDS = 300;
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 export function b58decode(s) {
@@ -38,6 +38,7 @@ const unhex = (h) => new Uint8Array((h.match(/../g) || []).map((x) => parseInt(x
 
 // The exact text the wallet signs: one shared function for the admin screen and the server.
 import { adminMessage } from '../mockups/adminmsg.js';
+import { VARIANTS, ROTATION } from '../mockups/weekly.js';
 export { adminMessage };
 function parse(message) {
   const lines = message.split('\n'); if (lines[0] !== 'Santa Hat Legends admin' || lines.length !== 6) return null;
@@ -73,14 +74,14 @@ export function depositOf(tx, mint, wallet) {
 // chain.getTransaction / poolWallets / mint: only needed for record-deposit (the same ones the game server uses).
 // (The type note stops Deno's checker reading `chain = null` as "chain may only ever be null" when the Edge Function passes one.)
 /** @param {{ db: any, adminWallets: string[], now?: () => number, onSettings?: () => void, chain?: { getTransaction: (s: string) => Promise<any> } | null, poolWallets?: Record<string, string | null>, mint?: string }} opts */
-export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettings = () => {}, chain = null, poolWallets = {}, mint = MINT }) {
+export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettings = () => {}, onWeekly = () => {}, chain = null, poolWallets = {}, mint = MINT }) {
   async function run({ wallet, message, signature }) {
     const m = parse(message || '');
     if (!m || message !== adminMessage(m)) return { error: 'not an admin message' };
     if (!adminWallets.includes(wallet)) return { error: 'not an admin wallet' };
     if (!(await signatureOk(wallet, message, signature || ''))) return { error: 'signature doesn\'t match the wallet' };
     if (!(Math.abs(now() - Date.parse(m.at)) <= FRESH_SECONDS * 1000)) return { error: 'message too old (sign a fresh one)' };
-    const gameOk = ['set-settings', 'bot-signals', 'claim-rewards', 'rewards-status'].includes(m.action) ? m.game === 'all' : m.action.startsWith('lottery-') ? m.game === 'lottery' : m.action.startsWith('shop-') ? m.game === 'shop' : ['spin', 'slots'].includes(m.game);
+    const gameOk = ['set-settings', 'bot-signals', 'claim-rewards', 'rewards-status'].includes(m.action) ? m.game === 'all' : m.action.startsWith('lottery-') ? m.game === 'lottery' : m.action.startsWith('shop-') ? m.game === 'shop' : m.action === 'weekly-mode' ? m.game === 'weekly' : ['spin', 'slots'].includes(m.game);
     if (!ACTIONS.includes(m.action) || !gameOk) return { error: 'unknown action or game' };
     if (!/^[0-9a-f]{16,64}$/.test(m.nonce)) return { error: 'bad one-time number' };
     if (m.action === 'set-rules') { const bad = checkRules(m.game, m.settings); if (bad.length) return { error: bad.join('; ') }; }
@@ -97,6 +98,7 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
     if (m.action === 'release-payout') return releasePayout(m, wallet, message, signature);
     if (m.action === 'bot-signals') return signals();
     if (m.action === 'lottery-mode') return lotteryMode(m, wallet, message, signature);
+    if (m.action === 'weekly-mode') return weeklyMode(m, wallet, message, signature);
     if (m.action === 'lottery-paid') return lotteryPaid(m, wallet, message, signature);
     if (m.action === 'lottery-owed') return lotteryOwed();
     if (m.action === 'shop-owed') return shopOwed();
@@ -194,6 +196,19 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
       await t.query('update public.lottery_settings set payout_mode = $1, updated_at = now() where id = 1', [mode]);
       await t.query(`insert into public.pool_log (game, what, by_wallet, nonce, details) values ('lottery', $1, $2, $3, $4)`, ['payout mode ' + mode, wallet, m.nonce, JSON.stringify({ message, signature })]);
       return { ok: true, mode };
+    });
+  }
+  // A weekly mode on or off (Cody 2026-10-03: a toggle for each; supabase/034). A mode that isn't built yet can't be switched on.
+  async function weeklyMode(m, wallet, message, signature) {
+    const id = String(m.settings?.mode || ''), on = m.settings?.on === true;
+    if (!VARIANTS[id]) return { error: 'unknown weekly mode' };
+    if (on && !ROTATION.includes(id)) return { error: `${VARIANTS[id].name} isn't built yet, so it can't be switched on` };
+    return db.tx(async (t) => {
+      if ((await t.query('select 1 from public.pool_log where nonce = $1', [m.nonce])).length) return { error: 'this signed message was already used' };
+      await t.query('update public.weekly_modes set "on" = $2, updated_at = now() where id = $1', [id, on]);
+      await t.query(`insert into public.pool_log (game, what, by_wallet, nonce, details) values ('weekly', $1, $2, $3, $4)`, [`${VARIANTS[id].name} ${on ? 'on' : 'off'}`, wallet, m.nonce, JSON.stringify({ message, signature })]);
+      onWeekly();
+      return { ok: true, mode: id, on };
     });
   }
   // Cody paid a lottery winner (or a refund) by hand. The server checks the transaction on the chain: the full amount LEFT the

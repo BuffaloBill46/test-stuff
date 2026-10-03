@@ -11,6 +11,7 @@ import { initMoneyStrips, refreshBurned } from './moneystrip.js';
 import { initWalletLines, refreshWallet } from './walletline.js';
 import { createCoach } from './coach.js';
 import { createCallouts } from './callouts.js';
+import { VARIANTS, VARIANT_IDS } from './weekly.js';
 import { initJackpotBar } from './jackpotbar.js';
 import { initShareWins } from './sharecard.js';
 import { TICKET_MAX } from './ranked.js';
@@ -22,7 +23,7 @@ import { initLottery } from './lotteryui.js';
 import { play as sfx, initSoundButtons } from './sfx.js';
 import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js';
 import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js';
-import { snapMs, autoStartMs, isPublic, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js';
+import { snapMs, autoStartMs, isPublic, isWeekly, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js';
 
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
@@ -91,7 +92,9 @@ let rankNews = null; // ranked: { change, points } from the referee server after
 let roomMode = null, autoStart = false, cdEnd = null, boardAt = 0, lobbyKind = 'unranked';
 // Auto match game types (Cody, 2026-10-02: tick boxes under Auto match, 1 or both; remembered). lobbyMode: the first ticked
 // (what Practice and a new private room start in).
-let autoModes = (() => { try { const v = JSON.parse(store.get('sq_amodes') || '["ffa"]'); return Array.isArray(v) && v.length ? v.filter(modeAllowed) : ['ffa']; } catch { return ['ffa']; } })(); // team play paused: a saved TEAM tick is dropped
+const autoOk = (m) => m === 'weekly' || modeAllowed(m); // 'weekly': this week's mode (weekly.js)
+let autoModes = (() => { try { const v = JSON.parse(store.get('sq_amodes') || '["ffa","weekly"]'); const ok = Array.isArray(v) && v.length ? v.filter(autoOk) : ['ffa', 'weekly'];
+  if (!store.get('sq_amodes_w') && !ok.includes('weekly')) ok.push('weekly'); store.set('sq_amodes_w', '1'); return ok; } catch { return ['ffa', 'weekly']; } })(); // team play paused: a saved TEAM tick is dropped
 if (!autoModes.length) autoModes = ['ffa'];
 let lobbyMode = autoModes[0];
 // …and the style: normal play (plain snowballs) and/or special gear (Cody, 2026-10-02); both ticked at first
@@ -109,7 +112,7 @@ function decode(s) {
   const n = (v, d = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
   const H = Array.isArray(s.H) ? s.H : [];
   return {
-    seq: n(s.s), phase: PHASES[s.ph] || 'lobby', mode: s.md ? 'team' : 'ffa', round: n(s.rd), time: n(s.tm), ts: [n(s.ts?.[0]), n(s.ts?.[1])],
+    seq: n(s.s), phase: PHASES[s.ph] || 'lobby', mode: s.md ? 'team' : 'ffa', variant: VARIANT_IDS[n(s.vr) - 1] || null, round: n(s.rd), time: n(s.tm), ts: [n(s.ts?.[0]), n(s.ts?.[1])],
     ents: (Array.isArray(s.E) ? s.E : []).map((r) => ({ id: n(r[0]), peer: typeof r[1] === 'string' ? r[1] : null, bot: !!r[2], team: n(r[3]), x: n(r[4]), z: n(r[5]), vx: n(r[6]), vz: n(r[7]), face: n(r[8]), stun: !!r[9], ammo: n(r[10]), score: n(r[11]), thr: !!r[12], ep: n(r[13]),
       // untouchable for 2 s after grabbing the hat (E[14]): the gold ring. It was never read before, so the ring never showed.
       immune: !!r[14],
@@ -130,7 +133,7 @@ const nameOf = (e) => (e.bot ? botName(e.id) : (e.peer === me.id && room?.kind !
 
 // ---------- referee hand-off
 function becomeHost() {
-  isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)), startOf, specialsOf, levelOf, gearOf }); // snowball rules, starting snowballs (level), special snowballs, gear
+  isHost = true; sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)), startOf, specialsOf, levelOf, gearOf, variant: isWeekly(roomCode) ? weeklyNow : null }); // snowball rules, starting snowballs (level), special snowballs, gear
   if (lastRaw) sim.load(lastRaw);
   room?.setHost(true);
   sim.S.ev.forEach((v) => { lastEv = Math.max(lastEv, v[0]); });
@@ -169,7 +172,7 @@ async function enterRoom(code, quick, opts = {}) {
   if (!profile) { me.n = cleanName($('#name')?.value) || me.n; store.set('sq_name', me.n); }
   me.w = !!opts.watch;
   // without the match server (tests: ?ref=off / ?net=local) Auto match tries the ticked types' rooms in turn
-  const tries = quick ? autoModes.flatMap((md) => autoStyles.flatMap((st) => [1, 2, 3, 4, 5].map((n) => 'P' + (md === 'team' ? 'T' : 'F') + (st === 'normal' ? 'N' : 'G') + n))) : [code];
+  const tries = quick ? autoModes.filter((md) => md !== 'weekly' || weeklyNow).flatMap((md) => autoStyles.flatMap((st) => [1, 2, 3, 4, 5].map((n) => 'P' + (md === 'team' ? 'T' : md === 'weekly' ? 'W' : 'F') + (st === 'normal' ? 'N' : 'G') + n))) : [code];
   const serverPicks = quick && !!REFEREE; // the match server picks the best room for the ticked types itself
   for (let attempt = 0; attempt < (serverPicks ? 1 : tries.length); attempt++) {
     const c = serverPicks ? '' : tries[attempt];
@@ -213,6 +216,7 @@ async function enterRoom(code, quick, opts = {}) {
 // "Play again" starts the next one at once; a public Auto match starts its next match by itself (no button needed, Leave
 // offered); ranked closes the room, so "Play again" queues the next ranked match (1 ticket); a friends' room goes back to its
 // warm-up. A guest who placed top 3 in a public match is told what signing in would have kept.
+let weeklyNow = null; // this week's mode id when one is switched on (set from the game server's 'weekly' answer), else null
 let againWanted = false, togetherNote = ''; // togetherNote: the last answer to Auto match together, shown in the warm-up card
 function endActions(v, sorted) {
   const secs = Math.ceil(v.time), place = sorted.findIndex((e) => e.peer === me.id) + 1;
@@ -384,6 +388,7 @@ function handleEvents(v) {
     else if (k === 'knock') { sfx('knock'); const at = entPos(a, v); if (at) pop(at.setY(3.1), 'KNOCKED OFF!', mine(a) ? 'bad' : 'white'); const by = entPos(b, v); if (by && b) pop(by.setY(3.1), '+25', mine(b) ? '' : 'green'); }
     else if (k === 'catch') { sfx('catch'); const at = entPos(a, v); if (at) { burst.spawn(at.clone().setY(2.2), 16, C.gold, 3, 3); pop(at.setY(3.1), 'HEADER +50', 'big'); } }
     else if (k === 'boing') { sfx('boing'); const at = entPos(a, v); if (at) pop(at.setY(2.9), 'BOING', 'white'); }
+    else if (k === 'zone') { const at = entPos(a, v); if (at) pop(at.setY(2.9), '+' + (+b || 0), mine(a) ? '' : 'green'); } // King of the Gazebo
     else if (k === 'pts') { const at = entPos(a, v); if (at) pop(at.setY(2.9), '+' + (+b || 0), mine(a) ? '' : 'green'); }
     else if (k === 'emote') showEmote('b' + a, +b); // a bot's emote (bots have no player id, so key by entity)
     else if (k === 'splat') burst.spawn(new V3(+a || 0, 0.1, +b || 0), 6, 0xffffff, 2, 1.5);
@@ -512,6 +517,9 @@ const JOY_TAPS_MS = 700, JOY_HOLD_MS = 350;
 const JOY_MAX = 42, JOY_GRAB = 72; // knob travel; how near its centre a touch must start to steer
 const touchUI = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
 const coach = createCoach({ touch: touchUI, el: $('#coach') }); // first-match tips (coach.js)
+// King of the Gazebo's ring (weekly.js zoneIn..zoneOut), a soft glow on the ground, only in a gazebo match
+const zoneRing = new THREE.Mesh(new THREE.RingGeometry(VARIANTS.gazebo.zoneIn, VARIANTS.gazebo.zoneOut, 64), new THREE.MeshBasicMaterial({ color: 0xffbe5c, transparent: true, opacity: 0.28, depthWrite: false }));
+zoneRing.rotation.x = -Math.PI / 2; zoneRing.position.y = 0.04; zoneRing.visible = false; scene.add(zoneRing);
 // match call-outs and end highlights (callouts.js): names from the view, 'You' for me
 const callouts = createCallouts({ el: $('#feed'), banner, nameOf: (id, v) => { const e = v?.ents.find((q) => q.id === id); return !e ? 'Someone' : e.peer === me.id && !e.bot ? 'You' : nameOf(e); } });
 function joyHome() { // remembered as a share of the screen, so it survives turning the phone
@@ -593,21 +601,23 @@ function renderChrome() {
   if (inRoom()) {
     const count = practice ? 1 : room.peers().filter((p) => !p.w).length, watchers = practice ? 0 : room.peers().filter((p) => p.w).length;
     $('#roomchip').innerHTML = practice ? (trial ? `<i>Trying</i><b>${esc(SPECIALS[trial.kind].name)}</b>` : '<i>Practice</i><b>vs bots</b>')
-      : `<i>${me.w ? 'Watching' : autoStart ? 'Auto match' : 'Room'}</i><b>${esc(autoStart ? (roomMode === 'team' ? 'TEAM' : 'FFA') : roomCode)}</b><span>${idleLeft ? `<em class="idle">Still there? Leaving in ${idleLeft}s</em>` : `${count} playing${watchers ? ` · ${watchers} watching` : ''}${isHost ? ' · you referee' : ''}`}</span>`;
+      : `<i>${me.w ? 'Watching' : autoStart ? 'Auto match' : 'Room'}</i><b>${esc(autoStart ? (currentView?.variant ? VARIANTS[currentView.variant].name : roomMode === 'team' ? 'TEAM' : 'FFA') : roomCode)}</b><span>${idleLeft ? `<em class="idle">Still there? Leaving in ${idleLeft}s</em>` : `${count} playing${watchers ? ` · ${watchers} watching` : ''}${isHost ? ' · you referee' : ''}`}</span>`;
   }
   const cnt = inRoom() && v && v.phase === 'count' ? Math.max(1, Math.ceil(v.time)) : 0;
   if (cnt !== ui.lastCount) { ui.lastCount = cnt; const c = $('#count'); c.hidden = !cnt; if (cnt) { c.textContent = cnt; c.classList.remove('show'); void c.offsetWidth; c.classList.add('show'); sfx('tick'); } }
   // Out of a match: clear the scoreboard too (it used to linger after Leave, showing over the Avatar tab on Cody's phone).
-  if (!inRoom() || !v) { coach.update(null); if (ui.lastCard) { $('#panel').hidden = true; ui.lastCard = ''; } setHud(''); ui.lastBoard = ''; $('#board').hidden = true; return; }
+  if (!inRoom() || !v) { coach.update(null); zoneRing.visible = false; if (snow.points.geometry.drawRange.count !== themeOf(theme).snowfall) snow.points.geometry.setDrawRange(0, themeOf(theme).snowfall); if (ui.lastCard) { $('#panel').hidden = true; ui.lastCard = ''; } setHud(''); ui.lastBoard = ''; $('#board').hidden = true; return; }
   const m = myEnt(v);
   coach.update(v, me.w ? null : m); // first-match tips: move, throw, get the hat (coach.js)
   callouts.tick(v); // who takes the lead, 10 seconds left
+  zoneRing.visible = v.variant === 'gazebo';
+  const flakes = v.variant === 'blizzard' ? 1400 : themeOf(theme).snowfall; if (snow.points.geometry.drawRange.count !== flakes) snow.points.geometry.setDrawRange(0, flakes); // Blizzard: the whole storm
   const humans = v.ents.filter((e) => !e.bot);
   // lobby / results panel
   let card = '';
   if (v.phase === 'lobby' && (v.pub || autoStart)) {
     const roster = humans.map((e) => `<li>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}${v.mode === 'team' ? ` <u class="t${e.team}">${TEAM_NAME[e.team]}</u>` : ''}</li>`).join('');
-    card = `<div class="eyebrow">${v.rk ? 'Ranked' : 'Auto match'} · ${v.mode === 'team' ? 'TEAM' : 'FFA'}${styleOf(roomCode) === 'normal' ? ' · Normal play' : ' · Special gear'}${me.w ? ' · watching' : ''}</div><h2>${v.wait ? 'Looking for another real player…' : v.cd ? `Starting in ${Math.ceil(v.cd)}` : 'Finding players…'}</h2>
+    card = `<div class="eyebrow">${v.rk ? 'Ranked' : 'Auto match'} · ${v.variant ? esc(VARIANTS[v.variant].name) : v.mode === 'team' ? 'TEAM' : 'FFA'}${styleOf(roomCode) === 'normal' ? ' · Normal play' : ' · Special gear'}${me.w ? ' · watching' : ''}</div><h2>${v.wait ? 'Looking for another real player…' : v.cd ? `Starting in ${Math.ceil(v.cd)}` : 'Finding players…'}</h2>${v.variant ? `<p class="vrule">${esc(VARIANTS[v.variant].short)}</p>` : ''}
       <ul class="roster">${roster}</ul><p class="dim">${v.rk ? 'Ranked needs 2 real players. Leave before it starts and your ticket comes back. ' : 'More players can still join. '}Bots fill any empty spots when it starts.</p>`;
   } else if (v.phase === 'lobby') {
     const share = practice ? '' : `<p class="share">Friends join with code <b>${esc(roomCode)}</b> or this link:<br><span class="link">${esc(location.origin + location.pathname + '?room=' + roomCode + REF_KEEP)}</span></p>`;
@@ -620,7 +630,7 @@ function renderChrome() {
       <button class="go" id="start">Start match</button>` : `<p class="wait">Mode: <b>${v.mode === 'team' ? 'Nice vs Naughty' : 'Everyone vs the hat'}</b>. Waiting for the referee to start…</p>`}`;
   } else if (v.phase === 'intro') {
     loadStats(v);
-    card = `<div class="eyebrow">${practice ? 'Practice' : autoStart ? 'Auto match' : 'Room'} · ${v.mode === 'team' ? 'Nice vs Naughty' : 'Everyone vs the hat'}</div><h2>Starting in ${Math.ceil(v.time + K.COUNT_TIME)}</h2>
+    card = `<div class="eyebrow">${practice ? 'Practice' : autoStart ? 'Auto match' : 'Room'} · ${v.variant ? 'This week: ' + esc(VARIANTS[v.variant].name) : v.mode === 'team' ? 'Nice vs Naughty' : 'Everyone vs the hat'}</div><h2>Starting in ${Math.ceil(v.time + K.COUNT_TIME)}</h2>${v.variant ? `<p class="vrule">${esc(VARIANTS[v.variant].short)}</p>` : ''}
       <ul class="lineup">${[...v.ents].sort((a, b) => (b.peer === me.id) - (a.peer === me.id) || a.bot - b.bot).map((e) => lineupRow(e, v)).join('')}</ul>${SERVER ? '' : '<p class="dim">Games played, top-3 % and rank points show once the game server is live.</p>'}`;
   } else if (v.phase === 'end' && v.res) {
     reportFinish(v); // levels: once per Auto match, from the host (server mode)
@@ -765,7 +775,7 @@ function draw(v, dt, t) {
     if (camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
     const pos = camTarget.clone().add(base.clone().multiplyScalar(zoom)), look = new V3(camTarget.x, lookY, camTarget.z - lookBack);
     camPos.lerp(pos, rate); camera.position.copy(camPos); camera.lookAt(look);
-    if (scene.fog) { fog0 ||= { near: scene.fog.near, far: scene.fog.far }; const k = Math.max(1, zoom); scene.fog.near = fog0.near * k; scene.fog.far = fog0.far * k; } // the plaza's own fog, pulled back with the camera
+    if (scene.fog) { fog0 ||= { near: scene.fog.near, far: scene.fog.far }; const k = Math.max(1, zoom) * (currentView?.variant === 'blizzard' ? 0.38 : 1); scene.fog.near = fog0.near * k * (currentView?.variant === 'blizzard' ? 0.2 : 1); scene.fog.far = fog0.far * k; } // the plaza's own fog, pulled back with the camera
   } else if (tabs?.tab === 'avatar') {
     // Frame the whole character, hat included, in the space the page actually leaves free: below the top bar and above
     // (phones upright) or beside (wide or sideways screens) the editor panel. Fixed camera spots cut the head off on
@@ -876,7 +886,7 @@ function renderWaiting(list = []) {
   const el = $('#waitList'); if (!el) return;
   const wait = list.filter((g) => !g.ranked && g.phase === 'lobby' && isPublic(cleanCode(g.code)) && (Number(g.humans) || 0) > 0 && (g.free ?? K.MAX_HUMANS - (Number(g.humans) || 0)) > 0)
     .sort((a, b) => (Number(b.humans) || 0) - (Number(a.humans) || 0));
-  el.innerHTML = wait.length ? wait.map((g) => `<div class="wg"><b>${g.mode === 'team' ? 'Nice vs Naughty' : 'Free-for-all'} · ${(g.style || 'gear') === 'normal' ? 'Normal play' : 'Special gear'}</b>
+  el.innerHTML = wait.length ? wait.map((g) => `<div class="wg"><b>${g.variant && VARIANTS[g.variant] ? 'This week: ' + esc(VARIANTS[g.variant].name) : g.mode === 'team' ? 'Nice vs Naughty' : 'Free-for-all'} · ${(g.style || 'gear') === 'normal' ? 'Normal play' : 'Special gear'}</b>
       <span><em class="seats">${Number(g.humans) || 0}/${K.MAX_HUMANS}</em> players · ${Number.isFinite(g.starts) && g.starts !== null ? `starts in ${g.starts}s` : 'waiting for more'}</span>
       <button class="go" data-join="${esc(cleanCode(g.code))}">Join</button></div>`).join('')
     : '<p class="dim">Nobody is waiting right now. <button class="sec" data-act-start>Start one</button> and others will join you.</p>';
@@ -909,13 +919,13 @@ let lastGames = [];
 function renderGames(list = lastGames) {
   lastGames = list;
   const ranked = lobbyKind === 'ranked';
-  const games = list.filter((g) => (ranked ? g.ranked : !g.ranked && autoModes.includes(g.mode)) && autoStyles.includes(g.style || 'gear') && isPublic(cleanCode(g.code)))
+  const games = list.filter((g) => (ranked ? g.ranked : !g.ranked && autoModes.includes(g.variant ? 'weekly' : g.mode)) && autoStyles.includes(g.style || 'gear') && isPublic(cleanCode(g.code)))
     .sort((a, b) => (b.watchers - a.watchers) || (b.humans - a.humans));
   const label = ranked ? 'ranked' : autoModes.length > 1 ? 'FFA or TEAM' : autoModes[0] === 'team' ? 'TEAM' : 'FFA';
   $('#gamesList').innerHTML = games.length ? games.map((g) => {
     const full = (Number(g.watchers) || 0) >= MAX_WATCHERS;
     const state = g.phase === 'lobby' || g.phase === 'intro' || g.phase === 'count' ? 'Starting soon' : g.phase === 'end' ? 'Final scores' : `${K.ROUNDS > 1 ? `Round ${Number(g.round) || 1}/${K.ROUNDS} · ` : 'Playing · '}${Number(g.time) || 0}s`;
-    return `<div class="game"><div><b>${g.mode === 'team' ? 'TEAM' : 'FFA'}${(g.style || 'gear') === 'normal' ? ' · Normal' : ' · Gear'}</b><span>${Number(g.humans) || 0}/8 players${g.watchers ? ` · ${Number(g.watchers)} watching` : ''}</span></div>
+    return `<div class="game"><div><b>${g.variant && VARIANTS[g.variant] ? esc(VARIANTS[g.variant].name) : g.mode === 'team' ? 'TEAM' : 'FFA'}${(g.style || 'gear') === 'normal' ? ' · Normal' : ' · Gear'}</b><span>${Number(g.humans) || 0}/8 players${g.watchers ? ` · ${Number(g.watchers)} watching` : ''}</span></div>
       <div><span>${esc(state)}</span>${g.leader ? `<span>Leader: ${esc(String(g.leader).slice(0, 14))} · ${Number(g.lscore) || 0}</span>` : ''}</div>
       <button class="sec" data-watch="${esc(cleanCode(g.code))}" ${full ? 'disabled' : ''}>${full ? 'Watchers full' : 'Watch now'}</button></div>`;
   }).join('') : `<p class="dim">No ${label} games right now.${ranked && !REFEREE ? ' Ranked opens soon.' : ' Start one with Auto match.'}</p>`;
@@ -926,7 +936,7 @@ if (TEAM_PAUSED) document.querySelector('[data-amode="team"]')?.closest('label')
 document.querySelectorAll('[data-amode]').forEach((b) => b.addEventListener('change', () => {
   const next = [...document.querySelectorAll('[data-amode]')].filter((x) => x.checked).map((x) => x.dataset.amode);
   if (!next.length) { b.checked = true; return; }
-  autoModes = next.filter(modeAllowed); if (!autoModes.length) autoModes = ['ffa']; lobbyMode = autoModes[0]; store.set('sq_amodes', JSON.stringify(autoModes)); renderGames();
+  autoModes = next.filter(autoOk); if (!autoModes.length) autoModes = ['ffa']; lobbyMode = autoModes[0]; store.set('sq_amodes', JSON.stringify(autoModes)); renderGames();
 }));
 document.querySelectorAll('[data-astyle]').forEach((b) => b.addEventListener('change', () => {
   const next = [...document.querySelectorAll('[data-astyle]')].filter((x) => x.checked).map((x) => x.dataset.astyle);
@@ -987,13 +997,23 @@ initMoneyStrips(); // the Store and Games pages' money strip (moneystrip.js): bu
 initWalletLines(); // my wallet's SANTA under each game's play buttons (walletline.js)
 // the pool jackpot banner for everyone (jackpotbar.js); its button opens Games at that game
 initShareWins(); // Share this win buttons after a winning run (sharecard.js)
+// THIS WEEK'S MODE (weekly.js): only modes Cody has switched on in the admin screen (supabase/034) run; the game server says which
+// ('weekly'). Until it answers, and when none is on, every weekly line and the Auto match tick stay hidden.
+call('weekly').then((r) => {
+  weeklyNow = VARIANTS[r?.now] ? r.now : null;
+  for (const el of document.querySelectorAll('[data-weekly-only]')) el.hidden = !weeklyNow;
+  if (!weeklyNow) return;
+  for (const el of document.querySelectorAll('[data-weekly-name]')) el.textContent = VARIANTS[weeklyNow].name;
+  for (const el of document.querySelectorAll('[data-weekly-rule]')) el.textContent = VARIANTS[weeklyNow].short;
+}).catch(() => {});
 initJackpotBar({ el: $('#jpbar'), inMatch: () => inRoom(), go: (id) => { tabs.show('games'); setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 700); } });
 renderProgress(app.profile); // the Play page's Player Progress box (guests: level 1; updated on sign-in)
 initLottery(); // the Store's Santa Lottery (lotteryui.js)
 $('#loading')?.remove();
 frame();
 
-window.__sq = { get armed() { return armed; }, get locked() { return locked; }, get trial() { return trial && trial.kind; }, get myLook() { return { ...me.a }; }, throwAt: (x, z) => tryThrow(x, z), drawn: () => ({ drops: drawDrops.filter((m) => m.visible).length }), camDist: () => camera.position.distanceTo(camTarget), setZoom, get zoom() { return zoom; },
+window.__sq = { zoneRingShown: () => zoneRing.visible, fogNow: () => scene.fog && [scene.fog.near, scene.fog.far], // tests: weekly mode visuals
+  get armed() { return armed; }, get locked() { return locked; }, get trial() { return trial && trial.kind; }, get myLook() { return { ...me.a }; }, throwAt: (x, z) => tryThrow(x, z), drawn: () => ({ drops: drawDrops.filter((m) => m.visible).length }), camDist: () => camera.position.distanceTo(camTarget), setZoom, get zoom() { return zoom; },
   // tests: where the ring's outer wall lands on screen (-1..1 = inside the view), all the way round, at the ground and wall top
   ringFit: (r = 15.0) => { let x0 = 9, x1 = -9, y0 = 9, y1 = -9; for (let i = 0; i < 72; i++) for (const y of [0, 1]) { const a = (i / 72) * Math.PI * 2, p = new V3(Math.cos(a) * r, y, Math.sin(a) * r).project(camera); x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); } return { x0, x1, y0, y1 }; }, get room() { return room; }, get isHost() { return isHost; }, get sim() { return sim; }, get view() { return currentView; }, me, ctl, enterRoom, leaveRoom, startPractice, idleFor: (ms) => { lastInput = performance.now() - ms; },
   // tests: the plaza theme, and what's on the GPU / in the scene (a theme swap must not leave the old plaza behind)

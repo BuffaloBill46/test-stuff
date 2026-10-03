@@ -47,7 +47,7 @@ export function guestLook(a) {
 //   special snowballs count in ranked (Cody's open question; on = as they're sold today).
 export const RANKED_PAUSED = 'Ranked is paused right now. Try Unranked.';
 // rankedPaused() → true while Cody has ranked paused (worker/referee.mjs: the file /etc/santa/ranked-paused exists).
-export function createReferee({ now = () => Date.now(), rand = Math.random, identify = null, finish = null, ranked = null, rankedSpecials = true, rankedPaused = () => false, log = console, modeAllowed: allowMode = modeAllowed } = {}) { // allowMode: team play paused (refcore TEAM_PAUSED) unless a test says otherwise
+export function createReferee({ now = () => Date.now(), rand = Math.random, identify = null, finish = null, ranked = null, rankedSpecials = true, rankedPaused = () => false, weeklyOn = () => [], log = console, modeAllowed: allowMode = modeAllowed } = {}) { // allowMode: team play paused (refcore TEAM_PAUSED) unless a test says otherwise
   const rooms = new Map(); // code → room
   let rankedSeq = 0;
   // A restart: tickets still held for rooms of an earlier run come back (those rooms are gone).
@@ -58,7 +58,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
   // a weekly room (PW…) keeps the week's mode it was made in while it lives (weekly.js)
   function makeRoom(code) {
     const room = { code, conns: new Map(), auto: isPublic(code), mode: code[1] === 'T' && isPublic(code) && allowMode('team') ? 'team' : 'ffa', cdEnd: null, lastSnap: 0, emoteAt: new Map(),
-      ranked: isPublic(code) && code[1] === 'R', style: styleOf(code), variant: isWeekly(code) ? weeklyAt(now()) : null, rid: RID + Math.floor(rand() * 2 ** 48).toString(36) + now().toString(36), started: false, lastPhase: 'lobby' };
+      ranked: isPublic(code) && code[1] === 'R', style: styleOf(code), variant: isWeekly(code) ? weeklyAt(now(), weeklyOn()) : null, rid: RID + Math.floor(rand() * 2 ** 48).toString(36) + now().toString(36), started: false, lastPhase: 'lobby' };
     room.info = (e) => room.conns.get(e.peer)?.me;
     room.sim = createSim(rand, { ...refereeOpts(room.info), variant: room.variant });
     room.sim.S.mode = room.mode;
@@ -244,7 +244,8 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
   // a new room of a ticked type (FFA first when both are ticked). Never a match already being played. Null when all are full.
   // styles: 'normal' (plain play) and/or 'gear' (special snowballs and gear count), ticked the same way.
   function pickAuto(modes, styles, n = 1) { // n: seats needed (a friends' group moving together)
-    const want = (Array.isArray(modes) ? modes : []).filter((m) => m === 'weekly' || allowMode(m)); // team play paused: TEAM boxes fall back to FFA; 'weekly': this week's mode
+    const weeklyNow = !!weeklyAt(now(), weeklyOn()); // no weekly mode switched on: the 'weekly' tick falls back like a paused TEAM tick
+    const want = (Array.isArray(modes) ? modes : []).filter((m) => (m === 'weekly' ? weeklyNow : allowMode(m))); // team play paused: TEAM boxes fall back to FFA; 'weekly': this week's mode
     if (!want.length) want.push('ffa');
     const kinds = (Array.isArray(styles) ? styles : []).filter((x) => x === 'normal' || x === 'gear');
     if (!kinds.length) kinds.push('gear');

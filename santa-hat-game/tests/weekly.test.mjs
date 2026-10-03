@@ -55,9 +55,13 @@ const park = (e, x, z) => { e.x = x; e.z = z; e.vx = e.vz = 0; e.since = 9; };
 { const sim = match('gazebo'), snap = sim.snapshot(); const s2 = createSim(rand); assert.ok(s2.load(snap));
   assert.equal(s2.S.variant, 'gazebo', 'a new host keeps the weekly mode'); assert.equal(match(null).snapshot().vr, 0, 'plain: vr 0'); }
 // --- the rotation
-{ const weeks = Array.from({ length: 6 }, (_, i) => weeklyAt(Date.UTC(2026, 9, 7) + i * 7 * 86400e3));
+{ const weeks = Array.from({ length: 6 }, (_, i) => weeklyAt(Date.UTC(2026, 9, 7) + i * 7 * 86400e3, ROTATION));
   assert.deepEqual(weeks, [0, 1, 2, 3, 4, 5].map((i) => ROTATION[(i + 1) % ROTATION.length]), `one mode a week, in order: ${weeks.join(', ')}`);
   assert.ok(!ROTATION.includes('hathunt'), 'Hat Hunt stays out of the rotation until it is built');
-  const ws = weekStart(Date.UTC(2026, 9, 7)); assert.equal(weeklyAt(ws), weeklyAt(ws + 6.9 * 86400e3), 'the same mode all week');
-  assert.notEqual(weeklyAt(ws - 1000), weeklyAt(ws), 'and it changes at the week\'s start (Sunday 9 PM Indiana)'); }
+  const ws = weekStart(Date.UTC(2026, 9, 7)); assert.equal(weeklyAt(ws, ROTATION), weeklyAt(ws + 6.9 * 86400e3, ROTATION), 'the same mode all week');
+  assert.notEqual(weeklyAt(ws - 1000, ROTATION), weeklyAt(ws, ROTATION), 'and it changes at the week\'s start (Sunday 9 PM Indiana)'); }
+// --- switched off (supabase/034, the admin screen): none on → no weekly mode; one on → that one every week
+{ const t0 = Date.UTC(2026, 9, 7); assert.equal(weeklyAt(t0, []), null, 'all switched off: no weekly mode');
+  for (let i = 0; i < 4; i++) assert.equal(weeklyAt(t0 + i * 7 * 86400e3, ['gazebo']), 'gazebo', 'only the Gazebo on: the Gazebo every week');
+  assert.equal(weeklyAt(t0, ['hathunt']), null, 'Hat Hunt switched on but not built: still no weekly mode'); }
 console.log('OK: weekly modes: Hot Hat (double hat points, a snowball melts every 2 s, never below 0), King of the Gazebo (5 a second alone in the ring, nobody when shared), Blizzard (2× refill), plain unchanged, kept through a host handover, one mode a game week (built modes only)');

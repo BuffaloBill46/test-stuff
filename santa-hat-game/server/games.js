@@ -21,6 +21,7 @@ import { MINT, QUOTE_SECONDS, CUSHION, splitPayment } from '../mockups/market.js
 import { SHOP_BURN_BPS } from '../mockups/shoprules.js';
 import { verifyPayment } from './verify.js';
 import { weekStart } from '../mockups/gameclock.js';
+import { weeklyAt, ROTATION } from '../mockups/weekly.js';
 
 // The most ONE play can ever pay (jackpot aside), worked out from the prize table the play ran on, never from what a
 // simulation happened to see (Cody, 2026-10-01: "I don't want a hold on a player that wins"). Big Hat: every line at the top
@@ -296,6 +297,16 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     const price = await livePrice().catch(() => null);
     return { wallet: w, santaRaw: k.raw, usd: price ? (k.raw / 1e6) * price.usd : null, cluster };
   }
+  // Public: the weekly modes Cody has switched on (supabase/034) and this week's one (weekly.js; null = none). Kept 30 s.
+  let weeklyKept = { at: 0, v: null };
+  async function weekly() {
+    if (weeklyKept.v && Date.now() - weeklyKept.at < 30_000) return weeklyKept.v;
+    const rows = await db.query('select id, "on" from public.weekly_modes order by id').catch(() => []);
+    const on = rows.filter((r) => r.on).map((r) => r.id);
+    weeklyKept = { at: Date.now(), v: { modes: rows.map((r) => ({ id: r.id, on: !!r.on, built: ROTATION.includes(r.id) })), now: weeklyAt(Date.now(), on) } };
+    return weeklyKept.v;
+  }
+  const weeklyChanged = () => { weeklyKept = { at: 0, v: null }; };
   // Public: SANTA burned by the game so far (the Store and Games pages' money strip, Cody 2026-10-03). Game runs and lottery
   // tickets: the burn checked on chain at purchase (payments / lottery_buys burned_raw). Store purchases: the 50% share of every
   // paid quote (verify.js refuses a payment that burned less; a refund doesn't un-burn). Kept a minute: one query per minute at most.
@@ -310,5 +321,5 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     burnKept = { at: Date.now(), v: { gamesRaw: games, lotteryRaw: lottery, storeRaw: store, totalRaw: games + lottery + store } };
     return burnKept.v;
   }
-  return { quote, buy, settle, tidy, winners, weekWinners, pools, settings, market, burned, wallet, settingsChanged };
+  return { quote, buy, settle, tidy, winners, weekWinners, pools, settings, market, burned, wallet, weekly, weeklyChanged, settingsChanged };
 }

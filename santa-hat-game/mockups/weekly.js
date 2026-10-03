@@ -19,9 +19,11 @@ export const ROTATION = ['hothat', 'gazebo', 'blizzard'];
 export const VARIANT_IDS = Object.keys(VARIANTS); // snapshot numbers: 0 = none, 1.. = this order (never reorder; add at the end)
 const WEEK_MS = 7 * 86400e3, EPOCH = Date.UTC(2026, 9, 4); // the rotation's first week: the game week holding Oct 4 2026
 
-// This week's mode id at time t.
-export function weeklyAt(t = Date.now()) {
+// This week's mode id at time t, taking turns among the modes Cody has switched ON (supabase/034; the admin screen) that are
+// built (ROTATION). on: those ids. None on → null: no weekly mode this week (plain Free-for-all only).
+export function weeklyAt(t = Date.now(), on = []) {
+  const live = ROTATION.filter((id) => on.includes(id)); if (!live.length) return null;
   const n = Math.floor((weekStart(t) - weekStart(EPOCH)) / WEEK_MS + 0.5);
-  return ROTATION[((n % ROTATION.length) + ROTATION.length) % ROTATION.length];
+  return live[((n % live.length) + live.length) % live.length];
 }
 export const variantOf = (id) => VARIANTS[id] || null;

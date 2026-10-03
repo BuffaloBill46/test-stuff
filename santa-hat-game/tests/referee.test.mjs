@@ -191,14 +191,14 @@ console.log('OK: Auto match together: the host only; a public room with seats fo
 
 // --- WEEKLY MODE ROOMS (weekly.js): a player who ticks this week's mode gets a PW room playing it; plain FFA never lands there
 { const { weeklyAt } = await import('../mockups/weekly.js');
-  let tt = 12_000_000_000; const r6 = createReferee({ now: () => tt });
+  let tt = 12_000_000_000; const { ROTATION } = await import('../mockups/weekly.js'); const r6 = createReferee({ now: () => tt, weeklyOn: () => ROTATION });
   const c6 = (id) => { const c = { got: [], send: (x) => c.got.push(JSON.parse(x)) }; c.h = r6.connect(c); c.say = (m) => c.h.message(JSON.stringify(m)); c.last = (k) => [...c.got].reverse().find((m) => m.t === k); return c; };
   const w1 = c6(); w1.say({ t: 'auto', modes: ['weekly'], styles: ['gear'], me: me('weekly01') });
   const code = w1.last('peers')?.code;
   assert.equal(code, 'PWG1', `this week's mode: a weekly room (${code})`);
   const g = r6.board().find((x) => x.code === code);
-  assert.equal(g.variant, weeklyAt(tt), `the games list says which mode (${g.variant})`);
-  assert.equal(r6.rooms.get(code).sim.S.variant, weeklyAt(tt), 'its match plays that mode');
+  assert.equal(g.variant, weeklyAt(tt, ROTATION), `the games list says which mode (${g.variant})`);
+  assert.equal(r6.rooms.get(code).sim.S.variant, weeklyAt(tt, ROTATION), 'its match plays that mode');
   const f1 = c6(); f1.say({ t: 'auto', modes: ['ffa'], styles: ['gear'], me: me('plainff1') });
   assert.equal(f1.last('peers')?.code, 'PFG1', 'a plain Free-for-all player goes to a plain room');
   const w2 = c6(); w2.say({ t: 'auto', modes: ['weekly'], styles: ['gear'], me: me('weekly02') });
@@ -206,3 +206,10 @@ console.log('OK: Auto match together: the host only; a public room with seats fo
   const both = c6(); both.say({ t: 'auto', modes: ['ffa', 'weekly'], styles: ['gear'], me: me('either01') });
   assert.ok(['PWG1', 'PFG1'].includes(both.last('peers')?.code), 'ticking both: the fullest waiting room of either kind'); }
 console.log('OK: weekly mode rooms: PW rooms play this week\'s mode, listed with it; only players who ticked it go there');
+// all weekly modes switched OFF (the default; supabase/034): the 'weekly' tick falls back to a plain room, no PW room is made
+{ let tt = 13_000_000_000; const r7 = createReferee({ now: () => tt });
+  const c = { got: [], send: (x) => c.got.push(JSON.parse(x)) }; c.h = r7.connect(c); c.h.message(JSON.stringify({ t: 'auto', modes: ['weekly'], styles: ['gear'], me: me('offweek1') }));
+  const code = [...c.got].reverse().find((m) => m.t === 'peers')?.code;
+  assert.equal(code, 'PFG1', `weekly modes off: a plain room (${code})`);
+  assert.ok(![...r7.rooms.keys()].some((k) => k[1] === 'W'), 'no weekly room exists'); }
+console.log('OK: weekly modes switched off: the weekly tick plays plain Free-for-all');
