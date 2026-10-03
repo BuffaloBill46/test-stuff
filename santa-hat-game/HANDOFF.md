@@ -160,6 +160,22 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
+### Costumes (2026-10-02, built by a helper Claude on a worktree branch; NOT published, 029 NOT applied anywhere)
+- Cody: "make a special level 5 and a level 10 costume, build 1 for each slot that matches itself ... They will be free."
+  **Level 5 Nutcracker Soldier**: Nutcracker Coat (red, gold cords/buttons/collar/epaulettes, white belt, coat tails), Nutcracker
+  Trousers (white, red side stripe, tall black boots), Nutcracker face (square painted wooden head, moustache, teeth jaw, white
+  gloves), Nutcracker Shako (tall black, gold bands, badge, plume), Toy Drum (on the back, white rope zigzag, drumsticks, sash),
+  Nutcracker Gold snowballs. **Level 10 Frost King**: Frost King Robe (ice-blue robe with a flared hem, blue panel, crystal clasps,
+  ice-shard collar), Frost King Trousers (silver, ice stripe, ice boots), Frost King face (frosted, crystal marks, icicle beard),
+  Ice Crown, Ice Wings, Crystal snowballs. All free (level unlocks), one per look slot, skin excluded; bots never wear them.
+- Files: `catalog.js` (items with `set`/`trim`, COSTUMES), `kit.js` (HEADS, hatPieces, packPieces, COSTUME_TRIMS), `tabs.js`
+  (Costumes tab: wear the whole costume in one tap + the back pieces, since there's no Backpacks tab; "Level N costume" tags),
+  `online.html` (tag CSS), `online.js` (Avatar preview shows a costume hat instead of the Santa hat; test hook hatShown),
+  `refcore.js` (bots skip costume pieces), `supabase/029_costumes.sql`.
+- To go live: apply 029, publish the page, and update the Droplet's match server checkout (its catalog.js must know the new ids,
+  or other players see those slots plain). Tests: `node tests/catalog-sql.mjs`, `(cd tests/db && node costumes-db.test.mjs)`,
+  `(cd tests/browser && node costumes-test.mjs)` in WSL (screenshots in tests/browser/out/costumes/).
+
 ### Stocking Stuffer (2026-10-02, built by a helper Claude on a worktree branch; NOT published, 025 NOT applied anywhere)
 - New Games-tab game (Cody's brief): 20 stockings, 8 gifts, first coal ends the turn; pays 0 · 0.5× · 1.75× · 4× · 8× · 16× ·
   40× · 90× · 250×; **exact payback 60.519%**. Full notes: DESIGN_NOTES → "Stocking Stuffer". Files: `mockups/stocking.js`

@@ -446,9 +446,9 @@ const HEADS = {
     part(new G.CylinderGeometry(0.29, 0.33, 0.5, 4), 0xf1c9a0, { pos: [0, 1.85, 0], rot: [0, Math.PI / 4, 0], jit: 0.008, seed: 101 }),
     part(new G.BoxGeometry(0.46, 0.3, 0.06), 0x1c1a22, { pos: [0, 1.95, -0.215] }),
     ...[-1, 1].map((s) => part(new G.BoxGeometry(0.05, 0.22, 0.34), 0x1c1a22, { pos: [s * 0.215, 1.96, -0.03] })),
-    ...[-1, 1].flatMap((s) => [part(new G.BoxGeometry(0.09, 0.065, 0.03), 0xf6f3ea, { pos: [s * 0.09, 1.9, 0.232] }),
-      part(new G.BoxGeometry(0.04, 0.055, 0.03), C.ink, { pos: [s * 0.085, 1.9, 0.245] }),
-      part(new G.BoxGeometry(0.12, 0.035, 0.03), C.ink, { pos: [s * 0.09, 1.965, 0.236], rot: [0, 0, s * 0.28] }),
+    ...[-1, 1].flatMap((s) => [part(new G.BoxGeometry(0.09, 0.065, 0.03), 0xf6f3ea, { pos: [s * 0.09, 1.88, 0.232] }),
+      part(new G.BoxGeometry(0.04, 0.055, 0.03), C.ink, { pos: [s * 0.085, 1.88, 0.245] }),
+      part(new G.BoxGeometry(0.12, 0.035, 0.03), C.ink, { pos: [s * 0.09, 1.94, 0.236], rot: [0, 0, s * 0.28] }),
       part(new G.CylinderGeometry(0.045, 0.045, 0.02, 8), 0xe0505a, { pos: [s * 0.14, 1.79, 0.236], rot: [Math.PI / 2, 0, 0] }),
       // the moustache's two big white curls, swept up at the ends
       part(new G.IcosahedronGeometry(0.075, 0), 0xf6f3ea, { pos: [s * 0.08, 1.735, 0.262], scale: [1.6, 0.7, 0.6], rot: [0, 0, s * 0.32] })]),
