@@ -96,8 +96,10 @@ export function avatarCharacter(a, extra = {}) {
 // bought, out of TICKET_MAX. Read from the game server (ranked.js; supabase/006 ticket_status). Returns its answer.
 export async function refreshTickets(profile) {
   const el = document.querySelector('#pgTix');
-  if (!profile) { if (el) el.textContent = 'Sign in'; return { error: 'sign in first' }; }
+  // asked whenever there's a sign-in, even before the profile has loaded (server-mode-test caught a "—/25" chip); a guest's
+  // call is refused in the page itself (gameserver.js call: no sign-in, no request), so it costs no server call
   const r = await call('tickets').catch(() => null);
+  if (r?.error === 'sign in first') { if (el) el.textContent = 'Sign in'; return r; }
   if (el) el.textContent = r && Number.isFinite(r.free) ? `${r.free + r.extra} / ${TICKET_MAX}` : '—';
   const chip = document.querySelector('#tixchip'); // the top bar's chip (computers)
   if (chip && r && Number.isFinite(r.free)) { chip.classList.remove('soon'); chip.querySelector('b').textContent = `${r.free + r.extra}/${TICKET_MAX}`;
