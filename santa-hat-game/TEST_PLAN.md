@@ -13,7 +13,7 @@ launch. Each line says what already exists, what's missing, and how it will be r
   with a shared database so answers come back organised, not as texts).
 - Watch for: anything confusing in the first 2 minutes, wallet steps that stall, a win that didn't arrive within a minute.
 
-## B. Player guide (to write)
+## B. Player guide (DONE 2026-10-03: mockups/guide.html → santahatgames.com/guide.html; tests/browser/guide-test.mjs)
 Every game (how to win, the odds, payback, the 3% SANTA tax on winnings, how to check a result), every Store item with its price
 and effect, special snowballs and their snowball costs, gear rules (no stacking, 7-day wear), levels, ranked tickets
 (10 free a day + up to 10 bought; 25 max), the lottery. Built from the code's own tables (catalog.js, gear.js, specials.js,

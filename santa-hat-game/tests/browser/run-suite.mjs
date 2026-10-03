@@ -7,10 +7,10 @@ import { spawn } from 'child_process'; import { mkdirSync, createWriteStream, re
 const TESTS = ['admin-test', 'controls-test', 'costumes-test', 'drop-test', 'finish-test', 'games-test', 'joystick-test', 'link-test', 'loadout-test',
   'lobby-test', 'lottery-test', 'match-intro-test', 'plinko-test', 'progress-or-test', 'referee-ranked-test', 'referee-server-test', 'runpick-test',
   'server-mode-test', 'settings-mode-test', 'sfx-test', 'shop-test', 'skip-toggle-test', 'stocking-test', 'store-gear-test', 'tabs-test',
-  'theme-test', 'visuals-gear-test', 'button-audit', 'specials-play', 'gear-play', 'games-howto-shots', 'sb-lock-test'];
+  'theme-test', 'visuals-gear-test', 'button-audit', 'specials-play', 'gear-play', 'games-howto-shots', 'sb-lock-test', 'guide-test'];
 // the fixed local port each one opens (two tests with the same port wait for each other)
 const PORTS = { 'admin-test': 8788, 'shop-test': 8788, 'settings-mode-test': 8787, 'server-mode-test': 8787, 'button-audit': 8787, 'finish-test': 8794,
-  'lottery-test': 8795, 'referee-ranked-test': 8094, 'referee-server-test': 8092 };
+  'lottery-test': 8795, 'referee-ranked-test': 8094, 'referee-server-test': 8092, 'guide-test': 8793 };
 // joystick-test plays the published site (it has no server of its own)
 const ENV = { 'joystick-test': { SITE: 'https://santahatgames.com/' } };
 const N = +(process.argv[2] || 4), only = process.argv.slice(3), list = only.length ? only : TESTS, OUT = './out/suite/';
