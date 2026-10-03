@@ -480,3 +480,12 @@ season_grants / season_progress / season_days. On mainnet a pass bought with TES
 pieces, and a grant record without its item would have blocked that reward for good. Rule: every new table that records a
 purchase, a reward or progress gets added to mainnet_reset.sql (and a planted row in tests/db/mainnet-reset.test.mjs) in the
 same change that creates it.
+
+## 2026-10-03: the test database (PGlite) and the live driver (postgres.js) disagree about JSON sent as text
+All server code passes jsonb values as JSON.stringify(...) text. PGlite parses that as JSON; postgres.js (the Droplet's driver)
+stored it as a quoted JSON *string*. Since the move to the Droplet: every plays.result, some pool_log.details and a
+reward_claims.found were strings, so jackpot alerts and the jackpot banner could never see `jackpot`, the winners list lost its
+"1.5×" notes, and season_record refused every live match ("bad tasks") while every database test passed. Found only by playing a
+real match on the live server and checking the table. Fix: worker/pgjson.mjs on every postgres(...) connection; 208 rows repaired.
+Rules: (1) a new database feature isn't done until a REAL live action wrote the row and the row was read back; (2) any new
+postgres(...) connection spreads ...JSONB; (3) jsonb_typeof(...) = 'object'/'array' is a cheap live check after a deploy.
