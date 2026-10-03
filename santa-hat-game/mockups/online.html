@@ -337,6 +337,8 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
 .paytable .pays td:first-child { text-align: left; font: 500 15px/1.3 var(--body); color: var(--text); display: flex; gap: 8px; align-items: center; }
 .paytable .pays img { width: 30px; height: 30px; background: #f5f1e8; border: 1px solid var(--ink); border-radius: 2px; }
 .paytable .pays tr.extra td { color: var(--pine); }
+/* phones: the payout table fits the screen (its 5-in-a-row column and the long rows were cut off at 390 px) */
+@media (max-width: 600px) { .paytable .pays th { padding: 3px 3px; font-size: 10px; letter-spacing: .4px; } .paytable .pays td { padding: 3px 3px; font-size: 12px; } .paytable .pays td:first-child { font-size: 13px; gap: 5px; } .paytable .pays img { width: 22px; height: 22px; } .paytable .pays td[colspan] { font: 600 13px/1.3 var(--body); white-space: normal; } }
 #payLines { display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 8px; }
 #payLines figure { margin: 0; text-align: center; font: 700 10px/1 var(--digits); color: var(--dim); }
 #payLines .mini { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: #2a2f45; padding: 2px; border: 1px solid var(--ink); margin-bottom: 3px; }
@@ -834,6 +836,10 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
           <div class="credrow"><span class="cred runstat" id="runBig"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="big" hidden>Check last result</button></div></div>
         <ul class="facts"></ul>
       </article>
+      <!-- the payout table (Cody, 2026-10-03: what each symbol and line earns, no odds; a click opens it) -->
+      <details class="paytable" id="bhPays"><summary>Payout table <span class="dim">· for a $1 pull</span></summary><div id="payRows"></div>
+        <h4>The 11 paylines: straight or diagonal, always from the first (left) reel</h4><div id="payLines"></div>
+        <p class="dim">Wins count from the leftmost reel. A Santa Hat is wild: it stands in for any symbol except Coal. Every Santa Hat anywhere also pays its bonus. All winning lines add up. Winnings arrive 3% lighter (SANTA's token tax).</p></details>
     </section>
     <!-- Santa Hat Spin: removed from the page (Cody, 2026-10-01: "not very fun"). Kept hidden: its code holds the shared Game pool every game plays from. -->
     <section class="block plaque slotsbox fur" id="spin" hidden>
@@ -941,8 +947,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       <div class="examples" id="howExamples"></div>
       <h3>Win table</h3>
       <div id="howTable"></div>
-      <h3>The 11 paylines</h3>
-      <p class="dim">Straight or diagonal, always from the first (left) reel.</p><div id="payLines"></div>
+      <p class="dim">The full payout table and the 11 paylines are under the machine.</p>
       <p class="dim">Prizes are for a $1 pull. Winnings are paid in SANTA and arrive 3% lighter (the token's tax).</p>
     </dialog>
     <section class="block plaque winners">

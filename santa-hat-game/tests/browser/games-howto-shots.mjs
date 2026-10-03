@@ -18,12 +18,21 @@ for (const [label, vp] of [['desktop', { width: 1280, height: 900 }], ['phone', 
   // the Big Hat card: its jackpot odds and its How to play & win button; the old paytable box is gone
   const facts = await text('#slots .facts');
   check(/Top Line JackPot odds/.test(facts) && /Pool jackpot odds/.test(facts) && !/Every Santa Hat/.test(facts), `${label} Big Hat jackpot odds: ${facts.replace(/\s+/g, ' ')}`);
-  check(await p.locator('#slots details.paytable').count() === 0, `${label} Big Hat: the separate paytable box is gone`);
+  // the Payout table (Cody, 2026-10-03): closed until clicked, then every symbol's 3/4/5-in-a-row pay and the 11 paylines, no odds
+  check(!(await p.evaluate(() => document.querySelector('#bhPays').open)), `${label} Big Hat: Payout table closed until clicked`);
+  await p.locator('#bhPays summary').click(); await p.waitForTimeout(300);
+  const pays = await text('#bhPays');
+  check(await p.locator('#payRows tbody tr').count() === 12 && await p.locator('#payLines figure').count() === 11 && /3 in a row/i.test(pays) && !/odds|chance|payback|\b1 in \d/i.test(pays),
+    `${label} Big Hat Payout table: 12 rows (9 symbols + hat bonus + pool jackpot + coal), 11 paylines, no odds [rows ${await p.locator('#payRows tbody tr').count()}, lines ${await p.locator('#payLines figure').count()}, odds word: ${(pays.match(/odds|chance|payback|b1 in d/i) || ['none'])[0]}]`);
+  const fit = await p.evaluate(() => { const t = document.querySelector('#bhPays .pays'), r = t.getBoundingClientRect(), box = document.querySelector('#bhPays').getBoundingClientRect();
+    return { table: Math.round(r.right), box: Math.round(box.right), screen: innerWidth, page: document.documentElement.scrollWidth }; });
+  check(fit.table <= fit.box + 1 && fit.table <= fit.screen && fit.page <= fit.screen, `${label} Big Hat Payout table fits the screen (${JSON.stringify(fit)})`);
+  await p.locator('#bhPays').screenshot({ path: `${OUT}${label}-bighat-paytable.png` });
   check(/How to play & win/.test(await text('#howBtn')), `${label} Big Hat: How to play & win button`);
   await p.locator('#slots').screenshot({ path: `${OUT}${label}-bighat.png` });
   await p.click('#howBtn'); await p.waitForTimeout(500);
   const how = await text('#howDlg');
-  check(/The 11 paylines/.test(how) && !/odds|chance|payback/i.test(how.replace(/1 in 25,000/, '')), `${label} Big Hat How to: paylines in, no other odds`);
+  check(/Win table/.test(how) && !/odds|chance|payback/i.test(how.replace(/1 in 25,000/, '')), `${label} Big Hat How to: rules, examples, win table, no other odds`);
   await p.locator('#howDlg').screenshot({ path: `${OUT}${label}-bighat-howto.png` }); await p.click('#howClose');
   for (const [game, line, how2] of [['drop', '#dropOdds', '#dropHow'], ['stocking', '#stockOdds', '#stockHow']]) {
     const l = (await text(line)).replace(/\s+/g, ' ');
