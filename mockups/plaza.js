@@ -1,8 +1,8 @@
 // The winter plaza shared by Snowball Square and Be the Hat. Its look comes from a theme (themes.js); the ring, pedestal and
 // snowball piles are the same in every theme, because the referee (sim.js) plays on them whatever each player sees.
 import { THREE, C, part, build, toon, toonInstanced, setInstance, pineGeo, cottage, snowmanGeo, hatGeo, glow, glowMat,
-  skyTexture, stars, aurora, lights, rng, disposeTree } from './kit.js?v=4028a8e4cb';
-import { themeOf } from './themes.js?v=4028a8e4cb';
+  skyTexture, stars, aurora, lights, rng, disposeTree } from './kit.js?v=19f08d50c0';
+import { themeOf } from './themes.js?v=19f08d50c0';
 
 const G = THREE, V3 = THREE.Vector3;
 export const ARENA = 13.2;
@@ -155,7 +155,10 @@ function ironLanterns(root, n, out) {
 // ---------- Halloween: same spots, harvest-time props. Same kit as Christmas (faceted parts, toon shading, ink outlines).
 const H = { pumpkin: 0xe0731f, pumpkinDark: 0xb4501a, stem: 0x55602c, candle: 0xffcf5a, bark: 0x3e322d, barkDark: 0x2c2422,
   straw: 0xd2ab55, strawDark: 0x9a7a35, burlap: 0xc4a77a, flannel: 0x8c3a2c, grave: 0x7e7c88, graveDark: 0x5a5866, bat: 0x1c1621,
-  roof: 0x4a3c50, apple: 0xb3302a, corn: 0xe2b84a, earth: 0x4f4030 };
+  roof: 0x4a3c50, apple: 0xb3302a, corn: 0xe2b84a, earth: 0x4f4030,
+  // the Halloween folk: bone, zombie skin (grey-green), faded rags, a black cat with a little colour left for the toon shading
+  bone: 0xe2d9bf, socket: 0x1c1621, rot: 0x8a9c7c, rag: 0x5b5670, ragBrown: 0x6b5a45, ragRed: 0x6e3b3b, trousers: 0x3c4658,
+  cat: 0x26212c, catNose: 0x5a4652, catEye: 0xd8ea3c, web: 0xcfcad8 };
 
 function pumpkinGeo(seed = 1, s = 1) { // standing on y=0, about 0.5 tall; built facing +z (the carved side for a jack-o'-lantern)
   return build([
@@ -279,6 +282,161 @@ function batGroup() { // a bat: body with ears and two flapping wings (the tick 
   return b;
 }
 
+// ---------- Halloween folk (Cody, 2026-10-03: "skeletons, a couple black cats, zombies... make it more spooky"). Same kit as
+// the scarecrows. A figure is built from a pose (where its hip, chest, head, elbows, hands, knees and feet are), facing +z and
+// standing on y=0, so one builder makes the sitting, peeking and waving skeletons and one makes the shambling and rising zombies.
+const UP = new V3(0, 1, 0);
+// A piece stretched from point a to point b (a bone, a limb, a torso, a tail): make(len) builds it along y, centred.
+function along(a, b, make, color, jit = 0, seed = 1) {
+  const A = new V3(...a), d = new V3(...b).sub(A), len = d.length(), g = part(make(len), color, { jit, seed });
+  const mid = A.addScaledVector(d, 0.5), q = new THREE.Quaternion().setFromUnitVectors(UP, d.normalize());
+  return g.applyMatrix4(new THREE.Matrix4().compose(mid, q, new V3(1, 1, 1)));
+}
+const rod = (a, b, r0, r1, color) => along(a, b, (len) => new G.CylinderGeometry(r1, r0, len, 5), color);
+const spotM = (x, y, z, ry = 0, s = 1) => new THREE.Matrix4().compose(new V3(x, y, z), new THREE.Quaternion().setFromAxisAngle(UP, ry), new V3(s, s, s));
+const moved = (ps, m) => ps.map((g) => g.applyMatrix4(m));
+const headM = (p) => new THREE.Matrix4().compose(new V3(...p.head), new THREE.Quaternion().setFromEuler(new THREE.Euler(...(p.headRot || [0, 0, 0]))), new V3(1, 1, 1));
+const sides = (c, w, dy) => [-1, 1].map((s) => [c[0] + s * w, c[1] + dy, c[2]]);
+
+function skullParts() { // centred on the cranium, facing +z: dark eye sockets, a nose hole and a grin
+  return [
+    part(new G.IcosahedronGeometry(0.16, 1), H.bone, { scale: [0.95, 1, 1.08], jit: 0.01, seed: 3 }),
+    part(new G.BoxGeometry(0.17, 0.07, 0.12), H.bone, { pos: [0, -0.13, 0.05], jit: 0.01 }),
+    ...[-1, 1].map((s) => part(new G.BoxGeometry(0.052, 0.062, 0.03), H.socket, { pos: [s * 0.05, 0, 0.155], rot: [0, s * 0.3, s * 0.15] })),
+    part(new G.BoxGeometry(0.03, 0.04, 0.04), H.socket, { pos: [0, -0.06, 0.16] }),
+    part(new G.BoxGeometry(0.12, 0.012, 0.03), H.socket, { pos: [0, -0.12, 0.11] }),
+  ];
+}
+// arm: [elbow, hand] from the shoulder sh (a missing arm is built on its own, e.g. the waving one)
+const boneArm = (sh, [el, ha]) => [rod(sh, el, 0.026, 0.022, H.bone), rod(el, ha, 0.022, 0.018, H.bone),
+  part(new G.IcosahedronGeometry(0.034, 0), H.bone, { pos: el }), part(new G.IcosahedronGeometry(0.045, 0), H.bone, { pos: ha, scale: [1, 1.3, 0.6] })];
+function skeletonParts(p) {
+  const { hip, chest, head } = p, sh = sides(chest, 0.19, -0.03), hj = sides(hip, 0.1, -0.03);
+  const ps = [rod(hip, chest, 0.03, 0.026, H.bone), rod(chest, [head[0], head[1] - 0.15, head[2]], 0.022, 0.02, H.bone), rod(sh[0], sh[1], 0.024, 0.024, H.bone),
+    part(new G.BoxGeometry(0.28, 0.1, 0.13), H.bone, { pos: hip, jit: 0.01 }), ...moved(skullParts(), headM(p))];
+  // the rib cage: three hoops down from the chest, smaller toward the waist
+  for (let k = 0; k < 3; k++) { const t = 0.15 + k * 0.18; ps.push(part(new G.TorusGeometry(0.15 - k * 0.015, 0.022, 3, 8), H.bone, { pos: chest.map((v, i) => v + (hip[i] - v) * t), rot: [Math.PI / 2, 0, 0], scale: [1, 0.72, 1] })); }
+  p.arms.forEach((a, i) => { if (a) ps.push(...boneArm(sh[i], a)); });
+  p.legs.forEach(([kn, ft], i) => ps.push(rod(hj[i], kn, 0.032, 0.028, H.bone), rod(kn, ft, 0.028, 0.022, H.bone), part(new G.IcosahedronGeometry(0.04, 0), H.bone, { pos: kn }),
+    part(new G.BoxGeometry(0.08, 0.04, 0.16), H.bone, { pos: [ft[0], ft[1] - 0.01, ft[2] + 0.05] })));
+  return ps;
+}
+
+function zombieParts(p, seed = 1) { // grey-green skin, a torn shirt and trousers in muted colours; p.legs null = still in the ground
+  const { hip, chest, head } = p, shirt = p.shirt ?? H.rag, rr = rng(seed), sh = sides(chest, 0.24, -0.05), hj = sides(hip, 0.12, -0.05);
+  const ps = [along(hip, chest, (len) => new G.BoxGeometry(0.46, len + 0.14, 0.26), shirt, 0.03, seed),
+    part(new G.BoxGeometry(0.13, 0.12, 0.02), H.ragBrown, { pos: chest.map((v, i) => (v + hip[i]) / 2 + [0.1, 0.06, 0.13][i]), rot: [0, 0, 0.3] }),
+    rod(chest, [head[0], head[1] - 0.15, head[2]], 0.06, 0.055, H.rot),
+    ...moved([part(new G.IcosahedronGeometry(0.19, 1), H.rot, { scale: [0.95, 1.08, 1], jit: 0.02, seed }),
+      part(new G.BoxGeometry(0.07, 0.05, 0.04), H.socket, { pos: [-0.07, 0.03, 0.17], rot: [0, 0, -0.2] }), part(new G.BoxGeometry(0.06, 0.06, 0.04), H.socket, { pos: [0.07, 0.02, 0.17] }),
+      part(new G.BoxGeometry(0.12, 0.04, 0.04), H.socket, { pos: [0.01, -0.09, 0.165], rot: [0, 0, 0.15] }),
+      ...[-0.08, 0.02, 0.1].map((x, k) => part(new G.BoxGeometry(0.07, 0.06, 0.07), H.barkDark, { pos: [x, 0.19, -0.02 - k * 0.03], rot: [0, k, 0.3 * (k - 1)] }))], headM(p)),
+  ];
+  // the shirt's torn hem: ragged points hanging below it
+  for (let k = 0; k < 4; k++) ps.push(part(new G.ConeGeometry(0.05, 0.14 + rr() * 0.06, 4), shirt, { pos: [hip[0] - 0.17 + k * 0.11, hip[1] - 0.12, hip[2] + 0.1], rot: [Math.PI, k, 0] }));
+  p.arms.forEach(([el, ha], i) => ps.push(rod(sh[i], el, 0.075, 0.07, shirt), part(new G.ConeGeometry(0.05, 0.12, 4), shirt, { pos: [el[0], el[1] - 0.06, el[2]], rot: [Math.PI, 0, 0] }),
+    rod(el, ha, 0.055, 0.05, H.rot), part(new G.IcosahedronGeometry(0.075, 0), H.rot, { pos: ha, scale: [1, 0.7, 1.2] })));
+  if (p.legs) p.legs.forEach(([kn, ft], i) => ps.push(rod(hj[i], kn, 0.09, 0.085, H.trousers), rod(kn, [ft[0], ft[1] + 0.08, ft[2]], i ? 0.085 : 0.06, i ? 0.075 : 0.05, i ? H.trousers : H.rot),
+    part(new G.BoxGeometry(0.12, 0.08, 0.22), i ? H.barkDark : H.rot, { pos: [ft[0], ft[1] + 0.04, ft[2] + 0.05], jit: 0.01 })));
+  return ps;
+}
+
+// A black cat facing +z on y=0, about 0.4 tall: sitting, or standing with its back arched. Its tail (catTailGeo) and its eyes
+// (catEyeParts, drawn unlit like the jack-o'-lantern faces) are separate, so the tail can flick and the eyes catch the dusk.
+function catParts(arched) {
+  if (!arched) return [
+    part(new G.IcosahedronGeometry(0.13, 1), H.cat, { pos: [0, 0.12, -0.03], scale: [0.95, 1, 1.15], jit: 0.01, seed: 2 }),
+    part(new G.IcosahedronGeometry(0.09, 1), H.cat, { pos: [0, 0.24, 0.05], scale: [0.9, 1.2, 0.9] }),
+    part(new G.IcosahedronGeometry(0.09, 1), H.cat, { pos: [0, 0.36, 0.08], scale: [1.12, 0.92, 0.95] }),
+    ...[-1, 1].map((s) => part(new G.ConeGeometry(0.035, 0.09, 4), H.cat, { pos: [s * 0.055, 0.44, 0.07], rot: [0, 0, -s * 0.3] })),
+    ...[-1, 1].map((s) => part(new G.CylinderGeometry(0.022, 0.022, 0.2, 4), H.cat, { pos: [s * 0.045, 0.1, 0.1] })),
+    part(new G.BoxGeometry(0.05, 0.03, 0.03), H.catNose, { pos: [0, 0.335, 0.16] }),
+  ];
+  const ps = [ // arched: a half-hoop back with its fur on end, legs stiff, head low and hissing
+    part(new G.TorusGeometry(0.15, 0.065, 5, 8, Math.PI), H.cat, { pos: [0, 0.13, 0], rot: [0, Math.PI / 2, 0] }),
+    part(new G.IcosahedronGeometry(0.08, 1), H.cat, { pos: [0, 0.15, -0.15] }), part(new G.IcosahedronGeometry(0.075, 1), H.cat, { pos: [0, 0.17, 0.14] }),
+    part(new G.IcosahedronGeometry(0.085, 1), H.cat, { pos: [0, 0.2, 0.24], scale: [1.1, 0.95, 1] }),
+    ...[-1, 1].map((s) => part(new G.ConeGeometry(0.035, 0.09, 4), H.cat, { pos: [s * 0.05, 0.28, 0.22], rot: [-0.5, 0, -s * 0.4] })),
+    part(new G.BoxGeometry(0.05, 0.03, 0.03), H.catNose, { pos: [0, 0.185, 0.32] }), part(new G.BoxGeometry(0.04, 0.03, 0.02), H.socket, { pos: [0, 0.155, 0.315] }),
+  ];
+  for (const [x, z] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) ps.push(part(new G.CylinderGeometry(0.02, 0.02, 0.18, 4), H.cat, { pos: [x * 0.05, 0.09, z * 0.13] }));
+  for (const a of [1.2, 1.57, 1.94]) ps.push(part(new G.ConeGeometry(0.03, 0.08, 4), H.cat, { pos: [0, 0.13 + 0.2 * Math.sin(a), 0.2 * Math.cos(a)], rot: [Math.PI / 2 - a, 0, 0] }));
+  return ps;
+}
+const catEyeParts = (arched) => [-1, 1].map((s) => part(new G.BoxGeometry(0.045, 0.024, 0.02), H.catEye, arched ? { pos: [s * 0.035, 0.215, 0.32], rot: [0, 0, -s * 0.25] } : { pos: [s * 0.037, 0.37, 0.165], rot: [0, 0, -s * 0.25] }));
+// the tail, from its root at the origin: up and hooked over (sitting), or straight up and bushy (arched)
+const CAT_TAIL = { sit: [0, 0.04, -0.16], arched: [0, 0.16, -0.2] };
+const catTailGeo = (arched) => build(arched ? [rod([0, 0, 0], [0, 0.18, -0.04], 0.03, 0.028, H.cat), rod([0, 0.18, -0.04], [0, 0.32, -0.02], 0.028, 0.02, H.cat)]
+  : [rod([0, 0, 0], [0.02, 0.14, -0.07], 0.022, 0.02, H.cat), rod([0.02, 0.14, -0.07], [0, 0.3, -0.06], 0.02, 0.018, H.cat), rod([0, 0.3, -0.06], [-0.05, 0.36, 0], 0.018, 0.014, H.cat)]);
+
+function webGeo() { // a corner cobweb, from the corner at the origin out into +x/-y: four threads with three sagging rounds
+  const ps = [], th = (a, b) => along(a, b, (len) => new G.BoxGeometry(0.012, len, 0.012), H.web), ang = [0, 1, 2, 3].map((k) => -Math.PI / 2 + (k * Math.PI) / 6);
+  ang.forEach((a) => ps.push(th([0, 0, 0], [Math.cos(a) * 0.55, Math.sin(a) * 0.55, 0])));
+  for (const rad of [0.18, 0.32, 0.46]) for (let k = 0; k < 3; k++) {
+    const p = (a, r) => [Math.cos(a) * r, Math.sin(a) * r, 0];
+    ps.push(th(p(ang[k], rad), p((ang[k] + ang[k + 1]) / 2, rad * 0.86)), th(p((ang[k] + ang[k + 1]) / 2, rad * 0.86), p(ang[k + 1], rad)));
+  }
+  return build(ps);
+}
+
+// Where the folk stand. All of it is outside the ring wall (radius 14.4) and none of it on the south side, between the
+// match camera and the field; the shots test (tests/browser/halloween-spooky-shots.mjs) checks both.
+// Everything that stands still is merged into ONE mesh (plus one for the cat eyes and one for the cobweb); only the parts
+// that move get their own: the three zombies (a slow sway), the waving arm and the two cat tails.
+function halloweenFolk(root, out, gyM) {
+  const still = [], eyes = [], spots = [], at = (parent, x, y, z, ry = 0, s = 1) => (parent ? parent.clone().multiply(spotM(x, y, z, ry, s)) : spotM(x, y, z, ry, s));
+  const stallM = (i) => spotM(STALLS[i][0], 0, STALLS[i][1], STALLS[i][2]), face = (x, z) => Math.atan2(-x, -z); // face(): the turn that looks at the middle
+  const anchor = (m) => { const g = new G.Group(); m.decompose(g.position, g.quaternion, g.scale); g.userData.spooky = true; root.add(g); return g; };
+  const note = (kind, m) => spots.push({ kind, at: new V3().setFromMatrixPosition(m).toArray() });
+
+  // a skeleton sitting against the middle headstone of the graveyard, head lolling
+  let m = at(gyM, 0, 0, 0); note('skeleton sitting', m);
+  still.push(...moved(skeletonParts({ hip: [0, 0.15, 0.3], chest: [0, 0.6, 0.2], head: [0.05, 0.84, 0.24], headRot: [0.25, 0, -0.35],
+    arms: [[[-0.24, 0.36, 0.32], [-0.3, 0.1, 0.48]], [[0.24, 0.4, 0.4], [0.17, 0.34, 0.56]]], legs: [[[-0.14, 0.32, 0.56], [-0.16, 0.05, 0.78]], [[0.15, 0.12, 0.66], [0.2, 0.05, 0.98]]] }), m));
+  // a skeleton peeking round the back corner of the west stall, one hand on the post
+  m = stallM(0); note('skeleton peeking', at(m, -1.25, 0, -0.75));
+  still.push(...moved(skeletonParts({ hip: [-1.0, 0.9, -0.75], chest: [-1.24, 1.36, -0.72], head: [-1.5, 1.56, -0.66], headRot: [0, 0.3, 0.45],
+    arms: [[[-1.5, 1.15, -0.55], [-1.39, 1.32, -0.3]], [[-0.86, 1.0, -0.8], [-0.83, 0.72, -0.78]]], legs: [[[-1.12, 0.47, -0.72], [-1.15, 0.03, -0.72]], [[-0.88, 0.47, -0.78], [-0.85, 0.03, -0.8]]] }), m));
+  // a cobweb in the same stall's front corner, under the awning (no ink outline: it would turn the threads into black bars)
+  const web = toon(webGeo(), 0); web.applyMatrix4(at(m, -1.24, 2.3, 0.92)); web.userData.spooky = true; root.add(web);
+  // a skeleton by the big oak, waving at the players (its right arm moves)
+  m = spotM(-6.2, 0, -16.6, face(-6.2, -16.6) + 0.3); note('skeleton waving', m);
+  still.push(...moved(skeletonParts({ hip: [0, 0.9, 0], chest: [0, 1.38, 0.02], head: [0.02, 1.62, 0.04], headRot: [0, 0, -0.15],
+    arms: [[[-0.24, 1.1, 0.02], [-0.27, 0.85, 0.06]], null], legs: [[[-0.11, 0.48, 0.02], [-0.12, 0.04, 0.04]], [[0.11, 0.48, 0.02], [0.12, 0.04, 0.04]]] }), m));
+  const arm = toon(build(boneArm([0, 0, 0], [[0.24, 0.18, 0.04], [0.28, 0.48, 0.08]])), 0.015); arm.position.set(0.19, 1.35, 0.02); anchor(m).add(arm);
+
+  // two black cats: one sitting on the graveyard's left gate post, one arched on the east stall's top hay bale
+  const tails = [];
+  for (const [mm, arched, kind] of [[at(gyM, -1.1, 0.85, 1.0, 0, 1.3), false, 'cat on the gate post'], [at(stallM(1), -1.85, 1.0, 0.55, -Math.PI / 2, 1.3), true, 'cat on the hay']]) {
+    note(kind, mm); still.push(...moved(catParts(arched), mm)); eyes.push(...moved(catEyeParts(arched), mm));
+    const t = toon(catTailGeo(arched), 0.012); t.position.set(...CAT_TAIL[arched ? 'arched' : 'sit']); anchor(mm).add(t); tails.push(t);
+  }
+
+  // three zombies: two shambling in from the north between the oak and the cottages, one climbing out of the ground by the graveyard
+  const shamble = { hip: [0, 0.95, 0], chest: [0.03, 1.4, 0.12], head: [0.08, 1.63, 0.22], headRot: [0.2, 0, -0.3],
+    arms: [[[-0.22, 1.3, 0.34], [-0.2, 1.24, 0.64]], [[0.22, 1.34, 0.3], [0.21, 1.33, 0.6]]], legs: [[[-0.12, 0.5, 0.12], [-0.13, 0, 0.2]], [[0.13, 0.5, -0.08], [0.15, 0.02, -0.22]]] };
+  const zombies = [];
+  for (const [x, z, turn, shirt] of [[3.5, -17.2, -0.15, H.rag], [10.4, -14.9, 0.2, H.ragBrown]]) {
+    m = spotM(x, 0, z, face(x, z) + turn); note('zombie', m);
+    const zm = toon(build(zombieParts({ ...shamble, shirt }, zombies.length + 4)), 0.025); anchor(m).add(zm); zombies.push(zm);
+  }
+  m = at(gyM, -1.6, 0, 2.5, 0.3); note('zombie rising', m);
+  const rising = toon(build([...zombieParts({ hip: [0, -0.2, 0], chest: [0, 0.3, 0.06], head: [0, 0.56, 0.12], headRot: [-0.15, 0, 0.2], shirt: H.ragRed, legs: null,
+    arms: [[[-0.3, 0.45, 0.25], [-0.32, 0.72, 0.45]], [[0.28, 0.34, 0.3], [0.36, 0.12, 0.5]]] }, 9),
+    part(new G.CylinderGeometry(0.5, 0.68, 0.16, 8), H.earth, { pos: [0, 0.06, 0], jit: 0.05, seed: 9 }),
+    ...[[0.55, 0.3], [-0.45, 0.42], [0.1, -0.6]].map(([x, z], k) => part(new G.IcosahedronGeometry(0.1, 0), H.earth, { pos: [x, 0.07, z], jit: 0.03, seed: k }))]), 0.025);
+  anchor(m).add(rising); zombies.push(rising);
+
+  const folk = toon(build(still), 0.015); folk.userData.spooky = true; folk.userData.spots = spots; root.add(folk);
+  const eyeMesh = new THREE.Mesh(build(eyes), new THREE.MeshBasicMaterial({ vertexColors: true, fog: false })); eyeMesh.userData.spooky = true; root.add(eyeMesh);
+  out.tick.push((t) => {
+    zombies.forEach((z, i) => { z.rotation.z = Math.sin(t * 1.1 + i * 2) * 0.06; z.rotation.x = Math.sin(t * 2.2 + i) * 0.03; });
+    rising.position.y = Math.sin(t * 0.9) * 0.04;
+    arm.rotation.z = -0.15 + Math.sin(t * 5) * 0.3;
+    tails.forEach((tl, i) => { tl.rotation.z = Math.sin(t * (i ? 1.3 : 2.3) + i) * (i ? 0.12 : 0.3); });
+  });
+}
+
 function halloweenProps(root, r, out) {
   const GY = [18.5, -9]; // the little graveyard, outside the ring on the east side
   // bare trees in the same ring as the Christmas forest, clear of the cottages and the graveyard
@@ -311,6 +469,8 @@ function halloweenProps(root, r, out) {
   RIM.forEach(([x, z], i) => { const m = toon(scarecrowGeo(i + 1), 0.035); m.position.set(x, 0, z); m.lookAt(0, 0, 0); root.add(m); });
 
   const gy = toon(graveyardGeo(5), 0.03); gy.position.set(GY[0], 0, GY[1]); gy.lookAt(0, 0, 0); root.add(gy);
+  // skeletons, black cats, zombies (and a cobweb) around the plaza; some sit in the graveyard, so they take its spot
+  gy.updateMatrix(); halloweenFolk(root, out, gy.matrix);
 
   // pumpkins piled by the stalls, the graveyard and the doors (never on the ring: pushed out past its wall)
   const pr = rng(31), spots = [];

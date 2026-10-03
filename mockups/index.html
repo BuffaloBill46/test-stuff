@@ -114,12 +114,12 @@ nav.tabs button:focus-visible, .go:focus-visible { outline: 3px solid var(--lamp
 <section id="card" class="plaque" hidden></section>
 
 <script type="module">
-import { THREE, toScreen } from './kit.js?v=4028a8e4cb';
+import { THREE, toScreen } from './kit.js?v=19f08d50c0';
 const GAMES = {
-  snowball: () => import('./snowball.js?v=4028a8e4cb'),
-  bethehat: () => import('./bethehat.js?v=4028a8e4cb'),
-  sleigh: () => import('./sleigh.js?v=4028a8e4cb'),
-  hatchase: () => import('./hatchase.js?v=4028a8e4cb'),
+  snowball: () => import('./snowball.js?v=19f08d50c0'),
+  bethehat: () => import('./bethehat.js?v=19f08d50c0'),
+  sleigh: () => import('./sleigh.js?v=19f08d50c0'),
+  hatchase: () => import('./hatchase.js?v=19f08d50c0'),
 };
 const canvas = document.getElementById('stage');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });

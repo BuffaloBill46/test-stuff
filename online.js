@@ -1,24 +1,25 @@
 // Santa Hat Legends (the Snowball Square game): lobby, rooms, referee hand-off, smoothing, HUD.
-import './buildcheck.js?v=4028a8e4cb'; // first: the page and this code come from the same publish (buildcheck.js)
-import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo, Sparks, gearTick, GEAR_TINT, disposeTree } from './kit.js?v=4028a8e4cb';
-import { buildPlaza, makeHat, shadowBlob } from './plaza.js?v=4028a8e4cb';
-import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js?v=4028a8e4cb';
-import { openRoom, accounts, findWallet, gamesBoard } from './net.js?v=4028a8e4cb';
-import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js?v=4028a8e4cb';
-import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js?v=4028a8e4cb';
-import { initSeason, refreshSeason } from './seasonui.js?v=4028a8e4cb';
-import { initMoneyStrips, refreshBurned } from './moneystrip.js?v=4028a8e4cb';
-import { createCoach } from './coach.js?v=4028a8e4cb';
-import { TICKET_MAX } from './ranked.js?v=4028a8e4cb';
-import { levelInfo, clampLevel } from './levels.js?v=4028a8e4cb';
-import { SERVER, call, token as signInToken } from './gameserver.js?v=4028a8e4cb';
-import { SPECIALS, cantThrow } from './specials.js?v=4028a8e4cb';
-import { gearIn, effectsOf, heldWith, gearOfMask, statOf, RETIRED } from './gear.js?v=4028a8e4cb';
-import { initLottery } from './lotteryui.js?v=4028a8e4cb';
-import { play as sfx, initSoundButtons } from './sfx.js?v=4028a8e4cb';
-import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js?v=4028a8e4cb';
-import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js?v=4028a8e4cb';
-import { snapMs, autoStartMs, isPublic, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js?v=4028a8e4cb';
+import './buildcheck.js?v=19f08d50c0'; // first: the page and this code come from the same publish (buildcheck.js)
+import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo, Sparks, gearTick, GEAR_TINT, disposeTree } from './kit.js?v=19f08d50c0';
+import { buildPlaza, makeHat, shadowBlob } from './plaza.js?v=19f08d50c0';
+import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js?v=19f08d50c0';
+import { openRoom, accounts, findWallet, gamesBoard } from './net.js?v=19f08d50c0';
+import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js?v=19f08d50c0';
+import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js?v=19f08d50c0';
+import { initSeason, refreshSeason } from './seasonui.js?v=19f08d50c0';
+import { initMoneyStrips, refreshBurned } from './moneystrip.js?v=19f08d50c0';
+import { createCoach } from './coach.js?v=19f08d50c0';
+import { createCallouts } from './callouts.js?v=19f08d50c0';
+import { TICKET_MAX } from './ranked.js?v=19f08d50c0';
+import { levelInfo, clampLevel } from './levels.js?v=19f08d50c0';
+import { SERVER, call, token as signInToken } from './gameserver.js?v=19f08d50c0';
+import { SPECIALS, cantThrow } from './specials.js?v=19f08d50c0';
+import { gearIn, effectsOf, heldWith, gearOfMask, statOf, RETIRED } from './gear.js?v=19f08d50c0';
+import { initLottery } from './lotteryui.js?v=19f08d50c0';
+import { play as sfx, initSoundButtons } from './sfx.js?v=19f08d50c0';
+import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js?v=19f08d50c0';
+import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js?v=19f08d50c0';
+import { snapMs, autoStartMs, isPublic, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js?v=19f08d50c0';
 
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
@@ -250,7 +251,7 @@ function tryInPractice(kind) {
 }
 
 function leaveRoom(reason) {
-  againWanted = false;
+  againWanted = false; callouts.reset(false);
   endTrial();
   const was = roomCode;
   if (isHost) board.unpublish();
@@ -371,6 +372,7 @@ function handleEvents(v) {
     if (!Array.isArray(e) || e[0] <= lastEv) continue;
     lastEv = e[0];
     const [, k, a, b, c, d] = e, mine = (id) => { const me2 = myEnt(v); return me2 && me2.id === id; };
+    callouts.onEvent(k, a, b, v); // the call-out feed and the end highlights count every event
     if (k === 'hit') { sfx('splat'); const p = new V3(+b || 0, +c || 1.2, +d || 0); burst.spawn(p, 16, 0xffffff, 3.5, 3); const at = entPos(a, v); if (at) pop(at.setY(2.7), 'SPLAT', mine(a) ? 'bad' : 'white'); }
     else if (k === 'knock') { sfx('knock'); const at = entPos(a, v); if (at) pop(at.setY(3.1), 'KNOCKED OFF!', mine(a) ? 'bad' : 'white'); const by = entPos(b, v); if (by && b) pop(by.setY(3.1), '+25', mine(b) ? '' : 'green'); }
     else if (k === 'catch') { sfx('catch'); const at = entPos(a, v); if (at) { burst.spawn(at.clone().setY(2.2), 16, C.gold, 3, 3); pop(at.setY(3.1), 'HEADER +50', 'big'); } }
@@ -503,6 +505,8 @@ const JOY_TAPS_MS = 700, JOY_HOLD_MS = 350;
 const JOY_MAX = 42, JOY_GRAB = 72; // knob travel; how near its centre a touch must start to steer
 const touchUI = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
 const coach = createCoach({ touch: touchUI, el: $('#coach') }); // first-match tips (coach.js)
+// match call-outs and end highlights (callouts.js): names from the view, 'You' for me
+const callouts = createCallouts({ el: $('#feed'), banner, nameOf: (id, v) => { const e = v?.ents.find((q) => q.id === id); return !e ? 'Someone' : e.peer === me.id && !e.bot ? 'You' : nameOf(e); } });
 function joyHome() { // remembered as a share of the screen, so it survives turning the phone
   let p = null; try { p = JSON.parse(store.get('sh_joy') || 'null'); } catch {}
   const x = p ? p.fx * W : 84, y = p ? p.fy * H : H - (H < 480 ? 84 : 176); // default: bottom left (above the emotes when they span the bottom)
@@ -590,6 +594,7 @@ function renderChrome() {
   if (!inRoom() || !v) { coach.update(null); if (ui.lastCard) { $('#panel').hidden = true; ui.lastCard = ''; } setHud(''); ui.lastBoard = ''; $('#board').hidden = true; return; }
   const m = myEnt(v);
   coach.update(v, me.w ? null : m); // first-match tips: move, throw, get the hat (coach.js)
+  callouts.tick(v); // who takes the lead, 10 seconds left
   const humans = v.ents.filter((e) => !e.bot);
   // lobby / results panel
   let card = '';
@@ -617,6 +622,7 @@ function renderChrome() {
     card = `<div class="eyebrow">Match over</div><h2>${headline}</h2>
       ${v.mode === 'team' ? `<div class="result"><div class="stat nice"><i>Nice</i><b>${v.ts[0]}</b></div><div class="stat naughty"><i>Naughty</i><b>${v.ts[1]}</b></div></div>` : ''}
       ${mvp ? `<div class="verdict">MVP: ${esc(nameOf(mvp))} with ${mvp.score}</div>` : ''}
+      ${(callouts.last || []).length ? `<ul class="highs">${callouts.last.map((h) => `<li><i>${h.label}</i><b>${esc(h.who)}</b><span>${h.text}</span></li>`).join('')}</ul>` : ''}
       ${v.rk && rankNews ? `<div class="verdict">Rank points ${rankNews.change >= 0 ? '+' : '−'}${Math.abs(rankNews.change)}${Number.isFinite(rankNews.points) ? ` · now ${rankNews.points}` : ''}</div>` : ''}
       <ol class="final">${sorted.map((e) => `<li><span>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}</span><b>${e.score}</b></li>`).join('')}</ol>
       ${endActions(v, sorted)}`;
@@ -940,7 +946,7 @@ const app = {
   onTab: (tab) => {
     ui.lastBoard = '';
     if (tab === 'store' || tab === 'games') refreshBurned(); // the money strip's burned-so-far (kept a minute)
-    if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js?v=4028a8e4cb')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
+    if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js?v=19f08d50c0')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
   },
 };
 let gamesMod = null; // Games tab code loads the first time it's opened

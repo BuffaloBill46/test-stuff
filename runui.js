@@ -1,6 +1,6 @@
 // What a finished run says on its card (shared by Spin, Snowball Drop and Big Hat). Runs: Cody, 2026-10-01.
 // The run's winnings were sent to the player's wallet automatically (demo: to the demo balance), 3% lighter (SANTA's tax).
-import { serverMode } from './playcredits.js?v=4028a8e4cb';
+import { serverMode } from './playcredits.js?v=19f08d50c0';
 const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);
 export function runSummary(out, one, many) {
   const what = `${out.n} ${out.n === 1 ? one : many}`;

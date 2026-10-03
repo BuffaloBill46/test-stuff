@@ -2,7 +2,7 @@
 // America/Indiana/Indianapolis (Eastern time with daylight saving), the same moment for every player; the game week starts
 // Sunday 9 PM (the weekly lottery draw, lottery.js). The database has the same rules (supabase/030: game_day_start,
 // game_day_next, game_week_start) for ranked tickets; this file is the page's copy (the Ranks "Today" / "This week" boards).
-import { zonedTime, WEEKLY_ZONE } from './lottery.js?v=4028a8e4cb';
+import { zonedTime, WEEKLY_ZONE } from './lottery.js?v=19f08d50c0';
 
 export const RESET_HOUR = 21; // 9 PM
 const parts = (t) => Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: WEEKLY_ZONE, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', weekday: 'short' })
