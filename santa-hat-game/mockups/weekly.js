@@ -14,8 +14,8 @@ export const VARIANTS = {
   // three hats on the field at once (sim.js plays HATS of them)
   hathunt: { name: 'Hat Hunt', short: 'Three hats at once. Every hat on a head scores.', hats: 3 },
 };
-// Only modes that are BUILT go in the rotation: Hat Hunt joins when sim.js plays three hats (until then its week would be broken).
-export const ROTATION = ['hothat', 'gazebo', 'blizzard'];
+// Only modes that are BUILT go in the rotation (Hat Hunt joined 2026-10-03, once sim.js and the page played three hats).
+export const ROTATION = ['hothat', 'gazebo', 'blizzard', 'hathunt'];
 export const VARIANT_IDS = Object.keys(VARIANTS); // snapshot numbers: 0 = none, 1.. = this order (never reorder; add at the end)
 const WEEK_MS = 7 * 86400e3, EPOCH = Date.UTC(2026, 9, 4); // the rotation's first week: the game week holding Oct 4 2026
 

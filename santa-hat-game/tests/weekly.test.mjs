@@ -93,12 +93,13 @@ const park = (e, x, z) => { e.x = x; e.z = z; e.vx = e.vz = 0; e.since = 9; };
 // --- the rotation
 { const weeks = Array.from({ length: 6 }, (_, i) => weeklyAt(Date.UTC(2026, 9, 7) + i * 7 * 86400e3, ROTATION));
   assert.deepEqual(weeks, [0, 1, 2, 3, 4, 5].map((i) => ROTATION[(i + 1) % ROTATION.length]), `one mode a week, in order: ${weeks.join(', ')}`);
-  assert.ok(!ROTATION.includes('hathunt'), 'Hat Hunt stays out of the rotation until it is built');
+  assert.deepEqual(ROTATION, ['hothat', 'gazebo', 'blizzard', 'hathunt'], 'all four built, in order');
   const ws = weekStart(Date.UTC(2026, 9, 7)); assert.equal(weeklyAt(ws, ROTATION), weeklyAt(ws + 6.9 * 86400e3, ROTATION), 'the same mode all week');
   assert.notEqual(weeklyAt(ws - 1000, ROTATION), weeklyAt(ws, ROTATION), 'and it changes at the week\'s start (Sunday 9 PM Indiana)'); }
 // --- switched off (supabase/034, the admin screen): none on → no weekly mode; one on → that one every week
 { const t0 = Date.UTC(2026, 9, 7); assert.equal(weeklyAt(t0, []), null, 'all switched off: no weekly mode');
   for (let i = 0; i < 4; i++) assert.equal(weeklyAt(t0 + i * 7 * 86400e3, ['gazebo']), 'gazebo', 'only the Gazebo on: the Gazebo every week');
-  assert.equal(weeklyAt(t0, ['hathunt']), null, 'Hat Hunt switched on but not built: still no weekly mode'); }
+  assert.equal(weeklyAt(t0, ['hathunt']), 'hathunt', 'only Hat Hunt on: Hat Hunt every week');
+  assert.equal(weeklyAt(t0, ['nonsense']), null, 'an unknown id switches nothing on'); }
 console.log('OK: Hat Hunt: three hats, each on a head scores, one hat per head, a hit knocks off the right hat, kept through a handover, an 8-player match stays true every frame under 4 KiB');
-console.log('OK: weekly modes: Hot Hat (double hat points, a snowball melts every 2 s, never below 0), King of the Gazebo (5 a second alone in the ring, nobody when shared), Blizzard (2× refill), plain unchanged, kept through a host handover, one mode a game week (built modes only)');
+console.log('OK: weekly modes: Hot Hat (double hat points, a snowball melts every 2 s, never below 0), King of the Gazebo (5 a second alone in the ring, nobody when shared), Blizzard (2× refill), plain unchanged, kept through a host handover, one mode a game week (built and switched-on modes only)');

@@ -62,6 +62,13 @@ await p.evaluate(() => { window.__sq.sim.S.variant = 'blizzard'; }); await p.wai
 const bFog = (await view()).fog;
 check(plainFog && bFog && bFog[1] < plainFog[1] * 0.6 && bFog[0] < plainFog[0] * 0.5, `blizzard: fog much closer (near ${bFog?.[0]?.toFixed(1)} far ${bFog?.[1]?.toFixed(1)} vs ${plainFog?.[0]?.toFixed(1)}/${plainFog?.[1]?.toFixed(1)})`);
 await p.screenshot({ path: 'out/weekly-blizzard.png' });
+console.log('4. Hat Hunt: three hats drawn');
+await p.evaluate(() => { const sim = window.__sq.sim; sim.S.variant = 'hathunt'; sim.startMatch('ffa'); });
+await p.waitForTimeout(1200);
+check(await p.evaluate(() => window.__sq.hatsDrawn()) === 3, `three hats on the field (${await p.evaluate(() => window.__sq.hatsDrawn())})`);
+await p.screenshot({ path: 'out/weekly-hathunt.png' });
+await p.evaluate(() => { const sim = window.__sq.sim; sim.S.variant = null; sim.startMatch('ffa'); }); await p.waitForTimeout(800);
+check(await p.evaluate(() => window.__sq.hatsDrawn()) === 1, 'a plain match: one hat');
 check(!errors.length, 'no page errors ' + errors.join(' | '));
 await browser.close();
 if (fails.length) { console.log('FAIL:', fails.length); process.exit(1); }

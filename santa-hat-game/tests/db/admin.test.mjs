@@ -172,10 +172,10 @@ console.log('OK: admin controls: wallet-signed only; replay, stranger, tampering
   assert.ok(r.ok, JSON.stringify(r)); w = await gs.weekly();
   assert.deepEqual([w.modes.find((m) => m.id === 'gazebo').on, w.now], [true, 'gazebo'], 'the Gazebo on: it is this week\'s mode (the only one on)');
   assert.equal(await logs(), n0 + 1, 'the switch is in the public log');
-  r = await adm.run(await signed(cody, { action: 'weekly-mode', game: 'weekly', settings: { mode: 'hathunt', on: true } }));
-  assert.ok(/isn't built yet/.test(r.error || ''), 'Hat Hunt can\'t be switched on yet');
+  r = await adm.run(await signed(cody, { action: 'weekly-mode', game: 'weekly', settings: { mode: 'snowcone', on: true } }));
+  assert.ok(/unknown weekly mode/.test(r.error || ''), 'an unknown mode is refused');
   r = await adm.run(await signed(stranger, { action: 'weekly-mode', game: 'weekly', settings: { mode: 'hothat', on: true } }));
   assert.ok(r.error, 'a stranger can\'t switch a mode');
   r = await adm.run(await signed(cody, { action: 'weekly-mode', game: 'weekly', settings: { mode: 'gazebo', on: false } }));
   w = await gs.weekly(); assert.deepEqual([r.ok, w.now], [true, null], 'switched off again: no weekly mode'); }
-console.log('OK: weekly modes: all off to start; Cody switches each on/off (signed, logged); Hat Hunt refused until built; strangers refused; the public answer follows');
+console.log('OK: weekly modes: all off to start; Cody switches each on/off (signed, logged); unknown modes and strangers refused; the public answer follows');
