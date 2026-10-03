@@ -10,6 +10,7 @@ import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar,
 import { SPECIALS } from './specials.js';
 import { settingsReady, call } from './gameserver.js';
 import { TICKET_MAX } from './ranked.js';
+import { dayStart, weekStart } from './gameclock.js';
 import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js';
 import { THEMES, THEME_IDS } from './themes.js';
 
@@ -478,8 +479,9 @@ export function initTabs(app) {
     document.querySelectorAll('.lbtabs [data-lb]').forEach((b) => { b.onclick = () => { state.lb = b.dataset.lb; renderRanks(); }; });
     const lb = $('#lb'), which = state.lb || 'all';
     document.querySelectorAll('.lbtabs [data-lb]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lb === which)));
-    // Today = since this player's own midnight; This week = the last 7 days (points GAINED in ranked matches then)
-    const since = which === 'today' ? new Date(new Date().setHours(0, 0, 0, 0)) : which === 'week' ? new Date(Date.now() - 7 * 864e5) : null;
+    // Today = since the last 9 PM Indiana time; This week = since Sunday 9 PM (Cody 2026-10-02: every reset at 9 PM Indiana
+    // time; gameclock.js): points GAINED in ranked matches since then, the same day and week for every player
+    const since = which === 'today' ? new Date(dayStart()) : which === 'week' ? new Date(weekStart()) : null;
     try {
       const rows = await app.accounts.leaderboard(since);
       lb.innerHTML = rows.length
