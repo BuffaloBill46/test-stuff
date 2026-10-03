@@ -874,6 +874,7 @@ $('#create').addEventListener('click', () => enterRoom(rid(4).toUpperCase().repl
 $('#joinBtn').addEventListener('click', () => { const c = cleanCode($('#code').value); if (c.length < 3) { status('Type the room code your friend shared.'); return; } enterRoom(c, false); });
 $('#practice').addEventListener('click', startPractice);
 $('#playUnranked').addEventListener('click', () => openLobby('unranked'));
+$('#playBig').addEventListener('click', () => { openLobby('unranked'); $('#quick').click(); }); // the hero's big button: straight into a free Auto match
 $('#homeClose').addEventListener('click', closeLobby);
 $('#leave').addEventListener('click', () => leaveRoom());
 initSoundButtons();

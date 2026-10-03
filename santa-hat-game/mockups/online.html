@@ -190,6 +190,9 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
   background: linear-gradient(90deg, rgba(12,15,26,.8), rgba(12,15,26,.68) 80%, rgba(12,15,26,0)); }
 .hero h1 { font-size: 56px; margin: 4px 0 6px; }
 .hero p { margin: 0; font-size: 18px; color: #d6ddf0; max-width: 60ch; text-shadow: 1px 1px 0 var(--ink); }
+.heroplay { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin: 12px 0 4px; }
+.heroplay .go { font-size: 34px; padding: 12px 36px; } .heroplay span { font-size: 15px; color: var(--frost); text-shadow: 1px 1px 0 var(--ink); }
+@media (max-width: 600px) { .heroplay .go { width: 100%; font-size: 30px; } }
 /* Player Progress box: the level badge, what the next level takes, what this level gives (Cody's table), gear, pass, stats. */
 .progress { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 220px); gap: 16px; align-items: center; margin-bottom: 14px; }
 .progress .pglevel { text-align: center; padding: 8px 14px; background: var(--hat); border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); }
@@ -775,6 +778,8 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       <div class="eyebrow">Snowball Square · up to 8 players</div>
       <h1>Play for Free</h1>
       <p>Grab the Santa hat, keep it on your head, and knock it off everyone else's.</p>
+      <!-- One tap to a match (Cody, 2026-10-03): the lobby's own free Auto match, above the fold on every screen -->
+      <div class="heroplay"><button class="go" id="playBig">Play now</button><span>A free match in seconds. No sign-in needed.</span></div>
       <p class="testnote"><b>Test version</b> Snowball Square is free and works now. Ranked tickets, wagers and SANTA prizes aren't switched on yet.</p>
     </div>
     <!-- Player Progress (Cody, 2026-10-01): level and what it gives, special gear, season pass, stats. Filled by tabs.js. -->
