@@ -40,16 +40,31 @@ function dbUrl(): string {
   u.hostname = pooler; u.port = '6543';
   return u.toString();
 }
-// idle_timeout: connections close after 5 s unused. With none (postgres.js's default keeps them forever), a copy of this
-// server holding open connections was slow to retire, and about 1 request in 10 landed on one and waited ~75 s (found
-// 2026-10-03 timing 20 requests in a row). connect_timeout: a stuck connect fails in 10 s instead of hanging a play.
-const sql = postgres(dbUrl(), { prepare: false, max: 3, idle_timeout: 5, connect_timeout: 10 });
+// A CONNECTION MUST ANSWER BEFORE IT CARRIES WORK (found 2026-10-03): about 1 request in 10 waited 75–150 s because a fresh
+// copy of this server's first connection to the pooler sometimes never got through (the pooler never saw it; the request just
+// hung, connect_timeout didn't cut it). So before a connection is used, fresh or idle over 30 s, it must answer a harmless
+// "select 1" within 6 s; if it doesn't, it's dropped and a new one opened (up to 4 tries). ONLY that check is ever retried:
+// real work (payments, settles, payouts) never runs twice, it just only runs on a connection that has just answered.
+// One connection per copy (max 1): a copy serves few requests at once, and every connection it uses is a checked one.
+const newClient = () => postgres(dbUrl(), { prepare: false, max: 1, connect_timeout: 10 });
+let sql = newClient(), answeredAt = 0;
+async function ready() {
+  if (Date.now() - answeredAt < 30_000) return sql;
+  for (let i = 1; i <= 4; i++) {
+    const c = sql; let timer: ReturnType<typeof setTimeout> | undefined;
+    const ok = await Promise.race([c`select 1`.then(() => true, () => false), new Promise<boolean>((r) => { timer = setTimeout(() => r(false), 6000); })]);
+    clearTimeout(timer);
+    if (ok) { answeredAt = Date.now(); return c; }
+    console.warn(`db: connection didn't answer in 6 s (try ${i} of 4): opening a fresh one`);
+    if (sql === c) { c.end({ timeout: 0 }).catch(() => {}); sql = newClient(); }
+  }
+  return sql; // four fresh connections failed: let the real work try (and report its own error)
+}
+const seen = <T>(p: Promise<T>) => p.then((r) => { answeredAt = Date.now(); return r; });
 const db = {
-  // TEMPORARY (2026-10-03, finding the ~75 s requests): log any database call slower than 2 s
-  query: async (q: string, p: unknown[] = []) => { const t0 = Date.now(); try { return await sql.unsafe(q, p as never[]); }
-    finally { const ms = Date.now() - t0; if (ms > 2000) console.warn('SLOW DB ' + ms + ' ms: ' + q.replace(/\s+/g, ' ').slice(0, 90)); } },
-  tx: (fn: (t: { query: (q: string, p?: unknown[]) => Promise<unknown[]> }) => Promise<unknown>) =>
-    sql.begin((t) => fn({ query: (q: string, p: unknown[] = []) => t.unsafe(q, p as never[]) })),
+  query: async (q: string, p: unknown[] = []) => seen((await ready()).unsafe(q, p as never[])),
+  tx: async (fn: (t: { query: (q: string, p?: unknown[]) => Promise<unknown[]> }) => Promise<unknown>) =>
+    seen((await ready()).begin((t) => fn({ query: (q: string, p: unknown[] = []) => t.unsafe(q, p as never[]) }))),
 };
 const rpcUrl = env('SOLANA_RPC_URL') || 'https://solana-rpc.publicnode.com';
 const chain = {
