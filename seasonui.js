@@ -3,10 +3,10 @@
 // and its pass prize, and the $5 pass. Rules from seasons.js; a signed-in player's progress from the game server (server/seasons.js
 // 'season', which also ticks today's "Log in"); a guest sees the same tasks, calendar and doors with nothing earned yet. Match
 // points only come from public Auto matches the match server runs, so the card says so and refreshes after each match.
-import { seasonAt, dayKey, dayEnds, seasonDays, tasksFor, freeReward, goldReward, PASS_PRICE, STREAK_EVERY, DOORS, DOOR_POINTS, POINTS, PIECE_DOORS } from './seasons.js?v=e693b9fb42';
-import { BY_ID } from './catalog.js?v=e693b9fb42';
-import { call } from './gameserver.js?v=e693b9fb42';
-import { shopBuy } from './shopui.js?v=e693b9fb42';
+import { seasonAt, dayKey, dayEnds, seasonDays, tasksFor, freeReward, goldReward, PASS_PRICE, STREAK_EVERY, DOORS, DOOR_POINTS, POINTS, PIECE_DOORS } from './seasons.js?v=1ac94d8b91';
+import { BY_ID } from './catalog.js?v=1ac94d8b91';
+import { call } from './gameserver.js?v=1ac94d8b91';
+import { shopBuy } from './shopui.js?v=1ac94d8b91';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -30,7 +30,8 @@ const nameOf = (id) => BY_ID.get(id)?.name || 'a costume piece';
 const n = (x) => Number(x || 0).toLocaleString('en-US');
 // one prize, drawn in a door: a picture for an item, a short tag for a level step or a ranked ticket
 // (Cody, 2026-10-04: "+1 level tick", so it's never mistaken for a whole level)
-const prizeHtml = (r) => (!r ? '' : r.kind === 'item' ? thumb(r.item) : r.kind === 'tickets' ? `<span class="ptag">${r.n > 1 ? r.n + ' ' : ''}ranked<br>ticket</span>` : '<span class="ptag">+1 level<br>tick</span>');
+// an item (a look, gear, a costume piece) shows its picture AND its name (Cody, 2026-10-04: "label the avatar items")
+const prizeHtml = (r) => (!r ? '' : r.kind === 'item' ? `${thumb(r.item)}<span class="pname">${esc(nameOf(r.item))}</span>` : r.kind === 'tickets' ? `<span class="ptag">${r.n > 1 ? r.n + ' ' : ''}ranked<br>ticket</span>` : '<span class="ptag">+1 level<br>tick</span>');
 const prizeName = (r) => (!r ? 'nothing' : r.kind === 'item' ? nameOf(r.item) : r.kind === 'tickets' ? `${r.n} ranked ticket${r.n > 1 ? 's' : ''}` : '+1 level tick');
 
 // The card can never break the page: any error is logged and the card is hidden (season-test 2026-10-03: one slip here stopped the whole game page loading).

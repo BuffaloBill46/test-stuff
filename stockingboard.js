@@ -8,7 +8,7 @@
 // already decided (stocking.js asTapped): the tap only chooses where.
 // createStockings(canvas) → { pick() → Promise(s), open(s, gift) → Promise (resolves as the item pops), reset(), setActive(on),
 //   hurry(), normal(), centerOf(s) (tests: where to tap, in CSS pixels on the canvas) }
-import { ROW, STOCKINGS } from './stocking.js?v=e693b9fb42';
+import { ROW, STOCKINGS } from './stocking.js?v=1ac94d8b91';
 
 const W = 680, H = 600, SLOT = 63, X0 = (W - SLOT * ROW) / 2;
 const ROW_Y = [46, 206];                       // hook heights: row 1 hangs from the garland, row 2 from the mantel's front edge

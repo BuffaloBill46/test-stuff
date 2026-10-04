@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="e693b9fb42">
+<html lang="en" data-build="1ac94d8b91">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -331,6 +331,11 @@ a.taplink { display: inline-block; padding: 11px 0; margin: -11px 0; }
 .season #ssDoors .pz.g { min-height: 0; padding: 2px 3px 3px; background: var(--ss-dim); border-top: 1px dashed rgba(242,134,46,.45); }
 .season #ssDoors .pz.g small { display: block; font: 700 8px/1.2 var(--digits); letter-spacing: .5px; text-transform: uppercase; color: var(--ss); }
 .season #ssDoors .pz.g img { max-width: 30px; }
+/* item names under their pictures: 2 lines at most, shortened with … (the full name is in the door's label) */
+.season #ssDoors .pname { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 100%; margin-top: 2px;
+  font: 700 9px/1.15 var(--body); text-align: center; color: var(--text); word-break: break-word; }
+.season #ssDoors .pz.g .pname { color: var(--ss); font-size: 8.5px; }
+.season #ssDoors .pz { align-content: center; }
 .season #ssDoors .pz img { width: 100%; max-width: 40px; aspect-ratio: 1; height: auto; display: block; }
 .season #ssDoors .ptag { justify-self: center; align-self: center; font: 700 9px/1.15 var(--digits); text-align: center; color: var(--frost); text-transform: uppercase; letter-spacing: -.2px; }
 .season #ssDoors .pz.g .ptag { color: var(--ss); }
@@ -1329,6 +1334,6 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 <div id="emotes" hidden></div>
 <div id="joy" hidden></div>
 <div id="zoom" hidden><button id="zoomIn" aria-label="Zoom in">+</button><button id="zoomOut" aria-label="Zoom out">−</button></div>
-<script type="module" src="./online.js?v=e693b9fb42"></script>
+<script type="module" src="./online.js?v=1ac94d8b91"></script>
 </body>
 </html>
