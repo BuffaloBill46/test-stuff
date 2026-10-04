@@ -30,7 +30,8 @@ const nameOf = (id) => BY_ID.get(id)?.name || 'a costume piece';
 const n = (x) => Number(x || 0).toLocaleString('en-US');
 // one prize, drawn in a door: a picture for an item, a short tag for a level step or a ranked ticket
 // (Cody, 2026-10-04: "+1 level tick", so it's never mistaken for a whole level)
-const prizeHtml = (r) => (!r ? '' : r.kind === 'item' ? thumb(r.item) : r.kind === 'tickets' ? `<span class="ptag">${r.n > 1 ? r.n + ' ' : ''}ranked<br>ticket</span>` : '<span class="ptag">+1 level<br>tick</span>');
+// an item (a look, gear, a costume piece) shows its picture AND its name (Cody, 2026-10-04: "label the avatar items")
+const prizeHtml = (r) => (!r ? '' : r.kind === 'item' ? `${thumb(r.item)}<span class="pname">${esc(nameOf(r.item))}</span>` : r.kind === 'tickets' ? `<span class="ptag">${r.n > 1 ? r.n + ' ' : ''}ranked<br>ticket</span>` : '<span class="ptag">+1 level<br>tick</span>');
 const prizeName = (r) => (!r ? 'nothing' : r.kind === 'item' ? nameOf(r.item) : r.kind === 'tickets' ? `${r.n} ranked ticket${r.n > 1 ? 's' : ''}` : '+1 level tick');
 
 // The card can never break the page: any error is logged and the card is hidden (season-test 2026-10-03: one slip here stopped the whole game page loading).

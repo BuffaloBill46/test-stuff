@@ -71,6 +71,10 @@ check(v.how.length === 3 && /points/.test(v.how[0]) && /300 points/.test(v.how[1
 check(v.doors.length === DOORS && v.doors.every((x, i) => x.n === String(i + 1)), `${DOORS} doors, numbered`);
 check(v.doors.every((x, i) => kindOf(x.free) === freeReward(S, i + 1).kind && !!x.gold === !!goldReward(S, i + 1)), 'EVERY door shows its prize for everyone; only the 6 costume doors show a pass piece');
 check(v.doors.filter((x) => x.gold).length === 6 && v.doors.filter((x) => x.free.tag === '+1 leveltick').length === 8, `6 pass pieces, 8 "+1 level tick" doors (${v.doors.filter((x) => x.free.tag === '+1 leveltick').length})`);
+{ const names = await p.evaluate(() => [...document.querySelectorAll('#ssDoors li')].map((l) => [...l.querySelectorAll('.pz')].map((z) => [!!z.querySelector('img'), z.querySelector('.pname')?.textContent || ''])));
+  const items = names.flat().filter(([img]) => img);
+  check(items.length === 13 && items.every(([, nm]) => nm && nm !== 'a costume piece') && names[1][0][1] === 'Candy Corn' && names[14][0][1] === 'Elf Hat' && names[1][1][1] === 'Pumpkin King',
+    `every item on a door is labelled with its name (${items.length}: ${items.slice(0, 4).map(([, nm]) => nm).join(', ')}, …)`); }
 check(v.doors.filter((x) => x.gold).every((x) => x.gold.locked) && v.doors[0].cls === 'next' && v.doors.slice(1).every((x) => x.cls.startsWith('future')), 'no pass: the costume pieces show a lock; door 1 is next');
 check(/Door 15 \(4,500 points\): Elf Hat/.test(v.doors[14].label) && /Door 30 \(9,000 points\): I\.C\.E\. Kevlar Vest/.test(v.doors[29].label) && /with the pass: /.test(v.doors[1].label), `each door says what it gives: "${v.doors[14].label}" / "${v.doors[1].label}"`);
 check(/^0 points · next door at 300$/.test(v.points) && v.bar === '0%', `points: "${v.points}"`);
