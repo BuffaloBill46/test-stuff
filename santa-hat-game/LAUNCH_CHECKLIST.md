@@ -52,7 +52,18 @@
 - [x] **4. Telegram** (2026-10-03): new bot "Santa Hat Alerts" (@santahatgames_alerts_bot), created in BotFather on Cody's say-so.
   Cody saved the token; Claude installed it on the Droplet without displaying it (games.env and games.env.mainnet).
   The chat is remembered in alert_settings, which the reset keeps. A test alert arrived. Alerts now go to Telegram every 5 min.
-- [ ] 1. Fund the wallets.  - [ ] 2. Cody's Phantom address.  - [ ] 6. GO.
+- [x] **2. Phantom address** (2026-10-04): DpgDK31RNyA96qYoFgigjxxLScKBG3BAwdPeDfTCB7uN is an admin on the test server now and in
+  games.env.mainnet. Cody: keep BOTH admins (his and the codyAdmin stand-in whose key is on Claude's PC, so Claude can test edits).
+- [ ] 1. Fund the wallets.  - [ ] 6. GO (then one ~$1 purchase paid in SOL from Cody's Phantom, besides the 10¢ SANTA dry run).
+
+## Final launch QA (2026-10-04)
+- All unit and database tests, the full simulation: pass. Full browser suite: 36/36 (5 needed a rerun alone: load, not bugs;
+  progress-or-test updated for 10 ticks).
+- Live, devnet money: 5 test players played Snowball Drop, Stocking Stuffer and Big Hat 1,000 times each (30 real payments),
+  0 errors, all 30 payouts sent, the Game pool's books = its wallet to the unit. 3 fresh players bought all 17 Store items once,
+  3 levels, lottery tickets and the pass: 24/24, 0 refunds; ranked tickets refused while paused.
+- Found and fixed: the books-vs-wallet alert fired falsely for payments on their way (Cody's Telegram, 59,274 SANTA MORE).
+- Paying with SOL: checked on a private copy of mainnet (Surfpool, C:santa-tools): see HANDOFF.
 
 ## Done since the checklist was written (all live on the test network, tested)
 - **Security review done**, every finding checked by Claude before acting on it. Fixed:

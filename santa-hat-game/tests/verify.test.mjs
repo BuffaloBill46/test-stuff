@@ -94,3 +94,12 @@ const pass = { ...expect, pool: TREAS, burnBps: 0, sol: { lamports: 16_472_303, 
 { const r = verifyPayment(storeSol({ burnBps: 0, lamports: 16_472_303 }), pass); assert.ok(r.ok, 'the pass paid with SOL: a plain transfer, no swap needed ' + r.why); }
 assert.equal(verifyPayment(storeSol({ burnBps: 0, lamports: 16_000_000, toTreasury: 16_000_000 }), pass).ok, false, 'the pass, SOL short: refused');
 console.log('OK: paid with SOL at the price: a game run (pool gets what arrived, ≥85%) and a Store item / the pass (half burned, half SOL to the treasury) accepted; under the floor, no Jupiter, short SOL, short treasury, unsigned, devnet quote: refused');
+// S1b (security pass 2026-10-04): a "SOL payment" whose SANTA was moved into the player's account by a wallet that signed (their
+// own second wallet), with a token Jupiter step to look like a swap, is refused; SANTA arriving from a swap vault (no signer) is fine.
+{ const second = 'SECONDwa11et11111111111111111111111111111111';
+  const fake = solGame(); fake.transaction.message.accountKeys.push({ pubkey: second, signer: true, writable: true });
+  fake.meta.innerInstructions = [{ index: 0, instructions: [{ program: 'spl-token', parsed: { type: 'transferChecked', info: { source: 'SECONData', destination: 'PLAYERata', authority: second, mint: MINT, tokenAmount: { amount: '99' } } } }] }];
+  const r = verifyPayment(fake, gameSol); assert.ok(!r.ok && /moved in from a wallet that signed/.test(r.why), 'SANTA from a second wallet that signed: refused (' + r.why + ')');
+  const real = solGame(); real.meta.innerInstructions = [{ index: 0, instructions: [{ program: 'spl-token', parsed: { type: 'transferChecked', info: { source: 'VAULTata', destination: 'PLAYERata', authority: 'POOLauthorityPDA', mint: MINT, tokenAmount: { amount: '99' } } } }] }];
+  assert.ok(verifyPayment(real, gameSol).ok, 'SANTA from the swap pool\'s vault (nobody signs for it): accepted'); }
+console.log('OK: a SOL payment whose SANTA came from a wallet that signed (not a swap) is refused');

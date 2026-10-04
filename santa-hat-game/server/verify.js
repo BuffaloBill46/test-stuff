@@ -50,6 +50,14 @@ export function verifyPayment(tx, expect) {
   if (sol) {
     const sh = solShares(expect.sol.lamports, expect.burnBps, expect.sol.store), q = splitPayment(expect.quoteRaw, expect.burnBps, expect.fee);
     if (sh.swap > 0 && !allInstructions(tx).some((i) => (i.programId ?? i.program) === JUPITER)) return no('paid with SOL, but not through a real swap (Jupiter)');
+    // S1b. the SANTA really came out of a swap: in a real swap it arrives from the swap pool's vault, whose owner no person signs
+    // for. SANTA moved into the player's account by a wallet that SIGNED this transaction (their own second wallet) would let
+    // someone pay ~85% of the price in their own SANTA dressed up as a SOL payment (security pass 2026-10-04): refused.
+    const signers = new Set(keys.filter((k) => k.signer).map((k) => k.pubkey));
+    const mine = new Set([...(tx.meta.preTokenBalances || []), ...(tx.meta.postTokenBalances || [])].filter((b) => b.mint === expect.mint && b.owner === expect.player).map((b) => keys[b.accountIndex]?.pubkey));
+    const fromSigner = allInstructions(tx).some((i) => i.program === 'spl-token' && /^transfer(Checked|CheckedWithFee)?$/.test(i.parsed?.type) && mine.has(i.parsed.info.destination)
+      && signers.has(i.parsed.info.authority ?? i.parsed.info.multisigAuthority));
+    if (fromSigner) return no('paid with SOL, but SANTA was moved in from a wallet that signed (not a swap)');
     const spent = -solDelta(tx, expect.player) - Number(tx.meta.fee || 0);
     if (spent < expect.sol.lamports) return no(`paid ${spent} lamports of SOL, the price was ${expect.sol.lamports}`);
     if (expect.sol.store) {

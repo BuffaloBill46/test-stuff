@@ -536,3 +536,18 @@ back to the game server's read-only relay (server/relay.js).
 http the Solana toolkit can't use the browser's crypto (Solana error #3610000, insecure context). (2) page.goto to the SAME
 address ending in #tab only scrolls, it does not reload: add a changing ?t= to really reload. (3) Jupiter's quoted SANTA is
 what LANDS after SANTA's 3% tax: grossing it up again overbought 3% (seen in the mainnet simulation).
+**An error message can carry a secret (2026-10-04).** Surfpool, forking mainnet through Cody's Helius URL, answered a failed
+fetch with an error that quoted the whole URL, key included; the test printed it into a local log (deleted; never committed or
+sent; Cody told to rotate). Any tool given a secret URL can echo it in an error: print errors through a redactor
+(fork-sol-qa.mjs `hide`), and check server logs for it (journalctl … | grep -c "api-key": 0 on 2026-10-04).
+
+**A books-vs-wallet check must allow for payments on their way (2026-10-04).** A payment lands in the pool wallet seconds after
+approval; the server records it only after it is FINAL (~15-30 s). The 5-minute check caught that gap during busy play and
+alerted "wallet has MORE" (Cody's Telegram). Allow MORE up to what open quotes could bring (reconcile.js inFlightRaw); LESS,
+or more than that, still alarms. A check that cries wolf gets ignored.
+
+**A private copy of mainnet drifts from mainnet as you trade on it (2026-10-04).** Test swaps move the copy's own pool prices
+while Jupiter keeps quoting real mainnet, so after ~$1,000 of test buys every swap would fail its slippage limit. Reset the
+accounts each swap touched back to mainnet (Surfpool surfnet_resetAccount) after every transaction. Accounts made with
+surfnet_setTokenAccount lack Token-2022 extensions (a SANTA transfer INTO one fails "invalid account state"): create token
+accounts with the real ATA instruction, and get SANTA with a real swap.
