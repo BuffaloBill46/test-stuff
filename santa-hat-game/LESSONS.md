@@ -497,3 +497,10 @@ swallowed by a catch, and in server mode the page quietly kept the built-in pric
 only because the FULL browser suite was run (it isn't in the usual per-change set). Rules: anything run at load time sits below
 everything it uses (the note in gameserver.js says so); a catch that hides an error logs it; run the whole suite after a day of
 changes, not just the tests near the change.
+
+
+**A simulation at real crowd size finds what one-player tests can't (2026-10-04).** Every test had a handful of players; 50
+at once showed Auto match sending everyone to the same room while their sign-in checks ran (the choice was made before an
+await), and that 5 rooms per kind meant the 41st player was turned away. Rules: pick shared resources AFTER the last await; size
+limits get tested at the expected crowd, not at 2. And: a new tab in a fixed bar is a layout change. Adding Home pushed Sign in off
+small sideways phones; run phone-shots after any top-bar change.
