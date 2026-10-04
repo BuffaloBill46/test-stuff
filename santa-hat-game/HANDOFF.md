@@ -173,7 +173,7 @@ between two devices has never been tested from here. Cody and friends testing on
   (server/relay.js, 5 read-only lookups, signed in).
 - STILL TO DO AT LAUNCH (real money, Cody's own wallet, his OK): one ~$1 real SOL purchase, then check its record. Refunds of a
   SOL purchase are owed in SANTA at the quote's amount (shop_refunds is SANTA-only).
-- Next: Twitter logo + 8-player banner (Cody asked).
+- Twitter logo + banner made (marketing/brand/; re-render: tests/browser/promo-brand.mjs). Waiting on Cody: SOL launch test.
 
 ### 2026-10-04: 10 TICKS A LEVEL + PASS 100% TREASURY (043 live; servers 5bddf00)
 - Levels: 10 top-3 Auto finishes ("ticks") a level, was 5 (levels.js WINS_PER_LEVEL, 043). 9 -> 10 still 10 first places.
