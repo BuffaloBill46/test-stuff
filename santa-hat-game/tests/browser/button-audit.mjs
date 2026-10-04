@@ -142,7 +142,7 @@ function auditInit() {
       run: `${sl ? !!sl.busy : ''}/${dr ? !!(dr.opening || dr.flying) : ''}`, zoom: sq ? String(sq.zoom) : '', armed: sq ? String(sq.armed) : '',
       say: String(document.querySelectorAll('#tags .say.me').length), theme: sq ? String(sq.theme) : '', muted: String(window.__sfx?.muted) };
   };
-  const ATTRS = ['data-tab', 'data-run', 'data-try', 'data-pick', 'data-slot', 'data-amt', 'data-buy', 'data-theme', 'data-step', 'data-proof', 'data-dbet', 'data-bet', 'data-e', 'data-sb', 'data-mode', 'data-lmode', 'data-watch', 'data-gslot', 'data-sbslot', 'data-act', 'data-check', 'data-release', 'data-lotpaid'];
+  const ATTRS = ['data-tab', 'data-run', 'data-try', 'data-pick', 'data-slot', 'data-lstep', 'data-buy', 'data-theme', 'data-step', 'data-proof', 'data-dbet', 'data-bet', 'data-e', 'data-sb', 'data-mode', 'data-lmode', 'data-watch', 'data-gslot', 'data-sbslot', 'data-act', 'data-check', 'data-release', 'data-lotpaid'];
   const uniq = (s) => { try { return document.querySelectorAll(s).length === 1; } catch { return false; } };
   const pathOf = (el) => { const seg = []; let e = el; while (e && e !== document.body && !e.id) { const sib = [...e.parentElement.children].filter((x) => x.tagName === e.tagName);
     seg.unshift(sib.length > 1 ? `${e.tagName.toLowerCase()}:nth-of-type(${sib.indexOf(e) + 1})` : e.tagName.toLowerCase()); e = e.parentElement; }
@@ -488,7 +488,7 @@ async function runMode(mode) {
     { name: 'Buy dialog (Big Hat, Pull 1)', enter: buyDlg, roots: '#buyDlg', wait: 6000, after: async (pp) => { await reset(pp); await waitIdle(pp); } },
     { name: 'How to win dialog', enter: howDlg, roots: '#howDlg' },
     { name: 'Store tab', enter: T('store'), roots: '#tab-store', wait: mode === 'server' ? 6000 : 2500,
-      pre: async (pp, c) => { if (/data-amt/.test(c.sel)) await pp.evaluate((s) => { document.querySelector(s).closest('[data-lot]').querySelector('input').value = '7'; }, c.sel); } }, // so "1" has something to change
+      pre: async (pp, c) => { if (/data-lstep/.test(c.sel)) await pp.evaluate((s) => { document.querySelector(s).closest('[data-lot]').querySelector('input').value = '7'; }, c.sel); } }, // so "1" has something to change
     { name: 'Avatar tab', enter: T('avatar'), roots: '#tab-avatar', exclude: '#avgrid, #avsb' },
     ...avSlots.map((s) => ({ name: 'Avatar · ' + s, enter: avatarSlot(s), roots: '#avgrid, #avsb' })),
     { name: 'Ranks tab', enter: T('ranks'), roots: '#tab-ranks', wait: 3000 },

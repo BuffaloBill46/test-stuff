@@ -517,3 +517,8 @@ auto-accept test switches: it recorded Cody's WHOLE MONITOR (other windows inclu
 script run again, so it happened 4 times. Every capture was deleted at once (local only, never sent). Rules: record pages with
 the canvas (captureStream) or the DevTools page screencast, never getDisplayMedia; never chain "write a script" and "run it" in
 one step, so a failed write cannot run the old version; check a first frame before trusting a new recorder.
+
+
+**Two classes named the same thing collide silently (2026-10-04).** The season doors used class "tag" for their labels; `.tag`
+was already the in-match name tag (absolutely positioned top-left), so every label sat in a corner. Check a new class name
+isn't already used site-wide (grep "^\.name" online.html). Same for test ports: run-suite.mjs PORTS lists who shares one.

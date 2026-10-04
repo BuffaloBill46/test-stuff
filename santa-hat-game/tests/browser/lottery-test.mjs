@@ -60,7 +60,14 @@ console.log('1. Without a game server (today\'s site): the lotteries show, buyin
   check(ind === 'Sun 21:00' && target > Date.now() && target - Date.now() <= 7 * 86400000, `Weekly counts down to the next Sunday 9 PM Indiana (${d.toISOString()} = ${ind})`);
   await p.fill('.lotcard[data-lot="weekly-10"] input', '37'); await p.evaluate(() => window.__lottery.render());
   check(await p.inputValue('.lotcard[data-lot="weekly-10"] input') === '37', 'a number being typed survives a refresh');
-  await p.evaluate(() => { document.querySelector('.lotcard [data-amt="5"]').click(); document.querySelector('.lotcard [data-buy="custom"]').click(); }); await p.waitForTimeout(400);
+  // the picker (Cody, 2026-10-04): one number starting at 1, an arrow each side; never below 1, typing is kept within 1–10,000
+  { const c = '.lotcard[data-lot="weekly-100"]', val = () => p.inputValue(c + ' input'), tap = (d, n = 1) => p.evaluate(([s, d, n]) => { for (let i = 0; i < n; i++) document.querySelector(`${s} [data-lstep="${d}"]`).click(); }, [c, d, n]);
+    const start = await val(); await tap(-1); const floor = await val(); await tap(1, 4); const up = await val(); await tap(-1); const down = await val();
+    await p.fill(c + ' input', '0'); await p.dispatchEvent(c + ' input', 'change'); const typedLow = await val(); await p.fill(c + ' input', '99999'); await p.dispatchEvent(c + ' input', 'change'); const typedHigh = await val();
+    const kids = await p.evaluate((s) => [...document.querySelector(s + ' .lotbuy').children].map((x) => x.tagName + (x.dataset.lstep ? x.dataset.lstep : '')), c);
+    check(start === '1' && floor === '1' && up === '5' && down === '4' && typedLow === '1' && typedHigh === '10000' && kids.join() === 'BUTTON-1,INPUT,BUTTON1',
+      `the ticket picker: ‹ number › only (${kids.join()}), starts at 1, − stops at 1, + four times = 5, − = 4, typed 0 → 1, 99999 → 10000`); }
+  await p.evaluate(() => { const s = document.querySelector('.lotcard'); for (let i = 0; i < 4; i++) s.querySelector('[data-lstep="1"]').click(); s.querySelector('[data-buy="custom"]').click(); }); await p.waitForTimeout(400);
   check(/open soon/.test(await p.textContent('.lotcard .lotnote')), 'buying says sales open soon (nothing sold)');
   check(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await p.locator('#lottery').screenshot({ path: 'out/lottery-demo.png' }); await p.context().close(); }
@@ -70,8 +77,8 @@ console.log('2. With the game server: buy 5 tickets in Weekly 10¢, see the pot;
   await p.exposeFunction('testPay', (q) => payFor(q)); await p.evaluate(() => { window.santaPay = (q) => window.testPay(q); });
   for (;;) { const t = Date.now(), at = schedule.nextDraw('weekly-10', t); if (at - t > CLOSE + 7000) break; await p.waitForTimeout(500); } // room to buy before the close
   const weekly = '.lotcard[data-lot="weekly-10"]';
-  // 5, then Buy tickets (Cody's card layout: the amount buttons pick, one button buys)
-  await p.evaluate((s) => { document.querySelector(s + ' [data-amt="5"]').click(); document.querySelector(s + ' [data-buy="custom"]').click(); }, weekly);
+  // 5 (the + arrow four times from 1), then Buy tickets
+  await p.evaluate((s) => { for (let i = 0; i < 4; i++) document.querySelector(s + ' [data-lstep="1"]').click(); document.querySelector(s + ' [data-buy="custom"]').click(); }, weekly);
   await p.waitForFunction((s) => /tickets #|Not paid|error|closed/i.test(document.querySelector(s + ' .lotnote').textContent), weekly, { timeout: 20000 }).catch(() => {});
   const note = await p.textContent(weekly + ' .lotnote');
   check(/You have tickets #1–#5/.test(note), 'bought: ' + note);

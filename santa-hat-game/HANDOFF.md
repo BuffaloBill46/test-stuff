@@ -161,7 +161,16 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
-### 2026-10-04 (NEWEST): SANTA HAT SPIN REMOVED (Cody: "delete it; if we want a wheel back we will make a new one")
+### 2026-10-04 (NEWEST): SEASON PASS IN POINTS + LOTTERY PICKER, LIVE (039 applied; servers a7cdd2d)
+- Points a day (max 700): 5 tasks x100 (Log in + Play 2 every day, 3 rotate incl. new "Win an Auto match"), first 10 Auto
+  matches +10 each, top 3 +10 more. 30 doors, one every 300 points; every door shows its free + pass prize (seasonui.js).
+  Pass: 6 pieces (2,6,10,14,18,22), 5 level steps (4,8,12,17,21), Elf Hat (15), Kevlar Vest (30), 17 ranked tickets
+  (tickets.season_extra: own bank, no cap; ranked spends free > season > bought). Calendar kept: perfect days + streak.
+  "Log in" only via the game server (season_login, on reading the season); matches only via season_record (match server).
+  Checked live: a real match gave 220 / 210 points exactly as the rules say.
+- Lottery: the 1/5/10 buttons are gone: < number > (starts at 1, tap to type, 1 to 10,000).
+
+### 2026-10-04: SANTA HAT SPIN REMOVED (Cody: "delete it; if we want a wheel back we will make a new one")
 - Gone: spin.js, spin3d.js, spinui.js, its hidden card, the admin wheel editor, the server/house/settings branches, spin.test and
   spin-test. The server refuses 'spin' as an unknown game; the live database never had a Spin run (checked).
 - KEPT ON PURPOSE: the shared Game POOL's key is still 'spin' everywhere (database row, wallets SPIN_POOL_WALLET / spinPool.json,

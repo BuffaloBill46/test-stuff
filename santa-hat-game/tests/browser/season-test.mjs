@@ -29,16 +29,16 @@ const web = http.createServer(async (req, res) => {
   const chunks = []; for await (const c of req) chunks.push(c); const body = JSON.parse(Buffer.concat(chunks).toString() || '{}'); got.push(body);
   res.writeHead(200, { 'content-type': 'application/json' });
   res.end(JSON.stringify(body.action === 'season' ? answer : body.action === 'settings' ? {} : { error: 'stand-in' }));
-}).listen(8795);
+}).listen(8786);
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } }); const errors = [];
 await ctx.route('**/*', async (route) => { const url = route.request().url();
-  if (url.startsWith('http://localhost:8795/')) return route.continue();
+  if (url.startsWith('http://localhost:8786/')) return route.continue();
   if (url.includes('cdn.jsdelivr.net/npm/three@')) return route.fulfill({ body: readFileSync(path.resolve('node_modules/three/build', url.split('/build/')[1])), contentType: 'text/javascript' });
   if (/cdn\.jsdelivr\.net\/npm\/|fonts\.googleapis|fonts\.gstatic/.test(url)) { try { return route.fulfill({ body: execSync(`curl -sS -L "${url}"`, { maxBuffer: 1e8 }), contentType: url.includes('googleapis') ? 'text/css' : url.includes('gstatic') ? 'font/woff2' : 'text/javascript' }); } catch { return route.abort(); } }
   return route.fulfill({ status: 503, body: '' }); });
 const p = await ctx.newPage(); p.on('pageerror', (e) => errors.push(e.message));
-await p.goto('http://localhost:8795/online.html?net=local&token=test-token&server=' + encodeURIComponent('http://localhost:8795/api'), { timeout: 90000 });
+await p.goto('http://localhost:8786/online.html?net=local&token=test-token&server=' + encodeURIComponent('http://localhost:8786/api'), { timeout: 90000 });
 p.on('console', (m) => m.type() === 'error' && errors.push('console: ' + m.text()));
 await p.waitForFunction(() => window.__sq && !document.querySelector('#season').hidden, null, { timeout: 90000 }).catch(async (e) => { console.log('page errors:', errors, await p.evaluate(() => [!!window.__sq, document.querySelector('#season')?.hidden])); throw e; }); await p.waitForTimeout(800);
 const read = () => p.evaluate(() => ({
