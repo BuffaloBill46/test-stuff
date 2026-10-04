@@ -1,8 +1,8 @@
 // The winter plaza shared by Snowball Square and Be the Hat. Its look comes from a theme (themes.js); the ring, pedestal and
 // snowball piles are the same in every theme, because the referee (sim.js) plays on them whatever each player sees.
 import { THREE, C, part, build, toon, toonInstanced, setInstance, pineGeo, cottage, snowmanGeo, hatGeo, glow, glowMat,
-  skyTexture, stars, aurora, lights, rng, disposeTree } from './kit.js?v=adc1e07a70';
-import { themeOf } from './themes.js?v=adc1e07a70';
+  skyTexture, stars, aurora, lights, rng, disposeTree } from './kit.js?v=862ea3f445';
+import { themeOf } from './themes.js?v=862ea3f445';
 
 const G = THREE, V3 = THREE.Vector3;
 export const ARENA = 13.2;

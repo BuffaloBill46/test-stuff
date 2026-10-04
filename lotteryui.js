@@ -3,8 +3,8 @@
 // Buying uses the same one-payment wallet step as the games (wallet.js: 10% burned, the rest to the lottery wallet). Recent
 // results can be re-checked in this browser: the draw is re-run from public data alone (mockups/lottery.js drawWinners).
 // Without the game server (today's site) buying says so plainly: nothing is sold and nothing is drawn here.
-import { LOTTERIES, LIVE_LOTTERIES, nextDraw, salesFor, drawWinners } from './lottery.js?v=adc1e07a70';
-import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js?v=adc1e07a70';
+import { LOTTERIES, LIVE_LOTTERIES, nextDraw, salesFor, drawWinners } from './lottery.js?v=862ea3f445';
+import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js?v=862ea3f445';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

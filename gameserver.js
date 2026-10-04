@@ -2,7 +2,7 @@
 // otherwise the Games tab runs the in-browser demo (house.js). Same steps, same order: the server does the work.
 // Buying needs a wallet to sign the payment: `window.santaPay(quote)` must return the finalized transaction signature.
 // That wallet step can't be built or tested in this workspace (FOR_MAIN_CLAUDE.md); until it exists, buying says so.
-import { accounts } from './net.js?v=adc1e07a70';
+import { accounts } from './net.js?v=862ea3f445';
 
 const params = new URLSearchParams(location.search);
 // LAUNCHED (Cody's GO, mainnet): the public site itself plays through the game server, no ?server= needed, and the demo is gone.
@@ -12,17 +12,12 @@ const PUBLIC_SITE = /(^|\.)santahatgames\.com$|^buffalobill46\.github\.io$/.test
 export const SERVER = params.get('server') || (LAUNCHED && PUBLIC_SITE ? 'https://api.santahatgames.com' : null);
 const testToken = params.get('token'); // tests only, and only against a local server
 // The wallet step (window.santaPay): loaded only in server mode, so the demo never fetches the Solana libraries.
-export const walletReady = SERVER ? import('./wallet.js?v=adc1e07a70').catch((e) => { console.warn('wallet step unavailable:', e); }) : Promise.resolve();
+export const walletReady = SERVER ? import('./wallet.js?v=862ea3f445').catch((e) => { console.warn('wallet step unavailable:', e); }) : Promise.resolve();
 
 export async function token() {
   if (testToken && /^http:\/\/localhost[:/]/.test(SERVER || '')) return testToken;
   try { return (await accounts().session())?.access_token || null; } catch { return null; }
 }
-// Server mode: the published game settings, applied to the page before anything is drawn (settings.js → applyToGame).
-export const settingsReady = SERVER ? (async () => {
-  try { const r = await call('settings'); if (r?.settings) { const { applyToGame } = await import('./settings.js?v=adc1e07a70'); applyToGame(r.settings); return r; } } catch {}
-  return null;
-})() : Promise.resolve(null);
 // The actions anyone may call without signing in: must match the server's public ones (server/http.js; tests/public-actions.test.mjs).
 // (It once listed only three, so guests' lottery cards and draw re-checks never asked the server.)
 export const PUBLIC_ACTIONS = ['pools', 'settings', 'stats', 'lottery-tickets', 'lottery', 'winners', 'market', 'burned', 'weekly'];
@@ -60,3 +55,11 @@ export async function call(action, body = {}) {
   const r = await fetch(READ_LIVE.includes(action) ? SERVER || LIVE_GAMES : SERVER, { method: 'POST', headers: { 'content-type': 'application/json', ...(t ? { authorization: 'Bearer ' + t } : {}) }, body: JSON.stringify({ action, ...body }) });
   try { return await r.json(); } catch { return { error: `the game server answered ${r.status}` }; }
 }
+// Server mode: the published game settings, applied to the page before anything is drawn (settings.js → applyToGame).
+// KEEP THIS BELOW call() AND EVERYTHING call() READS (PUBLIC_ACTIONS, READ_LIVE, LIVE_GAMES): it runs while this file is
+// still loading, so a name defined further down isn't there yet; the error was swallowed by the catch below and the page
+// quietly kept the built-in settings (settings-mode-test caught it, 2026-10-04).
+export const settingsReady = SERVER ? (async () => {
+  try { const r = await call('settings'); if (r?.settings) { const { applyToGame } = await import('./settings.js?v=862ea3f445'); applyToGame(r.settings); return r; } } catch (e) { console.error('published settings not loaded:', e); }
+  return null;
+})() : Promise.resolve(null);
