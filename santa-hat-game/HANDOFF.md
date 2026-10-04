@@ -160,7 +160,13 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
-### 2026-10-04 (NEWEST): 4 MARKETING VIDEOS
+### 2026-10-04 (NEWEST): TIERED WIN CELEBRATIONS LIVE (site build c93443a296)
+- mockups/celebrate.js, one scale for Big Hat / Snowball Drop / Stocking Stuffer by multiple of the stake: 1 win, 2 NICE (3x+),
+  3 BIG (10x+), 4 HUGE (25x+), 5 pool jackpot. Only plays that came out ahead celebrate (tierOf; tests/celebrate.test.mjs).
+  Pictures: tests/browser/tier-shots.mjs. Stocking never shakes (tap position). spin-test (hidden wheel) fails before and after:
+  flagged as its own task.
+
+### 2026-10-04: 4 MARKETING VIDEOS
 - marketing/out (local only, gitignored): 1-player-intro, 2-steal-the-hat, 3-seasons, 4-arcade; 9:16 MP4s, 17-22 s, sent to Cody.
 - How: real game renders (mockups/promo-stills.html via tests/browser/promo-stills.mjs) animated in Cody's Grok Imagine
   (Chrome, video 6 s 9:16; clips downloaded with his OK into marketing/raw); real match footage (promo-gameplay.mjs) and
