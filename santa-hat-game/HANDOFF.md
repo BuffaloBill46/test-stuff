@@ -162,7 +162,7 @@ between two devices has never been tested from here. Cody and friends testing on
 ## Where we are right now
 
 ### 2026-10-04: CODY'S PHANTOM IS AN ADMIN (server /etc/santa/games.env ADMIN_WALLETS, backup kept beside it)
-- ADMIN_WALLETS = the codyAdmin stand-in (3jRok1…, key in C:santa-devnet-keys, so Claude can test admin edits) AND Cody's own
+- ADMIN_WALLETS = the codyAdmin stand-in (3jRok1…, key in C:\santa-devnet-keys, so Claude can test admin edits) AND Cody's own
   wallet DpgDK31RNyA96qYoFgigjxxLScKBG3BAwdPeDfTCB7uN. Cody 2026-10-04: "keep both wallets as admin". Checked live: his wallet
   passes the admin-wallet check (a fake signature then stops at the signature check); a stranger's is refused.
 
