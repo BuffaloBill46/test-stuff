@@ -161,6 +161,11 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
+### 2026-10-04: CODY'S PHANTOM IS AN ADMIN (server /etc/santa/games.env ADMIN_WALLETS, backup kept beside it)
+- ADMIN_WALLETS = the codyAdmin stand-in (3jRok1…, key in C:santa-devnet-keys, so Claude can test admin edits) AND Cody's own
+  wallet DpgDK31RNyA96qYoFgigjxxLScKBG3BAwdPeDfTCB7uN. Cody 2026-10-04: "keep both wallets as admin". Checked live: his wallet
+  passes the admin-wallet check (a fake signature then stops at the signature check); a stranger's is refused.
+
 ### 2026-10-04 (NEWEST): PAY WITH SOL BUILT + TESTED (044+045; see the line below for the price rule). SHOWS ONLY ON MAINNET.
 - One approval either way. Switch "Pay with: Auto / SANTA / SOL" (paywith.js, remembered; Store + under each game; hidden on
   devnet). Auto = SANTA if the wallet has enough, else SOL. Games/lottery: Jupiter swaps SOL->SANTA in the same transaction,
