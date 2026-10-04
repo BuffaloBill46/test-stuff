@@ -1,10 +1,10 @@
 // LEVELS (Cody, 2026-10-01; DESIGN_NOTES → "Levels, special snowballs and special gear"). Pure rules, no graphics, no network:
 // the page, the match referee and the server all read these. Max level 10 for now.
-//   Earned: 5 top-3 finishes per level, in Auto match games only (ranked or unranked; not practice or private rooms).
+//   Earned: 10 ticks per level (a tick: a top-3 finish or a season "+1 level tick"; 5 until 2026-10-04), in Auto match games only (ranked or unranked; not practice or private rooms).
 //   Except level 9 → 10: 10 FIRST-place wins (Cody, 2026-10-01); 2nd and 3rd don't count there.
 //   Bought: up to level 5 only. Levels 2–4 cost $1.00 each; level 5 costs $5.00. Paid in SANTA, 50% burned / 50% treasury.
 // A player's progress is { level, xp }: xp = finishes counted toward the NEXT level (0 to need-1). Buying a level keeps it.
-export const MAX_LEVEL = 10, WINS_PER_LEVEL = 5, MAX_BOUGHT_LEVEL = 5;
+export const MAX_LEVEL = 10, WINS_PER_LEVEL = 10, MAX_BOUGHT_LEVEL = 5; // 10 ticks a level (Cody, 2026-10-04; was 5: the season gives level ticks too)
 
 // What each level gives (Cody's table). start = snowballs held at the start (and the most you can hold);
 // sb = special snowball slots (SB1–SB3); gear = special gear slots.
@@ -55,7 +55,7 @@ export function afterBuy(progress) {
   return { level: p.level + 1, xp: p.xp, paid: price };
 }
 
-// What the Progress box shows: "3 of 5 top-3 finishes to level 4".
+// What the Progress box shows: "3 of 10 top-3 finishes to level 4".
 export function progressLine(progress) {
   const level = clampLevel(progress?.level), xp = Math.max(0, Math.floor(Number(progress?.xp) || 0));
   if (level >= MAX_LEVEL) return { level, max: true, text: `Level ${MAX_LEVEL}: the top, for now` };

@@ -316,7 +316,8 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     const sumOf = async (what, q) => (await db.query(q).catch((e) => { console.error(`burned: ${what} not readable:`, e.message); return [{ n: '0' }]; }))[0].n;
     const r = { games: await sumOf('game runs', 'select coalesce(sum(burned_raw), 0)::text as n from public.payments'),
       lottery: await sumOf('lottery', 'select coalesce(sum(burned_raw), 0)::text as n from public.lottery_buys'),
-      store_paid: await sumOf('Store', 'select coalesce(sum(santa_raw), 0)::text as n from public.shop_quotes where used_by is not null') };
+      // the season pass burns nothing (100% treasury, Cody 2026-10-04), so it's left out of the Store's burn
+      store_paid: await sumOf('Store', "select coalesce(sum(santa_raw), 0)::text as n from public.shop_quotes where used_by is not null and kind <> 'pass'") };
     const fee = feeKept.fee || (await liveFee().catch(() => null)) || { bps: 300, max: Infinity };
     const games = +r.games, lottery = +r.lottery, store = splitPayment(+r.store_paid, SHOP_BURN_BPS, fee).burn;
     burnKept = { at: Date.now(), v: { gamesRaw: games, lotteryRaw: lottery, storeRaw: store, totalRaw: games + lottery + store } };

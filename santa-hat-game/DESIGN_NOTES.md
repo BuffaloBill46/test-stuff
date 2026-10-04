@@ -130,7 +130,7 @@ its vault would always hold 3% less than its books promise (the winner's claim o
 - **Getting hit costs 1 point**; a score never goes below 0.
 
 **Levels** (max 10 for now)
-- Earned: **5 top-3 finishes per level**, in **Auto match games only** (unranked or ranked). **Level 9 → 10 takes 10
+- Earned: **10 top-3 finishes per level** (5 until 2026-10-04), in **Auto match games only** (unranked or ranked). **Level 9 → 10 takes 10
   FIRST-place wins** (Cody, 2026-10-01); 2nd and 3rd don't count there.
 - Bought: **up to level 5 only. $1.00 per level for levels 2–4; level 5 costs $5.00.** Paid in SANTA, 50% burned, 50% treasury.
 - Cody on paying to level 5: "In this game a skilled player can still keep up. There will be ways to get free special items."

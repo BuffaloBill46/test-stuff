@@ -13,8 +13,9 @@ export async function purchaseInstructions(lib, quote, player, decimals = 6) {
   const [from, to] = [await ata(player.address), await ata(quote.pool)];
   return {
     split: s,
+    // nothing to burn (the season pass: 100% treasury): no burn step at all
     instructions: [
-      lib.getBurnCheckedInstruction({ account: from, mint: quote.mint, authority: player, amount: BigInt(s.burn), decimals }),
+      ...(s.burn > 0 ? [lib.getBurnCheckedInstruction({ account: from, mint: quote.mint, authority: player, amount: BigInt(s.burn), decimals })] : []),
       lib.getTransferCheckedWithFeeInstruction({ source: from, mint: quote.mint, destination: to, authority: player, amount: BigInt(s.send), decimals, fee: BigInt(s.tax) }),
     ],
   };

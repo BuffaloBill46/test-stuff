@@ -9,7 +9,7 @@
 import { itemsWith, DEFAULT_SETTINGS } from '../mockups/settings.js';
 import { buyPrice } from '../mockups/levels.js';
 import { BOUGHT_MAX } from '../mockups/ranked.js';
-import { SHOP_BURN_BPS, TICKET_PACKS, forSale } from '../mockups/shoprules.js';
+import { burnBpsFor, TICKET_PACKS, forSale } from '../mockups/shoprules.js';
 import { MINT, QUOTE_SECONDS, CUSHION } from '../mockups/market.js';
 import { verifyPayment } from './verify.js';
 import { seasonAt, PASS_PRICE } from '../mockups/seasons.js';
@@ -70,7 +70,7 @@ export function createShop({ db, chain, livePrice, liveFee, treasury, mint = MIN
     const fee = await liveFee();
     // the page pays exactly like a game run (mockups/pay.js): the burn and the treasury transfer in one transaction
     return { id: q.id, kind: what.kind, ...cols, usd, santaRaw, price: price.usd, expiresAt: new Date(q.created_at).getTime() + QUOTE_SECONDS * 1000,
-      mint, pool: treasury, fee: { bps: fee.bps, max: fee.max }, burnBps: SHOP_BURN_BPS, payer: p.wallet, cluster };
+      mint, pool: treasury, fee: { bps: fee.bps, max: fee.max }, burnBps: burnBpsFor(what.kind), payer: p.wallet, cluster }; // the pass burns nothing (100% treasury)
   }
   async function buy(profile, quoteId, signature) {
     if (!/^[0-9a-f-]{36}$/.test(String(quoteId))) return { error: 'unknown quote' };
@@ -80,7 +80,7 @@ export function createShop({ db, chain, livePrice, liveFee, treasury, mint = MIN
     if (q.used_by) return { error: q.used_by === signature ? 'payment already used' : 'quote already used' };
     const [tx, fee, payer] = await Promise.all([chain.getTransaction(signature), liveFee(), row('select wallet from public.profiles where id = $1', [profile]).then((r) => r?.wallet)]);
     const v = verifyPayment(tx, { mint, player: payer, pool: treasury, quoteRaw: +q.santa_raw, quoteAt: new Date(q.created_at).getTime(),
-      quoteSeconds: QUOTE_SECONDS, cushion: CUSHION, burnBps: SHOP_BURN_BPS, fee });
+      quoteSeconds: QUOTE_SECONDS, cushion: CUSHION, burnBps: burnBpsFor(q.kind), fee });
     if (!v.ok) return { error: v.why, retry: /not found|not finalized/.test(v.why) };
     try { const g = (await row('select public.shop_buy($1, $2, $3, $4) as g', [q.id, signature, v.paid, payer])).g;
       return g.refunded ? { ok: true, refunded: true, note: `Paid, but it couldn't be granted (${g.why}), so the full amount is owed back to your wallet.` } : { ok: true, ...g }; }

@@ -140,7 +140,7 @@ await lottery.draws(); // opens the draws
 const buyers = players.filter((p) => p.wallet).slice(0, BUYERS), totals = { shopPaid: 0, shopBurn: 0, gamePaid: 0, lottoPaid: 0, runs: 0, plays: 0, refused: [] };
 const sellable = ITEMS.filter(forSale);
 for (const p of buyers) {
-  const shopBuy = async (what) => { const q = await shop.quote(p.id, what); if (!q.id) return q; const t = pay(p.wallet, TREASURY, q.santaRaw, SHOP_BURN_BPS); totals.shopPaid += q.santaRaw; totals.shopBurn += t.burn; return shop.buy(p.id, q.id, t.id); };
+  const shopBuy = async (what) => { const q = await shop.quote(p.id, what); if (!q.id) return q; const t = pay(p.wallet, TREASURY, q.santaRaw, q.burnBps) /* what the quote asks: 50% burned, the pass 0% (Cody 2026-10-04) */; totals.shopPaid += q.santaRaw; totals.shopBurn += t.burn; return shop.buy(p.id, q.id, t.id); };
   for (const it of sellable) { const r = await shopBuy({ kind: 'item', id: it.id }); if (!r.ok) totals.refused.push(`${p.name} ${it.id}: ${r.error}`); }
   for (let k = 0; k < 6; k++) { const r = await shopBuy({ kind: 'level' }); if (!r.ok) { if (!/earned/.test(r.error || '')) totals.refused.push(`${p.name} level: ${r.error}`); break; } }
   for (const n of [10, 1]) { const r = await shopBuy({ kind: 'tickets', n }); if (!r.ok && !/at most/.test(r.error || '')) totals.refused.push(`${p.name} tickets ${n}: ${r.error}`); }

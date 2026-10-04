@@ -124,7 +124,7 @@ node tests/reconcile.test.mjs    # audit: books + everything owed = wallet
 node tests/settings.test.mjs     # game settings: version 0 = today exactly; guard rails; changes do what they say
 (cd tests/db && node settings-db.test.mjs)      # settings on the server: never mid-play, old plays re-check, runs keep their price
 (cd tests/browser && node settings-mode-test.mjs)  # the page draws published settings; plays land and re-check on them
-node tests/levels.test.mjs       # levels: Cody's table exactly; 5 top-3 finishes per level, 9→10 = 10 first-place wins; buy to 5 ($8)
+node tests/levels.test.mjs       # levels: Cody's table exactly; 10 top-3 finishes per level, 9→10 = 10 first-place wins; buy to 5 ($8)
 (cd tests/db && node levels-db.test.mjs)        # levels in the database + the server's progress/finish actions; database = levels.js
 (cd tests/browser && node controls-test.mjs)    # phone controls: joystick only moves, any other tap throws; zoom; whole ring reachable (slow: ~30 min)
 (cd tests/solana && node chain.devnet.mjs)      # REAL devnet: the payout worker's live adapter, crash cases, never pays twice

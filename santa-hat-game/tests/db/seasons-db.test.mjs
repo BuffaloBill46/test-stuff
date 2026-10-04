@@ -115,6 +115,33 @@ const q2 = (await db.query(`insert into public.shop_quotes (profile_id, kind, us
 const again = (await db.query(`select public.shop_buy($1, $2, 1000, $3) as r`, [q2, 'PassSigTwo'.padEnd(88, '5'), W()]))[0].r;
 assert.ok(again.refunded, 'a second pass for the same season is never granted: the payment is owed back in full');
 
+// 5b. the pass through the REAL Store server (server/shop.js) and payment checker: $2, 100% to the treasury, nothing burned
+//     (Cody, 2026-10-04); a payment that burns half the old way leaves the treasury short and is refused; the page's payment
+//     has no burn step at all.
+{ const { createShop } = await import('../../server/shop.js'), { splitPayment, MINT } = await import('../../mockups/market.js'), { purchaseInstructions } = await import('../../mockups/pay.js');
+  const TREASURY = 'TReASURYwa11et'.padEnd(44, '1').replace(/[0OIl]/g, '9'), FEE = { bps: 300, max: 1e15 }, txs = new Map(); let sn = 0;
+  const pay = (from, total, burnBps) => { const sig = ('PassPay' + String(++sn).padStart(4, '9') + '5'.repeat(80)).slice(0, 88).replace(/[0OIl]/g, '9'), sp = splitPayment(total, burnBps, FEE),
+      b = (i, o, a) => ({ accountIndex: i, mint: MINT, owner: o, uiTokenAmount: { amount: String(a), decimals: 6 } });
+    txs.set(sig, { blockTime: Math.floor(Date.now() / 1000), meta: { err: null, innerInstructions: [], preTokenBalances: [b(1, from, 1e13), b(2, TREASURY, 1e12)], postTokenBalances: [b(1, from, 1e13 - total), b(2, TREASURY, 1e12 + sp.arrives)] },
+      transaction: { message: { accountKeys: [{ pubkey: from, signer: true }], instructions: sp.burn ? [{ program: 'spl-token', parsed: { type: 'burnChecked', info: { mint: MINT, authority: from, tokenAmount: { amount: String(sp.burn) } } } }] : [] } } });
+    return sig; };
+  const shop = createShop({ db, chain: { getTransaction: async (x) => txs.get(x) ?? null }, livePrice: async () => ({ usd: 0.0003 }), liveFee: async () => FEE, treasury: TREASURY, mint: MINT, cluster: 'devnet' });
+  const gus = await mk('Gus'), w = (await db.query('select wallet from public.profiles where id = $1', [gus]))[0].wallet;
+  const q = await shop.quote(gus, { kind: 'pass' });
+  assert.deepEqual([q.usd, q.burnBps, q.pool], [PASS_PRICE, 0, TREASURY], 'the pass quote: $2, nothing burned, all to the treasury ' + JSON.stringify([q.usd, q.burnBps]));
+  assert.equal(PASS_PRICE, 2, 'the pass costs $2');
+  const old = await shop.buy(gus, q.id, pay(w, q.santaRaw, 5000));
+  assert.ok(old.error && !(await db.query('select 1 from public.season_passes where profile_id = $1', [gus])).length, 'paid the old way (half burned): the treasury is short, refused: ' + old.error);
+  const q2 = await shop.quote(gus, { kind: 'pass' }), ok = await shop.buy(gus, q2.id, pay(w, q2.santaRaw, 0));
+  assert.ok(ok.ok && ok.pass === 'halloween', 'paid in full to the treasury: the pass is granted ' + JSON.stringify(ok));
+  // the page's payment: no burn step when nothing is burned; one when something is (the Store's 50% items)
+  const lib = { findAssociatedTokenPda: async ({ owner }) => [owner + '-ata'], TOKEN_2022_PROGRAM_ADDRESS: 'T22',
+    getBurnCheckedInstruction: (x) => ({ burn: x.amount }), getTransferCheckedWithFeeInstruction: (x) => ({ send: x.amount }) };
+  const passTx = await purchaseInstructions(lib, { santaRaw: q2.santaRaw, mint: MINT, pool: TREASURY, fee: FEE, burnBps: 0 }, { address: w });
+  const itemTx = await purchaseInstructions(lib, { santaRaw: 1000000, mint: MINT, pool: TREASURY, fee: FEE, burnBps: 5000 }, { address: w });
+  assert.ok(passTx.instructions.length === 1 && passTx.instructions[0].send === BigInt(q2.santaRaw) && itemTx.instructions.length === 2 && itemTx.instructions[0].burn > 0n,
+    "the page's pass payment is a single transfer of everything to the treasury (no burn step); a Store item still burns half"); }
+
 // 6. a WHOLE season: 14 perfect days of 700 (9,800 points): all 30 doors, every prize exactly once
 const eli = await mk('Eli');
 await setDays(eli, 14);
