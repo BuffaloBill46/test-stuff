@@ -161,7 +161,16 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
-### 2026-10-04 (NEWEST): TIERED WIN CELEBRATIONS LIVE (site build c93443a296)
+### 2026-10-04 (NEWEST): SANTA HAT SPIN REMOVED (Cody: "delete it; if we want a wheel back we will make a new one")
+- Gone: spin.js, spin3d.js, spinui.js, its hidden card, the admin wheel editor, the server/house/settings branches, spin.test and
+  spin-test. The server refuses 'spin' as an unknown game; the live database never had a Spin run (checked).
+- KEPT ON PURPOSE: the shared Game POOL's key is still 'spin' everywhere (database row, wallets SPIN_POOL_WALLET / spinPool.json,
+  admin, alerts). It is the pool, not the wheel. Do not rename it without a migration.
+- Moved: the demo Game pool + showResult to mockups/gamepool.js (window.__pool in tests); topOff is one function in slots.js.
+- Published settings still carrying spin10/spin100/spin are accepted and ignored; the next published version drops them.
+- Live: game server at abbc1ab (restarted with 0 players), site build bbd46c7902. Suite 33/33; money tests green.
+
+### 2026-10-04: TIERED WIN CELEBRATIONS LIVE (site build c93443a296)
 - mockups/celebrate.js, one scale for Big Hat / Snowball Drop / Stocking Stuffer by multiple of the stake: 1 win, 2 NICE (3x+),
   3 BIG (10x+), 4 HUGE (25x+), 5 pool jackpot. Only plays that came out ahead celebrate (tierOf; tests/celebrate.test.mjs).
   Pictures: tests/browser/tier-shots.mjs. Stocking never shakes (tap position). spin-test (hidden wheel) fails before and after:
