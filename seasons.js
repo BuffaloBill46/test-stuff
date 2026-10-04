@@ -7,8 +7,8 @@
 //     the whole outfit is owned. Buying the pass late still counts the doors already opened. Earned pieces are kept forever.
 // Tasks count only in public Auto matches run by the match server (practice runs in the player's own browser and could be
 // faked). This file is the ONE place the rules live: the page shows them, the server and database apply them.
-import { dayStart, nextReset } from './gameclock.js?v=c93443a296';
-import { zonedTime, WEEKLY_ZONE } from './lottery.js?v=c93443a296';
+import { dayStart, nextReset } from './gameclock.js?v=bbd46c7902';
+import { zonedTime, WEEKLY_ZONE } from './lottery.js?v=bbd46c7902';
 
 const at9 = (y, m, d) => zonedTime(y, m, d, 21, WEEKLY_ZONE); // 9 PM Indiana on that date
 

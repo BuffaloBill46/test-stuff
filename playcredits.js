@@ -1,17 +1,17 @@
 // Buying and playing RUNS on the page (Cody, 2026-10-01): "buy 1, 5 or 10 on each game; whatever they buy auto plays", and
 // the run's winnings are sent to the player's wallet automatically when its last play is done. No stored credits.
 // One run: the confirm dialog (price, SANTA amount) → the payment → the plays, played one after another by the game's own
-// card (spinui.js, dropui.js, games.js) → the run's winnings sent. Plus "Check this result" for the last play of each game.
+// card (dropui.js, stockingui.js, games.js) → the run's winnings sent. Plus "Check this result" for the last play of each game.
 // DEMO: the house runs in this browser and pays from / to the demo balance. Server mode (?server=): the game server does it.
-import { KINDS, newLedger, costOf } from './credits.js?v=c93443a296';
-import { createHouse, check } from './house.js?v=c93443a296';
-import { newSeed } from './fair.js?v=c93443a296';
-import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js?v=c93443a296';
-import { FEE } from './slots.js?v=c93443a296';
-import { asTapped } from './stocking.js?v=c93443a296';
-import { play as sfx } from './sfx.js?v=c93443a296';
-import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js?v=c93443a296';
-import { withSlowDown } from './slowdown.js?v=c93443a296';
+import { KINDS, newLedger, costOf } from './credits.js?v=bbd46c7902';
+import { createHouse, check } from './house.js?v=bbd46c7902';
+import { newSeed } from './fair.js?v=bbd46c7902';
+import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js?v=bbd46c7902';
+import { FEE } from './slots.js?v=bbd46c7902';
+import { asTapped } from './stocking.js?v=bbd46c7902';
+import { play as sfx } from './sfx.js?v=bbd46c7902';
+import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js?v=bbd46c7902';
+import { withSlowDown } from './slowdown.js?v=bbd46c7902';
 export const serverMode = !!SERVER; // ?server=<address>: plays come from the game server
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -34,7 +34,7 @@ export function refresh() {
   for (const k of Object.keys(KINDS)) { const b = $(`[data-proof="${k}"]`); if (b) b.hidden = !last[k]; }
 }
 export function initCredits(opts) {
-  // Server mode: no demo balance here (live-site test 2026-10-02: the buy dialog and the Drop/Spin cards still said "Demo")
+  // Server mode: no demo balance here (live-site test 2026-10-02: the buy dialog and the Drop card still said "Demo")
   if (serverMode) { $('#buyDemo')?.setAttribute('hidden', ''); document.querySelectorAll('.slotshead .demo').forEach((d) => { d.hidden = true; }); }
   wallet = opts.wallet; onChange = opts.onChange || onChange;
   opts.pools.spin.prepaid = true; opts.pools.slots.prepaid = true; // entries reach the pool at purchase
@@ -183,7 +183,7 @@ function showProofOf(p) {
 async function cfgForProof(p) {
   if (!serverMode || p.settingsVersion === undefined) return null;
   const r = await call('settings', { version: p.settingsVersion }); if (!r?.settings) return null;
-  const { build } = await import('./settings.js?v=c93443a296'); return build(r.settings);
+  const { build } = await import('./settings.js?v=bbd46c7902'); return build(r.settings);
 }
 async function recheck() {
   const p = shown; if (!p) return;
@@ -198,8 +198,6 @@ async function recheck() {
       return `<span class="${g ? 'g' : 'c'}${at >= 0 ? ' o' : ''}">${at >= 0 ? `<small>${at + 1}</small>` : ''}${n(s)}</span>`; }).join('')}</span>`;
   } else if (p.kind === 'drop') what = c.outcome.board === 1 ? `the bounces ${c.outcome.path.map((x) => (x ? 'R' : 'L')).join(' ')} (one per row of pegs), present ${c.outcome.bin + 1} of 9: a ${c.outcome.mult}× result`
     : `present ${c.outcome.bin + 1} of 17 from the published odds table (${c.outcome.jackpot ? 'the centre: the pool jackpot' : `a ${c.outcome.mult}× result`}${c.outcome.board === 2 ? ', on the board before 2026-10-02' : ''}), reached by the bounces ${c.outcome.path.map((x) => (x ? 'R' : 'L')).join(' ')}`;
-  else if (p.kind === 'spin') what = c.outcome.bonusSlice !== undefined ? `main-wheel segment ${c.outcome.slice + 1} of 40 (a gold star), then bonus-wheel segment ${c.outcome.bonusSlice + 1} of 12: a ${c.outcome.mult}× result`
-    : `main-wheel segment ${c.outcome.slice + 1} of 40, a ${c.outcome.mult}× result`;
   else if (c.outcome.jackpot) what = 'the pool jackpot (all 25 squares Santa Hats)';
   else what = `reel stops ${c.outcome.stops.join(', ')} (one per reel, each 0–75)`;
   // A pool jackpot's AMOUNT, re-worked (house.js jackpotCheck): the % from the settings the play ran on × the Game pool at that

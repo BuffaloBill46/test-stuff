@@ -8,15 +8,14 @@
 // Runs, not stored credits (Cody, 2026-10-01): a run of 1, 5 or 10 plays is played straight away; nothing is left over.
 // DEMO: this runs in the browser. For real money the same steps run on the server and the secret never reaches the page
 // before step 4. `steps` records the order for the tests.
-import { KINDS, buyRun, credit, payRun } from './credits.js?v=c93443a296';
-import { spin, STAR, DEFAULT_WHEEL } from './spin.js?v=c93443a296';
-import { pull, MACHINES, poolJackpot } from './slots.js?v=c93443a296';
-import { play as dropPlay, outcome as dropOutcome, BOARD as DROP_BOARD, JP as DROP_JP } from './plinko.js?v=c93443a296';
-import { play as stockPlay, outcome as stockOutcome, PAYS as STOCK_LIVE, BOARD1_PAYS, BOARD as STOCK_BOARD, JP as STOCK_JP } from './stocking.js?v=c93443a296';
-import * as fair from './fair.js?v=c93443a296';
-import { randFrom } from './fair.js?v=c93443a296';
+import { KINDS, buyRun, credit, payRun } from './credits.js?v=bbd46c7902';
+import { pull, MACHINES, poolJackpot } from './slots.js?v=bbd46c7902';
+import { play as dropPlay, outcome as dropOutcome, BOARD as DROP_BOARD, JP as DROP_JP } from './plinko.js?v=bbd46c7902';
+import { play as stockPlay, outcome as stockOutcome, PAYS as STOCK_LIVE, BOARD1_PAYS, BOARD as STOCK_BOARD, JP as STOCK_JP } from './stocking.js?v=bbd46c7902';
+import * as fair from './fair.js?v=bbd46c7902';
+import { randFrom } from './fair.js?v=bbd46c7902';
 
-export const NUMS = 38; // numbers drawn per play (Slots uses 6: the jackpot draw + 5 reel stops; Spin 1, or 2 on a bonus star;
+export const NUMS = 38; // numbers drawn per play (Slots uses 6: the jackpot draw + 5 reel stops;
                          // Snowball Drop board 2: 17 = the present + one per row of pegs; board 1 used 8; Stocking Stuffer 38 =
                          // two shuffles of 20, 19 numbers each). The numbers come out in a fixed order, so asking for more
                          // never changes the first ones: old plays re-check the same (it was 17 before Stocking Stuffer).
@@ -61,7 +60,7 @@ export function createHouse(ledger, pools, f = fair) {
       const rand = randFrom(nums);
       // every game plays from its kind's pool (since 2026-10-02 all of them: the one shared Game pool, pools.spin)
       const P = pools[K.game];
-      r = t.kind === 'drop' ? dropPlay(P, t.bet, rand, forced) : t.kind === 'stocking' ? stockPlay(P, t.bet, rand, forced) : t.kind === 'spin' ? spin(P, t.bet, rand, forced) : pull(P, t.kind, rand, forced);
+      r = t.kind === 'drop' ? dropPlay(P, t.bet, rand, forced) : t.kind === 'stocking' ? stockPlay(P, t.bet, rand, forced) : pull(P, t.kind, rand, forced);
     } catch (e) { return refuse(e.message); }
     if (r.paused) { // the pool can't take it: the price comes back (the entry already reached the pool, so it pays it)
       pools[K.game].pool -= t.bet; return refuse(null, r.stopped);
@@ -91,11 +90,6 @@ export function outcomeFrom(kind, nums, cfg = null) {
   // on the layout the turn was played on (cfg.board from the proof; none = board 1, 8 gifts) and the pay table it ran on (its
   // settings version: board 1 `stocking.pays`, board 2 `stocking2.pays`; without settings, the built-in tables)
   if (kind === 'stocking') { const b = cfg?.board ?? 1; return stockOutcome(nums, b === 1 ? cfg?.stocking?.pays || BOARD1_PAYS : cfg?.stocking2?.pays || STOCK_LIVE, b); }
-  if (kind === 'spin') { // the first number picks the main segment; on a star, the second picks the bonus segment
-    const W = cfg?.wheel || DEFAULT_WHEEL, slice = Math.floor(nums[0] * W.main.length);
-    if (W.main[slice] !== STAR) return { slice, mult: W.main[slice] };
-    const bonusSlice = Math.floor(nums[1] * W.bonus.length); return { slice, bonusSlice, mult: W.bonus[bonusSlice] };
-  }
   const m = cfg?.machine || MACHINES[kind];
   if (nums[0] < m.poolJackpotOdds) return { jackpot: true };
   return { stops: nums.slice(1, 1 + m.reels).map((x) => Math.floor(x * m.stripLen)) };

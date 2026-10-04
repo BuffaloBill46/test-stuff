@@ -14,11 +14,10 @@
 // 1 in 5,000 × 25% × the pool in dollars (about 1% at a $200 pool, 2.5% at $500, 5.1% at $1,025): see paybackAt().
 // BOARD 2 (2026-10-02, 100× centre) and BOARD 1 (2026-09-30 to 2026-10-02, 8 rows, 9 bins, true 50/50 bounces) stay below for
 // re-checking drops played on them.
-// POOL (Cody, 2026-10-02): Snowball Drop plays from the shared Game pool (SPIN_RULES = slots.js POOL_RULES: starts $500, $25
+// POOL (Cody, 2026-10-02): Snowball Drop plays from the shared Game pool (slots.js POOL_RULES: starts $500, $25
 // skim at $1,025, top-off below $200, emergency stop). A drop only starts if the pool can cover the biggest FIXED prize (25×);
 // the jackpot is a share of the pool, so it can always be paid.
-import { SPIN_RULES, topOff } from './spin.js?v=c93443a296';
-import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot } from './slots.js?v=c93443a296';
+import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot, POOL_RULES, topOff } from './slots.js?v=bbd46c7902';
 
 export const BOARD = 3; // results carry it, so "Check this result" re-runs the board the drop was played on
 export const ROWS = 16;
@@ -79,11 +78,11 @@ export function outcome(nums, board = BOARD) {
 // The biggest FIXED prize (25×, the edge presents): a drop only starts if the pool covers it. (Board 2's was the 100× centre.)
 export const MAX_MULT = Math.max(...PAYS);
 export const MAX_MULT_BOARD = { 1: Math.max(...OLD.PAYS), 2: Math.max(...PAYS2), 3: MAX_MULT };
-// One drop against the shared Game pool (the same steps as spin() in spin.js): stop check, top-off, cover the top fixed
+// One drop against the shared Game pool (the same steps as every game: slots.js pull()): stop check, top-off, cover the top fixed
 // prize, the path, pay, skim, top-off. forced (tests only): the path as 0/1 per row (8 rights = the centre = the jackpot).
 // pct: the jackpot's share of the pool (the play's settings; Cody's pool rule `jackpotPct` overrides it, like Big Hat's).
 export function play(state, bet, rand = Math.random, forced, pct = JP.pct) {
-  const R = { ...SPIN_RULES, ...(state.rules || {}) };
+  const R = { ...POOL_RULES, ...(state.rules || {}) };
   if (!BETS.includes(bet)) throw new Error('unknown bet ' + bet);
   if (R.paused) return { paused: true, stopped: true };
   const before = topOff(state, R);
@@ -104,7 +103,7 @@ export function play(state, bet, rand = Math.random, forced, pct = JP.pct) {
 // tests only: a given path (0/1 per row) decides the present
 function forcedDrop(bet, path) { const bin = path.reduce((a, b) => a + b, 0); return { path: [...path], bin, bet, board: BOARD }; }
 export function canPlay(state, bet) {
-  const R = { ...SPIN_RULES, ...(state.rules || {}) };
+  const R = { ...POOL_RULES, ...(state.rules || {}) };
   if (R.paused) return { ok: false, stopped: true };
   return { ok: (state.pool < R.topOffBelow ? R.topOffTo : state.pool) >= MAX_MULT * bet };
 }

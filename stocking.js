@@ -17,11 +17,10 @@
 // 20 stockings (Fisher–Yates, one fair number per swap); the next 19 shuffle the 20 stockings into the order they open
 // (the same way). Two shuffles so a different set of stockings opens each turn; the chances above are the same either way.
 // "Check this result" re-runs both shuffles from the revealed secret and shows where every lump of coal was.
-// POOL: Stocking Stuffer plays from the shared Game pool (SPIN_RULES = slots.js POOL_RULES). A turn only starts if the pool
+// POOL: Stocking Stuffer plays from the shared Game pool (slots.js POOL_RULES). A turn only starts if the pool
 // covers the biggest FIXED prize (50×: $50 on a $1 turn); the top-off ($200 → $500) always does, so turns are never refused
 // for lack of pool. The jackpot is a share of the pool, so it can always be paid.
-import { SPIN_RULES, topOff } from './spin.js?v=c93443a296';
-import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot } from './slots.js?v=c93443a296';
+import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot, POOL_RULES, topOff } from './slots.js?v=bbd46c7902';
 
 export const BOARD = 2; // results carry it, so "Check this result" re-runs the layout the turn was played on
 export const STOCKINGS = 20, ROW = 10, MAX_OPEN = 8;
@@ -105,7 +104,7 @@ export const MAX_MULT = topMult(DEFAULT_PAYS); // 50× (7 gifts): the biggest FI
 // prize, the turn, pay, skim, top-off. forced (tests only): how many gifts are found before the coal (0–8; 8 = the jackpot).
 // pct: the jackpot's share of the pool (the play's settings; Cody's pool rule `jackpotPct` overrides it, like Big Hat's).
 export function play(state, bet, rand = Math.random, forced, pays = PAYS, pct = JP.pct) {
-  const R = { ...SPIN_RULES, ...(state.rules || {}) };
+  const R = { ...POOL_RULES, ...(state.rules || {}) };
   if (!BETS.includes(bet)) throw new Error('unknown bet ' + bet);
   if (R.paused) return { paused: true, stopped: true };
   const before = topOff(state, R);
@@ -133,7 +132,7 @@ function forcedTurn(bet, k, pays) {
   return { ...settleOrder(gifts, order, pays, BOARD), bet };
 }
 export function canPlay(state, bet, pays = PAYS) {
-  const R = { ...SPIN_RULES, ...(state.rules || {}) };
+  const R = { ...POOL_RULES, ...(state.rules || {}) };
   if (R.paused) return { ok: false, stopped: true };
   return { ok: (state.pool < R.topOffBelow ? R.topOffTo : state.pool) >= topMult(pays) * bet };
 }

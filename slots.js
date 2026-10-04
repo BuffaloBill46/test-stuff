@@ -18,7 +18,7 @@
 // tests/slots.test.mjs: it prints payback, hit rate and jackpot odds and checks the invariants.
 // ONE GAME POOL (Cody, 2026-10-02): Big Hat, Snowball Drop and Stocking Stuffer all play from ONE shared pool (shown to players
 // as "Game pool"; the database row and wallet keep the old Spin pool's key 'spin'). The old Slots pool wallet is no longer used
-// by any game. The lottery stays separate. POOL_RULES below ARE that shared pool's rules (spin.js SPIN_RULES is the same object).
+// by any game. The lottery stays separate. POOL_RULES below ARE that shared pool's rules (its key is 'spin': it was the retired Spin's pool).
 
 export const FEE = 0.03;                       // SANTA's own transfer tax (read live from the token in the real version)
 export const BURN = 0.10;                      // Games tab: 10% burned, 90% to the pool, after the tax
@@ -201,8 +201,9 @@ function skim(state, result) {
   return result;
 }
 // If the pool is below topOffBelow, the treasury tops it up to topOffTo. Returns the amount added (0 if none).
-function topOff(state) {
-  const R = { ...POOL_RULES, ...(state.rules || {}) };
+// Every game's top-off (Snowball Drop and Stocking Stuffer pass their merged rules; it was a copy in spin.js until the retired
+// Santa Hat Spin was removed, 2026-10-04).
+export function topOff(state, R = { ...POOL_RULES, ...(state.rules || {}) }) {
   if (!(state.pool < R.topOffBelow)) return 0;
   const add = R.topOffTo - state.pool; // what must arrive; the treasury sends a bit more because of the 3% tax
   state.pool += add; state.treasury = (state.treasury || 0) - add / (1 - FEE);
