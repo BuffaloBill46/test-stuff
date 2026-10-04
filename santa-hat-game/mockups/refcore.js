@@ -17,7 +17,10 @@ export const autoStartMs = (humans) => (humans >= 2 ? 15000 : 25000);
 export const TEAM_PAUSED = true;
 export const modeAllowed = (m) => m === 'ffa' || (m === 'team' && !TEAM_PAUSED);
 // PW[N|G]1-5: this week's mode (weekly.js; Cody 2026-10-03), public Auto match rooms like PF, played as Free-for-all
-export const isPublic = (c) => /^P(?:[FTW][NG]?[1-5]|R[NG]?[1-9]\d?)$/.test(c);
+// PUBLIC_ROOMS of each kind (was 5: 40 Free-for-all seats, so the 41st player pressing Auto match at once was turned away; the
+// 50-player simulation found it, 2026-10-04). The match server allows 200 rooms in all (server/referee.js MAX_ROOMS).
+export const PUBLIC_ROOMS = 30;
+export const isPublic = (c) => /^P(?:[FTW][NG]?(?:[1-9]|[12]\d|30)|R[NG]?[1-9]\d?)$/.test(c);
 export const isWeekly = (c) => isPublic(c) && c[1] === 'W';
 export const styleOf = (c) => (isPublic(c) && c[2] === 'N' ? 'normal' : 'gear');
 

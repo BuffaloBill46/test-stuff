@@ -14,7 +14,7 @@
 // server → page: { t: 'peers', ps, own } · { t: 'snap', d } · { t: 'emote', d } · { t: 'board', games } · { t: 'err', why }
 //   · { t: 'counted', d: { place, level, xp, up } } my Auto match finish counted toward levels (server-recorded)
 import { createSim, K } from '../mockups/sim.js';
-import { snapMs, autoStartMs, isPublic, isWeekly, styleOf, botName, refereeOpts, modeAllowed } from '../mockups/refcore.js';
+import { snapMs, autoStartMs, isPublic, isWeekly, PUBLIC_ROOMS, styleOf, botName, refereeOpts, modeAllowed } from '../mockups/refcore.js';
 import { weeklyAt } from '../mockups/weekly.js';
 import { settleRanked, RULES } from '../mockups/ranked.js';
 import { cleanAvatar, BY_ID, DEFAULT_AVATAR, SB_SLOTS, GEAR_SLOTS } from '../mockups/catalog.js';
@@ -88,7 +88,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
     let joining = false, closed = false;
     async function join(m) {
       if (room || joining) return err('already in a room');
-      const code = cleanCode(m.code), p = m.me || {};
+      let code = cleanCode(m.code); const p = m.me || {};
       if (!code) return err('no room code');
       if (!isId(p.id)) return err('bad player id');
       // Who this is, checked BEFORE any room is touched (a slow check can't leave an empty room behind)
@@ -99,6 +99,10 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
         joining = false;
         if (closed) return;
       }
+      // Auto match: pick the room NOW, after the sign-in check, with the seats as they are at this moment. (Picked before it,
+      // many players pressing Auto match together all chose the same empty room while their checks ran, and all but 8 were
+      // told it was full; the 50-player simulation found it, 2026-10-04.)
+      if (m.pick) { code = pickAuto(m.pick.modes, m.pick.styles); if (!code) return err('All public rooms are full right now. Try a private room.'); }
       let r = rooms.get(code);
       if (!r) { if (rooms.size >= MAX_ROOMS) return err('the server is full right now; try again soon'); r = makeRoom(code); }
       if (r.conns.has(p.id)) return err('that player is already in this room');
@@ -170,7 +174,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
         if (m.t === 'auto') { // Auto match: the server picks the best public room for the game types the player ticked
           if (room || joining) return err('already in a room');
           const code = pickAuto(m.modes, m.styles);
-          return code ? join({ ...m, t: 'join', code }) : err('All public rooms are full right now. Try a private room.');
+          return code ? join({ ...m, t: 'join', code, pick: { modes: m.modes, styles: m.styles } }) : err('All public rooms are full right now. Try a private room.');
         }
         if (m.t === 'board') { boardWatchers.add(conn); conn.send(JSON.stringify({ t: 'board', games: board() })); return; }
         if (!room) return err('join a room first');
@@ -254,7 +258,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
     open.sort((a, b) => players(b).length - players(a).length || (a.cdEnd ?? Infinity) - (b.cdEnd ?? Infinity));
     if (open.length && players(open[0]).length) return open[0].code;
     for (const mode of ['ffa', 'weekly', 'team'].filter((x) => want.includes(x))) for (const style of ['gear', 'normal'].filter((x) => kinds.includes(x))) {
-      for (let k = 1; k <= 5; k++) { const code = 'P' + (mode === 'team' ? 'T' : mode === 'weekly' ? 'W' : 'F') + (style === 'normal' ? 'N' : 'G') + k; if (!rooms.has(code) && seatsLeft(code) >= n) return code; }
+      for (let k = 1; k <= PUBLIC_ROOMS; k++) { const code = 'P' + (mode === 'team' ? 'T' : mode === 'weekly' ? 'W' : 'F') + (style === 'normal' ? 'N' : 'G') + k; if (!rooms.has(code) && seatsLeft(code) >= n) return code; }
     }
     return open[0]?.code || null; // every room of these types exists: an empty waiting one, if any
   }

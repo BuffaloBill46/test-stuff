@@ -23,7 +23,7 @@ import { initLottery } from './lotteryui.js';
 import { play as sfx, initSoundButtons } from './sfx.js';
 import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js';
 import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js';
-import { snapMs, autoStartMs, isPublic, isWeekly, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js';
+import { snapMs, autoStartMs, isPublic, isWeekly, PUBLIC_ROOMS, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js';
 
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
@@ -177,7 +177,7 @@ async function enterRoom(code, quick, opts = {}) {
   if (!profile) { me.n = cleanName($('#name')?.value) || me.n; store.set('sq_name', me.n); }
   me.w = !!opts.watch;
   // without the match server (tests: ?ref=off / ?net=local) Auto match tries the ticked types' rooms in turn
-  const tries = quick ? autoModes.filter((md) => md !== 'weekly' || weeklyNow).flatMap((md) => autoStyles.flatMap((st) => [1, 2, 3, 4, 5].map((n) => 'P' + (md === 'team' ? 'T' : md === 'weekly' ? 'W' : 'F') + (st === 'normal' ? 'N' : 'G') + n))) : [code];
+  const tries = quick ? autoModes.filter((md) => md !== 'weekly' || weeklyNow).flatMap((md) => autoStyles.flatMap((st) => Array.from({ length: PUBLIC_ROOMS }, (_, i) => i + 1).map((n) => 'P' + (md === 'team' ? 'T' : md === 'weekly' ? 'W' : 'F') + (st === 'normal' ? 'N' : 'G') + n))) : [code];
   const serverPicks = quick && !!REFEREE; // the match server picks the best room for the ticked types itself
   for (let attempt = 0; attempt < (serverPicks ? 1 : tries.length); attempt++) {
     const c = serverPicks ? '' : tries[attempt];

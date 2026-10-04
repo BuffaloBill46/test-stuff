@@ -213,3 +213,15 @@ console.log('OK: weekly mode rooms: PW rooms play this week\'s mode, listed with
   assert.equal(code, 'PFG1', `weekly modes off: a plain room (${code})`);
   assert.ok(![...r7.rooms.keys()].some((k) => k[1] === 'W'), 'no weekly room exists'); }
 console.log('OK: weekly modes switched off: the weekly tick plays plain Free-for-all');
+
+// --- MANY AT ONCE (found by the 50-player simulation, 2026-10-04): 20 signed-in players press Auto match in the same instant while
+// their sign-in checks are still running; each is seated in a room with space (3 rooms), nobody is told "full"
+{ let tt = 14_000_000_000; const r8 = createReferee({ now: () => tt, identify: async (tok) => { await new Promise((r) => setTimeout(r, 5)); return { pid: tok.padEnd(36, '0').slice(0, 36), l: 1, a: {}, n: tok }; } });
+  const cs = Array.from({ length: 20 }, (_, i) => { const c = { got: [], send: (x) => c.got.push(JSON.parse(x)) }; c.h = r8.connect(c); return c; });
+  cs.forEach((c, i) => c.h.message(JSON.stringify({ t: 'auto', modes: ['ffa'], styles: ['gear'], token: 'tok' + i, me: me('many' + String(i).padStart(4, '0')) })));
+  await new Promise((r) => setTimeout(r, 200));
+  const codes = cs.map((c) => [...c.got].reverse().find((m) => m.t === 'peers')?.code), errs = cs.map((c) => c.got.find((m) => m.t === 'err')?.why).filter(Boolean);
+  assert.deepEqual(errs, [], 'nobody is turned away');
+  assert.equal(codes.filter(Boolean).length, 20, 'all 20 seated');
+  assert.ok(Object.values(codes.reduce((a, c) => ({ ...a, [c]: (a[c] || 0) + 1 }), {})).every((n) => n <= K.MAX_HUMANS) && new Set(codes).size === 3, `spread over 3 rooms of at most 8 (${[...new Set(codes)].join(', ')})`); }
+console.log('OK: many players pressing Auto match at once are spread over rooms with space, nobody turned away');
