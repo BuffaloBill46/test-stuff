@@ -1,19 +1,19 @@
 // Site tabs: Play / Store / Avatar / Ranks, wallet sign-in, avatar editor, leaderboard.
-import { THREE, character, lights, toon, part, build, hatGeo, giftGeo, C, Sparks, TOON } from './kit.js?v=09f8ae043a';
-import { BALL_COLOR, tracer, dropStreak } from './ballfx.js?v=09f8ae043a';
-import { mountHumanCheck } from './human.js?v=09f8ae043a';
-import { GEAR_SLOTS } from './catalog.js?v=09f8ae043a';
-import { shopBuy, resumeShop } from './shopui.js?v=09f8ae043a';
-import { forSale } from './shoprules.js?v=09f8ae043a';
-import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=09f8ae043a';
-import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable, COSTUMES, costumeItems, costumeWord, SEASONS } from './catalog.js?v=09f8ae043a';
-import { SPECIALS } from './specials.js?v=09f8ae043a';
-import { settingsReady, call } from './gameserver.js?v=09f8ae043a';
-import { TICKET_MAX } from './ranked.js?v=09f8ae043a';
-import { dayStart, weekStart } from './gameclock.js?v=09f8ae043a';
-import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js?v=09f8ae043a';
-import { refreshSeason } from './seasonui.js?v=09f8ae043a';
-import { THEMES, THEME_IDS } from './themes.js?v=09f8ae043a';
+import { THREE, character, lights, toon, part, build, hatGeo, giftGeo, C, Sparks, TOON } from './kit.js?v=a32ed5a9e0';
+import { BALL_COLOR, tracer, dropStreak } from './ballfx.js?v=a32ed5a9e0';
+import { mountHumanCheck } from './human.js?v=a32ed5a9e0';
+import { GEAR_SLOTS } from './catalog.js?v=a32ed5a9e0';
+import { shopBuy, resumeShop } from './shopui.js?v=a32ed5a9e0';
+import { forSale } from './shoprules.js?v=a32ed5a9e0';
+import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=a32ed5a9e0';
+import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable, COSTUMES, costumeItems, costumeWord, SEASONS } from './catalog.js?v=a32ed5a9e0';
+import { SPECIALS } from './specials.js?v=a32ed5a9e0';
+import { settingsReady, call } from './gameserver.js?v=a32ed5a9e0';
+import { TICKET_MAX } from './ranked.js?v=a32ed5a9e0';
+import { dayStart, weekStart } from './gameclock.js?v=a32ed5a9e0';
+import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js?v=a32ed5a9e0';
+import { refreshSeason } from './seasonui.js?v=a32ed5a9e0';
+import { THEMES, THEME_IDS } from './themes.js?v=a32ed5a9e0';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -406,7 +406,7 @@ export function initTabs(app) {
       $('#avgrid').innerHTML = Object.entries(COSTUMES).map(([set, c]) => { const ps = costumeItems(set), ok = ps.every((i) => usable(i, lvl, state.owned)), on = ps.every((i) => d.a[i.slot] === i.id);
         return `<button class="pick wide costume ${ok ? '' : 'locked'}" data-costume="${set}" aria-pressed="${on}"><img alt="" src="${thumbnail({ id: 'costume_' + set, slot: 'costume', set })}">${esc(c.name)}<small>${esc(ps.map((i) => i.name).join(' · '))}</small><small>${on ? 'Wearing the whole costume' : ok ? 'Tap to wear the whole costume' : `${esc(costumeWord(c))} · tap to try it on`}</small></button>`; }).join('')
         + ['pack_none', ...ITEMS.filter((i) => i.slot === 'pack' && i.set).map((i) => i.id)].map((id) => { const i = BY_ID.get(id), ok = usable(i, lvl, state.owned);
-          return `<button class="pick wide ${ok ? '' : 'locked'}" data-pick="${id}" aria-pressed="${d.a.pack === id}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${i.set ? 'The ' + esc(COSTUMES[i.set].name) + '\'s back piece' : 'Nothing on your back'}</small><small>${ok ? 'Unlocked' : lockWord(i)}</small></button>`; }).join('');
+          return `<button class="pick wide ${ok ? '' : 'locked'}" data-pick="${id}" aria-pressed="${d.a.pack === id}"><img alt="" src="${thumbnail(i)}">${esc(i.name)}<small>${i.set ? (/^The /.test(COSTUMES[i.set].name) ? '' : 'The ') + esc(COSTUMES[i.set].name) + '\'s back piece' : 'Nothing on your back'}</small><small>${ok ? 'Unlocked' : lockWord(i)}</small></button>`; }).join('');
     } else
     $('#avgrid').innerHTML = (gr ? listedGear() : ITEMS.filter((i) => i.slot === state.slot)).map((i) => {
       const ok = usable(i, lvl, state.owned), on = sb ? d.a[state.sbSlot] === i.id : gr ? d.a[state.gSlot] === i.id : d.a[i.slot] === i.id, S = SPECIALS[i.special], G = GEAR[i.gear];

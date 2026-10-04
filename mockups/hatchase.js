@@ -1,6 +1,6 @@
 // Mockup D: Hat Chase. Gusts keep blowing Santa's hat off. Catch it, stack spares, dodge trees and snow clouds.
-import { THREE, C, Snow, Burst, toon, hatGeo, glow } from './kit.js?v=09f8ae043a';
-import { buildNight, Street, sleigh, SPAN } from './village.js?v=09f8ae043a';
+import { THREE, C, Snow, Burst, toon, hatGeo, glow } from './kit.js?v=a32ed5a9e0';
+import { buildNight, Street, sleigh, SPAN } from './village.js?v=a32ed5a9e0';
 
 const V3 = THREE.Vector3;
 const X_MIN = -12, X_MAX = 5, Y_MIN = 4.5, Y_MAX = 15, STEP = 0.46, MAX_STACK = 12;

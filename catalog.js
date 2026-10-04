@@ -68,6 +68,12 @@ export const ITEMS = [
   { id: 'pants_midnight', slot: 'pants', name: 'Midnight Purple', color: 0x3b1f5c, season: 'halloween' },
   { id: 'snow_ghostly', slot: 'snow', name: 'Ghostly Glow', color: 0xc8ffd8, season: 'halloween' },
   { id: 'pants_pumpkin', slot: 'pants', name: 'Pumpkin Patch', color: 0xd9661c, season: 'halloween' },
+  // THANKSGIVING SEASON free-track looks (supabase/035), the same kind: autumn colours, earned by opening doors, never sold, no level
+  { id: 'snow_cranberry', slot: 'snow', name: 'Cranberry', color: 0x9e1636, season: 'thanksgiving' },
+  { id: 'shirt_pumpkinpie', slot: 'shirt', name: 'Pumpkin Pie', color: 0xcc7433, season: 'thanksgiving' },
+  { id: 'pants_harvestgold', slot: 'pants', name: 'Harvest Gold', color: 0xd6a12b, season: 'thanksgiving' },
+  { id: 'snow_mapleleaf', slot: 'snow', name: 'Maple Leaf', color: 0xd9421f, season: 'thanksgiving' },
+  { id: 'shirt_cornhusk', slot: 'shirt', name: 'Corn Husk', color: 0xeed27e, season: 'thanksgiving' },
   // The first special snowball (Cody's example): stuns 50% longer than normal. Bought in the Store for now (Cody); levels later.
   // (The colour-slot Ice Ball prototype became the Ice Ball special below, 2026-10-01. A colour can still carry `rules`.)
 
@@ -145,11 +151,22 @@ export const ITEMS = [
   { id: 'hat_pumpkinking', slot: 'hat', name: 'Crooked Hat', hat: 'crooked', color: 0x1e1a26, set: 'pumpkinking', season: 'halloween' },
   { id: 'pack_pumpkinking', slot: 'pack', name: 'Jack Lantern', pack: 'lantern', color: 0x2b2733, set: 'pumpkinking', season: 'halloween' },
   { id: 'snow_pumpkinking', slot: 'snow', name: 'Lantern Glow', color: 0xffa31a, set: 'pumpkinking', season: 'halloween' },
+  // The THANKSGIVING PASS reward: the Gobbler. A season costume like the Pumpkin King (no level, no price, the pass grants the six
+  // by id, never sold, never on a bot). A friendly turkey face (beak, red wattle) on the player's own head, a tall black pilgrim
+  // hat with a gold buckle, a brown coat with layers of feathers and a white pilgrim collar, drumstick trousers (puffed tan
+  // thighs over white "bone" stockings, buckled shoes), the turkey's fanned tail on the back, cranberry snowballs.
+  // supabase/035_thanksgiving.sql is the database's copy.
+  { id: 'shirt_gobbler', slot: 'shirt', name: 'Feather Coat', color: 0x6b4224, trim: 'gobbler', set: 'gobbler', season: 'thanksgiving' },
+  { id: 'pants_gobbler', slot: 'pants', name: 'Drumstick Trousers', color: 0xc9844a, trim: 'gobbler', set: 'gobbler', season: 'thanksgiving' },
+  { id: 'face_gobbler', slot: 'face', name: 'Gobbler', face: 'gobbler', set: 'gobbler', season: 'thanksgiving' },
+  { id: 'hat_gobbler', slot: 'hat', name: 'Pilgrim Hat', hat: 'pilgrim', color: 0x1f1c24, set: 'gobbler', season: 'thanksgiving' },
+  { id: 'pack_gobbler', slot: 'pack', name: 'Tail Fan', pack: 'tailfan', color: 0x6b4224, set: 'gobbler', season: 'thanksgiving' },
+  { id: 'snow_gobbler', slot: 'snow', name: 'Cranberry Glow', color: 0xf03a5f, set: 'gobbler', season: 'thanksgiving' },
 ];
 // The costumes (above): what each is called and the level that unlocks every piece, or (a season costume) the season pass that
 // gives it. COSTUME_SLOTS: one piece in each. SEASONS: what each season's pass is called on the page.
-export const SEASONS = { halloween: { name: 'Halloween pass' } };
-export const COSTUMES = { nutcracker: { name: 'Nutcracker Soldier', level: 5 }, frostking: { name: 'Frost King', level: 10 }, pumpkinking: { name: 'Pumpkin King', season: 'halloween' } };
+export const SEASONS = { halloween: { name: 'Halloween pass' }, thanksgiving: { name: 'Thanksgiving pass' } };
+export const COSTUMES = { nutcracker: { name: 'Nutcracker Soldier', level: 5 }, frostking: { name: 'Frost King', level: 10 }, pumpkinking: { name: 'Pumpkin King', season: 'halloween' }, gobbler: { name: 'The Gobbler', season: 'thanksgiving' } };
 // How a costume (or a costume piece) is earned, in words: "Level 5 costume" or "Halloween pass"
 export const costumeWord = (c) => (c?.season ? SEASONS[c.season]?.name || c.season : `Level ${c?.level} costume`);
 export const COSTUME_SLOTS = ['shirt', 'pants', 'face', 'hat', 'pack', 'snow'];

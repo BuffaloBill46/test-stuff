@@ -7,8 +7,8 @@
 //     the whole outfit is owned. Buying the pass late still counts the doors already opened. Earned pieces are kept forever.
 // Tasks count only in public Auto matches run by the match server (practice runs in the player's own browser and could be
 // faked). This file is the ONE place the rules live: the page shows them, the server and database apply them.
-import { dayStart, nextReset } from './gameclock.js?v=09f8ae043a';
-import { zonedTime, WEEKLY_ZONE } from './lottery.js?v=09f8ae043a';
+import { dayStart, nextReset } from './gameclock.js?v=a32ed5a9e0';
+import { zonedTime, WEEKLY_ZONE } from './lottery.js?v=a32ed5a9e0';
 
 const at9 = (y, m, d) => zonedTime(y, m, d, 21, WEEKLY_ZONE); // 9 PM Indiana on that date
 
@@ -23,7 +23,10 @@ export const SEASONS = [
   { id: 'halloween', name: 'Halloween', icon: '🎃', start: at9(2026, 9, 30), end: at9(2026, 10, 31), costume: 'Pumpkin King',
     free: { 2: 'snow_candycorn', 5: 'shirt_jackolantern', 9: 'pants_midnight', 14: 'snow_ghostly', 20: 'pants_pumpkin' },
     gold: ['face_pumpkinking', 'hat_pumpkinking', 'shirt_pumpkinking', 'pants_pumpkinking', 'pack_pumpkinking', 'snow_pumpkinking'] },
-  { id: 'thanksgiving', name: 'Thanksgiving', icon: '🦃', start: at9(2026, 10, 31), end: at9(2026, 11, 30), costume: null, free: {}, gold: [] },
+  // Thanksgiving (2026-10-03): 5 autumn looks free, and the pass's turkey costume, The Gobbler (catalog.js, supabase/035 + 036)
+  { id: 'thanksgiving', name: 'Thanksgiving', icon: '🦃', start: at9(2026, 10, 31), end: at9(2026, 11, 30), costume: 'Gobbler',
+    free: { 2: 'snow_cranberry', 5: 'shirt_pumpkinpie', 9: 'pants_harvestgold', 14: 'snow_mapleleaf', 20: 'shirt_cornhusk' },
+    gold: ['face_gobbler', 'hat_gobbler', 'shirt_gobbler', 'pants_gobbler', 'pack_gobbler', 'snow_gobbler'] },
   { id: 'christmas', name: 'Christmas', icon: '🎄', start: at9(2026, 11, 30), end: at9(2027, 1, 1), costume: null, free: {}, gold: [] },
 ];
 export const seasonById = (id) => SEASONS.find((s) => s.id === id) || null;

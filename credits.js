@@ -13,7 +13,7 @@
 //  - No bulk discount.
 // Invariants (audit): every run: plays made = played + refused ≤ n; every payment buys one run, once;
 //   a finished run is paid exactly once, exactly what it won + refunded; an unfinished run is paid nothing.
-import { IN_PER_DOLLAR } from './slots.js?v=09f8ae043a';
+import { IN_PER_DOLLAR } from './slots.js?v=a32ed5a9e0';
 
 // kind → the pool it pays, and the sizes it can be played at. Spin's sizes come from the game settings (settings.js
 // applyToGame keeps SIZES.spin in step with the prices spin10 / spin100); Snowball Drop's and Big Hat's are fixed here.

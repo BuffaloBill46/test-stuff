@@ -17,8 +17,8 @@
 // POOL (Cody, 2026-10-02): Snowball Drop plays from the shared Game pool (SPIN_RULES = slots.js POOL_RULES: starts $500, $25
 // skim at $1,025, top-off below $200, emergency stop). A drop only starts if the pool can cover the biggest FIXED prize (25×);
 // the jackpot is a share of the pool, so it can always be paid.
-import { SPIN_RULES, topOff } from './spin.js?v=09f8ae043a';
-import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot } from './slots.js?v=09f8ae043a';
+import { SPIN_RULES, topOff } from './spin.js?v=a32ed5a9e0';
+import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot } from './slots.js?v=a32ed5a9e0';
 
 export const BOARD = 3; // results carry it, so "Check this result" re-runs the board the drop was played on
 export const ROWS = 16;

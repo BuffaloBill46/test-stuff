@@ -3,9 +3,9 @@
 // which then spins too. Pine-wreath rim with chasing bulbs, gold pegs at every segment edge, a candy-cane flapper that
 // flicks as the pegs pass, gold rim stars marking the star segments (and the bonus 5×), a Santa hat on the hub.
 // The wheel always lands exactly on the segment the rules picked.
-import { THREE, C, part, build, toon, lights, glow, hatGeo, Burst } from './kit.js?v=09f8ae043a';
-import { MAIN, BONUS, STAR } from './spin.js?v=09f8ae043a';
-import { play as sfx } from './sfx.js?v=09f8ae043a';
+import { THREE, C, part, build, toon, lights, glow, hatGeo, Burst } from './kit.js?v=a32ed5a9e0';
+import { MAIN, BONUS, STAR } from './spin.js?v=a32ed5a9e0';
+import { play as sfx } from './sfx.js?v=a32ed5a9e0';
 
 const G = THREE, V3 = THREE.Vector3, TAU = Math.PI * 2;
 export const MULT_STYLE = { // face colour, label colour

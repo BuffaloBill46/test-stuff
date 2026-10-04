@@ -407,6 +407,15 @@ function faceParts(face) {
       part(new G.BoxGeometry(0.62, 0.1, 0.4), C.brim, { pos: [0, 1.52, 0.02] })];
     case 'mask': return [eye(-0.1), eye(0.1), part(new G.BoxGeometry(0.5, 0.16, 0.44), C.hat, { pos: [0, 1.72, 0.03], jit: 0.02 }),
       part(new G.BoxGeometry(0.12, 0.26, 0.06), C.hatDark, { pos: [0.16, 1.58, 0.22], rot: [0.2, 0, 0.2] })];
+    // The Gobbler (Thanksgiving pass costume): a friendly turkey face on the player's own head. Big round eyes with a shine,
+    // a golden beak, the little red snood hanging down beside it (never over it: the beak must read), a red wattle under it.
+    case 'gobbler': return [...[-1, 1].flatMap((s) => [part(new G.BoxGeometry(0.09, 0.09, 0.03), 0xfbf6ea, { pos: [s * 0.1, 1.885, 0.252] }),
+        part(new G.BoxGeometry(0.05, 0.06, 0.03), C.ink, { pos: [s * 0.095, 1.88, 0.262] }), part(new G.BoxGeometry(0.02, 0.02, 0.02), 0xffffff, { pos: [s * 0.09 + 0.012, 1.895, 0.275] })]),
+      part(new G.ConeGeometry(0.075, 0.19, 4), 0xf2a62a, { pos: [0, 1.79, 0.34], rot: [Math.PI / 2 + 0.2, 0, 0], scale: [1.15, 1, 0.8] }),
+      part(new G.IcosahedronGeometry(0.03, 0), 0xc81e32, { pos: [0.075, 1.81, 0.3] }),
+      part(new G.IcosahedronGeometry(0.03, 0), 0xc81e32, { pos: [0.085, 1.75, 0.31], scale: [0.8, 1.6, 0.8] }),
+      part(new G.IcosahedronGeometry(0.055, 0), 0xc81e32, { pos: [0, 1.66, 0.27], scale: [0.85, 1.4, 0.7], jit: 0.008, seed: 161 }),
+      part(new G.IcosahedronGeometry(0.035, 0), 0xa8162a, { pos: [0.025, 1.6, 0.255], scale: [0.8, 1.3, 0.7] })];
     default: return [eye(-0.1), eye(0.1)];
   }
 }
@@ -537,6 +546,16 @@ function hatPieces(shape, color) {
       ...[-1, 1].map((s) => part(new G.BoxGeometry(0.015, 0.015, 0.01), 0xff9a1a, { pos: [bx + s * 0.02, by + 0.015, bz + 0.05] })));
     return ps;
   }
+  // The Gobbler's pilgrim hat: a tall black crown narrowing a little to its flat top, a dark band with a big square gold buckle
+  // at the front, and a turkey feather (brown, an orange band, a cream tip) tucked upright in the band's left side. The brim is
+  // NARROWER than the top hat's (0.31 against 0.36), so the face under it shows from the game's high camera.
+  if (shape === 'pilgrim') return [part(new G.CylinderGeometry(0.31, 0.31, 0.035, 12), color, { pos: [0, 2.04, 0] }),
+    part(new G.CylinderGeometry(0.18, 0.22, 0.44, 10), color, { pos: [0, 2.28, 0], jit: 0.006, seed: 171 }),
+    part(new G.CylinderGeometry(0.218, 0.226, 0.08, 10), 0x3b3443, { pos: [0, 2.11, 0] }),
+    part(new G.BoxGeometry(0.13, 0.11, 0.03), C.gold, { pos: [0, 2.11, 0.222] }), part(new G.BoxGeometry(0.07, 0.05, 0.035), color, { pos: [0, 2.11, 0.226] }),
+    part(new G.BoxGeometry(0.05, 0.2, 0.02), 0x6b4224, { pos: [-0.2, 2.26, 0.06], rot: [0, 0, 0.25] }),
+    part(new G.BoxGeometry(0.055, 0.06, 0.022), 0xd2772e, { pos: [-0.234, 2.385, 0.06], rot: [0, 0, 0.25] }),
+    part(new G.BoxGeometry(0.055, 0.05, 0.022), 0xf1e3c0, { pos: [-0.248, 2.437, 0.06], rot: [0, 0, 0.25] })];
   return [];
 }
 // A crooked cone (the Pumpkin King's hat): leans over to one side as it rises, then kinks back at the tip.
@@ -545,10 +564,10 @@ function crookedCone(h) {
   for (let i = 0; i < p.count; i++) { const t = (p.getY(i) + h / 2) / h; p.setX(i, p.getX(i) + 0.2 * t * t - (t > 0.75 ? (t - 0.75) * 0.5 : 0)); p.setY(i, p.getY(i) - 0.06 * t * t * t); }
   return g;
 }
-// A thin box from point a to point b (ropes, cords).
-function stick(a, b, w, color) {
+// A thin box from point a to point b (ropes, cords). t: a different thickness, for a flat strip (the Gobbler's tail feathers).
+function stick(a, b, w, color, t = w) {
   const d = new V3(b[0] - a[0], b[1] - a[1], b[2] - a[2]), len = d.length(), e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new V3(0, 1, 0), d.normalize()));
-  return part(new G.BoxGeometry(w, len, w), color, { pos: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2], rot: [e.x, e.y, e.z] });
+  return part(new G.BoxGeometry(w, len, t), color, { pos: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2], rot: [e.x, e.y, e.z] });
 }
 function packPieces(shape, color) {
   if (shape === 'satchel') return [part(new G.BoxGeometry(0.42, 0.4, 0.16), color, { pos: [0, 1.22, -0.29], jit: 0.02 }),
@@ -593,6 +612,17 @@ function packPieces(shape, color) {
       part(new G.ConeGeometry(0.25, 0.18, 4), color, { pos: [0, y + 0.3, z], rot: [0, Math.PI / 4, 0], jit: 0.01, seed: 141 }),
       part(new G.TorusGeometry(0.06, 0.018, 4, 8), color, { pos: [0, y + 0.44, z] }),
       ...[-0.15, 0.15].map((x) => part(new G.BoxGeometry(0.07, 0.03, 0.42), strap, { pos: [x, 1.575, -0.02] }))];
+  }
+  // The Gobbler's tail fan: nine flat tail feathers fanned out behind the back from a round brown rump, each banded brown, then
+  // orange, then cream, with a dark tip, on two straps over the shoulders. Modest on purpose: the fan leans back a little and
+  // its top (about 1.8) stays below the head, so from the game's high camera behind a player the head and hat still show.
+  if (shape === 'tailfan') {
+    const y = 1.24, z = -0.32, tilt = 0.3, bands = [[0.06, 0.3, 0.1, color], [0.3, 0.42, 0.12, 0xd2772e], [0.42, 0.5, 0.13, 0xf1e3c0], [0.5, 0.55, 0.12, 0x3a2414]];
+    const ps = [part(new G.IcosahedronGeometry(0.14, 0), color, { pos: [0, y, z + 0.02], scale: [1.2, 1, 0.8], jit: 0.01, seed: 181 }),
+      ...[-0.15, 0.15].map((x) => part(new G.BoxGeometry(0.07, 0.03, 0.42), 0x3a2414, { pos: [x, 1.575, -0.02] }))];
+    for (let k = 0; k < 9; k++) { const th = (k / 8 - 0.5) * 2.6, d = [Math.sin(th), Math.cos(th) * Math.cos(tilt), -Math.cos(th) * Math.sin(tilt)], r = k % 2 ? 0.94 : 1;
+      for (const [a, b, w, col] of bands) ps.push(stick([d[0] * a * r, y + d[1] * a * r, z - 0.03 + d[2] * a * r - k * 0.002], [d[0] * b * r, y + d[1] * b * r, z - 0.03 + d[2] * b * r - k * 0.002], w, col, 0.022)); }
+    return ps;
   }
   return [];
 }
@@ -821,6 +851,31 @@ const COSTUME_TRIMS = {
         part(new G.ConeGeometry(0.085, 0.2, 5), 0x17141d, { pos: [0, -0.78, 0.26], rot: [Math.PI / 2 - 0.5, 0, 0] }),
         part(new G.IcosahedronGeometry(0.035, 0), 0xe8812c, { pos: [0, -0.7, 0.35] }),
         part(new G.BoxGeometry(0.1, 0.06, 0.02), 0xe8812c, { pos: [0, -0.72, 0.195] })] },
+  },
+  gobbler: {
+    // a brown feather coat: a white pilgrim collar, three overlapping rows of small breast feathers down the chest (tan,
+    // orange, tan), a black belt with a square gold buckle, and below it a short skirt edged with two layers of feathers (long
+    // bronze ones, shorter orange ones over them; wide enough for the legs to swing inside); feathered cuffs
+    shirt: () => { const bronze = 0x4f321c, tan = 0xb0702f, orange = 0xd2772e, cream = 0xf3ecdc, ps = [];
+      // a feather: a flat diamond pointing down; `a` turns its flat side to face out from the middle (round the hem)
+      const feather = (len, w, col, x, y, zz, a = 0) => part(new G.ConeGeometry(w, len, 4), col, { pos: [x, y, zz], rot: [Math.PI, -a, 0], scale: [1, 1, 0.35] });
+      ps.push(part(new G.BoxGeometry(0.46, 0.04, 0.34), cream, { pos: [0, 1.575, 0] }),
+        ...[-1, 1].map((s) => part(new G.BoxGeometry(0.16, 0.13, 0.03), cream, { pos: [s * 0.085, 1.5, 0.21], rot: [0, 0, s * 0.15] })));
+      [[1.39, 5, tan], [1.28, 4, orange], [1.17, 5, tan]].forEach(([y, n, col]) => { for (let k = 0; k < n; k++) ps.push(feather(0.15, 0.055, col, (k - (n - 1) / 2) * 0.095, y, 0.205)); });
+      ps.push(part(new G.BoxGeometry(0.66, 0.12, 0.42), 0x1c1a1f, { pos: [0, 0.9, 0] }), part(new G.BoxGeometry(0.15, 0.13, 0.03), C.gold, { pos: [0, 0.9, 0.225] }),
+        part(new G.BoxGeometry(0.08, 0.06, 0.035), 0x1c1a1f, { pos: [0, 0.9, 0.228] }),
+        part(new G.CylinderGeometry(0.34, 0.41, 0.2, 8), 0x6b4224, { pos: [0, 0.76, 0], jit: 0.01, seed: 191 }));
+      for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2, b = a + Math.PI / 12;
+        ps.push(feather(0.22, 0.075, bronze, Math.sin(a) * 0.37, 0.59, Math.cos(a) * 0.37, a), feather(0.15, 0.065, k % 2 ? orange : tan, Math.sin(b) * 0.395, 0.64, Math.cos(b) * 0.395, b)); }
+      return { body: ps, arm: () => [part(new G.BoxGeometry(0.24, 0.08, 0.24), tan, { pos: [0, -0.57, 0] }),
+        ...[0, 1, 2, 3].map((k) => { const a = (k / 4) * Math.PI * 2 + Math.PI / 4; return feather(0.1, 0.05, k % 2 ? orange : bronze, Math.sin(a) * 0.1, -0.63, Math.cos(a) * 0.1, a); })] }; },
+    // drumstick trousers: each leg a puffed tan "drumstick" at the thigh with a darker band at the knee, white stockings below
+    // like the bone, and black pilgrim shoes with a big square gold buckle
+    pants: { leg: () => [part(new G.IcosahedronGeometry(0.16, 1), 0xd08f52, { pos: [0, -0.24, 0], scale: [1, 1.45, 1], jit: 0.012, seed: 201 }),
+        part(new G.BoxGeometry(0.26, 0.06, 0.26), 0x8a5428, { pos: [0, -0.46, 0] }),
+        part(new G.BoxGeometry(0.25, 0.22, 0.25), 0xf3ecdc, { pos: [0, -0.6, 0] })],
+      feet: () => [part(new G.BoxGeometry(0.26, 0.14, 0.36), 0x17151b, { pos: [0, -0.79, 0.05] }),
+        part(new G.BoxGeometry(0.13, 0.09, 0.02), C.gold, { pos: [0, -0.755, 0.235] }), part(new G.BoxGeometry(0.07, 0.045, 0.025), 0x17151b, { pos: [0, -0.755, 0.238] })] },
   },
 };
 
