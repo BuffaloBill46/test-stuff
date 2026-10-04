@@ -8,7 +8,8 @@ const ROOT = new URL('../../mockups/', import.meta.url).pathname, fails = [], ch
 const web = http.createServer((req, res) => { const f = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]).replace(/^\//, '') || 'guide.html');
   if (!f.startsWith(ROOT) || !existsSync(f)) { res.writeHead(404); return res.end(); } res.writeHead(200, { 'content-type': f.endsWith('.js') ? 'text/javascript' : 'text/html' }); res.end(readFileSync(f)); }).listen(8793);
 const b = await chromium.launch();
-const WANT = { pts: 4, sbTable: 6, gearTable: 8, levelTable: 10, lookTable: 10, rankedEx: 3, bigTable: 9, dropTable: 5, stockTable: 8 };
+import { COSTUMES } from '../../mockups/catalog.js';
+const WANT = { pts: 4, sbTable: 6, gearTable: 8, levelTable: 10, lookTable: 9 + Object.values(COSTUMES).filter((c) => c.season).length, /* levels 2–10, then one row per season-pass costume */ rankedEx: 3, bigTable: 9, dropTable: 5, stockTable: 8 };
 for (const [label, vp] of [['phone', { width: 390, height: 844 }], ['desktop', { width: 1280, height: 900 }]]) {
   const p = await b.newPage({ viewport: vp }), errs = [];
   p.on('pageerror', (e) => errs.push(e.message));

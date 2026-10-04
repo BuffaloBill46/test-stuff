@@ -22,6 +22,8 @@ await db.pg.exec(sql033);
 await db.pg.exec(sql033); // safe to apply twice
 // the Thanksgiving items (035: the free looks and the Gobbler), so every season item in catalog.js is in the database
 await db.pg.exec(readFileSync(new URL('../../supabase/035_thanksgiving.sql', import.meta.url), 'utf8'));
+// Thanksgiving's door rewards (036), twice: safe to run twice
+for (let k = 0; k < 2; k++) await db.pg.exec(readFileSync(new URL('../../supabase/036_thanksgiving_rewards.sql', import.meta.url), 'utf8'));
 
 const S = seasonAt(); assert.ok(S && S.id === 'halloween', 'the test runs during Halloween (Oct 1–31 2026): ' + S?.id);
 const DAY = dayKey(), DAYS = seasonDays(S);
@@ -31,12 +33,16 @@ for (const s of SEASONS) {
   const r = (await db.query('select extract(epoch from starts) * 1000 as a, extract(epoch from ends) * 1000 as b, pass_usd from public.seasons where id = $1', [s.id]))[0];
   assert.deepEqual([+r.a, +r.b, +r.pass_usd], [s.start, s.end, PASS_PRICE], `${s.id}: same dates and pass price as seasons.js`);
 }
+// every season with rewards in seasons.js (Halloween: 033, Thanksgiving: 036): each door, both tracks, exactly as seasons.js says
 const plan = await db.query(`select door, track, item_id, xp from public.season_rewards where season = 'halloween' order by door, track`);
-for (let d = 1; d <= DAYS.length; d++) {
-  const f = plan.find((p) => p.door === d && p.track === 'free'), g = plan.find((p) => p.door === d && p.track === 'gold');
-  const ff = freeReward(S, d), gg = goldReward(S, d);
-  assert.deepEqual(f && (f.item_id ? { kind: 'item', item: f.item_id } : { kind: 'xp', n: f.xp }), ff, `door ${d} free reward matches seasons.js`);
-  assert.deepEqual(g ? { kind: 'item', item: g.item_id } : null, gg, `door ${d} gold reward matches seasons.js`);
+for (const SS of SEASONS.filter((x) => x.gold.length || Object.keys(x.free).length)) {
+  const pl = await db.query('select door, track, item_id, xp from public.season_rewards where season = $1 order by door, track', [SS.id]), N = seasonDays(SS).length;
+  assert.equal(pl.filter((p) => p.track === 'free').length, N, `${SS.id}: one free reward per door (${N} doors)`);
+  for (let d = 1; d <= N; d++) {
+    const f = pl.find((p) => p.door === d && p.track === 'free'), g = pl.find((p) => p.door === d && p.track === 'gold');
+    assert.deepEqual(f && (f.item_id ? { kind: 'item', item: f.item_id } : { kind: 'xp', n: f.xp }), freeReward(SS, d), `${SS.id} door ${d} free reward matches seasons.js`);
+    assert.deepEqual(g ? { kind: 'item', item: g.item_id } : null, goldReward(SS, d), `${SS.id} door ${d} gold reward matches seasons.js`);
+  }
 }
 { const { ITEMS } = await import('../../mockups/catalog.js');
   for (const it of ITEMS.filter((i) => i.season)) {
@@ -145,4 +151,4 @@ await db.query('set role santa_referee');
 await db.query(`select public.season_record($1, 'halloween', $2::date, $3, '{"hits": 1}')`, [ben, DAY, JSON.stringify(tasks)]);
 await assert.rejects(() => db.query(`select public.season_grant($1, 'halloween')`, [ben]), /permission denied/, 'the match server can record progress, never grant directly');
 await db.query('reset role');
-console.log(`OK: seasons on real Postgres (001–031 + 033): the plan equals seasons.js (dates, price, every door's rewards); progress only from the match server's own matches; a door opens when all 3 tasks are met; today: ${doors} doors and ${gold.length} gold piece(s) backdated by the pass; a full 20-door season: every free look, the whole Pumpkin King outfit, streak bonuses at 7 and 14 (a missed day resets it), each granted once; a second pass is owed back; players and the match server can't write or grant anything themselves`);
+console.log(`OK: seasons on real Postgres (001–031 + 033 + Thanksgiving 035/036): the plan equals seasons.js (dates, price, every door's rewards); progress only from the match server's own matches; a door opens when all 3 tasks are met; today: ${doors} doors and ${gold.length} gold piece(s) backdated by the pass; a full 20-door season: every free look, the whole Pumpkin King outfit, streak bonuses at 7 and 14 (a missed day resets it), each granted once; a second pass is owed back; players and the match server can't write or grant anything themselves`);
