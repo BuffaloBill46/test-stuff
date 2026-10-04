@@ -22,6 +22,8 @@ await db.pg.exec(sql033);
 await db.pg.exec(sql033); // safe to apply twice
 // the Thanksgiving items (035: the free looks and the Gobbler), so every season item in catalog.js is in the database
 await db.pg.exec(readFileSync(new URL('../../supabase/035_thanksgiving.sql', import.meta.url), 'utf8'));
+// the Christmas items (037: the free looks and the Gingerbread), the same way
+await db.pg.exec(readFileSync(new URL('../../supabase/037_christmas.sql', import.meta.url), 'utf8'));
 // Thanksgiving's door rewards (036), twice: safe to run twice
 for (let k = 0; k < 2; k++) await db.pg.exec(readFileSync(new URL('../../supabase/036_thanksgiving_rewards.sql', import.meta.url), 'utf8'));
 
@@ -151,4 +153,4 @@ await db.query('set role santa_referee');
 await db.query(`select public.season_record($1, 'halloween', $2::date, $3, '{"hits": 1}')`, [ben, DAY, JSON.stringify(tasks)]);
 await assert.rejects(() => db.query(`select public.season_grant($1, 'halloween')`, [ben]), /permission denied/, 'the match server can record progress, never grant directly');
 await db.query('reset role');
-console.log(`OK: seasons on real Postgres (001–031 + 033 + Thanksgiving 035/036): the plan equals seasons.js (dates, price, every door's rewards); progress only from the match server's own matches; a door opens when all 3 tasks are met; today: ${doors} doors and ${gold.length} gold piece(s) backdated by the pass; a full 20-door season: every free look, the whole Pumpkin King outfit, streak bonuses at 7 and 14 (a missed day resets it), each granted once; a second pass is owed back; players and the match server can't write or grant anything themselves`);
+console.log(`OK: seasons on real Postgres (001–031 + 033 + Thanksgiving 035/036 + Christmas items 037): the plan equals seasons.js (dates, price, every door's rewards); progress only from the match server's own matches; a door opens when all 3 tasks are met; today: ${doors} doors and ${gold.length} gold piece(s) backdated by the pass; a full 20-door season: every free look, the whole Pumpkin King outfit, streak bonuses at 7 and 14 (a missed day resets it), each granted once; a second pass is owed back; players and the match server can't write or grant anything themselves`);

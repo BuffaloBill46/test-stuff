@@ -74,12 +74,12 @@ for (const vp of [{ width: 1280, height: 860, tag: 'desk' }, { width: 390, heigh
   const tabs = await p.evaluate(() => [...document.querySelectorAll('#avslots [data-slot]')].map((b) => b.textContent));
   check(tabs.includes('Costumes') && !tabs.includes('Backpacks'), `${vp.tag}: tabs ${tabs.join(', ')}`);
   const cards = await p.evaluate(() => [...document.querySelectorAll('#avgrid [data-costume]')].map((b) => ({ set: b.dataset.costume, locked: b.classList.contains('locked'), text: b.textContent, img: b.querySelector('img')?.src.startsWith('data:image/png') })));
-  check(cards.length === 4 && cards.every((c) => c.locked && c.img) && /Level 5 costume/.test(cards[0].text) && /Level 10 costume/.test(cards[1].text) && /Halloween pass/.test(cards[2].text) && !/Level/.test(cards[2].text) && /Thanksgiving pass/.test(cards[3].text) && !/Level/.test(cards[3].text),
-    `${vp.tag} guest: four costume cards (the Pumpkin King tagged "Halloween pass", the Gobbler "Thanksgiving pass"), locked, each with a picture (${cards.map((c) => c.set).join(', ')})`);
+  check(cards.length === 5 && cards.every((c) => c.locked && c.img) && /Level 5 costume/.test(cards[0].text) && /Level 10 costume/.test(cards[1].text) && /Halloween pass/.test(cards[2].text) && !/Level/.test(cards[2].text) && /Thanksgiving pass/.test(cards[3].text) && !/Level/.test(cards[3].text) && /Christmas pass/.test(cards[4].text) && !/Level/.test(cards[4].text),
+    `${vp.tag} guest: five costume cards (the Pumpkin King tagged "Halloween pass", the Gobbler "Thanksgiving pass", the Gingerbread "Christmas pass"), locked, each with a picture (${cards.map((c) => c.set).join(', ')})`);
   const rule = await p.evaluate(() => document.querySelector('#avsb').textContent);
-  check(/Halloween pass/.test(rule) && /Pumpkin King/.test(rule) && /Thanksgiving pass/.test(rule) && /The Gobbler/.test(rule), `${vp.tag}: the Costumes rule line names both season passes (${rule.slice(0, 90)})`);
+  check(/Halloween pass/.test(rule) && /Pumpkin King/.test(rule) && /Thanksgiving pass/.test(rule) && /The Gobbler/.test(rule) && /Christmas pass/.test(rule) && /Gingerbread/.test(rule), `${vp.tag}: the Costumes rule line names all three season passes (${rule.slice(0, 90)})`);
   const backs = await p.evaluate(() => [...document.querySelectorAll('#avgrid [data-pick]')].map((b) => b.dataset.pick + '=' + b.querySelectorAll('small')[1]?.textContent));
-  check(backs.join() === 'pack_none=Unlocked,pack_drum=Level 5,pack_icewings=Level 10,pack_pumpkinking=Halloween pass,pack_gobbler=Thanksgiving pass', `${vp.tag}: back pieces to put on or take off: ${backs.join(', ')}`);
+  check(backs.join() === 'pack_none=Unlocked,pack_drum=Level 5,pack_icewings=Level 10,pack_pumpkinking=Halloween pass,pack_gobbler=Thanksgiving pass,pack_gingerbread=Christmas pass', `${vp.tag}: back pieces to put on or take off: ${backs.join(', ')}`);
   check(!(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth)), `${vp.tag}: the Costumes tab fits (no sideways scroll)`);
   await p.screenshot({ path: `${OUT}/${vp.tag}-avatar-costumes-tab.png` });
   // tap the Nutcracker as a guest: previewed (every piece), not savable
@@ -89,7 +89,7 @@ for (const vp of [{ width: 1280, height: 860, tag: 'desk' }, { width: 390, heigh
   // the tags on each piece's own tab
   await p.click('#avslots [data-slot="shirt"]'); await p.waitForTimeout(400);
   const tags = await p.evaluate(() => [...document.querySelectorAll('#avgrid [data-pick]')].filter((b) => b.querySelector('.settag')).map((b) => b.dataset.pick + '=' + b.querySelector('.settag').textContent));
-  check(tags.join() === 'shirt_nutcracker=Level 5 costume,shirt_frostking=Level 10 costume,shirt_pumpkinking=Halloween pass,shirt_gobbler=Thanksgiving pass', `${vp.tag}: Shirts tab tags only the costume coats: ${tags.join(', ')}`);
+  check(tags.join() === 'shirt_nutcracker=Level 5 costume,shirt_frostking=Level 10 costume,shirt_pumpkinking=Halloween pass,shirt_gobbler=Thanksgiving pass,shirt_gingerbread=Christmas pass', `${vp.tag}: Shirts tab tags only the costume coats: ${tags.join(', ')}`);
   if (vp.tag === 'phone') { await p.evaluate(() => document.querySelector('#avgrid').scrollIntoView({ block: 'start' })); await p.waitForTimeout(300); }
   await p.screenshot({ path: `${OUT}/${vp.tag}-avatar-shirts-tags.png` });
   noErrors(errors, vp.tag + ' avatar'); await ctx.close();
@@ -98,7 +98,8 @@ for (const vp of [{ width: 1280, height: 860, tag: 'desk' }, { width: 390, heigh
 console.log('3. Level 4 can\'t save the Nutcracker; level 5 can (Frost King still locked); level 10 saves the Frost King; the Pumpkin King only once owned');
 const PK = ['shirt_pumpkinking', 'pants_pumpkinking', 'face_pumpkinking', 'hat_pumpkinking', 'pack_pumpkinking', 'snow_pumpkinking'];
 const GB = ['shirt_gobbler', 'pants_gobbler', 'face_gobbler', 'hat_gobbler', 'pack_gobbler', 'snow_gobbler'];
-for (const [level, set, savable, owns] of [[4, 'nutcracker', false], [5, 'nutcracker', true], [5, 'frostking', false], [10, 'frostking', true], [10, 'pumpkinking', false], [1, 'pumpkinking', true, PK], [10, 'gobbler', false], [1, 'gobbler', true, GB]]) {
+const GI = ['shirt_gingerbread', 'pants_gingerbread', 'face_gingerbread', 'hat_gingerbread', 'pack_gingerbread', 'snow_gingerbread'];
+for (const [level, set, savable, owns] of [[4, 'nutcracker', false], [5, 'nutcracker', true], [5, 'frostking', false], [10, 'frostking', true], [10, 'pumpkinking', false], [1, 'pumpkinking', true, PK], [10, 'gobbler', false], [1, 'gobbler', true, GB], [10, 'gingerbread', false], [1, 'gingerbread', true, GI]]) {
   const { p, ctx, errors } = await open({ width: 1280, height: 860 });
   await signInAt(p, level, owns); await avatarTab(p, 'costume');
   await p.click(`#avgrid [data-costume="${set}"]`); await p.waitForTimeout(900);
@@ -113,7 +114,7 @@ for (const [level, set, savable, owns] of [[4, 'nutcracker', false], [5, 'nutcra
   noErrors(errors, `level ${level} ${set}`); await ctx.close();
 }
 // phone Avatar view of each costume (front)
-for (const set of ['nutcracker', 'frostking', 'pumpkinking', 'gobbler']) {
+for (const set of ['nutcracker', 'frostking', 'pumpkinking', 'gobbler', 'gingerbread']) {
   const { p, ctx, errors } = await open({ width: 390, height: 844 });
   await avatarTab(p, 'costume'); await p.click(`#avgrid [data-costume="${set}"]`); await p.waitForTimeout(1500);
   await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(300); await p.screenshot({ path: `${OUT}/phone-avatar-${set}.png` });
@@ -121,7 +122,7 @@ for (const set of ['nutcracker', 'frostking', 'pumpkinking', 'gobbler']) {
 }
 
 console.log('4. In a practice match at night: 8 players in costume, front and back; the Santa hat; maxed out');
-const COST = async (p) => p.evaluate(async () => { const { costumeItems } = await import('./catalog.js'); return Object.fromEntries(['nutcracker', 'frostking', 'pumpkinking', 'gobbler'].map((s) => [s, Object.fromEntries(costumeItems(s).map((i) => [i.slot, i.id]))])); });
+const COST = async (p) => p.evaluate(async () => { const { costumeItems } = await import('./catalog.js'); return Object.fromEntries(['nutcracker', 'frostking', 'pumpkinking', 'gobbler', 'gingerbread'].map((s) => [s, Object.fromEntries(costumeItems(s).map((i) => [i.slot, i.id]))])); });
 for (const vp of [{ width: 1280, height: 800, tag: 'desk' }, { width: 390, height: 844, tag: 'phone' }]) {
   const { p, ctx, errors } = await open({ width: vp.width, height: vp.height });
   const C = await COST(p);
@@ -131,7 +132,7 @@ for (const vp of [{ width: 1280, height: 800, tag: 'desk' }, { width: 390, heigh
   await p.waitForFunction(() => { const s = window.__sq; if (/^(intro|count)$/.test(s.sim?.S.phase)) s.sim.S.time = 0; return s.view?.phase === 'play'; }, null, { timeout: 60000 });
   await p.evaluate(async ([C]) => { const { botAvatar } = await import('./refcore.js'), s = window.__sq, sim = s.sim, step = sim.step;
     window.__pin = { face: 0, gear: [[], [], ['backpack'], [], ['satchel'], ['elfhat'], [], []], balls: false, santa: false };
-    sim.S.ents.filter((e) => e.bot).forEach((e, i) => Object.assign(botAvatar(e.id), [C.frostking, C.nutcracker, C.pumpkinking, C.gobbler][i % 4]));
+    sim.S.ents.filter((e) => e.bot).forEach((e, i) => Object.assign(botAvatar(e.id), [C.frostking, C.nutcracker, C.pumpkinking, C.gobbler, C.gingerbread][i % 5]));
     sim.step = (dt) => { step(dt); const P = window.__pin, S = sim.S, me = S.ents.find((e) => e.peer === s.me.id), row = [me, ...S.ents.filter((e) => e !== me)];
       row.forEach((e, i) => { const x = -4.2 + i * 1.2; if (e === me) { s.ctl.x = x; s.ctl.z = 3.5; s.ctl.vx = s.ctl.vz = 0; s.ctl.face = P.face; }
         e.x = x; e.z = 3.5; e.vx = e.vz = 0; e.face = P.face; if (e.bot) { e.ammo = 0; e.cool = 99; } e.gear = P.gear[i] || []; });
@@ -170,7 +171,7 @@ console.log('5. Turnarounds: each costume front, side and back (the game\'s own 
   const shots = await p.evaluate(async () => {
     const { avatarCharacter } = await import('./tabs.js'), { THREE, lights } = await import('./kit.js'), { DEFAULT_AVATAR, costumeItems } = await import('./catalog.js');
     const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setSize(1200, 520, false); const out = {};
-    for (const set of ['nutcracker', 'frostking', 'pumpkinking', 'gobbler']) {
+    for (const set of ['nutcracker', 'frostking', 'pumpkinking', 'gobbler', 'gingerbread']) {
       const scene = new THREE.Scene(); scene.background = new THREE.Color(0x141b36); lights(scene, { hemi: 1.7, moonI: 1.6 });
       const a = { ...DEFAULT_AVATAR }; for (const i of costumeItems(set)) a[i.slot] = i.id;
       [0, Math.PI / 2, Math.PI].forEach((ry, k) => { const ch = avatarCharacter(a); ch.rotation.y = ry - 0.3; ch.position.x = (k - 1) * 2.2; scene.add(ch); });
@@ -178,7 +179,7 @@ console.log('5. Turnarounds: each costume front, side and back (the game\'s own 
       r.render(scene, cam); out[set] = r.domElement.toDataURL('image/png'); }
     return out; });
   for (const [set, url] of Object.entries(shots)) writeFileSync(`${OUT}/turnaround-${set}.png`, Buffer.from(url.split(',')[1], 'base64'));
-  check(Object.keys(shots).length === 4, 'turnarounds drawn: ' + Object.keys(shots).map((s) => `${OUT}/turnaround-${s}.png`).join(', '));
+  check(Object.keys(shots).length === 5, 'turnarounds drawn: ' + Object.keys(shots).map((s) => `${OUT}/turnaround-${s}.png`).join(', '));
   noErrors(errors, 'turnarounds'); await ctx.close(); }
 
 await browser.close();

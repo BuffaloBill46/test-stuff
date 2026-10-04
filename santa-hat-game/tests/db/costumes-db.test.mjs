@@ -3,7 +3,8 @@
 // one free piece per look slot at its level; save_profile refuses every Nutcracker piece below level 5 and saves the whole
 // costume at level 5 (the Frost King stays locked until 10); the file is safe to run twice; the shop never sells a piece.
 // And 032 (the Halloween pass's Pumpkin King): season items with no level or price, wearable only once owned, safe twice.
-// And 035 (Thanksgiving: the free looks and the pass's Gobbler): the same rules, safe twice.
+// And 035 (Thanksgiving: the free looks and the pass's Gobbler): the same rules, safe twice. And 037 (Christmas: the free
+// looks and the pass's Gingerbread), the same.
 // Run: node costumes-db.test.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -19,6 +20,8 @@ await run('029_costumes.sql'); // twice: safe to re-run
 await run('032_halloween_costume.sql'); await run('032_halloween_costume.sql');
 // 035: the Thanksgiving items (five free looks and the pass's Gobbler), twice: safe to re-run
 await run('035_thanksgiving.sql'); await run('035_thanksgiving.sql');
+// 037: the Christmas items (five free looks and the pass's Gingerbread), twice: safe to re-run
+await run('037_christmas.sql'); await run('037_christmas.sql');
 
 // 1. The database's items = catalog.js, every row (id, slot, name, unlock level, price, season)
 const rows = await db.query('select id, slot, name, unlock_level, price_usd::float8 as price, season from public.items order by id');
@@ -85,5 +88,14 @@ await level(1);
 for (const it of TG) await db.query('insert into public.inventory (profile_id, item_id) values ($1, $2)', [uid, it.id]);
 assert.ok(wears(await save({ ...base, ...outfit('gobbler') }), outfit('gobbler')), 'level 1, owned: the whole Gobbler saves');
 for (const it of TG.filter((i) => !i.set)) assert.ok(wears(await save({ ...base, [it.slot]: it.id }), { [it.slot]: it.id }), `level 1, owned: ${it.id} saves`);
+// the Gingerbread (Christmas pass, 037) and the free Christmas looks, the same way
+const XM = ITEMS.filter((i) => i.season === 'christmas');
+assert.equal(XM.length, 11, 'Christmas: five free looks and the six Gingerbread pieces');
+await level(10);
+for (const it of XM) assert.match((await save({ ...base, [it.slot]: it.id })).refused || '', /isn't unlocked/, `level 10, not owned: ${it.id} refused`);
+await level(1);
+for (const it of XM) await db.query('insert into public.inventory (profile_id, item_id) values ($1, $2)', [uid, it.id]);
+assert.ok(wears(await save({ ...base, ...outfit('gingerbread') }), outfit('gingerbread')), 'level 1, owned: the whole Gingerbread saves');
+for (const it of XM.filter((i) => !i.set)) assert.ok(wears(await save({ ...base, [it.slot]: it.id }), { [it.slot]: it.id }), `level 1, owned: ${it.id} saves`);
 
-console.log(`OK: costumes in the database: items = catalog.js (${rows.length} rows, 029 and 032 run twice); Nutcracker (5) and Frost King (10) each one free piece per slot (${COSTUME_SLOTS.join(', ')}), none for sale; every Nutcracker piece refused at level 4, whole costume saves at 5; Frost King refused at 5 and 9, saves at 10; pieces mix; Pumpkin King (Halloween pass): season pieces with no level or price (items_check rebuilt, still strict for others), refused unowned even at 10, saves owned at 1; the Gobbler and the free Thanksgiving looks (035, run twice) the same; gear_pumpkin kept, not for sale`);
+console.log(`OK: costumes in the database: items = catalog.js (${rows.length} rows, 029 and 032 run twice); Nutcracker (5) and Frost King (10) each one free piece per slot (${COSTUME_SLOTS.join(', ')}), none for sale; every Nutcracker piece refused at level 4, whole costume saves at 5; Frost King refused at 5 and 9, saves at 10; pieces mix; Pumpkin King (Halloween pass): season pieces with no level or price (items_check rebuilt, still strict for others), refused unowned even at 10, saves owned at 1; the Gobbler and the free Thanksgiving looks (035, run twice) the same; the Gingerbread and the free Christmas looks (037, run twice) the same; gear_pumpkin kept, not for sale`);

@@ -43,6 +43,11 @@ for (const id of ['face_gobbler', 'hat_gobbler', 'shirt_gobbler', 'pants_gobbler
   if (ITEMS.find((i) => i.id === id)?.set !== 'gobbler') fail(`${id}: the Thanksgiving pass grants the Gobbler by these ids`);
 for (const id of ['snow_cranberry', 'shirt_pumpkinpie', 'pants_harvestgold', 'snow_mapleleaf', 'shirt_cornhusk'])
   { const it = ITEMS.find((i) => i.id === id); if (it?.season !== 'thanksgiving' || it.set) fail(`${id}: a free Thanksgiving look`); }
+// the Christmas pass's Gingerbread (supabase/037), the same way, and the season's five free looks
+for (const id of ['face_gingerbread', 'hat_gingerbread', 'shirt_gingerbread', 'pants_gingerbread', 'pack_gingerbread', 'snow_gingerbread'])
+  if (ITEMS.find((i) => i.id === id)?.set !== 'gingerbread') fail(`${id}: the Christmas pass grants the Gingerbread by these ids`);
+for (const id of ['snow_candycane', 'shirt_peppermint', 'pants_evergreen', 'snow_silverflake', 'pants_hollyred'])
+  { const it = ITEMS.find((i) => i.id === id); if (it?.season !== 'christmas' || it.set) fail(`${id}: a free Christmas look`); }
 if (ITEMS.some((i) => i.set && i.slot === 'skin')) fail('skin tones are never costume pieces');
 // bots stay plain: no bot ever wears a costume piece (refcore.js botAvatar), checked over 5,000 bot ids
 { const { botAvatar } = await import('../mockups/refcore.js'), BY = new Map(ITEMS.map((i) => [i.id, i]));
