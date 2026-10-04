@@ -16,7 +16,7 @@ insert into public.items (id, slot, name, unlock_level, price_usd, season) value
   ('pants_gingerbread', 'pants', 'Icing Trousers', null, null, 'christmas'),
   ('face_gingerbread', 'face', 'Gingerbread Face', null, null, 'christmas'),
   ('hat_gingerbread', 'hat', 'Icing Cap', null, null, 'christmas'),
-  ('pack_gingerbread', 'pack', 'Candy Cane', null, null, 'christmas'),
+  ('pack_gingerbread', 'pack', 'Big Candy Cane', null, null, 'christmas'),
   ('snow_gingerbread', 'snow', 'Peppermint Swirl', null, null, 'christmas')
 on conflict (id) do update set slot = excluded.slot, name = excluded.name, unlock_level = excluded.unlock_level,
   price_usd = excluded.price_usd, season = excluded.season;

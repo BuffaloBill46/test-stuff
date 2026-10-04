@@ -27,7 +27,10 @@ export const SEASONS = [
   { id: 'thanksgiving', name: 'Thanksgiving', icon: '🦃', start: at9(2026, 10, 31), end: at9(2026, 11, 30), costume: 'Gobbler',
     free: { 2: 'snow_cranberry', 5: 'shirt_pumpkinpie', 9: 'pants_harvestgold', 14: 'snow_mapleleaf', 20: 'shirt_cornhusk' },
     gold: ['face_gobbler', 'hat_gobbler', 'shirt_gobbler', 'pants_gobbler', 'pack_gobbler', 'snow_gobbler'] },
-  { id: 'christmas', name: 'Christmas', icon: '🎄', start: at9(2026, 11, 30), end: at9(2027, 1, 1), costume: null, free: {}, gold: [] },
+  // Christmas (2026-10-03): 5 festive looks free, and the pass's costume, Gingerbread (catalog.js, supabase/037 + 038)
+  { id: 'christmas', name: 'Christmas', icon: '🎄', start: at9(2026, 11, 30), end: at9(2027, 1, 1), costume: 'Gingerbread',
+    free: { 2: 'snow_candycane', 5: 'shirt_peppermint', 9: 'pants_evergreen', 14: 'snow_silverflake', 20: 'pants_hollyred' },
+    gold: ['face_gingerbread', 'hat_gingerbread', 'shirt_gingerbread', 'pants_gingerbread', 'pack_gingerbread', 'snow_gingerbread'] },
 ];
 export const seasonById = (id) => SEASONS.find((s) => s.id === id) || null;
 // The season running at time t, or null (between seasons).

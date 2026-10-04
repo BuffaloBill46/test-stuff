@@ -179,7 +179,7 @@ export const ITEMS = [
   { id: 'pants_gingerbread', slot: 'pants', name: 'Icing Trousers', color: 0xa45a2a, trim: 'gingerbread', set: 'gingerbread', season: 'christmas' },
   { id: 'face_gingerbread', slot: 'face', name: 'Gingerbread Face', face: 'gingerbread', set: 'gingerbread', season: 'christmas' },
   { id: 'hat_gingerbread', slot: 'hat', name: 'Icing Cap', hat: 'stocking', color: 0xd8202e, set: 'gingerbread', season: 'christmas' },
-  { id: 'pack_gingerbread', slot: 'pack', name: 'Candy Cane', pack: 'candycane', color: 0xe8102a, set: 'gingerbread', season: 'christmas' },
+  { id: 'pack_gingerbread', slot: 'pack', name: 'Big Candy Cane', pack: 'candycane', color: 0xe8102a, set: 'gingerbread', season: 'christmas' },
   { id: 'snow_gingerbread', slot: 'snow', name: 'Peppermint Swirl', color: 0xff7f96, set: 'gingerbread', season: 'christmas' },
 ];
 // The costumes (above): what each is called and the level that unlocks every piece, or (a season costume) the season pass that

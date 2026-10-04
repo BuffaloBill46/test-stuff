@@ -26,6 +26,7 @@ await db.pg.exec(readFileSync(new URL('../../supabase/035_thanksgiving.sql', imp
 await db.pg.exec(readFileSync(new URL('../../supabase/037_christmas.sql', import.meta.url), 'utf8'));
 // Thanksgiving's door rewards (036), twice: safe to run twice
 for (let k = 0; k < 2; k++) await db.pg.exec(readFileSync(new URL('../../supabase/036_thanksgiving_rewards.sql', import.meta.url), 'utf8'));
+for (let k = 0; k < 2; k++) await db.pg.exec(readFileSync(new URL('../../supabase/038_christmas_rewards.sql', import.meta.url), 'utf8')); // Christmas's door rewards
 
 const S = seasonAt(); assert.ok(S && S.id === 'halloween', 'the test runs during Halloween (Oct 1–31 2026): ' + S?.id);
 const DAY = dayKey(), DAYS = seasonDays(S);
