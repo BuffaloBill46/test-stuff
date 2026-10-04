@@ -38,6 +38,11 @@ for (const [set, c] of Object.entries(COSTUMES)) {
 }
 for (const id of ['face_pumpkinking', 'hat_pumpkinking', 'shirt_pumpkinking', 'pants_pumpkinking', 'pack_pumpkinking', 'snow_pumpkinking'])
   if (ITEMS.find((i) => i.id === id)?.set !== 'pumpkinking') fail(`${id}: the season pass grants the Pumpkin King by these ids`);
+// the Thanksgiving pass's Gobbler (supabase/035), by the same kind of fixed ids, and the season's five free looks
+for (const id of ['face_gobbler', 'hat_gobbler', 'shirt_gobbler', 'pants_gobbler', 'pack_gobbler', 'snow_gobbler'])
+  if (ITEMS.find((i) => i.id === id)?.set !== 'gobbler') fail(`${id}: the Thanksgiving pass grants the Gobbler by these ids`);
+for (const id of ['snow_cranberry', 'shirt_pumpkinpie', 'pants_harvestgold', 'snow_mapleleaf', 'shirt_cornhusk'])
+  { const it = ITEMS.find((i) => i.id === id); if (it?.season !== 'thanksgiving' || it.set) fail(`${id}: a free Thanksgiving look`); }
 if (ITEMS.some((i) => i.set && i.slot === 'skin')) fail('skin tones are never costume pieces');
 // bots stay plain: no bot ever wears a costume piece (refcore.js botAvatar), checked over 5,000 bot ids
 { const { botAvatar } = await import('../mockups/refcore.js'), BY = new Map(ITEMS.map((i) => [i.id, i]));
