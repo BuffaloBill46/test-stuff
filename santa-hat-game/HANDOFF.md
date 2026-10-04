@@ -185,6 +185,8 @@ between two devices has never been tested from here. Cody and friends testing on
   208 rows repaired, a live match then recorded season progress. LESSONS has the rule. Mainnet reset now clears season tables.
 - Live checks added: `live-pass-test.mjs` (buys the $5 pass on devnet; passed), `live-match-test.mjs` (season progress
   recorded). Player guide has Friends / Season / Weekly sections.
+- FULL BROWSER SUITE run 2026-10-04 (33 tests): green after fixes. Found: published settings were never applied in server mode
+  (my load-order slip, fixed and checked live); weekly/burned/wallet answers now robust; two tests had stale waits/stubs.
 - ALL THREE SEASONS COMPLETE and live in the database: Halloween (Pumpkin King), Thanksgiving Nov 1-30 (The Gobbler; 035/036),
   Christmas Dec 1-Jan 1 (Gingerbread; 037/038). Each: 5 free looks (doors 2/5/9/14/20) + a 6-piece pass costume (doors 3-18).
 
