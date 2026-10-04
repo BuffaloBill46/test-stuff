@@ -1,7 +1,7 @@
 // SHARE A WIN (Cody's list, 2026-10-03): after a run that paid back more than it cost, "Share this win" draws a picture card
 // (the game, what came back, what the run cost, a pool jackpot stamp, the site's address) in the game's own look, then opens
 // the phone's share sheet with the picture, or downloads it on a computer. Only true numbers: what the run sent and cost.
-const GAMES = { big: 'Big Hat', drop: 'Snowball Drop', stocking: 'Stocking Stuffer', spin: 'Santa Hat Spin' };
+const GAMES = { big: 'Big Hat', drop: 'Snowball Drop', stocking: 'Stocking Stuffer' };
 const money = (v) => (v < 1 ? Math.round(v * 100) + '¢' : '$' + v.toFixed(2));
 const SITE = 'santahatgames.com';
 

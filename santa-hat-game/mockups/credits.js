@@ -3,7 +3,7 @@
 // their 1, 5 or 10 roll it auto sends", with no player signature). Game rules only, no graphics.
 // DEMO: the ledger lives in this browser. In the real version it lives ONLY in the database and only the server changes it.
 // Rules:
-//  - One payment buys a RUN: 1 to 100 plays (buttons for 1, 5, 10; any number in the box) of one game at one size (Spin / Snowball Drop: 10¢ or $1; Big Hat: $1).
+//  - One payment buys a RUN: 1 to 100 plays (buttons for 1, 5, 10; any number in the box) of one game at one size (Snowball Drop, Stocking Stuffer: 10¢ or $1; Big Hat: $1).
 //  - The money moves at purchase: 10% burned, the rest (after SANTA's 3% tax) lands in that game's pool right away
 //    (every game: the one shared Game pool, Cody 2026-10-02; it was Spin/Drop: Spin pool, Big Hat: Slots pool).
 //  - The plays are made right after the payment is confirmed (each gets its secret locked then) and play straight away.
@@ -15,20 +15,19 @@
 //   a finished run is paid exactly once, exactly what it won + refunded; an unfinished run is paid nothing.
 import { IN_PER_DOLLAR } from './slots.js';
 
-// kind → the pool it pays, and the sizes it can be played at. Spin's sizes come from the game settings (settings.js
-// applyToGame keeps SIZES.spin in step with the prices spin10 / spin100); Snowball Drop's and Big Hat's are fixed here.
+// kind → the pool it pays, and the sizes it can be played at (fixed here). The retired Santa Hat Spin (kind 'spin') was
+// removed on 2026-10-04; 'spin' as a POOL key (game: 'spin') is the shared Game pool and stays.
 // ONE GAME POOL (Cody, 2026-10-02): every game pays into and out of the shared pool, key 'spin' (shown as "Game pool"). The
 // old 'slots' pool is no longer used by any game. (`game` is the POOL; to tell the games apart, test the kind itself.)
 // Every game entry: 10% of the payment burned, the rest to the Game pool (server/games.js quotes and checks it; the money strip shows it)
 export const GAME_BURN_BPS = 1000;
 export const KINDS = {
-  spin: { game: 'spin', bet: 0.10, name: 'Santa Hat Spin', one: 'spin', many: 'spins' },
   big: { game: 'spin', bet: 1.00, name: 'Big Hat', one: 'pull', many: 'pulls' },
   drop: { game: 'spin', bet: 0.10, name: 'Snowball Drop', one: 'drop', many: 'drops' },
   // Stocking Stuffer (Cody, 2026-10-02) plays from the Game pool too; a "turn" = opening stockings until the first coal
   stocking: { game: 'spin', bet: 0.10, name: 'Stocking Stuffer', one: 'turn', many: 'turns' },
 };
-export const SIZES = { spin: [0.10, 1.00], drop: [0.10, 1.00], big: [1.00], stocking: [0.10, 1.00] };
+export const SIZES = { drop: [0.10, 1.00], big: [1.00], stocking: [0.10, 1.00] };
 export const RUN_SIZES = [1, 5, 10]; // the quick buttons
 // Any run from 1 to MAX_RUN plays can be bought (Cody, 2026-10-01: the custom box under the buttons; database 014 says the same).
 export const MAX_RUN = 100;

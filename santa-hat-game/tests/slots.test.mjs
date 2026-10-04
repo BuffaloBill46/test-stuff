@@ -88,8 +88,7 @@ for (let run = 0; run < 200; run++) {
 if (paused) fail(`${paused} pulls refused: with the top-off the game must never lock`);
 if (!jackpots) fail('no pool jackpot in 4 million pulls: the jackpot check above checked nothing');
 // ONE GAME POOL (Cody, 2026-10-02): Slots plays by the shared pool's rules, the same object as the Drop/Stocking pool's
-{ const { SPIN_RULES } = await import('../mockups/spin.js');
-  if (SPIN_RULES !== POOL_RULES) fail('the Slots and Drop/Stocking pool rules must be ONE object (one shared pool)');
+{ // one shared pool: Snowball Drop and Stocking Stuffer import these same POOL_RULES (spin.js's alias went with the retired Spin)
   const want = { start: 500, skimAt: 1025, skim: 25, topOffBelow: 200, topOffTo: 500, paused: false };
   if (JSON.stringify(POOL_RULES) !== JSON.stringify(want)) fail(`the Game pool rules must be Cody's: ${JSON.stringify(want)}`); }
 ends.sort((a, b) => a - b); jackAmts.sort((a, b) => a - b);

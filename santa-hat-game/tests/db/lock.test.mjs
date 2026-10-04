@@ -37,10 +37,10 @@ hooks.afterQuery = async (q, rows, tx, params) => {
 };
 hooks.beforeCommit = (tx) => { if (seen?.has(tx)) seen.get(tx).commit = ++clock; };
 
-// 8 players, a run of 10 $1 spins each, all settling at once (each player's own plays in order, the players in parallel).
+// 8 players, a run of 10 $1 drops each, all settling at once (each player's own plays in order, the players in parallel).
 async function settleCrowd(tag) {
   const players = []; for (let i = 0; i < 8; i++) players.push(await db.player(W(i).replace('wa11et', tag), 'P' + i));
-  const runs = []; for (const p of players) runs.push({ p, ...(await directRun(db, p, 'spin', 10, 1)) });
+  const runs = []; for (const p of players) runs.push({ p, ...(await directRun(db, p, 'drop', 10, 1)) });
   const before = await pool(); seen = new Map();
   const results = await Promise.all(runs.map(async ({ p, tickets }) => { const out = []; for (const t of tickets) out.push(await games.settle(p, t, newSeed(16)).catch((e) => ({ error: e.message }))); return out; }));
   const plays = [...seen.values()].filter((x) => x.commit), rolledBack = seen.size - plays.length; seen = null; // a refused transaction changed nothing
@@ -81,7 +81,7 @@ console.log(`✓ the check has teeth: with the lock removed, ${n} of 80 plays re
 // ---- 2. Many buys of ONE quote at the same moment --------------------------------------------------------------------
 {
   const p = await db.player(W(8), 'Q');
-  const q = (await db.query(`insert into public.quotes (profile_id, kind, n, bet, usd, santa_raw, price_usd) values ($1, 'spin', 5, 1, 5, 1, $2) returning id`, [p, PRICE]))[0].id;
+  const q = (await db.query(`insert into public.quotes (profile_id, kind, n, bet, usd, santa_raw, price_usd) values ($1, 'drop', 5, 1, 5, 1, $2) returning id`, [p, PRICE]))[0].id;
   const tries = await Promise.allSettled(Array.from({ length: 6 }, (_, i) => db.query('select public.buy_run($1, $2, 1, 0, 0, 0) as id', [q, ('SameQuote' + 'abcdef'[i]).padEnd(88, '5')])));
   assert.equal(tries.filter((t) => t.status === 'fulfilled').length, 1, 'six payments racing for one quote: exactly one buys a run');
   assert.equal(+(await db.query('select count(*) as n from public.runs where profile_id = $1', [p]))[0].n, 1);
@@ -94,9 +94,9 @@ console.log(`✓ the check has teeth: with the lock removed, ${n} of 80 plays re
 // is never refused (that would keep the money and give no plays), so instead prove both runs are paid exactly right.
 {
   const p = await db.player(W(9), 'Two');
-  const q1 = await games.quote(p, 'spin', 10, 1), q2 = await games.quote(p, 'spin', 10, 1);
+  const q1 = await games.quote(p, 'drop', 10, 1), q2 = await games.quote(p, 'drop', 10, 1);
   assert.ok(q1.id && q2.id, 'two quotes before paying either: both are given (the gap this section covers)');
-  const [r1, r2] = await Promise.all([directRun(db, p, 'spin', 10, 1), directRun(db, p, 'spin', 10, 1)]); // bought at the same moment
+  const [r1, r2] = await Promise.all([directRun(db, p, 'drop', 10, 1), directRun(db, p, 'drop', 10, 1)]); // bought at the same moment
   const nos = (await db.query('select play_no from public.plays where profile_id = $1 order by play_no', [p])).map((x) => +x.play_no);
   assert.deepEqual(nos, Array.from({ length: 20 }, (_, i) => i + 1), 'play numbers 1–20, no clash (the per-player lock in buy_run)');
   const tickets = [...r1.tickets, ...r2.tickets].sort(() => Math.random() - 0.5);
@@ -119,7 +119,7 @@ console.log(`✓ the check has teeth: with the lock removed, ${n} of 80 plays re
   // 12 queued payouts (one per run, as finish_run leaves them).
   const ids = [];
   for (let i = 0; i < 12; i++) {
-    const p = await db.player(('Payout' + 'abcdefghjkmn'[i]).padEnd(44, '1'), 'W' + i), { run } = await directRun(db, p, 'spin', 1, 1);
+    const p = await db.player(('Payout' + 'abcdefghjkmn'[i]).padEnd(44, '1'), 'W' + i), { run } = await directRun(db, p, 'drop', 1, 1);
     ids.push(+(await db.query(`insert into public.payouts (run_id, to_wallet, amount_usd, amount_raw, price_usd) values ($1, $2, 2, $3, $4) returning id`, [run, ('Payout' + 'abcdefghjkmn'[i]).padEnd(44, '1'), Math.round(2 / PRICE * DEC), PRICE]))[0].id);
   }
   // A stand-in chain: every transaction it signs is unique; it counts what was SENT for each payout. Sending takes a moment.

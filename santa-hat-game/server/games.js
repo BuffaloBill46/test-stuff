@@ -1,4 +1,4 @@
-// SERVER: the game server's steps for Spin, Snowball Drop and Big Hat with RUNS (Cody, 2026-10-01: buy 1, 5 or 10 plays that
+// SERVER: the game server's steps for Big Hat, Snowball Drop and Stocking Stuffer with RUNS (Cody, 2026-10-01: buy 1, 5 or 10 plays that
 // play straight away; no stored credits; when the run's last play is done its winnings are sent automatically). NOT DEPLOYED.
 // The same game rules as the demo (mockups/*.js), the payment checker (verify.js) and supabase/005_credits_plays.sql.
 //   quote  → pool check, lock a SANTA price for 60 s for n plays at one size
@@ -13,7 +13,6 @@ import { play as dropPlay, canPlay as canDrop, MAX_MULT as DROP_TOP, MAX_MULT_BO
 // Stocking Stuffer (Cody, 2026-10-02): plays from the Game pool; its pay table and jackpot % come from the play's settings
 import { play as stockPlay, canPlay as canStock, topMult as stockTop, BETS as STOCK_SIZES } from '../mockups/stocking.js';
 import { DEFAULT_SETTINGS, build, LIMITS } from '../mockups/settings.js';
-import { spin, canSpin, topMult } from '../mockups/spin.js';
 import { pull, canPull, FEE, MAX_FIXED, poolJackpot } from '../mockups/slots.js';
 import * as fair from '../mockups/fair.js';
 import { NUMS, proofExtras } from '../mockups/house.js';
@@ -25,13 +24,12 @@ import { weeklyAt, ROTATION } from '../mockups/weekly.js';
 
 // The most ONE play can ever pay (jackpot aside), worked out from the prize table the play ran on, never from what a
 // simulation happened to see (Cody, 2026-10-01: "I don't want a hold on a player that wins"). Big Hat: every line at the top
-// line prize + a hat on every square; Spin: the wheel's top result; Snowball Drop: the edge present (25×; the centre is the
+// line prize + a hat on every square; Snowball Drop: the edge present (25×; the centre is the
 // pool jackpot since 2026-10-02); Stocking Stuffer: 7 gifts (50× with Cody's table; 8 gifts is the pool jackpot). A real win
 // can't pass it.
 export function maxPerPlay(cfg, kind, bet) {
   if (kind === 'drop') return DROP_TOP * bet;
   if (kind === 'stocking') return stockTop(cfg.stocking2.pays) * bet;
-  if (kind === 'spin') return topMult(cfg.wheel) * bet;
   const m = cfg.machine; return (m.lines.length * MAX_FIXED(m) / m.bet + m.reels * m.rows * (m.hatBonus || 0)) * bet;
 }
 // The most ONE settled play may pay, from what it recorded: a refused play its price; a POOL JACKPOT its recorded share of the
@@ -57,9 +55,9 @@ const DEC = 1e6;
 
 // mint: which token is SANTA here (defaults to real SANTA; set to the test token on devnet, e.g. the SANTA_MINT secret).
 // cluster: the network the page must sign on ('mainnet' | 'devnet'); it goes in every quote with the wallet that must pay.
-// Games that can no longer be bought (Cody, 2026-10-01: Santa Hat Spin removed, "not very fun"). Its code stays; runs already
-// bought still finish and pay. Tests that exercise the Spin code pass retired: [] on purpose.
-export const RETIRED = ['spin'];
+// Games that can no longer be bought (none now). Santa Hat Spin was retired here (2026-10-01) and then removed altogether
+// (Cody, 2026-10-04; the live database never had a Spin run): its kind is unknown, so it's refused as an unknown game.
+export const RETIRED = [];
 export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f = fair, mint = MINT, cluster = 'mainnet', retired = RETIRED }) {
   const row = async (q, p) => (await db.query(q, p))[0];
   // Game settings (Cody's admin screen): the newest version for new plays; each play settles on the version it started with.
@@ -80,11 +78,11 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   // Pools hold SANTA (Cody): the game rules work in dollars, so a pool is valued at the live price for each decision.
   const poolState = (r, price) => ({ pool: (+r.santa_raw / DEC) * price, treasury: 0, rules: r.rules, prepaid: true });
   const toRaw = (usd, price) => Math.round((usd / price) * DEC);
-  // The sizes each game can be played at under these settings (Spin's come from the admin prices).
-  const sizesFor = (kind, cfg) => (kind === 'spin' ? [cfg.prices.spin10, cfg.prices.spin100] : kind === 'drop' ? DROP_SIZES : kind === 'stocking' ? STOCK_SIZES : [cfg.prices.big]);
+  // The sizes each game can be played at under these settings.
+  const sizesFor = (kind, cfg) => (kind === 'drop' ? DROP_SIZES : kind === 'stocking' ? STOCK_SIZES : [cfg.prices.big]);
   // Every game: a play starts only if the Game pool (after a top-off) covers its biggest FIXED prize (Big Hat $100, Stocking
   // Stuffer 50×, Snowball Drop 25×); the top-off point ($200) covers them all. The pool jackpots are a share of the pool.
-  const canTake = (kind, state, bet, cfg) => (kind === 'drop' ? canDrop(state, bet) : kind === 'stocking' ? canStock(state, bet, cfg.stocking2.pays) : kind === 'spin' ? canSpin(state, bet, cfg.wheel) : canPull(state, { ...cfg.machine, bet }));
+  const canTake = (kind, state, bet, cfg) => (kind === 'drop' ? canDrop(state, bet) : kind === 'stocking' ? canStock(state, bet, cfg.stocking2.pays) : canPull(state, { ...cfg.machine, bet }));
 
   // A price for a run of n plays (1 to 100) of `kind` at size `bet`. Refused up front if the pool can't take a play now,
   // or if this player's last run isn't finished, so a payment is never taken for plays that would be refused.
@@ -210,7 +208,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
         state = poolState(p, price);
         const rand = fair.randFrom(await f.numbers(pl.secret, playerSeed, +pl.play_no, NUMS));  // 4. the player's number goes in
         const cfg = await cfgFor(+pl.settings_version), bet = +pl.bet;                         // the play's own settings and price
-        r = pl.kind === 'drop' ? dropPlay(state, bet, rand, undefined, cfg.drop.jackpotPct) : pl.kind === 'stocking' ? stockPlay(state, bet, rand, undefined, cfg.stocking2.pays, cfg.stocking2.jackpotPct) : pl.kind === 'spin' ? spin(state, bet, rand, undefined, cfg.wheel) : pull(state, { ...cfg.machine, bet }, rand);
+        r = pl.kind === 'drop' ? dropPlay(state, bet, rand, undefined, cfg.drop.jackpotPct) : pl.kind === 'stocking' ? stockPlay(state, bet, rand, undefined, cfg.stocking2.pays, cfg.stocking2.jackpotPct) : pull(state, { ...cfg.machine, bet }, rand);
       } catch (e) { await refundPlay(t, pl.id, +pl.bet, price); return withRun({ failed: true, why: e.message, refunded: +pl.bet }); }
       if (r.paused) { await refundPlay(t, pl.id, +pl.bet, price); return withRun({ refused: true, stopped: !!r.stopped, refunded: +pl.bet }); }
       // Every movement in exact SANTA at the run's locked price; the pool changes by exactly these amounts.
@@ -219,7 +217,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
       const poolDelta = topRaw - skimRaw - payRaw, treasuryDelta = Math.round(skimRaw * (1 - FEE)) - Math.round(topRaw / (1 - FEE));
       // a pool jackpot records the Game pool at that moment and its %, so it re-checks (and the payout cap re-works it) exactly
       const jp = r.jackpot ? { jackpot: true, pool: r.jackpotPool, pct: r.pct } : {};
-      const result = pl.kind === 'drop' ? { path: r.path, bin: r.bin, mult: r.mult, board: r.board, ...jp } : pl.kind === 'stocking' ? { opened: r.opened, found: r.found, coal: r.coal, mult: r.mult, board: r.board, ...jp } : pl.kind === 'spin' ? { slice: r.slice, ...(r.bonusSlice !== undefined ? { bonusSlice: r.bonusSlice } : {}), mult: r.mult } : { stops: r.stops, jackpot: r.jackpot, wins: r.wins.length, hats: r.hats, ...jp };
+      const result = pl.kind === 'drop' ? { path: r.path, bin: r.bin, mult: r.mult, board: r.board, ...jp } : pl.kind === 'stocking' ? { opened: r.opened, found: r.found, coal: r.coal, mult: r.mult, board: r.board, ...jp } : { stops: r.stops, jackpot: r.jackpot, wins: r.wins.length, hats: r.hats, ...jp };
       await t.query('select public.settle_play($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',  // skims/top-offs queued as real transfers
         [pl.id, playerSeed, JSON.stringify(result), Math.round(r.pay * 100) / 100, payRaw, price, poolDelta, treasuryDelta, wallet, 0, skimRaw, topRaw]);
       return withRun({ r, payRaw, poolDelta, price, poolUsd: state.pool, proof: { kind: pl.kind, bet: +pl.bet, commit: pl.commit, secret: pl.secret, playerSeed, playNo: +pl.play_no, settingsVersion: +pl.settings_version, ...proofExtras(pl.kind, r) } });  // revealed
@@ -232,7 +230,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   // one finished winning play → a winners-list row (the exact prize where the result has a multiplier: Stocking Stuffer's
   // 1.75 × 10¢ = 17.5¢ is stored as 18¢, but the SANTA sent is the exact 17.5¢)
   const toWinner = (w) => { const bet = +w.bet || KINDS[w.kind].bet, pay = typeof w.result?.mult === 'number' ? w.result.mult * bet : +w.pay;
-      return { game: w.kind === 'big' ? 'slots' : w.kind === 'drop' ? (bet >= 1 ? 'drop100' : 'drop10') : w.kind === 'stocking' ? (bet >= 1 ? 'stock100' : 'stock10') : w.kind === 'spin' ? (bet >= 1 ? 'spin100' : 'spin10') : w.kind, name: w.name, amount: pay, gainPct: ((pay - bet) / bet) * 100, at: new Date(w.settled_at).getTime(),
+      return { game: w.kind === 'big' ? 'slots' : w.kind === 'drop' ? (bet >= 1 ? 'drop100' : 'drop10') : w.kind === 'stocking' ? (bet >= 1 ? 'stock100' : 'stock10') : w.kind, name: w.name, amount: pay, gainPct: ((pay - bet) / bet) * 100, at: new Date(w.settled_at).getTime(),
         note: w.result?.jackpot ? 'pool jackpot' : w.kind === 'stocking' && w.result?.found ? `${w.result.found} gifts · ${w.result.mult}×` : w.result?.mult ? `${w.result.mult}×` : '', big: pay >= 10 * bet }; };
   async function winners(limit = 30) {
     if (winnersCache.list && Date.now() - winnersCache.at < 10_000) return winnersCache.list; // public: cached 10 s

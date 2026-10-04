@@ -139,7 +139,7 @@ function KINDSOK(m) { return m.KINDS.stocking?.game === 'spin' && m.KINDS.big?.g
 
 // 8. The shared Game pool with Stocking Stuffer and Snowball Drop playing from it (10¢ and $1). Asserted on every play: never
 //    negative, never pays past what the pool holds, never refused (the top-off point covers the 50× top fixed prize).
-{ const { play: dropPlay } = await import('../mockups/plinko.js'), { SPIN_RULES } = await import('../mockups/spin.js'), { IN_PER_DOLLAR } = await import('../mockups/slots.js');
+{ const { play: dropPlay } = await import('../mockups/plinko.js'), { POOL_RULES: SPIN_RULES, IN_PER_DOLLAR } = await import('../mockups/slots.js'); // the shared pool's rules
   const rand = rng(77); let refused = 0, tops = 0, low = Infinity, stockings = 0, jackpots = 0;
   for (let run = 0; run < 200; run++) {
     const st = { pool: SPIN_RULES.start, treasury: 0 };

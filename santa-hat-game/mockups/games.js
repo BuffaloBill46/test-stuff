@@ -4,7 +4,7 @@ import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount, po
 import { JP as DROP_JP } from './plinko.js';
 import { JP as STOCK_JP } from './stocking.js';
 import { createMachine, symbolImages } from './slots3d.js';
-import { initSpin, showSpin, resetSpin, spinState, refreshSpin, showResult } from './spinui.js';
+import { poolState, savePool, resetPool, showResult } from './gamepool.js';
 import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js';
 import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js';
 import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js';
@@ -18,7 +18,6 @@ import { refreshWallet } from './walletline.js';
 import { weekStart } from './gameclock.js';
 import { KINDS, SIZES } from './credits.js';
 import { initRunPick, priceLabel } from './runpick.js';
-import { topMult } from './spin.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -26,23 +25,21 @@ const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);
 const M = MACHINES.big, KEY = 'sh_slots_demo3', DEMO_START = 100, MAX_WINNERS = 30;
 const store = { get() { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } }, set(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {} } };
 
-// Game icons for the shared winners list (Slots now; the two Spin sizes when Spin is built).
+// Game icons for the shared winners list.
 const ICONS = {
   slots: '<svg viewBox="0 0 24 24" aria-label="Slots"><path d="M4 20h16l-2-3H6z" fill="#f5f1e8" stroke="#0c0f1a"/><path d="M6 17c1-7 3-12 7-13 3 1 5 4 6 7l-2 1c-1-2-2-4-4-5-2 1-3 5-4 10z" fill="#cf3128" stroke="#0c0f1a"/><circle cx="18" cy="13" r="2" fill="#f5f1e8" stroke="#0c0f1a"/></svg>',
-  spin10: '<svg viewBox="0 0 24 24" aria-label="Spin 10¢"><circle cx="12" cy="12" r="9" fill="#1b2344" stroke="#ffbe5c" stroke-width="2"/><path d="M12 3v18M3 12h18M6 6l12 12M18 6L6 18" stroke="#ffbe5c"/></svg>',
-  spin100: '<svg viewBox="0 0 24 24" aria-label="Spin $1"><circle cx="12" cy="12" r="9" fill="#cf3128" stroke="#ffd95c" stroke-width="2"/><path d="M12 3v18M3 12h18M6 6l12 12M18 6L6 18" stroke="#ffd95c"/></svg>',
 };
 ICONS.drop10 = ICONS.drop100 = '<svg viewBox="0 0 24 24" aria-label="Snowball Drop"><circle cx="12" cy="12" r="8" fill="#f5f1e8" stroke="#0c0f1a" stroke-width="2"/><path d="M8 10l3 2 4-3" stroke="#c9d6ee" stroke-width="2" fill="none"/></svg>';
 ICONS.stock10 = ICONS.stock100 = '<svg viewBox="0 0 24 24" aria-label="Stocking Stuffer"><path d="M8 4h8v9l4 2.5c1.5 1 1 4-1 4.5H11c-2 0-3-1.5-3-3.5z" fill="#cf3128" stroke="#0c0f1a" stroke-width="1.6"/><rect x="6.5" y="2.5" width="11" height="4.5" rx="1" fill="#f5f1e8" stroke="#0c0f1a" stroke-width="1.6"/></svg>';
-const GAME_NAMES = { slots: 'Slots', spin10: 'Spin 10¢', spin100: 'Spin $1', drop10: 'Snowball Drop 10¢', drop100: 'Snowball Drop $1', stock10: 'Stocking Stuffer 10¢', stock100: 'Stocking Stuffer $1' };
+const GAME_NAMES = { slots: 'Slots', drop10: 'Snowball Drop 10¢', drop100: 'Snowball Drop $1', stock10: 'Stocking Stuffer 10¢', stock100: 'Stocking Stuffer $1' };
 
 let inited = false, view = null, busy = false, nameOf = () => 'You';
 const saved = store.get();
 const state = saved && Number.isFinite(saved.pool) && Number.isFinite(saved.bal)
   ? { treasury: 0, winners: [], ...saved } : { pool: POOL_RULES.start, bal: DEMO_START, treasury: 0, winners: [] };
-// ONE GAME POOL (Cody, 2026-10-02): Big Hat plays from the shared pool (spinui.js spinState(), the same one Snowball Drop and
+// ONE GAME POOL (Cody, 2026-10-02): Big Hat plays from the shared pool (gamepool.js poolState(), the same one Snowball Drop and
 // Stocking Stuffer use), so the Slots readouts show that pool. state.pool (the old demo Slots pool) is no longer played from.
-const shared = () => spinState();
+const shared = () => poolState();
 let shownPool = shared().pool; // readouts update when the reels land, so a result isn't spoiled early
 const test = { run: undefined }; // tests only: the next run's pulls, one each ('JACKPOT' or an array of 5 reel stops)
 
@@ -149,7 +146,7 @@ function renderWinners() {
     return `<li class="${w.big ? 'big' : ''}">${winTab === 'week' ? `<span class="rank">${i + 1}</span>` : ''}${ICONS[w.game] || ''}<span class="who">${esc(w.name)}<small>${GAME_NAMES[w.game] || w.game} · ${when}${w.note ? ' · ' + esc(w.note) : ''}</small></span><b>${money(w.amount)}</b><span class="gain">+${Math.round(w.gainPct).toLocaleString()}%</span></li>`;
   }).join('');
 }
-// Shared by every Santa Hat game: `game` is 'slots', 'spin10', 'spin100', 'drop10', 'drop100', 'stock10' or 'stock100'.
+// Shared by every Santa Hat game: `game` is 'slots', 'drop10', 'drop100', 'stock10' or 'stock100'.
 // Server mode: the list is everyone's recent wins, from the server.
 async function loadWinners() {
   if (!SERVER) return;
@@ -190,7 +187,7 @@ async function showPull(p, i, n) {
   res.textContent = `Spinning… result locked (${short(p.proof.commit)}).`;
   const go = view.spin(r.stops, r); if (fast) view.slam(); await go;
   if (p.poolUsd !== undefined) shared().pool = p.poolUsd; // server mode: the server's pool
-  shownPool = shared().pool; refreshSpin(); refreshDrop(); refreshStocking(); // the other games show the same pool
+  shownPool = shared().pool; savePool(); refreshDrop(); refreshStocking(); // the other games show the same pool
   let hold = 0; // a bigger win holds the screen a little longer before the next pull (celebrate.js)
   const lines = r.wins.length, hatsTxt = r.hats ? `${r.hats} Santa Hat${r.hats > 1 ? 's' : ''} +${money(r.hatPay)}` : '';
   if (r.jackpot) {
@@ -225,7 +222,7 @@ export async function initGames(opts = {}) {
   // the winners list's tabs: Latest / Biggest this week
   document.querySelectorAll('[data-wins]').forEach((b) => b.addEventListener('click', () => { winTab = b.dataset.wins; document.querySelectorAll('[data-wins]').forEach((x) => x.setAttribute('aria-selected', String(x === b))); renderWinners(); }));
   if (opts.name) nameOf = opts.name;
-  // Server mode: draw the machine, wheel and prices from the published settings (Cody's admin screen), not the built-in ones.
+  // Server mode: draw the machine and prices from the published settings (Cody's admin screen), not the built-in ones.
   if (SERVER && (await settingsReady)) labelsFromSettings();
   view = createMachine($('#slots .machine canvas'));
   document.querySelectorAll('#slots [data-run]').forEach((b) => b.addEventListener('click', () => startRun(+b.dataset.run)));
@@ -245,20 +242,19 @@ export async function initGames(opts = {}) {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#slots .machine').classList.remove('max'); });
   $('#demoReset').addEventListener('click', () => {
     if (busy) return;
-    Object.assign(state, { pool: POOL_RULES.start, bal: DEMO_START, treasury: 0 }); resetSpin(); shownPool = shared().pool; store.set(state); render(); resetDrop(); resetStocking(); resetCredits();
+    Object.assign(state, { pool: POOL_RULES.start, bal: DEMO_START, treasury: 0 }); resetPool(); shownPool = shared().pool; store.set(state); render(); resetDrop(); resetStocking(); resetCredits();
     $('#slots .machine .res').textContent = 'Pull the pom-pom, or tap the machine. Tap again to stop the reels early.';
   });
   paytable(); facts(); render();
-  // Santa Hat Spin shares the demo balance and the Recent winners list.
+  // Snowball Drop shares the demo balance and the Recent winners list.
   const wallet = { get: () => state.bal, add: (x) => { state.bal += x; store.set(state); $('#demoBal').textContent = money(state.bal); } };
-  initSpin({ wallet, addWinner });
   // Snowball Drop and Stocking Stuffer play from the shared Game pool too (Cody, 2026-10-02): a play on any card updates every
   // card's pool readout (Big Hat's waits while its reels are still turning, so a pull's result isn't given away early).
-  const sp = spinState(), poolMoved = (usd) => { if (usd !== undefined) sp.pool = usd; refreshSpin(); refreshDrop(); refreshStocking(); if (!busy) { shownPool = sp.pool; render(); } };
+  const sp = poolState(), poolMoved = (usd) => { if (usd !== undefined) sp.pool = usd; savePool(); refreshDrop(); refreshStocking(); if (!busy) { shownPool = sp.pool; render(); } };
   initDrop({ wallet, addWinner, pool: () => sp.pool, onPool: poolMoved });
   initStocking({ addWinner, pool: () => sp.pool, onPool: poolMoved });
   // Runs: buying moves the entry money into that game's pool straight away, so the pool readouts update on purchase.
-  initCredits({ wallet, pools: { slots: state, spin: spinState() }, onChange: () => { shownPool = shared().pool; store.set(state); render(); refreshSpin(); refreshDrop(); refreshStocking(); refreshWallet(); } }); // refreshWallet: my wallet under the games (at most every 8 s)
+  initCredits({ wallet, pools: { slots: state, spin: poolState() }, onChange: () => { shownPool = shared().pool; store.set(state); render(); savePool(); refreshDrop(); refreshStocking(); refreshWallet(); } }); // refreshWallet: my wallet under the games (at most every 8 s)
   refreshCredits();
   // A payment from an earlier visit the server never received (closed tab, dropped network): hand it over and play it now.
   if (SERVER) resumePaid().then((r) => { if (r) { console.info('finished a paid run from an earlier visit', r.run); refreshCredits(); } }).catch(() => {});
@@ -287,19 +283,13 @@ async function showMarket() {
 }
 
 function labelsFromSettings() {
-  const c = (v) => (v < 1 ? Math.round(v * 100) + '¢' : '$' + (Number.isInteger(v) ? v : v.toFixed(2))), top = topMult(); // the wheels as published (applyToGame updates them in place)
-  for (const [cls, i] of [['chip10', 0], ['chip100', 1]]) {
-    // the Spin balance's two sizes, as published
-    const b = $('#spin .' + cls), bet = SIZES.spin[i]; b.dataset.bet = bet; $('b', b).textContent = c(bet); $('small', b).textContent = `win up to ${c(bet * top)}`;
-  }
+  const c = (v) => (v < 1 ? Math.round(v * 100) + '¢' : '$' + (Number.isInteger(v) ? v : v.toFixed(2)));
   $('#slots .machine header em').textContent = `${money(M.bet)} a pull · 5×5 · 11 lines`;
   document.querySelectorAll('#slots [data-run]').forEach((x) => { $('small', x).textContent = priceLabel(M.bet * +x.dataset.run); }); // each button's price (incl. the custom one)
   document.querySelectorAll('.hatc').forEach((e) => { e.textContent = c(M.hatBonus * M.bet); }); // the per-hat bonus as published
-  $('#spin .wheelcard header em').textContent = `${c(SIZES.spin[0])} or ${c(SIZES.spin[1])} a spin · up to ${top}×`;
 }
 
 export async function showGames(on, opts) {
   if (on) await initGames(opts);
-  // Spin is removed from the page (Cody, 2026-10-01): its wheel is never drawn; its pool lives on as the Drop pool.
-  view?.setActive(on); showSpin(false); showDrop(on); showStocking(on);
+  view?.setActive(on); showDrop(on); showStocking(on);
 }

@@ -1,18 +1,17 @@
 // The payout safety cap must NEVER freeze a real win (Cody, 2026-10-01: "I don't want a hold on a player that wins").
 // The cap is n × maxPerPlay (server/games.js), worked out from the prize table. This checks, as assertions, that no play
-// the games can produce pays more than maxPerPlay: every Spin and Snowball Drop result exactly, the worst Big Hat grids
+// the games can produce pays more than maxPerPlay: every Snowball Drop result exactly, the worst Big Hat grids
 // (every square the same symbol), 300,000 random pulls, and settings Cody might publish (bigger prizes, a $2 price).
 import assert from 'node:assert/strict';
 import { maxPerPlay, playCap } from '../server/games.js';
 import { DEFAULT_SETTINGS, build } from '../mockups/settings.js';
 import { SYMBOLS, evaluate, pull } from '../mockups/slots.js';
-import { odds } from '../mockups/spin.js';
 import { PAYS } from '../mockups/plinko.js';
 
 const settingsList = [DEFAULT_SETTINGS];
-{ const s = structuredClone(DEFAULT_SETTINGS); s.prices.big = 2; s.prices.spin100 = 2; s.big.hatBonus = 0.1;
+{ const s = structuredClone(DEFAULT_SETTINGS); s.prices.big = 2; s.big.hatBonus = 0.1;
   for (const p of Object.values(s.big.pays)) for (const k of Object.keys(p)) p[k] *= 3; // much bigger prizes
-  s.spin.main = { 0: 18, 1: 12, 2: 6, star: 4 }; s.spin.bonus = { 3: 8, 4: 3, 5: 1 }; settingsList.push(s); }
+  settingsList.push(s); }
 
 let checked = 0, closest = 0;
 for (const s of settingsList) {
@@ -35,14 +34,12 @@ for (const s of settingsList) {
     }
   }
   for (const bet of [0.1, 1, 2]) {
-    const top = Math.max(...Object.keys(odds(cfg.wheel)).map(Number)) * bet; // every Spin result, both wheels
-    assert.ok(top <= maxPerPlay(cfg, 'spin', bet) + 1e-9, 'Spin\'s top result is within the cap'); checked++;
     const drop = Math.max(...PAYS) * bet;
     assert.ok(drop <= maxPerPlay(cfg, 'drop', bet) + 1e-9, 'Snowball Drop\'s edge present is within the cap'); checked++;
   }
 }
-// And the cap is not loose for Spin and Drop: it's exactly their top prize.
-assert.equal(maxPerPlay(build(DEFAULT_SETTINGS), 'spin', 1), 5); assert.equal(maxPerPlay(build(DEFAULT_SETTINGS), 'drop', 1), 25); // board 3: the 25× edge (the centre is the pool jackpot)
+// And the cap is not loose for Drop: it's exactly its top prize.
+assert.equal(maxPerPlay(build(DEFAULT_SETTINGS), 'drop', 1), 25); // board 3: the 25× edge (the centre is the pool jackpot)
 assert.equal(maxPerPlay(build(DEFAULT_SETTINGS), 'stocking', 1), 50, 'Stocking Stuffer: 7 gifts, 50× (8 gifts is the pool jackpot)');
 // ONE GAME POOL + POOL JACKPOTS (Cody, 2026-10-02). finishRun's cap is the sum of playCap over the run's plays. Proven:
 //  - every real Stocking Stuffer and Snowball Drop result (fixed prizes and pool jackpots, at many pool sizes, both sizes) is

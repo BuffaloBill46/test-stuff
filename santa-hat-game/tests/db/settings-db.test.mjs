@@ -19,30 +19,32 @@ const sign = async (settings) => { const message = adminMessage({ action: 'set-s
 const S = () => { const s = structuredClone(DEFAULT_SETTINGS); delete s.version; return s; };
 
 // Unsafe changes are refused and store nothing.
-let bad = S(); bad.spin.main = { 0: 5, 1: 10, 2: 15, star: 10 };
-assert.match((await admin.run(await sign(bad))).error, /Spin would pay back/);
+let bad = S(); bad.big.hatBonus = 0.2;
+assert.match((await admin.run(await sign(bad))).error, /Big Hat would pay back/);
 assert.equal((await server.settings()).version, 0);
 
-// A run is bought on version 0...
-const early = { ticket: (await directRun(db, me, 'spin', 1, 1, 0)).tickets[0] };
-// ...then Cody changes the wheel (fewer no-wins) and the Big Hat jackpot odds, and doubles the $1 spin's price.
-const s1 = S(); s1.spin.main = { 0: 18, 1: 12, 2: 6, star: 4 }; s1.spin.bonus = { 3: 8, 4: 3, 5: 1 }; s1.big.jackpotOdds = 10000; s1.prices.spin100 = 2;
+// (Santa Hat Spin, this test's old example, was removed 2026-10-04: Big Hat shows the same versioning.)
+// A Big Hat run is bought on version 0...
+const early = { ticket: (await directRun(db, me, 'big', 1, 1, 0)).tickets[0] };
+// ...then Cody changes the Big Hat jackpot odds and doubles the pull price to $2.
+const s1 = S(); s1.big.jackpotOdds = 10000; s1.prices.big = 2;
+const sameResult = (c, r) => (r.jackpot ? !!c.outcome.jackpot : JSON.stringify(c.outcome.stops) === JSON.stringify(r.stops));
 const saved = await admin.run(await sign(s1)); assert.ok(saved.ok, saved.error);
-assert.equal(saved.version, 1); console.log(`saved settings v1: Spin payback ${(saved.report.spin.payback * 100).toFixed(1)}%, real win ${(saved.report.spin.realWin * 100).toFixed(1)}%`);
-// The early play still settles on version 0 (the change never lands mid-play), and re-checks on version 0's wheel.
+assert.equal(saved.version, 1); console.log(`saved settings v1: Big Hat pays back ${(saved.report.big.payback * 100).toFixed(1)}%, top line prize $${saved.report.big.topPrize}`);
+// The early play still settles on version 0 (the change never lands mid-play), and re-checks on version 0's reels.
 await new Promise((r) => setTimeout(r, 10));
 const e = await server.settle(me, early.ticket, newSeed(16));
 assert.equal(e.proof.settingsVersion, 0);
 const v0 = build(DEFAULT_SETTINGS), v1 = build({ ...s1, version: 1 });
-assert.equal((await check(e.proof, v0)).outcome.mult, e.r.mult, 'the early play re-checks on version 0');
+assert.ok(sameResult(await check(e.proof, v0), e.r), 'the early play re-checks on version 0'); assert.equal(e.proof.bet, 1, 'at the $1 it was bought at');
 // New plays run on version 1 (the cache refreshes within 15 s; a fresh server sees it at once).
 const fresh = createGameServer({ retired: [], db, chain: {}, livePrice: async () => ({ usd: PRICE }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: {} });
 assert.equal((await fresh.settings()).version, 1);
-assert.match((await fresh.quote(me, 'spin', 1, 1)).error, /size/, 'after the change, $1 is no longer a Spin size');
-const o = { ticket: (await directRun(db, me, 'spin', 1, 2, 1)).tickets[0] }, later = await fresh.settle(me, o.ticket, newSeed(16));
-assert.equal(later.proof.settingsVersion, 1); assert.equal((await check(later.proof, v1)).outcome.mult, later.r.mult, 'a new play re-checks on version 1');
-assert.equal(later.r.bet, 2, 'the new $2 spin');
-assert.equal((await fresh.quote(me, 'spin', 5, 2)).usd, 10, 'quotes use the new price ($2 × 5)');
+assert.match((await fresh.quote(me, 'big', 1, 1)).error, /size/, 'after the change, $1 is no longer the Big Hat price');
+const o = { ticket: (await directRun(db, me, 'big', 1, 2, 1)).tickets[0] }, later = await fresh.settle(me, o.ticket, newSeed(16));
+assert.equal(later.proof.settingsVersion, 1); assert.ok(sameResult(await check(later.proof, v1), later.r), 'a new play re-checks on version 1');
+assert.equal(later.proof.bet, 2, 'the new $2 pull');
+assert.equal((await fresh.quote(me, 'big', 5, 2)).usd, 10, 'quotes use the new price ($2 × 5)');
 // A replayed settings signature is refused.
 assert.match((await admin.run(await sign(s1))).error || '', /^$/, 'a fresh signature on the same settings is fine');
 const again = await sign(S()); assert.ok((await admin.run(again)).ok); assert.equal((await admin.run(again)).error, 'this signed message was already used');

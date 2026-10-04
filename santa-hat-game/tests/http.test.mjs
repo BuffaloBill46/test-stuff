@@ -17,7 +17,7 @@ assert.equal((await json(await req({ action: 'settle', ticket: '7', seed: 'ab12c
 assert.equal((await json(await req({ action: 'nope' }))).status, 400);
 assert.equal((await json(await req({ action: 'credits' }))).status, 400, 'no credits any more (runs: Cody)');
 assert.equal((await json(await req({ action: 'open', kind: 'big' }))).status, 400, 'no separate open: the run\'s plays come with the payment');
-for (const [body, action] of [[{ action: 'quote', kind: 'spin', n: 5, bet: 0.1 }, 'quote'], [{ action: 'buy', quote: 'q', signature: 's' }, 'buy'], [{ action: 'settle', ticket: '7', seed: 'ab12cd34' }, 'settle']]) {
+for (const [body, action] of [[{ action: 'quote', kind: 'drop', n: 5, bet: 0.1 }, 'quote'], [{ action: 'buy', quote: 'q', signature: 's' }, 'buy'], [{ action: 'settle', ticket: '7', seed: 'ab12cd34' }, 'settle']]) {
   const out = await json(await req(body)); assert.equal(out.status, 200); assert.deepEqual(out.body, { ok: action });
   assert.equal(calls.at(-1)[0], action); assert.equal(calls.at(-1)[1], 'profile-1', 'always the signed-in player, never one named in the request');
 }

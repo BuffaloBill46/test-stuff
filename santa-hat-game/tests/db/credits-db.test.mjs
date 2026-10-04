@@ -32,7 +32,7 @@ await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin'
 
 // Buying: a quote, then a payment → a run of n plays made at once ('spent': no secret yet). Nothing can buy twice.
 const Q = async (kind, n, bet, raw = 5876820000) => (await one(`insert into public.quotes (profile_id, kind, n, bet, usd, santa_raw, price_usd) values ($1, $2, $3, $4, $5, $6, 0.0008508) returning id`, [uid, kind, n, bet, n * bet, raw])).id;
-const q = await Q('spin', 5, 1); // five $1 spins
+const q = await Q('drop', 5, 1); // five $1 drops
 const run = +(await one(`select public.buy_run($1, 'sig1', 5876820000, 570050000, 5147000000) as id`, [q])).id;
 const plays = (await db.query(`select id, state, bet, secret from public.plays where run_id = $1 order by play_no`, [run])).rows;
 assert.equal(plays.length, 5, 'the run\'s 5 plays exist right after the payment');

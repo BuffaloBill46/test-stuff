@@ -26,7 +26,7 @@ assert.match((await server.buy(emailOnly, '00000000-0000-0000-0000-000000000000'
 assert.match((await server.quote(emailOnly, 'big', 1, 1)).error, /needs a linked wallet/, 'no quote, so no payment, without a wallet');
 assert.equal((await db.query('select count(*)::int as n from public.quotes where profile_id = $1', [emailOnly]))[0].n, 0);
 // 4. Quote spam stops at the hourly limit.
-let last; for (let i = 0; i < QUOTES_PER_HOUR + 3; i++) last = await server.quote(me, 'spin', 1, 0.1);
+let last; for (let i = 0; i < QUOTES_PER_HOUR + 3; i++) last = await server.quote(me, 'drop', 1, 0.1);
 assert.match(last.error, /too many price quotes/);
 assert.equal((await db.query('select count(*)::int as n from public.quotes where profile_id = $1', [me]))[0].n, QUOTES_PER_HOUR);
 // 5. The public winners list is cached (10 s), so hammering it doesn't hammer the database.

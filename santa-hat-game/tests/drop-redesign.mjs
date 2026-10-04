@@ -4,7 +4,7 @@
 // 10¢ drops against the REAL pool rules (Spin pool: starts $50, $25 skim at $175, top-off to $50 below $10, a drop only when
 // the pool covers its top prize). Odds come from a table (the server picks the slot; the path is drawn to it), because on a
 // real 50/50 peg board the centre is the MOST likely slot. Run: node drop-redesign.mjs
-import { SPIN_RULES } from '../mockups/spin.js';
+import { POOL_RULES as SPIN_RULES } from '../mockups/slots.js'; // the shared Game pool's rules
 import { IN_PER_DOLLAR } from '../mockups/slots.js';
 import { PAYS, WAYS, TOTAL } from '../mockups/plinko.js';
 

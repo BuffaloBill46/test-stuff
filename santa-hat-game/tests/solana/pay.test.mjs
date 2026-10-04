@@ -26,7 +26,7 @@ assert.equal(await run(admin, [T22.getMintToInstruction({ mint, token: await ata
 const bal = async (o) => Number(T22.decodeToken(svm.getAccount(await ata(o))).data.amount);
 
 // A quote exactly as the server sends it (server/games.js → quote): 10 $1 spins at $0.00085.
-const quote = { id: 'q1', kind: 'spin', n: 10, usd: 10, santaRaw: Math.round(10 / 0.00085 * 1e6), mint, pool: pool.address, fee: FEE, burnBps: 1000, expiresAt: Date.now() + 60_000 };
+const quote = { id: 'q1', kind: 'drop', n: 10, usd: 10, santaRaw: Math.round(10 / 0.00085 * 1e6), mint, pool: pool.address, fee: FEE, burnBps: 1000, expiresAt: Date.now() + 60_000 };
 const { instructions, split } = await purchaseInstructions(T22, quote, player);
 assert.equal(instructions.length, 2, 'one transaction: a burn and a send, nothing else');
 const before = { p: await bal(player.address), pool: await bal(pool.address) };

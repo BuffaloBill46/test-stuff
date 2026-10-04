@@ -8,7 +8,7 @@ import { createBoard } from './plinkoboard.js';
 import { playRun, short } from './playcredits.js';
 import { runSummary } from './runui.js';
 import { initRunPick, priceLabel } from './runpick.js';
-import { showResult } from './spinui.js';
+import { showResult } from './gamepool.js';
 import { play as sfx } from './sfx.js';
 import { celebrate, celebrating, tierOf } from './celebrate.js';
 

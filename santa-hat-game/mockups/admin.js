@@ -32,7 +32,7 @@ async function load() {
       <p class="dim">Skim $${R.skim} at $${R.skimAt} · top off below $${R.topOffBelow} to $${R.topOffTo}${R.jackpotPct !== undefined ? ` · jackpot override ${+(R.jackpotPct * 100).toFixed(2)}%` : ''}</p>
       <div class="row"><button type="button" class="${R.paused ? '' : 'stop'}" data-act="${R.paused ? 'resume' : 'pause'}" data-game="${esc(p.game)}">${R.paused ? 'Resume' : 'Stop (emergency)'}</button></div></article>`; }).join('');
   // Frozen run payouts: who, how much, which game, and a Release button (wallet-signed, like every action here).
-  const held = state.held || [], NAMES = { spin: 'Spin', drop: 'Snowball Drop', big: 'Big Hat', stocking: 'Stocking Stuffer' }, $usd = (v) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  const held = state.held || [], NAMES = { drop: 'Snowball Drop', big: 'Big Hat', stocking: 'Stocking Stuffer' }, $usd = (v) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
   $('#frozenBox').classList.toggle('alert', held.length > 0);
   $('#frozen').innerHTML = held.length ? `<table><tr><th>Player</th><th>Wallet</th><th>Run</th><th>Amount</th><th>Frozen</th><th></th></tr>${held.map((h) => `<tr><td>${esc(h.name || 'player')}</td><td><code>${esc(h.wallet)}</code></td><td>${esc(NAMES[h.kind] || h.kind)} · ${h.n} × ${$usd(h.bet)}</td><td><b>${$usd(h.usd)}</b><br><span class="dim">${(h.santaRaw / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })} SANTA</span></td><td>${esc(new Date(h.at).toLocaleString())}</td><td><button type="button" data-release="${h.id}" data-game="${esc(h.game)}">Release</button></td></tr>`).join('')}</table>` : 'None frozen.';
   const STATUS = { needs_approval: 'waiting for your deposit', queued: 'queued', sending: 'sending', failed: 'failed (will retry)' };
@@ -126,18 +126,18 @@ $('#save').addEventListener('click', () => {
 });
 // ---------- Game settings editor: prices, odds, prizes, store. A live preview runs the same guard rails as the server.
 let gs = null, added = [];
-const PRICE_LABEL = { spin10: 'Small spin', spin100: 'Big spin', big: 'Big Hat pull', ticket: 'Ranked ticket' };
+const PRICE_LABEL = { big: 'Big Hat pull', ticket: 'Ranked ticket' };
 const numInput = (k, v, step = 'any') => `<input type="number" step="${step}" data-gs="${k}" value="${v}">`;
 async function loadSettings() {
   const r = await post({ action: 'settings' }); gs = r.settings || structuredClone(DEFAULT_SETTINGS); added = [];
   gs.stocking ||= structuredClone(DEFAULT_SETTINGS.stocking); // settings published before Stocking Stuffer: board 1's table (old turns re-check on it)
   gs.stocking2 ||= structuredClone(DEFAULT_SETTINGS.stocking2); // before 2026-10-02's shared pool: Cody's 9-gift table and 25%
   gs.drop ||= structuredClone(DEFAULT_SETTINGS.drop);
+  // the retired Santa Hat Spin was removed (2026-10-04): versions published before still carry its prices and wheel; the next
+  // version is published without them
+  delete gs.spin; delete gs.prices.spin10; delete gs.prices.spin100;
   $('#gsVer').textContent = `· version ${r.version ?? 0}`;
   $('#gsPrices').innerHTML = Object.entries(gs.prices).map(([k, v]) => `<label>${PRICE_LABEL[k] || k}${numInput('prices.' + k, v)}</label>`).join('');
-  const segLabel = (m) => (m === 'star' ? '★ gold star (to the bonus wheel)' : `${m}× ${m === '0' ? '(no win)' : m === '1' ? '(money back)' : ''}`);
-  $('#gsSlices').innerHTML = Object.entries(gs.spin.main).map(([m, n]) => `<label>${segLabel(m)}${numInput('main.' + m, n, 1)}</label>`).join('');
-  $('#gsBonus').innerHTML = Object.entries(gs.spin.bonus).map(([m, n]) => `<label>${segLabel(m)}${numInput('bonus.' + m, n, 1)}</label>`).join('');
   $('#gsBig').innerHTML = `<label>Pool jackpot: share of the pool (0.01–0.5)${numInput('big.jackpotPct', gs.big.jackpotPct)}</label>
     <label>Pool jackpot: 1 in …${numInput('big.jackpotOdds', gs.big.jackpotOdds, 1)}</label><label>Hat bonus (× the pull price, per Santa Hat)${numInput('big.hatBonus', gs.big.hatBonus)}</label>`;
   $('#gsCounts').innerHTML = SYMBOLS.map((x) => `<label>${x.name}${numInput('counts.' + x.id, gs.big.counts[x.id], 1)}</label>`).join('');
@@ -164,7 +164,6 @@ function renderItems() {
 function gather() {
   const s = structuredClone(gs); delete s.version; const v = (k) => document.querySelector(`[data-gs="${k}"]`)?.value;
   for (const k of Object.keys(s.prices)) s.prices[k] = Number(v('prices.' + k));
-  for (const w of ['main', 'bonus']) for (const m of Object.keys(s.spin[w])) s.spin[w][m] = Number(v(`${w}.${m}`));
   for (const k of ['jackpotPct', 'jackpotOdds', 'hatBonus']) s.big[k] = Number(v('big.' + k));
   for (const x of SYMBOLS) s.big.counts[x.id] = Number(v('counts.' + x.id));
   s.big.pays = {}; for (const x of SYMBOLS) for (const n of [3, 4, 5]) { const raw = v(`pays.${x.id}.${n}`); if (raw !== undefined && raw !== '') (s.big.pays[x.id] ||= {})[n] = Number(raw); }
@@ -186,13 +185,11 @@ function gather() {
 let timer = 0;
 function preview() {
   clearTimeout(timer); timer = setTimeout(() => {
-    const s = gather(), sum = (o) => Object.values(o).reduce((a, b) => a + b, 0);
-    $('#gsSliceTotal').textContent = `(${sum(s.spin.main)} of ${MAIN_SLICES})`; $('#gsBonusTotal').textContent = `(${sum(s.spin.bonus)} of ${BONUS_SLICES})`;
+    const s = gather();
     const rules = Object.fromEntries((state?.pools || []).map((p) => [p.game, { ...DEFAULTS[p.game], ...p.rules }]));
     const G = rules.spin || POOL_RULES, c = check({ ...s, version: 0 }, { spin: G, slots: G }), r = c.report; // one Game pool's rules for every game
     const pb = (x) => `<b>${(x.payback * 100).toFixed(1)}%</b> (fixed prizes ${(x.fixed * 100).toFixed(1)}% + the pool jackpot at the $${x.at} start; ${(x.low * 100).toFixed(1)}% at $${x.lowPool}, ${(x.high * 100).toFixed(1)}% at $${x.highPool.toLocaleString()})`;
-    $('#gsPreview').innerHTML = (r ? `<p>Spin pays back <b>${(r.spin.payback * 100).toFixed(1)}%</b>; a real win (2× or more) <b>1 in ${(1 / r.spin.realWin).toFixed(1)}</b> spins; top prize ${r.spin.top}×.</p>
-      <p>Big Hat pays back ${pb(r.big)}; a win over the pull price about <b>1 in ${(1 / r.big.realWin).toFixed(1)}</b> pulls; top line prize <b>$${r.big.topPrize.toFixed(2)}</b>${r.big.top100 ? ` (about 1 in ${Math.round(r.big.top100).toLocaleString()})` : ''}; jackpot ${esc(r.big.jackpot)}.</p>
+    $('#gsPreview').innerHTML = (r ? `<p>Big Hat pays back ${pb(r.big)}; a win over the pull price about <b>1 in ${(1 / r.big.realWin).toFixed(1)}</b> pulls; top line prize <b>$${r.big.topPrize.toFixed(2)}</b>${r.big.top100 ? ` (about 1 in ${Math.round(r.big.top100).toLocaleString()})` : ''}; jackpot ${esc(r.big.jackpot)}.</p>
       <p>Snowball Drop pays back ${pb(r.drop)}; a real win <b>1 in ${(1 / r.drop.realWin).toFixed(1)}</b> drops; top fixed prize ${r.drop.top}×; jackpot ${esc(r.drop.jackpot)}.</p>
       <p>Stocking Stuffer pays back ${pb(r.stocking)}; a real win (more back than the turn cost) <b>1 in ${(1 / r.stocking.realWin).toFixed(1)}</b> turns; top fixed prize ${r.stocking.top}× ($${r.stocking.top} on a $1 turn); jackpot ${esc(r.stocking.jackpot)}.</p>` : '')
       + (c.ok ? '<p class="dim">These settings are safe to publish.</p>' : `<p class="bad">Can't publish yet:</p><ul class="bad">${c.problems.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`);
