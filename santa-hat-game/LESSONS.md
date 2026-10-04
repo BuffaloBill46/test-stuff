@@ -526,3 +526,13 @@ isn't already used site-wide (grep "^\.name" online.html). Same for test ports: 
 **A test's pretend wallet must pay what the quote asks, not a copied constant (2026-10-04).** full-sim paid every Store buy
 with SHOP_BURN_BPS (50% burned); when the pass went 100% to the treasury, the server rightly refused those payments and the
 sim failed. Test payers read q.burnBps from the quote, like the real page does.
+
+**One public Solana server is a single point of failure for every payment (2026-10-04).** The page read Solana only from
+publicnode; it is blocked on some home networks (ERR_SSL_PROTOCOL_ERROR in Chrome and curl from Cody's PC, fine from the
+Droplet), and api.mainnet-beta refuses browsers (403). Found only by driving the real page path in a browser. The page now falls
+back to the game server's read-only relay (server/relay.js).
+
+**Browser test gotchas found building pay-with-SOL (2026-10-04).** (1) Serve test pages from https://local.test, not http: on
+http the Solana toolkit can't use the browser's crypto (Solana error #3610000, insecure context). (2) page.goto to the SAME
+address ending in #tab only scrolls, it does not reload: add a changing ?t= to really reload. (3) Jupiter's quoted SANTA is
+what LANDS after SANTA's 3% tax: grossing it up again overbought 3% (seen in the mainnet simulation).

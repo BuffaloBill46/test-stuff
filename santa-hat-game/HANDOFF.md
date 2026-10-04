@@ -161,7 +161,21 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
-### 2026-10-04 (NEWEST): 10 TICKS A LEVEL + PASS 100% TREASURY (043 live; servers 5bddf00)
+### 2026-10-04 (NEWEST): PAY WITH SOL BUILT + TESTED (044 live; servers 008c98a). SHOWS ONLY ON MAINNET.
+- One approval either way. Switch "Pay with: Auto / SANTA / SOL" (paywith.js, remembered; Store + under each game; hidden on
+  devnet). Auto = SANTA if the wallet has enough, else SOL. Games/lottery: Jupiter swaps SOL->SANTA in the same transaction,
+  then burn + pool as usual. Store: swap only the burn half, burn it, the rest to the treasury AS SOL (quote.solLamports,
+  044). Pass: plain SOL transfer. Server check: verify.js (a payment whose SANTA went UP = paid with SOL; quote must be covered).
+- Tested without money on REAL mainnet (Solana's simulator): tests/solana/sol-pay-sim.mjs and tests/browser/sol-pay-page.mjs
+  (the real page path, publicnode blocked). A $1 run costs ~$1.10 of SOL (pool fees + route price), a $1 item ~$1.05, pass $2.00.
+- FOUND: publicnode (the page's only Solana server) is blocked on some home networks, incl. Cody's PC, and Solana's own server
+  refuses browsers (403): payments, SANTA too, failed there. Now the page falls back to reading through the game server
+  (server/relay.js, 5 read-only lookups, signed in).
+- STILL TO DO AT LAUNCH (real money, Cody's own wallet, his OK): one ~$1 real SOL purchase, then check its record. Refunds of a
+  SOL purchase are owed in SANTA at the quote's amount (shop_refunds is SANTA-only).
+- Next: Twitter logo + 8-player banner (Cody asked).
+
+### 2026-10-04: 10 TICKS A LEVEL + PASS 100% TREASURY (043 live; servers 5bddf00)
 - Levels: 10 top-3 Auto finishes ("ticks") a level, was 5 (levels.js WINS_PER_LEVEL, 043). 9 -> 10 still 10 first places.
   Progress already made was kept (nobody had more than 4).
 - The $2 season pass: 100% to the treasury, nothing burned (shoprules burnBpsFor; the page pays in one transfer). The other
