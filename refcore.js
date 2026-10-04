@@ -1,8 +1,8 @@
 // The referee's per-player lookups and timings, shared by the page's referee (online.js) and the server referee
 // (server/referee.mjs), so the two can never run different rules. Pure logic: no page, no network.
-import { SLOTS, BY_ID, cleanAvatar, ballRules, specialsIn } from './catalog.js?v=44d774d5c8';
-import { levelInfo, clampLevel } from './levels.js?v=44d774d5c8';
-import { gearIn } from './gear.js?v=44d774d5c8';
+import { SLOTS, BY_ID, cleanAvatar, ballRules, specialsIn } from './catalog.js?v=e693b9fb42';
+import { levelInfo, clampLevel } from './levels.js?v=e693b9fb42';
+import { gearIn } from './gear.js?v=e693b9fb42';
 
 // Free-plan budget is 100 messages/second and every receiver counts, so fuller rooms send snapshots less often.
 export const snapMs = (humans) => (humans <= 4 ? 125 : humans <= 6 ? 170 : 220);

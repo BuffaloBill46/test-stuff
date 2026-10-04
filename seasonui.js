@@ -3,10 +3,10 @@
 // and its pass prize, and the $5 pass. Rules from seasons.js; a signed-in player's progress from the game server (server/seasons.js
 // 'season', which also ticks today's "Log in"); a guest sees the same tasks, calendar and doors with nothing earned yet. Match
 // points only come from public Auto matches the match server runs, so the card says so and refreshes after each match.
-import { seasonAt, dayKey, dayEnds, seasonDays, tasksFor, freeReward, goldReward, PASS_PRICE, STREAK_EVERY, DOORS, DOOR_POINTS, POINTS, SEASON_GEAR, PIECE_DOORS, XP_DOORS } from './seasons.js?v=44d774d5c8';
-import { BY_ID } from './catalog.js?v=44d774d5c8';
-import { call } from './gameserver.js?v=44d774d5c8';
-import { shopBuy } from './shopui.js?v=44d774d5c8';
+import { seasonAt, dayKey, dayEnds, seasonDays, tasksFor, freeReward, goldReward, PASS_PRICE, STREAK_EVERY, DOORS, DOOR_POINTS, POINTS, PIECE_DOORS } from './seasons.js?v=e693b9fb42';
+import { BY_ID } from './catalog.js?v=e693b9fb42';
+import { call } from './gameserver.js?v=e693b9fb42';
+import { shopBuy } from './shopui.js?v=e693b9fb42';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -29,8 +29,9 @@ const thumb = (id) => { const it = BY_ID.get(id); return it && opts.thumbnail ? 
 const nameOf = (id) => BY_ID.get(id)?.name || 'a costume piece';
 const n = (x) => Number(x || 0).toLocaleString('en-US');
 // one prize, drawn in a door: a picture for an item, a short tag for a level step or a ranked ticket
-const prizeHtml = (r) => (!r ? '' : r.kind === 'item' ? thumb(r.item) : r.kind === 'tickets' ? `<span class="ptag">${r.n > 1 ? r.n + ' ' : ''}ranked<br>ticket</span>` : '<span class="ptag">+1<br>level</span>');
-const prizeName = (r) => (!r ? 'nothing' : r.kind === 'item' ? nameOf(r.item) : r.kind === 'tickets' ? `${r.n} ranked ticket${r.n > 1 ? 's' : ''}` : 'a step of level progress');
+// (Cody, 2026-10-04: "+1 level tick", so it's never mistaken for a whole level)
+const prizeHtml = (r) => (!r ? '' : r.kind === 'item' ? thumb(r.item) : r.kind === 'tickets' ? `<span class="ptag">${r.n > 1 ? r.n + ' ' : ''}ranked<br>ticket</span>` : '<span class="ptag">+1 level<br>tick</span>');
+const prizeName = (r) => (!r ? 'nothing' : r.kind === 'item' ? nameOf(r.item) : r.kind === 'tickets' ? `${r.n} ranked ticket${r.n > 1 ? 's' : ''}` : '+1 level tick');
 
 // The card can never break the page: any error is logged and the card is hidden (season-test 2026-10-03: one slip here stopped the whole game page loading).
 function render(st) { try { draw(st); } catch (e) { console.error('season card:', e); const el = $('#season'); if (el) el.hidden = true; } }
@@ -59,8 +60,8 @@ function draw(st) {
     const label = `${x.day}: ${x.perfect ? 'perfect day' : x.day === st.day ? 'today' : i < idx ? 'not perfect' : 'not yet'}${x.points ? ` · ${x.points} points` : ''}`;
     return `<li class="${cls}" title="${label}" aria-label="${label}">${+x.day.slice(8)}</li>`;
   }).join('');
-  $('#ssStreak').innerHTML = `<b>${alive}</b> perfect day${alive === 1 ? '' : 's'} in a row <span>Bonus: +1 level step every ${STREAK_EVERY} perfect days in a row</span>`;
-  // the track: 30 doors, one every 300 points, each with its free prize (top) and pass prize (bottom)
+  $('#ssStreak').innerHTML = `<b>${alive}</b> perfect day${alive === 1 ? '' : 's'} in a row <span>Bonus: +1 level tick every ${STREAK_EVERY} perfect days in a row</span>`;
+  // the track: 30 doors, one every 300 points, each with everyone's prize; the 6 costume doors also show the pass's piece
   const got = new Set(st.granted.map((g) => g.track + ':' + g.door)), into = st.points - st.doors * DOOR_POINTS;
   $('#ssTrackHead').textContent = `Your doors · ${st.doors} of ${DOORS} open`;
   $('#ssPoints').textContent = st.doors >= DOORS ? `${n(st.points)} points · every door open!` : `${n(st.points)} points · next door at ${n(st.nextAt ?? (st.doors + 1) * DOOR_POINTS)}`;
@@ -68,16 +69,16 @@ function draw(st) {
   $('#ssDoors').innerHTML = st.plan.free.map((f, i) => {
     const door = i + 1, g = st.plan.gold[i], open = door <= st.doors, cls = open ? 'open' : door === st.doors + 1 ? 'next' : 'future';
     const fGot = got.has('free:' + door), gGot = got.has('gold:' + door), gLocked = !st.pass;
-    const label = `Door ${door} (${n(door * DOOR_POINTS)} points): free ${prizeName(f)}; pass ${prizeName(g)}${open ? ' · open' : ''}`;
-    return `<li class="${cls}" title="${esc(label)}" aria-label="${esc(label)}"><span class="dn">${door}</span>`
-      + `<span class="pz f${fGot ? ' got' : ''}">${prizeHtml(f)}</span><span class="pz g${gLocked ? ' locked' : gGot ? ' got' : ''}">${prizeHtml(g)}</span></li>`;
+    const label = `Door ${door} (${n(door * DOOR_POINTS)} points): ${prizeName(f)}${g ? `; with the pass: ${prizeName(g)}` : ''}${open ? ' · open' : ''}`;
+    return `<li class="${cls}${g ? ' haspass' : ''}" title="${esc(label)}" aria-label="${esc(label)}"><span class="dn">${door}</span>`
+      + `<span class="pz f${fGot ? ' got' : ''}">${prizeHtml(f)}</span>`
+      + (g ? `<span class="pz g${gLocked ? ' locked' : gGot ? ' got' : ''}"><small>pass</small>${prizeHtml(g)}</span>` : '') + '</li>';
   }).join('');
   const nextLook = st.plan.free.map((r, i) => ({ r, door: i + 1 })).find((x) => x.r.kind === 'item' && x.door > st.doors);
-  $('#ssFreeNote').textContent = (nextLook ? `Next free look: ${nameOf(nextLook.r.item)} at door ${nextLook.door}. ` : 'Every free look collected. ')
-    + 'Every other free door: +1 level step.';
+  $('#ssFreeNote').textContent = nextLook ? `Next season look: ${nameOf(nextLook.r.item)} at door ${nextLook.door}.` : 'Every season look collected.';
   // the pass: the outfit picture, what it gives, and the pieces by door
   const pieceDoors = PIECE_DOORS.filter((dd) => st.plan.gold[dd - 1]?.kind === 'item'), pieces = pieceDoors.map((dd) => ({ door: dd, item: st.plan.gold[dd - 1].item }));
-  const owned = pieces.filter((p) => got.has('gold:' + p.door)).length, tickets = st.plan.gold.filter((r) => r?.kind === 'tickets').length;
+  const owned = pieces.filter((p) => got.has('gold:' + p.door)).length;
   $('#ssGold').innerHTML = pieces.map((p) => { const own = got.has('gold:' + p.door);
     return `<li class="${own ? 'own' : ''}">${thumb(p.item)}<span>${esc(nameOf(p.item))}</span><small>${own ? 'Yours' : 'Door ' + p.door}</small></li>`; }).join('');
   const set = pieces.length && BY_ID.get(pieces[0].item)?.set;
@@ -85,10 +86,10 @@ function draw(st) {
   $('#ssOutName').textContent = S.costume ? `The ${S.costume}` : 'The season costume';
   const gl = $('#ssGoldBox'); gl.classList.toggle('has', st.pass);
   $('#ssGoldHead').textContent = st.pass ? `Season pass · yours · ${owned} of ${pieces.length} pieces` : `Season pass · $${S.passPrice.toFixed(2)}`;
-  $('#ssGoldLead').innerHTML = `The ${pieces.length}-piece ${esc(S.costume || 'season')} outfit, only in ${esc(S.name)}, plus <em>${SEASON_GEAR.map((g) => esc(nameOf(g))).join(' and ')}</em>, `
-    + `<em>${tickets} ranked tickets</em> and <em>${XP_DOORS.length} bonus level steps</em>: a pass prize on every door. Yours to keep.`;
+  $('#ssGoldLead').innerHTML = `The ${pieces.length}-piece ${esc(S.costume || 'season')} outfit, only in ${esc(S.name)}: <em>a piece on doors ${PIECE_DOORS.join(', ')}</em>, on top of `
+    + `everyone's prize. Yours to keep.`;
   $('#ssGoldNote').textContent = st.pass ? (owned < pieces.length ? `Next piece: ${nameOf(pieces[owned].item)} at door ${pieces[owned].door}.` : 'The whole outfit is yours. Wear it from the Avatar tab.')
-    : 'Buy it any time: the pass prizes of every door you\'ve already reached come at once.';
+    : 'Buy it any time: the pieces of every door you\'ve already reached come at once.';
   const buy = $('#ssBuy'); buy.hidden = st.pass || !pieces.length; if (st.pass || !st.guest) { const nt = $('#ssBuyNote'); if (/^Sign in first/.test(nt.textContent)) nt.textContent = ''; }
   buy.textContent = `Get the pass · $${S.passPrice.toFixed(2)}`; buy.disabled = busy;
   tick();

@@ -1,19 +1,19 @@
 // Site tabs: Play / Store / Avatar / Ranks, wallet sign-in, avatar editor, leaderboard.
-import { THREE, character, lights, toon, part, build, hatGeo, giftGeo, C, Sparks, TOON } from './kit.js?v=44d774d5c8';
-import { BALL_COLOR, tracer, dropStreak } from './ballfx.js?v=44d774d5c8';
-import { mountHumanCheck } from './human.js?v=44d774d5c8';
-import { GEAR_SLOTS } from './catalog.js?v=44d774d5c8';
-import { shopBuy, resumeShop } from './shopui.js?v=44d774d5c8';
-import { forSale } from './shoprules.js?v=44d774d5c8';
-import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=44d774d5c8';
-import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable, COSTUMES, costumeItems, costumeWord, SEASONS } from './catalog.js?v=44d774d5c8';
-import { SPECIALS } from './specials.js?v=44d774d5c8';
-import { settingsReady, call } from './gameserver.js?v=44d774d5c8';
-import { TICKET_MAX } from './ranked.js?v=44d774d5c8';
-import { dayStart, weekStart } from './gameclock.js?v=44d774d5c8';
-import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js?v=44d774d5c8';
-import { refreshSeason } from './seasonui.js?v=44d774d5c8';
-import { THEMES, THEME_IDS } from './themes.js?v=44d774d5c8';
+import { THREE, character, lights, toon, part, build, hatGeo, giftGeo, C, Sparks, TOON } from './kit.js?v=e693b9fb42';
+import { BALL_COLOR, tracer, dropStreak } from './ballfx.js?v=e693b9fb42';
+import { mountHumanCheck } from './human.js?v=e693b9fb42';
+import { GEAR_SLOTS } from './catalog.js?v=e693b9fb42';
+import { shopBuy, resumeShop } from './shopui.js?v=e693b9fb42';
+import { forSale } from './shoprules.js?v=e693b9fb42';
+import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=e693b9fb42';
+import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable, COSTUMES, costumeItems, costumeWord, SEASONS } from './catalog.js?v=e693b9fb42';
+import { SPECIALS } from './specials.js?v=e693b9fb42';
+import { settingsReady, call } from './gameserver.js?v=e693b9fb42';
+import { TICKET_MAX } from './ranked.js?v=e693b9fb42';
+import { dayStart, weekStart } from './gameclock.js?v=e693b9fb42';
+import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js?v=e693b9fb42';
+import { refreshSeason } from './seasonui.js?v=e693b9fb42';
+import { THEMES, THEME_IDS } from './themes.js?v=e693b9fb42';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -107,10 +107,12 @@ export async function refreshTickets(profile) {
   // call is refused in the page itself (gameserver.js call: no sign-in, no request), so it costs no server call
   const r = await call('tickets').catch(() => null);
   if (r?.error === 'sign in first') { if (el) el.textContent = 'Sign in'; return r; }
-  if (el) el.textContent = r && Number.isFinite(r.free) ? `${r.free + r.extra} / ${TICKET_MAX}` : '—';
+  // season tickets (the season pass track) come on top of the 25 free + bought (Cody, 2026-10-04: their own bank, no cap)
+  const sz = +r?.season || 0;
+  if (el) el.textContent = r && Number.isFinite(r.free) ? `${r.free + r.extra} / ${TICKET_MAX}${sz ? ` + ${sz} season` : ''}` : '—';
   const chip = document.querySelector('#tixchip'); // the top bar's chip (computers)
-  if (chip && r && Number.isFinite(r.free)) { chip.classList.remove('soon'); chip.querySelector('b').textContent = `${r.free + r.extra}/${TICKET_MAX}`;
-    chip.title = `Ranked tickets: ${r.free} free left today${r.extra ? `, ${r.extra} bought` : ''}. 1 per ranked match.`; }
+  if (chip && r && Number.isFinite(r.free)) { chip.classList.remove('soon'); chip.querySelector('b').textContent = `${r.free + r.extra}/${TICKET_MAX}${sz ? ` +${sz}` : ''}`;
+    chip.title = `Ranked tickets: ${r.free} free left today${r.extra ? `, ${r.extra} bought` : ''}${sz ? `, ${sz} from the season` : ''}. 1 per ranked match.`; }
   return r;
 }
 
