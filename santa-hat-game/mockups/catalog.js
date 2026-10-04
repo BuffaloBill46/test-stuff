@@ -74,6 +74,14 @@ export const ITEMS = [
   { id: 'pants_harvestgold', slot: 'pants', name: 'Harvest Gold', color: 0xd6a12b, season: 'thanksgiving' },
   { id: 'snow_mapleleaf', slot: 'snow', name: 'Maple Leaf', color: 0xd9421f, season: 'thanksgiving' },
   { id: 'shirt_cornhusk', slot: 'shirt', name: 'Corn Husk', color: 0xeed27e, season: 'thanksgiving' },
+  // CHRISTMAS SEASON free-track looks (supabase/037), the same kind again. One colour each (a snowball is one colour in every
+  // place the game draws it, so Candy Cane is the cane's bright red, not stripes); chosen clear of the reds and greens above
+  // (brighter than Berry, Fir, Cranberry and Maple Leaf) and dark or bright enough to read on snow.
+  { id: 'snow_candycane', slot: 'snow', name: 'Candy Cane', color: 0xf5102e, season: 'christmas' },
+  { id: 'shirt_peppermint', slot: 'shirt', name: 'Peppermint', color: 0x9eead0, season: 'christmas' },
+  { id: 'pants_evergreen', slot: 'pants', name: 'Evergreen', color: 0x157a3a, season: 'christmas' },
+  { id: 'snow_silverflake', slot: 'snow', name: 'Silver Snowflake', color: 0xa3a9b2, season: 'christmas' },
+  { id: 'pants_hollyred', slot: 'pants', name: 'Holly Red', color: 0xcc1a33, season: 'christmas' },
   // The first special snowball (Cody's example): stuns 50% longer than normal. Bought in the Store for now (Cody); levels later.
   // (The colour-slot Ice Ball prototype became the Ice Ball special below, 2026-10-01. A colour can still carry `rules`.)
 
@@ -162,11 +170,22 @@ export const ITEMS = [
   { id: 'hat_gobbler', slot: 'hat', name: 'Pilgrim Hat', hat: 'pilgrim', color: 0x1f1c24, set: 'gobbler', season: 'thanksgiving' },
   { id: 'pack_gobbler', slot: 'pack', name: 'Tail Fan', pack: 'tailfan', color: 0x6b4224, set: 'gobbler', season: 'thanksgiving' },
   { id: 'snow_gobbler', slot: 'snow', name: 'Cranberry Glow', color: 0xf03a5f, set: 'gobbler', season: 'thanksgiving' },
+  // The CHRISTMAS PASS reward: the Gingerbread costume. A season costume like the Gobbler (no level, no price, the pass grants the
+  // six by id, never sold, never on a bot). A gingerbread head (warm brown, white icing-dot eyes and an icing smile, pink icing
+  // cheeks), a small red-and-white stocking cap with a white pom-pom, a gingerbread coat with white icing zigzags and three
+  // gumdrop buttons (red, green, white), gingerbread trousers with icing stripes at the cuffs, a big striped candy cane on the
+  // back, and peppermint-pink snowballs (red and white mixed). supabase/037_christmas.sql is the database's copy.
+  { id: 'shirt_gingerbread', slot: 'shirt', name: 'Gumdrop Coat', color: 0xa45a2a, trim: 'gingerbread', set: 'gingerbread', season: 'christmas' },
+  { id: 'pants_gingerbread', slot: 'pants', name: 'Icing Trousers', color: 0xa45a2a, trim: 'gingerbread', set: 'gingerbread', season: 'christmas' },
+  { id: 'face_gingerbread', slot: 'face', name: 'Gingerbread Face', face: 'gingerbread', set: 'gingerbread', season: 'christmas' },
+  { id: 'hat_gingerbread', slot: 'hat', name: 'Icing Cap', hat: 'stocking', color: 0xd8202e, set: 'gingerbread', season: 'christmas' },
+  { id: 'pack_gingerbread', slot: 'pack', name: 'Candy Cane', pack: 'candycane', color: 0xe8102a, set: 'gingerbread', season: 'christmas' },
+  { id: 'snow_gingerbread', slot: 'snow', name: 'Peppermint Swirl', color: 0xff7f96, set: 'gingerbread', season: 'christmas' },
 ];
 // The costumes (above): what each is called and the level that unlocks every piece, or (a season costume) the season pass that
 // gives it. COSTUME_SLOTS: one piece in each. SEASONS: what each season's pass is called on the page.
-export const SEASONS = { halloween: { name: 'Halloween pass' }, thanksgiving: { name: 'Thanksgiving pass' } };
-export const COSTUMES = { nutcracker: { name: 'Nutcracker Soldier', level: 5 }, frostking: { name: 'Frost King', level: 10 }, pumpkinking: { name: 'Pumpkin King', season: 'halloween' }, gobbler: { name: 'The Gobbler', season: 'thanksgiving' } };
+export const SEASONS = { halloween: { name: 'Halloween pass' }, thanksgiving: { name: 'Thanksgiving pass' }, christmas: { name: 'Christmas pass' } };
+export const COSTUMES = { nutcracker: { name: 'Nutcracker Soldier', level: 5 }, frostking: { name: 'Frost King', level: 10 }, pumpkinking: { name: 'Pumpkin King', season: 'halloween' }, gobbler: { name: 'The Gobbler', season: 'thanksgiving' }, gingerbread: { name: 'Gingerbread', season: 'christmas' } };
 // How a costume (or a costume piece) is earned, in words: "Level 5 costume" or "Halloween pass"
 export const costumeWord = (c) => (c?.season ? SEASONS[c.season]?.name || c.season : `Level ${c?.level} costume`);
 export const COSTUME_SLOTS = ['shirt', 'pants', 'face', 'hat', 'pack', 'snow'];

@@ -485,6 +485,15 @@ const HEADS = {
   // The Pumpkin King (Halloween pass): the jack-o'-lantern head, the very one the retired Pumpkin Costume wore (jackHead), its
   // carved face glowing and flickering (`glow`: unlit pieces, character() adds them to the glow mesh). Black gloves.
   pumpkinking: { hands: 0x2b2433, parts: () => jackHead().body, glow: () => jackHead().glow },
+  // The Gingerbread costume's head (Christmas pass): a round gingerbread cookie head, warm brown, piped with white icing: two
+  // icing-dot eyes with a dark dot in each, a wide icing smile curling up at the ends, and pink icing cheeks. Gingerbread hands.
+  gingerbread: { hands: 0xa45a2a, parts: () => { const icing = 0xfbf8f0, fz = (x, y, out = 0.012) => Math.sqrt(Math.max(0, 0.09 - (y - 1.82) ** 2 - x * x)) * 0.96 + out;
+    const smile = [-0.12, -0.06, 0, 0.06, 0.12].map((x) => { const y = 1.715 + 2.2 * x * x; return [x, y, fz(x, y)]; });
+    return [part(new G.IcosahedronGeometry(0.3, 1), 0xa45a2a, { pos: [0, 1.82, 0], jit: 0.018, seed: 211 }),
+      ...[-1, 1].flatMap((s) => [part(new G.IcosahedronGeometry(0.048, 0), icing, { pos: [s * 0.1, 1.885, fz(s * 0.1, 1.885, 0.004)], scale: [1, 1, 0.55] }),
+        part(new G.BoxGeometry(0.026, 0.026, 0.02), 0x3a1d0e, { pos: [s * 0.1, 1.885, fz(s * 0.1, 1.885, 0.03)] }),
+        part(new G.IcosahedronGeometry(0.036, 0), 0xf28aa5, { pos: [s * 0.175, 1.775, fz(s * 0.175, 1.775, 0.004)], scale: [1, 0.8, 0.5] })]),
+      ...smile.slice(1).map((b, k) => stick(smile[k], b, 0.032, icing, 0.022))]; } },
 };
 export const HEAD_FACES = Object.keys(HEADS);
 
@@ -556,6 +565,17 @@ function hatPieces(shape, color) {
     part(new G.BoxGeometry(0.05, 0.2, 0.02), 0x6b4224, { pos: [-0.2, 2.26, 0.06], rot: [0, 0, 0.25] }),
     part(new G.BoxGeometry(0.055, 0.06, 0.022), 0xd2772e, { pos: [-0.234, 2.385, 0.06], rot: [0, 0, 0.25] }),
     part(new G.BoxGeometry(0.055, 0.05, 0.022), 0xf1e3c0, { pos: [-0.248, 2.437, 0.06], rot: [0, 0, 0.25] })];
+  // The Gingerbread's icing cap: a small stocking cap, a white furry band round the head, then red and white bands narrowing as
+  // the cap rises and flops over to the back and right, ending in a white pom-pom. The band is no wider than the head (0.30),
+  // so the face under it shows from the game's high camera, and the cap leans away from the face.
+  if (shape === 'stocking') {
+    const ps = [part(new G.TorusGeometry(0.25, 0.05, 5, 12), 0xf6f3ea, { pos: [0, 2.02, 0], rot: [Math.PI / 2, 0, 0], jit: 0.006, seed: 221 })];
+    let p = [0, 2.03, 0], r = 0.24;
+    for (let k = 0; k < 6; k++) { const a = k * 0.3, L = 0.1, q = [p[0] + L * Math.sin(a) * 0.5, p[1] + L * Math.cos(a), p[2] - L * Math.sin(a) * 0.85], r2 = 0.24 * (1 - (k + 1) / 7);
+      ps.push(rod(p, [q[0] + (q[0] - p[0]) * 0.15, q[1] + (q[1] - p[1]) * 0.15, q[2] + (q[2] - p[2]) * 0.15], r, r2, k % 2 ? 0xf6f3ea : color)); p = q; r = r2; }
+    ps.push(part(new G.IcosahedronGeometry(0.075, 0), 0xf6f3ea, { pos: [p[0] + 0.02, p[1] + 0.01, p[2] - 0.04], jit: 0.012, seed: 222 }));
+    return ps;
+  }
   return [];
 }
 // A crooked cone (the Pumpkin King's hat): leans over to one side as it rises, then kinks back at the tip.
@@ -568,6 +588,11 @@ function crookedCone(h) {
 function stick(a, b, w, color, t = w) {
   const d = new V3(b[0] - a[0], b[1] - a[1], b[2] - a[2]), len = d.length(), e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new V3(0, 1, 0), d.normalize()));
   return part(new G.BoxGeometry(w, len, t), color, { pos: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2], rot: [e.x, e.y, e.z] });
+}
+// A round rod from point a (radius r0) to point b (radius r1): the Gingerbread's cap bands and candy cane.
+function rod(a, b, r0, r1, color, seg = 8) {
+  const d = new V3(b[0] - a[0], b[1] - a[1], b[2] - a[2]), len = d.length(), e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new V3(0, 1, 0), d.normalize()));
+  return part(new G.CylinderGeometry(r1, r0, len, seg), color, { pos: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2], rot: [e.x, e.y, e.z] });
 }
 function packPieces(shape, color) {
   if (shape === 'satchel') return [part(new G.BoxGeometry(0.42, 0.4, 0.16), color, { pos: [0, 1.22, -0.29], jit: 0.02 }),
@@ -622,6 +647,24 @@ function packPieces(shape, color) {
       ...[-0.15, 0.15].map((x) => part(new G.BoxGeometry(0.07, 0.03, 0.42), 0x3a2414, { pos: [x, 1.575, -0.02] }))];
     for (let k = 0; k < 9; k++) { const th = (k / 8 - 0.5) * 2.6, d = [Math.sin(th), Math.cos(th) * Math.cos(tilt), -Math.cos(th) * Math.sin(tilt)], r = k % 2 ? 0.94 : 1;
       for (const [a, b, w, col] of bands) ps.push(stick([d[0] * a * r, y + d[1] * a * r, z - 0.03 + d[2] * a * r - k * 0.002], [d[0] * b * r, y + d[1] * b * r, z - 0.03 + d[2] * b * r - k * 0.002], w, col, 0.022)); }
+    return ps;
+  }
+  // The Gingerbread's candy cane: a big red-and-white striped cane slung diagonally across the back (foot at the left hip, the
+  // hook over the right shoulder), tied on with a green ribbon bow, on two green straps over the shoulders. Modest on purpose:
+  // the hook's top (about 1.7) stays below the head, so from the game's high camera behind a player the head and cap still show.
+  if (shape === 'candycane') {
+    const z = -0.3, tilt = 0.36, R = 0.13, Ls = 0.78, ribbon = 0x2f8a3e, line = [];
+    // the cane's centre line in its own flat frame (shaft up, then the hook curling over to the right), turned and placed
+    for (let k = 0; k <= 11; k++) line.push([0, (k / 11) * Ls]);
+    for (let k = 1; k <= 8; k++) { const t = Math.PI - (k / 8) * (Math.PI + 0.55); line.push([R + R * Math.cos(t), Ls + R * Math.sin(t)]); }
+    const at = ([x, y]) => [-0.2 + x * Math.cos(tilt) + y * Math.sin(tilt), 0.84 - x * Math.sin(tilt) + y * Math.cos(tilt), z];
+    const ps = line.slice(1).map((b, k) => rod(at(line[k]), at(b), 0.05, 0.05, k % 2 ? 0xf6f3ea : color));
+    ps.push(part(new G.IcosahedronGeometry(0.05, 0), color, { pos: at(line[0]) }), part(new G.IcosahedronGeometry(0.05, 0), 0xf6f3ea, { pos: at(line[line.length - 1]) }));
+    // the bow, tied round the middle of the shaft: a knot and two loops
+    const m = at([0, Ls * 0.55]);
+    ps.push(part(new G.BoxGeometry(0.07, 0.07, 0.07), ribbon, { pos: [m[0], m[1], z - 0.04] }),
+      ...[-1, 1].map((s) => part(new G.IcosahedronGeometry(0.06, 0), ribbon, { pos: [m[0] + s * 0.075, m[1] + 0.02, z - 0.05], scale: [1.3, 0.7, 0.45], rot: [0, 0, s * 0.35] })),
+      ...[-0.15, 0.15].map((x) => part(new G.BoxGeometry(0.07, 0.03, 0.26), ribbon, { pos: [x, 1.575, -0.1] })));
     return ps;
   }
   return [];
@@ -877,6 +920,33 @@ const COSTUME_TRIMS = {
       feet: () => [part(new G.BoxGeometry(0.26, 0.14, 0.36), 0x17151b, { pos: [0, -0.79, 0.05] }),
         part(new G.BoxGeometry(0.13, 0.09, 0.02), C.gold, { pos: [0, -0.755, 0.235] }), part(new G.BoxGeometry(0.07, 0.045, 0.025), 0x17151b, { pos: [0, -0.755, 0.238] })] },
   },
+  gingerbread: (() => {
+    const icing = 0xfbf8f0, dough = 0xa45a2a;
+    // a zigzag of piped icing across a flat face: n strokes from x0 to x1 at height y (up and down by h), at depth zz
+    const zig = (x0, x1, y, h, n, zz) => Array.from({ length: n }, (_, k) => { const xa = x0 + ((x1 - x0) * k) / n, xb = x0 + ((x1 - x0) * (k + 1)) / n, up = k % 2 ? h : -h;
+      return stick([xa, y - up, zz], [xb, y + up, zz], 0.028, icing, 0.02); });
+    // the same zigzag round a square limb (half-width hw) at height y: one up-and-down on each of its four faces
+    const ring = (hw, y, h) => [0, 1, 2, 3].flatMap((f) => { const a = (f * Math.PI) / 2, c = Math.cos(a), s = Math.sin(a), d = hw + 0.012;
+      const pt = (u, v) => [s * d + c * u, v, c * d - s * u];
+      return [stick(pt(-hw, y + h), pt(0, y - h), 0.026, icing, 0.02), stick(pt(0, y - h), pt(hw, y + h), 0.026, icing, 0.02)]; });
+    return {
+      // a gingerbread coat: the belt baked over in dough, white icing zigzags piped across the collar and the hem (front and
+      // back), three gumdrop buttons down the front (red, green, white, each with a sugar shine); zigzag icing cuffs
+      shirt: () => ({ body: [
+        part(new G.BoxGeometry(0.66, 0.12, 0.5), dough, { pos: [0, 0.9, 0], jit: 0.008, seed: 231 }),
+        ...zig(-0.27, 0.27, 1.5, 0.03, 8, 0.2), ...zig(-0.3, 0.3, 0.9, 0.035, 8, 0.262), ...zig(-0.3, 0.3, 0.9, 0.035, 8, -0.262),
+        ...[[1.37, 0xd8202e], [1.22, 0x2f9a48], [1.07, 0xf6f3ea]].flatMap(([y, col]) => [
+          part(new G.CylinderGeometry(0.035, 0.058, 0.07, 8), col, { pos: [0, y, 0.22], rot: [Math.PI / 2, 0, 0] }),
+          part(new G.BoxGeometry(0.018, 0.018, 0.01), 0xffffff, { pos: [-0.015, y + 0.018, 0.258] })]),
+      ], arm: () => ring(0.1, -0.56, 0.03) }),
+      // gingerbread trousers: icing stripes round each cuff (a straight line, a zigzag, a straight line), and gingerbread
+      // feet with a line of icing across each toe
+      pants: { leg: () => [part(new G.BoxGeometry(0.265, 0.026, 0.265), icing, { pos: [0, -0.5, 0] }), ...ring(0.12, -0.58, 0.035),
+          part(new G.BoxGeometry(0.265, 0.026, 0.265), icing, { pos: [0, -0.66, 0] })],
+        feet: () => [part(new G.BoxGeometry(0.26, 0.15, 0.35), 0x8a4a22, { pos: [0, -0.795, 0.05], jit: 0.008, seed: 232 }),
+          ...zig(-0.1, 0.1, -0.78, 0.022, 4, 0.228)] },
+    };
+  })(),
 };
 
 export function character(o = {}) {
