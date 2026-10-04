@@ -161,13 +161,13 @@ between two devices has never been tested from here. Cody and friends testing on
 ## Where we are right now
 
 ### 2026-10-04 (NEWEST): 50-PLAYER SIMULATION + EXPERIENCE AUDITS, ALL GREEN
-- : a private copy of the game (all migrations, the real match server,
+- `tests/db/full-sim.mjs [players] [buyers] [rounds]`: a private copy of the game (all migrations, the real match server,
   levels, Store, games, lottery, seasons; stand-in chain payments). 30 wallet + 20 email accounts play every round; 30 buyers max
   out the Store, buy levels, tickets, the pass and lottery tickets, and play 900 mini-game plays; every book is checked to balance.
   50/30/3 and 200/30/2 both pass. It found two real bugs, both fixed and live (974e10c): Auto match crowding into one room while
   sign-in checks ran, and only 5 public rooms per kind (now 30, refcore PUBLIC_ROOMS).
-- Experience audit (, 5 screen sizes): 125 findings -> 0 (finger-sized taps, lottery cards one per row on
-  phones, hat-red text lightened to ). phone-shots: Sign in ran off the bar on small sideways phones -> rank chip
+- Experience audit (`audit-ux.mjs`, 5 screen sizes): 125 findings -> 0 (finger-sized taps, lottery cards one per row on
+  phones, hat-red text lightened to `--hat-lit`). phone-shots: Sign in ran off the bar on small sideways phones -> rank chip
   hides there. controls, joystick, full browser suite 33/33, live desktop + phone 33/33 each. Site build 27294b1195.
 - Still waiting on Cody for mainnet: fund the wallets, his Phantom address, GO (LAUNCH_CHECKLIST.md).
 
