@@ -161,12 +161,25 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
+### 2026-10-04 (NEWEST): FINAL LAUNCH QA + MATCH POINTS + ALERT FIX (servers live; see LAUNCH_CHECKLIST "Final launch QA")
+- Match points (Cody): knock the hat off 10, catch the flying hat 25 (were 25, 50). sim.js PTS; pop-ups read it. Live.
+- Live devnet QA: live-games-qa.mjs (5 players, Drop/Stocking/Big Hat 1,000 plays each, 30 real payments, 0 errors, payouts
+  all sent, pool books = wallet to the unit); live-store-qa.mjs (3 fresh players: all 17 items, levels, lottery, pass: 24/24).
+- Telegram "wallet has MORE" alerts were payments on their way, not missing money; reconcile now allows open quotes' amount.
+- SOL QA on a private copy of mainnet: Surfpool 1.6.0 in C:\santa-tools\surfpool (Cody OK'd the download). Start it with the
+  Helius URL from the key file as SURFPOOL_DATASOURCE_RPC_URL (never echo it), `surfpool start --ci --no-deploy -q 0`; then
+  tests/browser/fork-sol-qa.mjs [runs per game]. Shakedown: 45/45 purchases, payouts, all money checks exact.
+- Security: SOL payments refuse SANTA moved in by a wallet that signed (verify.js S1b).
+- HELIUS KEY: printed once into a local test log by a Surfpool error (deleted; never committed/sent). Cody told to rotate it.
+- Admins: Cody's Phantom + the codyAdmin stand-in, on devnet and in games.env.mainnet (his call: keep both).
+- X: logo + banner (marketing/brand), launch posts + bios (marketing/x-launch-posts.txt), Frost King still (marketing/stills/char-2).
+
 ### 2026-10-04: CODY'S PHANTOM IS AN ADMIN (server /etc/santa/games.env ADMIN_WALLETS, backup kept beside it)
 - ADMIN_WALLETS = the codyAdmin stand-in (3jRok1…, key in C:\santa-devnet-keys, so Claude can test admin edits) AND Cody's own
   wallet DpgDK31RNyA96qYoFgigjxxLScKBG3BAwdPeDfTCB7uN. Cody 2026-10-04: "keep both wallets as admin". Checked live: his wallet
   passes the admin-wallet check (a fake signature then stops at the signature check); a stranger's is refused.
 
-### 2026-10-04 (NEWEST): PAY WITH SOL BUILT + TESTED (044+045; see the line below for the price rule). SHOWS ONLY ON MAINNET.
+### 2026-10-04: PAY WITH SOL BUILT + TESTED (044+045; see the line below for the price rule). SHOWS ONLY ON MAINNET.
 - One approval either way. Switch "Pay with: Auto / SANTA / SOL" (paywith.js, remembered; Store + under each game; hidden on
   devnet). Auto = SANTA if the wallet has enough, else SOL. Games/lottery: Jupiter swaps SOL->SANTA in the same transaction,
   then burn + pool as usual. Store: swap only the burn half, burn it, the rest to the treasury AS SOL (quote.solLamports,
