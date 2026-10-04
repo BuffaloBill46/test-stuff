@@ -78,6 +78,13 @@
   - Store refunds owe back the full payment, including the burned half. You pay those by hand, so you can decline odd ones.
   - **Don't deposit much more than ~$1,000 into the Game pool.** Above about $4,800 the Drop jackpot makes Drop pay players more
     than they put in. Skims at $1,025 normally keep it well below that.
+- **Built 2026-10-03 night, already in the live database (032–036 applied), nothing to do at GO:**
+  - Seasons: the daily tasks and calendar, the **$5 season pass** (real money on mainnet: paid in SANTA like a Store item,
+    50% burned / 50% treasury; a second pass is owed back). Halloween (Pumpkin King) now, Thanksgiving (Gobbler) Nov 1.
+  - The switch-over **clears every test season pass, reward and door** (fixed the same night; rehearsed).
+  - Weekly modes: all four built, **all switched off** (admin screen → Weekly modes).
+  - Found live and fixed: the Droplet stored JSON as text; season tasks, jackpot alerts and the jackpot banner now work
+    (checked with a real live match and a real devnet pass purchase).
 
 ## What Claude is doing meanwhile (no money involved)
 - A security review of every money path, including the thin-market price question.
