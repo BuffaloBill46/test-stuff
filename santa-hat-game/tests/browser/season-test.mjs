@@ -15,7 +15,7 @@ const DAY = dayKey(), ALL = seasonDays(S), IDX = ALL.indexOf(DAY), TASKS = tasks
 const POINTS_NOW = 2180, OPEN = Math.floor(POINTS_NOW / DOOR_POINTS), perfect = ALL.slice(0, IDX);
 const grantsFor = (track, n) => DOORLIST.slice(0, n).map((d) => { const r = track === 'free' ? freeReward(S, d) : goldReward(S, d);
   return { door: d, track, item: r.kind === 'item' ? r.item : null, xp: r.kind === 'xp' ? 1 : null, tickets: r.kind === 'tickets' ? r.n : null }; });
-const me = { season: { id: S.id, name: S.name, costume: S.costume, passPrice: 5, endsAt: S.end, startsAt: S.start }, day: DAY, dayEndsAt: Date.now() + 5 * 3600e3,
+const me = { season: { id: S.id, name: S.name, costume: S.costume, passPrice: 2, endsAt: S.end, startsAt: S.start }, day: DAY, dayEndsAt: Date.now() + 5 * 3600e3,
   tasks: TASKS.map((t, i) => ({ id: t.id, text: t.text, need: t.need, have: i === 0 ? t.need : Math.floor(t.need / 2), done: i === 0 })),
   points: POINTS_NOW, doors: OPEN, nextAt: (OPEN + 1) * DOOR_POINTS, today: { points: 230, matches: 3, top3: 1, max: 700 },
   days: ALL.map((d) => ({ day: d, perfect: perfect.includes(d), points: perfect.includes(d) ? 600 : d === DAY ? 230 : 0 })), streak: perfect.length, pass: true,
@@ -75,7 +75,7 @@ check(/Door 15 \(4,500 points\).*pass Elf Hat/.test(v.doors[14].label) && /Door 
 check(/^0 points · next door at 300$/.test(v.points) && v.bar === '0%', `points: "${v.points}"`);
 check(v.outName === `The ${S.costume}` && v.outfitImg && v.gold.length === S.gold.length && v.gold.every((g) => g[1]), `the pass preview: "${v.outName}", ${v.gold.length} pieces with pictures`);
 check(/17 ranked tickets/.test(v.goldLead) && /5 bonus level steps/.test(v.goldLead) && /Elf Hat/.test(v.goldLead), `the pass says what it gives: "${v.goldLead.slice(0, 120)}…"`);
-check(!v.buyHidden && v.buyText === 'Get the pass · $5.00' && /\$5\.00/.test(v.goldHead), `"${v.buyText}" (${v.goldHead})`);
+check(!v.buyHidden && v.buyText === 'Get the pass · $2.00' && /\$2\.00/.test(v.goldHead), `"${v.buyText}" (${v.goldHead})`);
 check(/^\d+h \d{2}m$/.test(v.reset), `new tasks countdown ${v.reset}`);
 await p.click('#ssBuy'); await p.waitForTimeout(300);
 check(/Sign in first/.test(await p.textContent('#ssBuyNote')), 'a guest\'s pass button asks them to sign in, nothing sent');

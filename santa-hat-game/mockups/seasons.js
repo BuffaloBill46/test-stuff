@@ -5,7 +5,7 @@
 //     5 daily tasks, 100 each: "Log in" and "Play 2 Auto matches" every day, plus 3 that rotate;
 //     each of the day's first 10 public Auto matches: +10, and +10 more for a top-3 finish in it.
 //   FREE track (everyone): a season look on 5 doors, one step of level progress (like a top-3 finish) on the others.
-//   PASS track (the $5 season pass, paid in SANTA like a Store item): the 6-piece costume, 5 bonus level steps, 2 cheap special
+//   PASS track (the $2 season pass, paid in SANTA like a Store item; $5 until 2026-10-04): the 6-piece costume, 5 bonus level steps, 2 cheap special
 //     gear items (halfway, door 15, and the last door, 30) and a ranked ticket on every other door. Season tickets go in their
 //     own bank with no cap (Cody: the 'buy at most 10' rule is unchanged). Buying the pass late gives every door already reached.
 //   The CALENDAR stays (Cody: "keep both"): a day with all 5 tasks done is a perfect day; 7 perfect days in a row: +1 level step.
@@ -17,7 +17,7 @@ import { zonedTime, WEEKLY_ZONE } from './lottery.js';
 
 const at9 = (y, m, d) => zonedTime(y, m, d, 21, WEEKLY_ZONE); // 9 PM Indiana on that date
 
-export const PASS_PRICE = 5; // dollars, paid in SANTA (Cody)
+export const PASS_PRICE = 2; // dollars, paid in SANTA (Cody, 2026-10-04: was $5; lowered to $2)
 export const DOORS = 30, DOOR_POINTS = 300; // 30 doors, one every 300 points (9,000 to finish the track)
 export const POINTS = { task: 100, match: 10, top3: 10, matchesPerDay: 10 }; // at most 5 × 100 + 10 × (10 + 10) = 700 a day
 export const STREAK_EVERY = 7; // a bonus level step every 7 perfect days in a row

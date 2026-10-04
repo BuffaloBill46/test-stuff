@@ -26,8 +26,8 @@ for (const [label, vp] of [['phone', { width: 390, height: 844 }], ['desktop', {
   // the season and weekly modes (seasons.js, weekly.js), read from the rules files
   const has = (...xs) => xs.every((x) => r.text.includes(x));
   check(has('Halloween (October 1 to October 31)', 'Thanksgiving (November 1 to November 30)', 'Christmas (December 1 to January 1)'), `${label}: the three seasons and their dates`);
-  check(has('Play 2 Auto matches', 'Log in', 'Win an Auto match', 'Halloween, door 2: Candy Corn', 'costs $5', 'Pumpkin King', '30 doors, one every 300 points', 'up to 700 a day', 'Elf Hat', 'ranked ticket') && !/one door a day/.test(r.text),
-    `${label}: season points (30 doors, 300 each, up to 700 a day), tasks, free looks by door, the $5 pass and what it gives`);
+  check(has('Play 2 Auto matches', 'Log in', 'Win an Auto match', 'Halloween, door 2: Candy Corn', 'costs $2', 'Pumpkin King', '30 doors, one every 300 points', 'up to 700 a day', 'Elf Hat', 'ranked ticket') && !/one door a day/.test(r.text),
+    `${label}: season points (30 doors, 300 each, up to 700 a day), tasks, free looks by door, the $2 pass and what it gives`);
   check(has('Hot Hat:', 'King of the Gazebo:', 'Blizzard:', 'Hat Hunt:', 'Auto match together'), `${label}: weekly modes and playing with friends`);
   check(!errs.length, `${label}: no page errors ${errs.join(' | ')}`);
   await p.close();

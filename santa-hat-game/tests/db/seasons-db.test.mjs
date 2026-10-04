@@ -24,6 +24,7 @@ const run = async (f, times = 1) => { for (let k = 0; k < times; k++) await db.p
 await run('032_halloween_costume.sql'); await run('033_seasons.sql'); await run('035_thanksgiving.sql'); await run('037_christmas.sql');
 await run('036_thanksgiving_rewards.sql'); await run('038_christmas_rewards.sql');
 await run('039_season_points.sql', 2); // safe to apply twice
+await run('040_pass_price.sql', 2); // the $2 pass
 
 const S = seasonAt(); assert.ok(S && S.id === 'halloween', 'the test runs during Halloween (Oct 1–31 2026): ' + S?.id);
 const DAY = dayKey(), DAYS = seasonDays(S), TASKS = tasksFor(DAY);
