@@ -1,32 +1,339 @@
 {
-  "name": "Player intro",
-  "clipVolume": 0.3,
-  "segments": [
-    { "t": 0, "dur": 3.0, "fur": true, "lines": [
-      { "text": "santahatgames.com", "y": 560, "font": "body", "size": 92, "weight": 800, "color": "#ffbe5c", "at": -1 },
-      { "text": "Free to play", "y": 820, "size": 150, "color": "#f5f1e8", "at": -1 },
-      { "text": "Email saves rank", "y": 1020, "size": 124, "color": "#b9cdf2", "at": -1 },
-      { "text": "Upgrades paid in SANTA", "y": 1210, "size": 108, "color": "#ff7a66", "at": -1 } ] },
-    { "t": 3.0, "dur": 2.4, "src": "raw/grok-normal.mp4", "from": 0.4, "kicker": "EVERYONE STARTS HERE", "label": "Player", "fadeIn": 0.3, "fadeOut": 0.3 },
-    { "t": 5.4, "dur": 2.4, "src": "raw/grok-panda.mp4", "from": 0.4, "kicker": "IN THE STORE", "label": "Panda", "fadeIn": 0.3, "fadeOut": 0.3, "flash": 0.35 },
-    { "t": 7.8, "dur": 2.4, "src": "raw/grok-frostking.mp4", "from": 1.5, "kicker": "LEVEL 10 REWARD", "label": "Frost King", "labelColor": "#cfe8ff", "kickerColor": "#9fd8ff", "fadeIn": 0.3, "fadeOut": 0.3, "flash": 0.45 },
-    { "t": 10.2, "dur": 2.4, "src": "raw/grok-nutcracker.mp4", "from": 1.2, "kicker": "LEVEL 5 REWARD", "label": "Nutcracker", "fadeIn": 0.3, "fadeOut": 0.3, "flash": 0.55 },
-    { "t": 12.6, "dur": 2.4, "src": "raw/grok-pumpkinking.mp4", "from": 1.2, "kicker": "HALLOWEEN SEASON PASS", "label": "Pumpkin King", "labelColor": "#ffb347", "kickerColor": "#ff8a1a", "fadeIn": 0.3, "fadeOut": 0.15, "flash": 0.65 },
-    { "t": 15.0, "dur": 6.6, "src": "raw/gameplay-b.webm", "from": 0.3, "mute": true, "zoom0": 1.22, "zoom1": 1.06, "fadeIn": 0.05, "fadeOut": 0.5, "flash": 1, "vignette": 0.35 }
+ "name": "Player intro",
+ "clipVolume": 0.18,
+ "segments": [
+  {
+   "t": 0,
+   "dur": 3,
+   "fur": true,
+   "lines": [
+    {
+     "text": "santahatgames.com",
+     "y": 560,
+     "font": "body",
+     "size": 92,
+     "weight": 800,
+     "color": "#ffbe5c",
+     "at": -1
+    },
+    {
+     "text": "Free to play",
+     "y": 820,
+     "size": 150,
+     "color": "#f5f1e8",
+     "at": -1
+    },
+    {
+     "text": "Email saves rank",
+     "y": 1020,
+     "size": 124,
+     "color": "#b9cdf2",
+     "at": -1
+    },
+    {
+     "text": "Upgrades paid in SANTA",
+     "y": 1210,
+     "size": 108,
+     "color": "#ff7a66",
+     "at": -1
+    }
+   ]
+  },
+  {
+   "t": 3,
+   "dur": 2.4,
+   "src": "raw/grok-normal.mp4",
+   "from": 0.4,
+   "kicker": "EVERYONE STARTS HERE",
+   "label": "Player",
+   "fadeIn": 0.3,
+   "fadeOut": 0.3
+  },
+  {
+   "t": 5.4,
+   "dur": 2.4,
+   "src": "raw/grok-panda.mp4",
+   "from": 0.4,
+   "kicker": "IN THE STORE",
+   "label": "Panda",
+   "fadeIn": 0.3,
+   "fadeOut": 0.3,
+   "flash": 0.35
+  },
+  {
+   "t": 7.8,
+   "dur": 2.4,
+   "src": "raw/grok-frostking.mp4",
+   "from": 1.5,
+   "kicker": "LEVEL 10 REWARD",
+   "label": "Frost King",
+   "labelColor": "#cfe8ff",
+   "kickerColor": "#9fd8ff",
+   "fadeIn": 0.3,
+   "fadeOut": 0.3,
+   "flash": 0.45
+  },
+  {
+   "t": 10.2,
+   "dur": 2.4,
+   "src": "raw/grok-nutcracker.mp4",
+   "from": 1.2,
+   "kicker": "LEVEL 5 REWARD",
+   "label": "Nutcracker",
+   "fadeIn": 0.3,
+   "fadeOut": 0.3,
+   "flash": 0.55
+  },
+  {
+   "t": 12.6,
+   "dur": 2.4,
+   "src": "raw/grok-pumpkinking.mp4",
+   "from": 1.2,
+   "kicker": "HALLOWEEN SEASON PASS",
+   "label": "Pumpkin King",
+   "labelColor": "#ffb347",
+   "kickerColor": "#ff8a1a",
+   "fadeIn": 0.3,
+   "fadeOut": 0.15,
+   "flash": 0.65
+  },
+  {
+   "t": 15,
+   "dur": 6.6,
+   "src": "raw/gameplay-b.webm",
+   "from": 0.3,
+   "mute": true,
+   "zoom0": 1.22,
+   "zoom1": 1.06,
+   "fadeIn": 0.05,
+   "fadeOut": 0.5,
+   "flash": 1,
+   "vignette": 0.35
+  }
+ ],
+ "overlays": [
+  {
+   "t": 15.4,
+   "dur": 2.6,
+   "lines": [
+    {
+     "text": "SNOWBALL FIGHT",
+     "y": 250,
+     "font": "pixel",
+     "size": 64,
+     "weight": 700,
+     "color": "#f5f1e8",
+     "stroke": 8
+    },
+    {
+     "text": "Steal the Santa hat",
+     "y": 345,
+     "size": 96,
+     "color": "#ffbe5c",
+     "stroke": 8
+    }
+   ]
+  },
+  {
+   "t": 18.3,
+   "dur": 3.3,
+   "band": [
+    1380,
+    400
+   ],
+   "lines": [
+    {
+     "text": "Play free now",
+     "y": 1490,
+     "size": 130,
+     "color": "#f5f1e8"
+    },
+    {
+     "text": "santahatgames.com",
+     "y": 1650,
+     "font": "body",
+     "size": 86,
+     "weight": 800,
+     "color": "#ffbe5c"
+    }
+   ]
+  }
+ ],
+ "music": {
+  "bpm": 100,
+  "parts": [
+   {
+    "bells": true,
+    "t": 0.05,
+    "notes": [
+     76,
+     79,
+     81,
+     83,
+     81,
+     79
+    ],
+    "every": 0.5,
+    "v": 0.2
+   },
+   {
+    "drone": true,
+    "t": 0,
+    "end": 15,
+    "note": 40,
+    "v": 0.07
+   },
+   {
+    "pad": true,
+    "t": 3,
+    "end": 15,
+    "root": 52,
+    "v": 0.13,
+    "climb": 7
+   },
+   {
+    "boom": true,
+    "t": 3,
+    "v": 0.55
+   },
+   {
+    "boom": true,
+    "t": 5.4,
+    "v": 0.65
+   },
+   {
+    "boom": true,
+    "t": 7.8,
+    "v": 0.75
+   },
+   {
+    "boom": true,
+    "t": 10.2,
+    "v": 0.8500000000000001
+   },
+   {
+    "boom": true,
+    "t": 12.6,
+    "v": 0.9500000000000001
+   },
+   {
+    "stab": true,
+    "t": 3,
+    "root": 52,
+    "v": 0.1
+   },
+   {
+    "stab": true,
+    "t": 5.4,
+    "root": 55,
+    "v": 0.1
+   },
+   {
+    "stab": true,
+    "t": 7.8,
+    "root": 57,
+    "v": 0.1
+   },
+   {
+    "stab": true,
+    "t": 10.2,
+    "root": 59,
+    "v": 0.1
+   },
+   {
+    "stab": true,
+    "t": 12.6,
+    "root": 52,
+    "v": 0.1
+   },
+   {
+    "groove": true,
+    "t": 3,
+    "end": 12.6,
+    "bass": [
+     40,
+     40,
+     40,
+     40,
+     43,
+     43,
+     45,
+     47
+    ]
+   },
+   {
+    "pulse": true,
+    "t": 12.6,
+    "end": 15,
+    "every": 0.5,
+    "v": 0.5
+   },
+   {
+    "roll": true,
+    "t": 12.6,
+    "end": 15
+   },
+   {
+    "boom": true,
+    "t": 15,
+    "v": 1
+   },
+   {
+    "stab": true,
+    "t": 15,
+    "root": 52,
+    "v": 0.12
+   },
+   {
+    "groove": true,
+    "t": 15,
+    "end": 21.6,
+    "bass": [
+     40,
+     40,
+     43,
+     45,
+     40,
+     40,
+     47,
+     45
+    ]
+   },
+   {
+    "pad": true,
+    "t": 15,
+    "end": 21.5,
+    "root": 52,
+    "v": 0.12,
+    "climb": 0
+   },
+   {
+    "pulse": true,
+    "t": 15,
+    "end": 21.5,
+    "v": 0.45
+   },
+   {
+    "bells": true,
+    "t": 15.6,
+    "notes": [
+     88,
+     91,
+     93,
+     95,
+     93,
+     91,
+     88,
+     86,
+     88,
+     91,
+     93,
+     95
+    ],
+    "every": 1,
+    "v": 0.12
+   }
   ],
-  "overlays": [
-    { "t": 15.4, "dur": 2.6, "lines": [ { "text": "SNOWBALL FIGHT", "y": 250, "font": "pixel", "size": 64, "weight": 700, "color": "#f5f1e8", "stroke": 8 }, { "text": "Steal the Santa hat", "y": 345, "size": 96, "color": "#ffbe5c", "stroke": 8 } ] },
-    { "t": 18.3, "dur": 3.3, "band": [1380, 400], "lines": [ { "text": "Play free now", "y": 1490, "size": 130, "color": "#f5f1e8" }, { "text": "santahatgames.com", "y": 1650, "font": "body", "size": 86, "weight": 800, "color": "#ffbe5c" } ] }
-  ],
-  "music": { "bpm": 100, "parts": [
-    { "bells": true, "t": 0.05, "notes": [76, 79, 81, 83, 81, 79], "every": 0.5, "v": 0.16 },
-    { "drone": true, "t": 0, "end": 15.0, "note": 40, "v": 0.1 },
-    { "pad": true, "t": 3.0, "end": 15.0, "root": 52, "v": 0.055, "climb": 5 },
-    { "hit": true, "t": 3.0, "v": 0.7 }, { "hit": true, "t": 5.4, "v": 0.78 }, { "hit": true, "t": 7.8, "v": 0.86 }, { "hit": true, "t": 10.2, "v": 0.92 }, { "hit": true, "t": 12.6, "v": 1 },
-    { "pulse": true, "t": 7.8, "end": 12.6, "v": 0.3 },
-    { "roll": true, "t": 12.6, "end": 15.0 },
-    { "boom": true, "t": 15.0, "v": 1 },
-    { "stab": true, "t": 15.0, "root": 52, "v": 0.08 },
-    { "groove": true, "t": 15.0, "end": 21.6, "bass": [40, 40, 43, 45, 40, 40, 47, 45] }
-  ] }
+  "volume": 1.15
+ }
 }

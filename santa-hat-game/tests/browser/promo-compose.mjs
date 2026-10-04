@@ -21,4 +21,5 @@ const t = Date.now(); const r = await page.evaluate((tl) => window.compose(tl), 
 const ext = r.mime.includes('mp4') ? 'mp4' : 'webm', file = path.join(OUT, `${NAME}.${ext}`);
 writeFileSync(file, Buffer.from(r.b64, 'base64'));
 console.log(`saved ${file} (${r.mime}, ${r.seconds.toFixed(1)} s of video in ${((Date.now() - t) / 1000).toFixed(1)} s, ${(Buffer.byteLength(r.b64, 'base64') / 1e6).toFixed(1)} MB)`);
+console.log('loudness per second (dB):', (r.levels || []).join(' '), '| peak', r.peak?.toFixed(2));
 await browser.close();

@@ -504,3 +504,9 @@ at once showed Auto match sending everyone to the same room while their sign-in 
 await), and that 5 rooms per kind meant the 41st player was turned away. Rules: pick shared resources AFTER the last await; size
 limits get tested at the expected crowd, not at 2. And: a new tab in a fixed bar is a layout change. Adding Home pushed Sign in off
 small sideways phones; run phone-shots after any top-bar change.
+
+
+**Check a mix by numbers, not by ear (2026-10-04).** Claude can't hear the videos. The first intro mix sat at about -21 dB
+(Cody: "can't really hear it") while its hits peaked at 1.69 (over full scale: crackle). compose.html now reports loudness per
+second and the peak, and ends in a limiter + soft clip. Aim: title about -12, build climbing to -8, drop/gameplay -10 to -12, peak
+under 1. Make the payoff at least as loud as the build.

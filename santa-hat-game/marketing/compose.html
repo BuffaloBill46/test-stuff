@@ -15,8 +15,13 @@ const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x)), ease = (x) => x 
 
 // ---------- music: everything synthesized on the timeline clock (t = seconds from the start)
 function music(ac, out, M, T0) {
-  const at = (t) => T0 + t, master = ac.createGain(); master.gain.value = M.volume ?? 0.9; master.connect(out);
-  const comp = ac.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4; comp.connect(master);
+  // mix → glue compressor → loudness (M.volume) → limiter → soft clip → out. The first cut peaked at 1.69 (crackle on the
+  // hits) while sitting at about -21 dB (too quiet, Cody: "can't really hear it"); the limiter lets the whole mix be loud.
+  const at = (t) => T0 + t, master = ac.createGain(); master.gain.value = M.volume ?? 1.15;
+  const limit = ac.createDynamicsCompressor(); limit.threshold.value = -4; limit.knee.value = 0; limit.ratio.value = 20; limit.attack.value = 0.001; limit.release.value = 0.12;
+  const clip = ac.createWaveShaper(), curve = new Float32Array(2049); for (let i = 0; i < 2049; i++) { const x = (i - 1024) / 1024 * 2; curve[i] = Math.tanh(x) * 0.97; } clip.curve = curve;
+  master.connect(limit); limit.connect(clip); clip.connect(out); music.input = limit; // clips' own sound joins at the limiter
+  const comp = ac.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 3; comp.connect(master);
   const bus = comp, rev = ac.createConvolver(), rl = ac.sampleRate * 2.2, ir = ac.createBuffer(2, rl, ac.sampleRate);
   for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < rl; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / rl) ** 2.6; }
   rev.buffer = ir; const revG = ac.createGain(); revG.gain.value = 0.32; rev.connect(revG); revG.connect(bus);
@@ -93,10 +98,13 @@ window.compose = async function (TL) {
   for (const s of TL.segments) if (s.src && !s.mute) {
     const buf = await off.decodeAudioData(await (await fetch(s.src)).arrayBuffer()).catch(() => null); if (!buf) continue;
     const src = off.createBufferSource(), gn = off.createGain(), v = (s.volume ?? TL.clipVolume ?? 0.35), fi = s.fadeIn ?? 0.35, fo = s.fadeOut ?? 0.35;
-    src.buffer = buf; src.connect(gn); gn.connect(off.destination);
+    src.buffer = buf; src.connect(gn); gn.connect(music.input);
     gn.gain.setValueAtTime(0, s.t); gn.gain.linearRampToValueAtTime(v, s.t + fi); gn.gain.setValueAtTime(v, s.t + s.dur - fo); gn.gain.linearRampToValueAtTime(0, s.t + s.dur);
     src.start(s.t, s.from ?? 0, s.dur); }
   const audio = await off.startRendering();
+  // loudness per second (dB of the RMS, 0 = full scale) and the peak, so a mix can be checked by numbers, not by ear
+  const levels = []; { const L0 = audio.getChannelData(0); for (let s0 = 0; s0 < L0.length; s0 += SR) { let q = 0, n = 0; for (let i = s0; i < Math.min(L0.length, s0 + SR); i++) { q += L0[i] * L0[i]; n++; } levels.push(Math.round(10 * Math.log10(q / n + 1e-12))); } }
+  let peak = 0; for (let ch = 0; ch < 2; ch++) for (const x of audio.getChannelData(ch)) peak = Math.max(peak, Math.abs(x));
   // ---- a standard MP4 (H.264 + AAC, index up front so every player knows the length)
   const target = new ArrayBufferTarget(), muxer = new Muxer({ target, fastStart: 'in-memory', firstTimestampBehavior: 'offset',
     video: { codec: 'avc', width: W, height: H, frameRate: FPS }, audio: { codec: 'aac', numberOfChannels: 2, sampleRate: SR } });
@@ -125,7 +133,7 @@ window.compose = async function (TL) {
   await venc.flush(); await aenc.flush(); if (err) throw err; muxer.finalize();
   const buf = new Uint8Array(target.buffer); let s = '';
   for (let i = 0; i < buf.length; i += 32768) s += String.fromCharCode(...buf.subarray(i, i + 32768));
-  return { mime: 'video/mp4', b64: btoa(s), seconds: total, frames: k };
+  return { mime: 'video/mp4', b64: btoa(s), seconds: total, frames: k, levels, peak };
 };
 function draw(t, TL, vids, started) {
   for (const s of TL.segments) {
