@@ -2,7 +2,7 @@
 // the pool (no in-between wallet; DESIGN_NOTES → SANTA's 3% tax). Proven on the real Token-2022 program in
 // tests/solana/pay.test.mjs. The Solana toolkit is passed in (`lib`), so the page can load it from a CDN and the tests from npm.
 // What's NOT here (no wallet in the build workspace): the wallet popup that signs and sends it. See FOR_MAIN_CLAUDE.md.
-import { splitPayment } from './market.js?v=1ac94d8b91';
+import { splitPayment } from './market.js?v=cd0c395251';
 
 // lib: { TOKEN_2022_PROGRAM_ADDRESS, findAssociatedTokenPda, getBurnCheckedInstruction, getTransferCheckedWithFeeInstruction }
 // quote: the server's { santaRaw, mint, pool, fee, burnBps }. player: the wallet's transaction signer ({ address, ... }).
@@ -13,8 +13,9 @@ export async function purchaseInstructions(lib, quote, player, decimals = 6) {
   const [from, to] = [await ata(player.address), await ata(quote.pool)];
   return {
     split: s,
+    // nothing to burn (the season pass: 100% treasury): no burn step at all
     instructions: [
-      lib.getBurnCheckedInstruction({ account: from, mint: quote.mint, authority: player, amount: BigInt(s.burn), decimals }),
+      ...(s.burn > 0 ? [lib.getBurnCheckedInstruction({ account: from, mint: quote.mint, authority: player, amount: BigInt(s.burn), decimals })] : []),
       lib.getTransferCheckedWithFeeInstruction({ source: from, mint: quote.mint, destination: to, authority: player, amount: BigInt(s.send), decimals, fee: BigInt(s.tax) }),
     ],
   };

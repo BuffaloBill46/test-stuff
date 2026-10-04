@@ -1,10 +1,10 @@
 // The page's side of the shop (Cody, 2026-10-02: every button gets a complete start-to-end path): ONE buy path for every
 // purchasable thing — a Store item (special snowball, special gear), a look on the Avatar screen, a level, extra ranked tickets.
-//   price (server, 60 s) → the wallet pays once (window.santaPay: 50% burned, 50% to the treasury) → the server checks the
+//   price (server, 60 s) → the wallet pays once (window.santaPay: 50% burned, 50% to the treasury; the season pass 100% to the treasury) → the server checks the
 //   payment and grants it → the page reloads what the player owns.
 // Remembered in this browser between paying and the server accepting it, so a closed tab or a dropped network never loses a paid
 // purchase (resumeShop runs on the next visit). Without the game server (today's site) it says plainly that nothing is sold yet.
-import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js?v=1ac94d8b91';
+import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js?v=cd0c395251';
 
 const PENDING = 'santa.pendingShop';
 const remember = (v) => { try { v ? localStorage.setItem(PENDING, JSON.stringify(v)) : localStorage.removeItem(PENDING); } catch {} };
