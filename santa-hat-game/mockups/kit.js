@@ -408,15 +408,14 @@ function faceParts(face) {
     case 'mask': return [eye(-0.1), eye(0.1), part(new G.BoxGeometry(0.5, 0.16, 0.44), C.hat, { pos: [0, 1.72, 0.03], jit: 0.02 }),
       part(new G.BoxGeometry(0.12, 0.26, 0.06), C.hatDark, { pos: [0.16, 1.58, 0.22], rot: [0.2, 0, 0.2] })];
     // The Gobbler (Thanksgiving pass costume): a friendly turkey face on the player's own head. Big round eyes with a shine,
-    // a short golden beak, the red snood drooping over it to one side, a red wattle hanging under it, rosy cheeks.
+    // a golden beak, the little red snood hanging down beside it (never over it: the beak must read), a red wattle under it.
     case 'gobbler': return [...[-1, 1].flatMap((s) => [part(new G.BoxGeometry(0.09, 0.09, 0.03), 0xfbf6ea, { pos: [s * 0.1, 1.885, 0.252] }),
-        part(new G.BoxGeometry(0.05, 0.06, 0.03), C.ink, { pos: [s * 0.095, 1.88, 0.262] }), part(new G.BoxGeometry(0.02, 0.02, 0.02), 0xffffff, { pos: [s * 0.09 + 0.012, 1.895, 0.275] }),
-        part(new G.CylinderGeometry(0.035, 0.035, 0.02, 7), 0xe87a7a, { pos: [s * 0.16, 1.79, 0.225], rot: [Math.PI / 2, 0, 0] })]),
-      part(new G.ConeGeometry(0.065, 0.17, 4), 0xf2b134, { pos: [0, 1.8, 0.33], rot: [Math.PI / 2 + 0.3, 0, 0], scale: [1.1, 1, 0.8] }),
-      part(new G.IcosahedronGeometry(0.035, 0), 0xc81e32, { pos: [0.02, 1.86, 0.3] }),
-      part(new G.IcosahedronGeometry(0.04, 0), 0xc81e32, { pos: [0.065, 1.79, 0.36], scale: [0.7, 1.7, 0.7], rot: [0, 0, 0.35] }),
-      part(new G.IcosahedronGeometry(0.06, 0), 0xc81e32, { pos: [0, 1.69, 0.29], scale: [0.85, 1.5, 0.7], jit: 0.008, seed: 161 }),
-      part(new G.IcosahedronGeometry(0.04, 0), 0xa8162a, { pos: [0.03, 1.62, 0.27], scale: [0.8, 1.3, 0.7] })];
+        part(new G.BoxGeometry(0.05, 0.06, 0.03), C.ink, { pos: [s * 0.095, 1.88, 0.262] }), part(new G.BoxGeometry(0.02, 0.02, 0.02), 0xffffff, { pos: [s * 0.09 + 0.012, 1.895, 0.275] })]),
+      part(new G.ConeGeometry(0.075, 0.19, 4), 0xf2a62a, { pos: [0, 1.79, 0.34], rot: [Math.PI / 2 + 0.2, 0, 0], scale: [1.15, 1, 0.8] }),
+      part(new G.IcosahedronGeometry(0.03, 0), 0xc81e32, { pos: [0.075, 1.81, 0.3] }),
+      part(new G.IcosahedronGeometry(0.03, 0), 0xc81e32, { pos: [0.085, 1.75, 0.31], scale: [0.8, 1.6, 0.8] }),
+      part(new G.IcosahedronGeometry(0.055, 0), 0xc81e32, { pos: [0, 1.66, 0.27], scale: [0.85, 1.4, 0.7], jit: 0.008, seed: 161 }),
+      part(new G.IcosahedronGeometry(0.035, 0), 0xa8162a, { pos: [0.025, 1.6, 0.255], scale: [0.8, 1.3, 0.7] })];
     default: return [eye(-0.1), eye(0.1)];
   }
 }
@@ -854,15 +853,15 @@ const COSTUME_TRIMS = {
         part(new G.BoxGeometry(0.1, 0.06, 0.02), 0xe8812c, { pos: [0, -0.72, 0.195] })] },
   },
   gobbler: {
-    // a brown feather coat: a white pilgrim collar, three overlapping rows of small breast feathers down the chest (bronze,
-    // tan, bronze), a black belt with a square gold buckle, and below it a short skirt edged with two layers of feathers (long
+    // a brown feather coat: a white pilgrim collar, three overlapping rows of small breast feathers down the chest (tan,
+    // orange, tan), a black belt with a square gold buckle, and below it a short skirt edged with two layers of feathers (long
     // bronze ones, shorter orange ones over them; wide enough for the legs to swing inside); feathered cuffs
     shirt: () => { const bronze = 0x4f321c, tan = 0xb0702f, orange = 0xd2772e, cream = 0xf3ecdc, ps = [];
       // a feather: a flat diamond pointing down; `a` turns its flat side to face out from the middle (round the hem)
       const feather = (len, w, col, x, y, zz, a = 0) => part(new G.ConeGeometry(w, len, 4), col, { pos: [x, y, zz], rot: [Math.PI, -a, 0], scale: [1, 1, 0.35] });
       ps.push(part(new G.BoxGeometry(0.46, 0.04, 0.34), cream, { pos: [0, 1.575, 0] }),
         ...[-1, 1].map((s) => part(new G.BoxGeometry(0.16, 0.13, 0.03), cream, { pos: [s * 0.085, 1.5, 0.21], rot: [0, 0, s * 0.15] })));
-      [[1.39, 5, bronze], [1.28, 4, tan], [1.17, 5, bronze]].forEach(([y, n, col]) => { for (let k = 0; k < n; k++) ps.push(feather(0.15, 0.055, col, (k - (n - 1) / 2) * 0.095, y, 0.205)); });
+      [[1.39, 5, tan], [1.28, 4, orange], [1.17, 5, tan]].forEach(([y, n, col]) => { for (let k = 0; k < n; k++) ps.push(feather(0.15, 0.055, col, (k - (n - 1) / 2) * 0.095, y, 0.205)); });
       ps.push(part(new G.BoxGeometry(0.66, 0.12, 0.42), 0x1c1a1f, { pos: [0, 0.9, 0] }), part(new G.BoxGeometry(0.15, 0.13, 0.03), C.gold, { pos: [0, 0.9, 0.225] }),
         part(new G.BoxGeometry(0.08, 0.06, 0.035), 0x1c1a1f, { pos: [0, 0.9, 0.228] }),
         part(new G.CylinderGeometry(0.34, 0.41, 0.2, 8), 0x6b4224, { pos: [0, 0.76, 0], jit: 0.01, seed: 191 }));

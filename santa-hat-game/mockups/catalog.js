@@ -70,10 +70,10 @@ export const ITEMS = [
   { id: 'pants_pumpkin', slot: 'pants', name: 'Pumpkin Patch', color: 0xd9661c, season: 'halloween' },
   // THANKSGIVING SEASON free-track looks (supabase/035), the same kind: autumn colours, earned by opening doors, never sold, no level
   { id: 'snow_cranberry', slot: 'snow', name: 'Cranberry', color: 0x9e1636, season: 'thanksgiving' },
-  { id: 'shirt_pumpkinpie', slot: 'shirt', name: 'Pumpkin Pie', color: 0xb8662e, season: 'thanksgiving' },
-  { id: 'pants_harvestgold', slot: 'pants', name: 'Harvest Gold', color: 0xc99a2e, season: 'thanksgiving' },
+  { id: 'shirt_pumpkinpie', slot: 'shirt', name: 'Pumpkin Pie', color: 0xcc7433, season: 'thanksgiving' },
+  { id: 'pants_harvestgold', slot: 'pants', name: 'Harvest Gold', color: 0xd6a12b, season: 'thanksgiving' },
   { id: 'snow_mapleleaf', slot: 'snow', name: 'Maple Leaf', color: 0xd9421f, season: 'thanksgiving' },
-  { id: 'shirt_cornhusk', slot: 'shirt', name: 'Corn Husk', color: 0xe6d08e, season: 'thanksgiving' },
+  { id: 'shirt_cornhusk', slot: 'shirt', name: 'Corn Husk', color: 0xeed27e, season: 'thanksgiving' },
   // The first special snowball (Cody's example): stuns 50% longer than normal. Bought in the Store for now (Cody); levels later.
   // (The colour-slot Ice Ball prototype became the Ice Ball special below, 2026-10-01. A colour can still carry `rules`.)
 
