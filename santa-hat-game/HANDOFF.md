@@ -187,7 +187,6 @@ between two devices has never been tested from here. Cody and friends testing on
   recorded). Player guide has Friends / Season / Weekly sections.
 - ALL THREE SEASONS COMPLETE and live in the database: Halloween (Pumpkin King), Thanksgiving Nov 1-30 (The Gobbler; 035/036),
   Christmas Dec 1-Jan 1 (Gingerbread; 037/038). Each: 5 free looks (doors 2/5/9/14/20) + a 6-piece pass costume (doors 3-18).
-- (was: helper agent building the Thanksgiving looks; done)
 
 ### 2026-10-03 late night: HOME PAGE + MONEY STRIPS LIVE
 - The site opens on **Home** (intro, Player Progress, the season calendar); Home's Play now → the **Play** page (match types).
