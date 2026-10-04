@@ -1,0 +1,95 @@
+<!doctype html>
+<!-- Brand art for Twitter (Cody, 2026-10-04), drawn with the game's own models and effects so it matches the game exactly. Not
+     published (deploy-pages.sh copies a fixed list). Rendered to PNG by tests/browser/promo-brand.mjs.
+     ?kind=logo   the profile picture, square, safe inside the round crop: the Santa hat with 5 snowballs on an arc round it,
+                  left to right Normal, Ice, Large (the Giant Ball), Fire, Normal (Cody's order); the specials with their
+                  in-game glow and trails (ballfx.js), as if circling the hat
+     ?kind=banner the header, 3:1: 8 players in the plaza (costumes and regular looks), "Free to play" at the bottom -->
+<html><head><meta charset="utf-8"><title>Brand art</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@600;800&family=Alegreya+Sans:wght@500;700;800&display=swap">
+<style>
+html,body{margin:0;background:#0c0f1a;overflow:hidden}canvas{display:block}
+#over{position:absolute;inset:0;pointer-events:none}
+</style></head>
+<body><div id="over"></div><script type="module">
+import { THREE, toon, part, build, C, Sparks, TOON, Snow, skyTexture } from './kit.js';
+import { makeHat, buildPlaza } from './plaza.js';
+import { BALL_COLOR, tracer } from './ballfx.js';
+import { avatarCharacter } from './tabs.js';
+import { DEFAULT_AVATAR } from './catalog.js';
+
+const q = new URLSearchParams(location.search), KIND = q.get('kind') || 'logo';
+const W = +(q.get('w') || (KIND === 'logo' ? 1000 : 1500)), H = +(q.get('h') || (KIND === 'logo' ? 1000 : 500)), S = +(q.get('s') || 2);
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(S); renderer.setSize(W, H); document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const ball = (x, y, z, color, r = 1) => { const m = toon(build([part(new THREE.IcosahedronGeometry(0.17, 0), C.brim, { jit: 0.02 })]), 0.02);
+  m.material = TOON.clone(); m.material.color = new THREE.Color(color); m.scale.setScalar(r); m.position.set(x, y, z); scene.add(m); return m; };
+
+if (KIND === 'logo') {
+  scene.background = skyTexture('#0b1024', '#1c2548', '#2a2f5c');
+  scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x1a1f3a, 1.1));
+  const key = new THREE.DirectionalLight(0xffffff, 2.3); key.position.set(2.5, 3, 4); scene.add(key); // neutral: warm light turned the Ice Ball grey-green and the snow beige
+  const rim = new THREE.DirectionalLight(0xffbe5c, 2.2); rim.position.set(-3, 2, -3); scene.add(rim);
+  // the hat, up a little so the snowballs can sit in a curve in front of its brim (Cody 2026-10-04: "in front / bottom of hat")
+  const hat = makeHat(1.45); hat.rotation.set(0.14, -0.5, 0.06); hat.position.set(0.05, -0.05, 0); scene.add(hat);
+  // a soft warm halo behind the hat (the lamp glow of the square), drawn as one big faint spark
+  const sp = new Sparks(600); sp.uH.value = H * S * 0.62; sp.begin(); scene.add(sp.points);
+  sp.add(0, -0.3, -1.2, 6.4, new THREE.Color(0xffb84a), 0.2);
+  // the five in a curve along the bottom, in front of the hat, left to right: Normal, Ice, Large, Fire, Normal (the Large one
+  // front and centre). Sweeping left to right along the curve, so each special's trail lies along it behind the ball.
+  const R = 1.85, CY = 0.3, ORDER = [['normal', 196], ['ice', 232], ['giant', 270], ['fire', 308], ['normal', 344]]; // spread out (Cody 2026-10-04)
+  ORDER.forEach(([kind, deg], i) => {
+    const a = (deg * Math.PI) / 180, x = R * Math.cos(a), y = CY + R * Math.sin(a), v = 8, giant = kind === 'giant';
+    const b = { id: 3 + i, kind, vx: -Math.sin(a) * v, vz: 0, r: giant ? 2.4 : 1 };
+    ball(x, y, 0.55, kind === 'normal' ? C.brim : giant ? 0xf5f1e8 : BALL_COLOR[kind](b), giant ? 2.4 : 1.35);
+    if (kind !== 'normal') tracer(sp, b, x, y, 0.55, Math.cos(a) * v, 1.37 + i * 0.21);
+  });
+  sp.end();
+  const cam = new THREE.PerspectiveCamera(30, W / H, 0.1, 100); cam.position.set(0, 0.0, 8.9); cam.lookAt(0, -0.3, 0);
+  renderer.render(scene, cam);
+}
+
+if (KIND === 'banner') {
+  buildPlaza(scene, { theme: q.get('theme') || 'christmas' });
+  scene.fog = new THREE.Fog(0x0b1024, 14, 46);
+  // the prize: the Santa hat on its pedestal in the middle of the square, behind the players
+  const hat = makeHat(0.88); hat.position.set(0, 1.71, 0); hat.rotation.y = -0.4; scene.add(hat);
+  // 8 players, costumes and everyday looks taking turns, on a shallow arc in front of the hat (left to right)
+  const A = (o) => ({ ...DEFAULT_AVATAR, ...o }), COST = (k, hatId = 'hat_' + k, pack = 'pack_' + k) => A({ shirt: 'shirt_' + k, pants: 'pants_' + k, face: 'face_' + k, hat: hatId, pack, snow: 'snow_' + k });
+  const CREW = [
+    A({ shirt: 'shirt_blue', pants: 'pants_grey', face: 'face_smile', hat: 'hat_beanie', pack: 'pack_satchel' }),
+    COST('pumpkinking'),
+    A({ shirt: 'shirt_green', pants: 'pants_brown', face: 'face_shades', hat: 'hat_antlers' }),
+    COST('frostking', 'hat_icecrown', 'pack_icewings'),
+    COST('nutcracker', 'hat_nutcracker', 'pack_drum'),
+    A({ shirt: 'shirt_coal', pants: 'pants_snow', face: 'face_panda', hat: 'hat_earmuffs' }),
+    COST('gingerbread'),
+    A({ shirt: 'shirt_red', pants: 'pants_navy', face: 'face_beard', hat: 'hat_tophat', pack: 'pack_sack' }),
+  ];
+  const XS = [-6.7, -4.8, -2.9, -1.0, 1.0, 2.9, 4.8, 6.7];
+  CREW.forEach((a, i) => { const ch = avatarCharacter(a), x = XS[i], z = 6.2 - Math.abs(x) * 0.12 + (i % 2 ? 0.5 : 0);
+    ch.position.set(x, 0, z); ch.rotation.y = -x * 0.05 + (i % 2 ? 0.25 : -0.25); scene.add(ch); });
+  // night drama: a warm rim from behind (the lamps), a cool soft key from the front
+  const rim = new THREE.DirectionalLight(0xffbe5c, 2.6); rim.position.set(-4, 6, -6); scene.add(rim);
+  const key = new THREE.DirectionalLight(0xdfe8ff, 1.5); key.position.set(3, 5, 14); scene.add(key);
+  // snowballs in the air between them: two plain, and an Ice, a Fire and a Giant with their in-game trails
+  const sp = new Sparks(900); sp.uH.value = H * S * 0.9; sp.begin(); scene.add(sp.points);
+  [['normal', -5.75, 3.35, 6.6, 7], ['ice', -1.95, 3.15, 6.9, 8], ['giant', 1.95, 3.25, 6.7, -6], ['fire', 3.85, 3.1, 6.9, -9], ['normal', 5.75, 3.3, 6.4, -7]] /* in the gaps between players, above their heads: never over a face */.forEach(([kind, x, y, z, vx], i) => {
+    const b = { id: 11 + i, kind, vx, vz: 0, r: kind === 'giant' ? 2.2 : 1 };
+    ball(x, y, z, kind === 'normal' ? C.brim : kind === 'giant' ? 0xf5f1e8 : BALL_COLOR[kind](b), kind === 'giant' ? 2.2 : 1.15);
+    if (kind !== 'normal') tracer(sp, b, x, y, z, 0.6, 1.37 + i * 0.3);
+  });
+  sp.end();
+  const snow = new Snow(1400, [26, 12, 18]); scene.add(snow.points);
+  let t = 0; for (let i = 0; i < 90; i++) { t += 1 / 30; snow.update(1 / 30, t, { x: 0, z: 5 }); }
+  const cam = new THREE.PerspectiveCamera(30, W / H, 0.1, 400); cam.position.set(-0.5, 1.9, 17.2); cam.lookAt(-0.5, 1.3, 3); // a little left of centre: Twitter's profile picture covers the bottom-left quarter
+  renderer.render(scene, cam);
+  // "Free to play" along the bottom, centred (Twitter puts the profile picture over the bottom LEFT)
+  document.getElementById('over').innerHTML = `<div style="position:absolute;left:0;right:0;bottom:${Math.round(H * 0.075)}px;text-align:center;
+    font:800 ${Math.round(H * 0.15)}px/1 'Grenze Gotisch',Georgia,serif;color:#f5f1e8;letter-spacing:1px;
+    text-shadow:0 0 18px rgba(12,15,26,.9),3px 3px 0 #0c0f1a,-2px -2px 0 #0c0f1a,2px -2px 0 #0c0f1a,-2px 2px 0 #0c0f1a">Free to play</div>`;
+}
+await document.fonts.ready;
+window.ready = true;
+</script></body></html>
