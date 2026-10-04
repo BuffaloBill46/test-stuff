@@ -2,14 +2,15 @@
 // pool readout and its jackpot (board 3: the centre present), odds, last drops. Every drop runs in the house's order (paid → secret locked → drawn → revealed;
 // playcredits.js / house.js), on the Spin pool (shared, Cody); the run's winnings are sent at the end. The board only
 // animates the path the draw already decided. DEMO: the same demo balance as Slots.
-import { jackpotOdds, JP, PAYS2, JACKPOT_BIN, ROWS, BINS } from './plinko.js?v=27294b1195';
-import { poolJackpot } from './slots.js?v=27294b1195';
-import { createBoard } from './plinkoboard.js?v=27294b1195';
-import { playRun, short } from './playcredits.js?v=27294b1195';
-import { runSummary } from './runui.js?v=27294b1195';
-import { initRunPick, priceLabel } from './runpick.js?v=27294b1195';
-import { showResult } from './spinui.js?v=27294b1195';
-import { play as sfx } from './sfx.js?v=27294b1195';
+import { jackpotOdds, JP, PAYS2, JACKPOT_BIN, ROWS, BINS } from './plinko.js?v=c93443a296';
+import { poolJackpot } from './slots.js?v=c93443a296';
+import { createBoard } from './plinkoboard.js?v=c93443a296';
+import { playRun, short } from './playcredits.js?v=c93443a296';
+import { runSummary } from './runui.js?v=c93443a296';
+import { initRunPick, priceLabel } from './runpick.js?v=c93443a296';
+import { showResult } from './spinui.js?v=c93443a296';
+import { play as sfx } from './sfx.js?v=c93443a296';
+import { celebrate, celebrating, tierOf } from './celebrate.js?v=c93443a296';
 
 const $ = (s, el = document) => el.querySelector(s);
 const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);
@@ -80,13 +81,15 @@ function landed(r, p) {
   const res = $('#drop .res'), card = $('#drop .dropcard');
   onPool(p.poolUsd);
   history.unshift(r.jackpot ? 'JP' : r.mult); history.length = Math.min(history.length, MAX_HISTORY);
-  card.classList.remove('won', 'jackpot');
+  if (!celebrating(card)) card.classList.remove('won', 'jackpot'); // not while a bigger win is still on screen
   if (r.jackpot) { // THE POOL JACKPOT (board 3's centre): the biggest celebration, with the real dollar amount
-    sfx('jackpot'); card.classList.add('jackpot'); stamp(`POOL JACKPOT ${money(r.pay)}`);
+    card.classList.add('jackpot'); stamp(`POOL JACKPOT ${money(r.pay)}`); celebrate(card, 5, { amount: r.pay, money, fast });
     res.innerHTML = `<span><b>POOL JACKPOT! ${money(r.pay)}</b> <span class="dim">(${+(r.pct * 100).toFixed(2)}% of the ${money(r.jackpotPool)} Game pool × your ${cents(r.bet)} drop; ${money(r.pay * 0.97)} after SANTA's 3% tax)</span></span>`;
     addWinner(r.bet >= 1 ? 'drop100' : 'drop10', r.pay, r.bet, 'pool jackpot');
   } else if (r.ahead) {
-    sfx(r.mult >= 10 ? 'bigWin' : 'smallWin'); card.classList.add(r.mult >= 10 ? 'jackpot' : 'won'); stamp(`${r.mult}× WIN`);
+    // the jackpot look is for the pool jackpot only (a 10× used to borrow it); balls land close together, so a smaller win
+    // never covers a bigger one still on screen (it used to replace a jackpot stamp within 0.4 s)
+    const tier = tierOf({ ahead: true, mult: r.mult }); card.classList.add('won'); if (celebrating(card) <= tier) stamp(`${r.mult}× WIN`); celebrate(card, tier, { amount: r.pay, money, fast });
     res.innerHTML = `<b>${r.mult}× win!</b> ${money(r.pay)}`;
     addWinner(r.bet >= 1 ? 'drop100' : 'drop10', r.pay, r.bet, `${r.mult}×`);
   } else if (r.mult === 1) res.innerHTML = `<span class="dim">Money back: ${money(r.pay)}.</span>`;

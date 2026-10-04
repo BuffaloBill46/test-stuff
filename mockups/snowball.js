@@ -1,6 +1,6 @@
 // Mockup A: Snowball Square. Grab the hat, keep it on your head, knock it off theirs.
-import { THREE, C, character, animate, Snow, Burst, toon, part, build, glow } from './kit.js?v=27294b1195';
-import { buildPlaza, makeHat, shadowBlob, ARENA } from './plaza.js?v=27294b1195';
+import { THREE, C, character, animate, Snow, Burst, toon, part, build, glow } from './kit.js?v=c93443a296';
+import { buildPlaza, makeHat, shadowBlob, ARENA } from './plaza.js?v=c93443a296';
 
 const V3 = THREE.Vector3;
 const ROUND = 90, BALL_G = 7, BALL_SPEED = 18, HAT_G = 16, HEAD_Y = 2.05;

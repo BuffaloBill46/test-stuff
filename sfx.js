@@ -53,6 +53,10 @@ const SOUNDS = {
   spinTick: (t) => noise(t, 0.025, { vol: 0.12, filter: 'bandpass', freq: 3200, q: 3 }),                                   // peg past the flapper
   buy: (t) => { tone(1046, t, 0.12, { vol: 0.1 }); tone(1568, t + 0.06, 0.18, { vol: 0.1 }); },                              // coin-ish chime
   smallWin: (t) => { [523, 659, 784].forEach((f, i) => tone(f, t + i * 0.08, 0.25, { type: 'triangle', vol: 0.12 })); bell(t + 0.24, 2000, 0.08); },
+  // tiered wins (celebrate.js): nice (3×+) sits between the small chime and the big win; huge (25×+) between big and the jackpot
+  niceWin: (t) => { [523, 659, 784, 1046].forEach((f, i) => tone(f, t + i * 0.08, 0.32, { type: 'triangle', vol: 0.13 })); [0, 0.12, 0.24].forEach((d) => bell(t + 0.3 + d, 1900, 0.08)); },
+  hugeWin: (t) => { for (let r = 0; r < 2; r++) [523, 659, 784, 1046, 1318].forEach((f, i) => tone(f * (1 + r * 0.5), t + r * 0.42 + i * 0.07, 0.45, { type: 'triangle', vol: 0.14 }));
+    tone(130, t, 0.6, { type: 'sine', vol: 0.25, to: 65 }); for (let i = 0; i < 10; i++) bell(t + 0.2 + i * 0.08, 1500 + (i % 4) * 250, 0.08); },
   bigWin: (t) => { [523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, t + i * 0.09, 0.4, { type: 'triangle', vol: 0.14 })); for (let i = 0; i < 6; i++) bell(t + 0.3 + i * 0.09, 1600 + (i % 3) * 300, 0.08); },
   // Stocking Stuffer: a stocking jiggling on its hook (a soft knit rustle), a present (sleigh bells), a lump of coal (a low thud)
   jiggle: (t) => { noise(t, 0.1, { vol: 0.07, filter: 'bandpass', freq: 900, q: 0.8 }); noise(t + 0.12, 0.1, { vol: 0.06, filter: 'bandpass', freq: 1100, q: 0.8 }); },
