@@ -63,12 +63,10 @@
   {
    "t": 7.8,
    "dur": 2.4,
-   "src": "raw/grok-frostking.mp4",
-   "from": 1.5,
-   "kicker": "LEVEL 10 REWARD",
-   "label": "Frost King",
-   "labelColor": "#cfe8ff",
-   "kickerColor": "#9fd8ff",
+   "src": "raw/grok-nutcracker.mp4",
+   "from": 1.2,
+   "kicker": "LEVEL 5 REWARD",
+   "label": "Nutcracker",
    "fadeIn": 0.3,
    "fadeOut": 0.3,
    "flash": 0.45
@@ -76,10 +74,12 @@
   {
    "t": 10.2,
    "dur": 2.4,
-   "src": "raw/grok-nutcracker.mp4",
-   "from": 1.2,
-   "kicker": "LEVEL 5 REWARD",
-   "label": "Nutcracker",
+   "src": "raw/grok-frostking.mp4",
+   "from": 1.5,
+   "kicker": "LEVEL 10 REWARD",
+   "label": "Frost King",
+   "labelColor": "#cfe8ff",
+   "kickerColor": "#9fd8ff",
    "fadeIn": 0.3,
    "fadeOut": 0.3,
    "flash": 0.55
