@@ -161,7 +161,12 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
-### 2026-10-04 (NEWEST): SEASON PASS IN POINTS + LOTTERY PICKER, LIVE (039 applied; servers a7cdd2d)
+### 2026-10-04 (NEWEST): SEASON PRIZES MIXED, PASS $2 = THE COSTUME (040-042 live; servers ad36184)
+- Every door: ONE prize for everyone (5 looks, Elf Hat 15, Kevlar Vest 30, 8 "+1 level tick" at 3,7,11,17,21,24,27,29, 15
+  ranked tickets). The $2 pass: just the costume, a piece on 2,6,10,14,18,22. Level ticks a season: 8 + streak (was 30+).
+- Season tickets are counted apart from bought ones (042 season_tickets()); the Store's "buy at most 10" uses bought only.
+
+### 2026-10-04: SEASON PASS IN POINTS + LOTTERY PICKER, LIVE (039 applied; servers a7cdd2d)
 - Points a day (max 700): 5 tasks x100 (Log in + Play 2 every day, 3 rotate incl. new "Win an Auto match"), first 10 Auto
   matches +10 each, top 3 +10 more. 30 doors, one every 300 points; every door shows its free + pass prize (seasonui.js).
   Pass: 6 pieces (2,6,10,14,18,22), 5 level steps (4,8,12,17,21), Elf Hat (15), Kevlar Vest (30), 17 ranked tickets
