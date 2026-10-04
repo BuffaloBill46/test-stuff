@@ -170,7 +170,8 @@ between two devices has never been tested from here. Cody and friends testing on
   Helius URL from the key file as SURFPOOL_DATASOURCE_RPC_URL (never echo it), `surfpool start --ci --no-deploy -q 0`; then
   tests/browser/fork-sol-qa.mjs [runs per game]. Shakedown: 45/45 purchases, payouts, all money checks exact.
 - Security: SOL payments refuse SANTA moved in by a wallet that signed (verify.js S1b).
-- HELIUS KEY: printed once into a local test log by a Surfpool error (deleted; never committed/sent). Cody told to rotate it.
+- HELIUS KEY: printed once into a local test log by a Surfpool error (deleted; never committed/sent). Cody 2026-10-04: no
+  rotation needed ("if you deleted it, it's fine"). The test now cuts addresses out of every error.
 - Admins: Cody's Phantom + the codyAdmin stand-in, on devnet and in games.env.mainnet (his call: keep both).
 - X: logo + banner (marketing/brand), launch posts + bios (marketing/x-launch-posts.txt), Frost King still (marketing/stills/char-2).
 
