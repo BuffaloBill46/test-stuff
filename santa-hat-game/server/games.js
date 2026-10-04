@@ -19,6 +19,7 @@ import { NUMS, proofExtras } from '../mockups/house.js';
 import { MINT, QUOTE_SECONDS, CUSHION, splitPayment } from '../mockups/market.js';
 import { SHOP_BURN_BPS } from '../mockups/shoprules.js';
 import { verifyPayment } from './verify.js';
+import { makeSolQuote, solExpect } from './solquote.js';
 import { weekStart } from '../mockups/gameclock.js';
 import { weeklyAt, ROTATION } from '../mockups/weekly.js';
 
@@ -58,7 +59,9 @@ const DEC = 1e6;
 // Games that can no longer be bought (none now). Santa Hat Spin was retired here (2026-10-01) and then removed altogether
 // (Cody, 2026-10-04; the live database never had a Spin run): its kind is unknown, so it's refused as an unknown game.
 export const RETIRED = [];
-export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f = fair, mint = MINT, cluster = 'mainnet', retired = RETIRED }) {
+// liveSol() → { usd }: the SOL price, for paying with SOL (server/solquote.js; null = SANTA only)
+export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f = fair, mint = MINT, cluster = 'mainnet', retired = RETIRED, liveSol = null }) {
+  const solQuote = makeSolQuote({ db, liveSol, cluster });
   const row = async (q, p) => (await db.query(q, p))[0];
   // Game settings (Cody's admin screen): the newest version for new plays; each play settles on the version it started with.
   const built = new Map(); let latest = { at: 0, version: 0 };
@@ -109,8 +112,8 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     const q = await row(`insert into public.quotes (profile_id, kind, n, bet, usd, santa_raw, price_usd) values ($1, $2, $3, $4, $5, $6, $7) returning id, created_at`,
       [profile, kind, n, bet, usd, santaRaw, price.usd]);
     // where to pay: the page builds the one transaction from this (mockups/pay.js); the live tax so its fee matches the token
-    const fee = await liveFee();
-    return { id: q.id, kind, n, bet, usd, santaRaw, price: price.usd, expiresAt: new Date(q.created_at).getTime() + QUOTE_SECONDS * 1000,
+    const fee = await liveFee(), sol = await solQuote('quotes', q.id, usd); // paying with SOL: the whole price in SOL
+    return { id: q.id, kind, n, bet, usd, santaRaw, ...(sol || {}), price: price.usd, expiresAt: new Date(q.created_at).getTime() + QUOTE_SECONDS * 1000,
       mint, pool: poolWallets?.[KINDS[kind].game] || null, fee: { bps: fee.bps, max: fee.max }, burnBps: GAME_BURN_BPS,
       // only a payment FROM this wallet is accepted (verify.js): the page refuses to sign with any other, so nobody pays for nothing
       payer, cluster };
@@ -126,7 +129,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     const [tx, fee, wallet] = await Promise.all([chain.getTransaction(signature), liveFee(), walletOf(profile)]);
     if (!wallet) return { error: 'buying needs a linked wallet' };
     const v = verifyPayment(tx, { mint, player: wallet, pool: poolWallets[KINDS[q.kind].game], quoteRaw: +q.santa_raw,
-      quoteAt: new Date(q.created_at).getTime(), quoteSeconds: QUOTE_SECONDS, cushion: CUSHION, burnBps: GAME_BURN_BPS, fee });
+      quoteAt: new Date(q.created_at).getTime(), quoteSeconds: QUOTE_SECONDS, cushion: CUSHION, burnBps: GAME_BURN_BPS, fee, sol: solExpect(q) });
     if (!v.ok) return { error: v.why };
     let runId;
     try { runId = +(await row('select public.buy_run($1, $2, $3, $4, $5, $6) as id', [q.id, signature, v.paid, v.burned, v.arrived, await settingsVersion()])).id; }

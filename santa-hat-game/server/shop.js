@@ -10,7 +10,8 @@ import { itemsWith, DEFAULT_SETTINGS } from '../mockups/settings.js';
 import { buyPrice } from '../mockups/levels.js';
 import { BOUGHT_MAX } from '../mockups/ranked.js';
 import { burnBpsFor, TICKET_PACKS, forSale } from '../mockups/shoprules.js';
-import { MINT, QUOTE_SECONDS, CUSHION, splitPayment, lamportsFor } from '../mockups/market.js';
+import { MINT, QUOTE_SECONDS, CUSHION } from '../mockups/market.js';
+import { makeSolQuote, solExpect } from './solquote.js';
 import { verifyPayment } from './verify.js';
 import { seasonAt, PASS_PRICE } from '../mockups/seasons.js';
 
@@ -22,6 +23,7 @@ const DEC = 1e6, QUOTES_PER_HOUR = 60, isSignature = (s) => /^[1-9A-HJ-NP-Za-km-
 // liveSol() → { usd }: the SOL price, for paying with SOL (Cody 2026-10-04; null = SANTA only). Mainnet only: the swap runs on
 // Jupiter, which isn't on devnet.
 export function createShop({ db, chain, livePrice, liveFee, treasury, mint = MINT, cluster = 'mainnet', rankedPaused = () => false, liveSol = null }) {
+  const solQuote = makeSolQuote({ db, liveSol, cluster });
   const row = async (q, p) => (await db.query(q, p))[0];
   // the items as published from Cody's admin screen (the newest settings), so the Store and the charge always agree
   async function items() {
@@ -70,21 +72,13 @@ export function createShop({ db, chain, livePrice, liveFee, treasury, mint = MIN
       : await row(`insert into public.shop_quotes (profile_id, kind, item_id, to_level, n, usd, santa_raw, price_usd) values ($1, $2, $3, $4, $5, $6, $7, $8) returning id, created_at`,
         [profile, what.kind, cols.item_id ?? null, cols.to_level ?? null, cols.n ?? null, usd, santaRaw, price.usd]);
     const fee = await liveFee();
-    // Paying with SOL instead: the burn share is still SANTA (bought with SOL in the same transaction and burned); the rest, in
-    // dollars, goes to the treasury as SOL at the live SOL price. Kept on the quote (044) so the check uses exactly this. No SOL
-    // price (down, devnet, or 044 not applied yet): the quote simply offers SANTA only.
-    let solLamports = null, solUsd = null;
-    if (liveSol && cluster === 'mainnet') {
-      try {
-        const sp = splitPayment(santaRaw, burnBpsFor(what.kind), fee); solUsd = (await liveSol()).usd;
-        solLamports = lamportsFor((usd * (santaRaw - sp.burn)) / santaRaw, solUsd);
-        await db.query('update public.shop_quotes set sol_lamports = $2 where id = $1', [q.id, solLamports]);
-      } catch { solLamports = null; solUsd = null; }
-    }
+    // Paying with SOL instead (server/solquote.js): the whole price in SOL; the page swaps the burn share (50%) and burns all of it,
+    // and sends the rest to the treasury AS SOL (verify.js). No SOL price (devnet, the price down): SANTA only.
+    const sol = await solQuote('shop_quotes', q.id, usd);
     // the page pays exactly like a game run (mockups/pay.js): the burn and the treasury transfer in one transaction
     return { id: q.id, kind: what.kind, ...cols, usd, santaRaw, price: price.usd, expiresAt: new Date(q.created_at).getTime() + QUOTE_SECONDS * 1000,
       mint, pool: treasury, fee: { bps: fee.bps, max: fee.max }, burnBps: burnBpsFor(what.kind), payer: p.wallet, cluster, // the pass burns nothing (100% treasury)
-      ...(solLamports ? { solLamports, solUsd } : {}) };
+      ...(sol ? { ...sol, solStore: true } : {}) };
   }
   async function buy(profile, quoteId, signature) {
     if (!/^[0-9a-f-]{36}$/.test(String(quoteId))) return { error: 'unknown quote' };
@@ -94,7 +88,7 @@ export function createShop({ db, chain, livePrice, liveFee, treasury, mint = MIN
     if (q.used_by) return { error: q.used_by === signature ? 'payment already used' : 'quote already used' };
     const [tx, fee, payer] = await Promise.all([chain.getTransaction(signature), liveFee(), row('select wallet from public.profiles where id = $1', [profile]).then((r) => r?.wallet)]);
     const v = verifyPayment(tx, { mint, player: payer, pool: treasury, quoteRaw: +q.santa_raw, quoteAt: new Date(q.created_at).getTime(),
-      quoteSeconds: QUOTE_SECONDS, cushion: CUSHION, burnBps: burnBpsFor(q.kind), fee, lamports: q.sol_lamports ? +q.sol_lamports : undefined });
+      quoteSeconds: QUOTE_SECONDS, cushion: CUSHION, burnBps: burnBpsFor(q.kind), fee, sol: solExpect(q, true) });
     if (!v.ok) return { error: v.why, retry: /not found|not finalized/.test(v.why) };
     try { const g = (await row('select public.shop_buy($1, $2, $3, $4) as g', [q.id, signature, v.paid, payer])).g;
       return g.refunded ? { ok: true, refunded: true, note: `Paid, but it couldn't be granted (${g.why}), so the full amount is owed back to your wallet.` } : { ok: true, ...g }; }

@@ -224,4 +224,27 @@ assert.equal(bad.length, 0, 'every finished run paid exactly its plays\' total')
 const live = createGameServer({ db, chain: { getTransaction: async (s) => txs.get(s) ?? null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: POOLS });
 assert.equal((await live.quote(me, 'spin', 1, 0.1)).error, 'unknown game', 'no Spin runs: the game is gone');
 assert.ok((await live.quote(me, 'drop', 1, 0.1)).id, 'Snowball Drop still sells, from the same pool');
+// Paying with SOL at the price (Cody 2026-10-04; 045): on mainnet the quote carries the whole price in SOL; the player spends exactly
+// that through Jupiter; the SANTA it bought (90% of the quote here: the swap's fees) is burned 10% and the rest reaches the pool.
+// The run is sold in full, and the pool's books get exactly what ARRIVED (the house absorbs the fees). Under 85%: refused.
+{ for (let i = 0; i < 2; i++) await pg.exec(readFileSync(new URL('../../supabase/045_pay_with_sol_everywhere.sql', import.meta.url), 'utf8')); // safe twice
+  const { JUPITER } = await import('../../server/verify.js'), { lamportsFor } = await import('../../mockups/market.js'), SOLUSD = 121.42;
+  const sg = createGameServer({ retired: [], db, chain: { getTransaction: async (s) => txs.get(s) ?? null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: POOLS, cluster: 'mainnet', liveSol: async () => ({ usd: SOLUSD }) });
+  const solRun = (sig, q, got) => { const T = Math.floor(q.santaRaw * got), s = splitPayment(T, 1000, FEE), b = (i, o, a) => ({ accountIndex: i, mint: MINT, owner: o, uiTokenAmount: { amount: String(a), decimals: 6 } });
+    txs.set(sig, { blockTime: Math.floor(Date.now() / 1000), meta: { err: null, fee: 5000, innerInstructions: [], preBalances: [5e9, 0, 0], postBalances: [5e9 - q.solLamports - 5000, 0, 0],
+      preTokenBalances: [b(1, PLAYER, 1e13), b(2, POOLS.spin, 1e12)], postTokenBalances: [b(1, PLAYER, 1e13), b(2, POOLS.spin, 1e12 + s.arrives)] },
+      transaction: { message: { accountKeys: [{ pubkey: PLAYER, signer: true }, { pubkey: 'ata', signer: false }, { pubkey: 'pool', signer: false }],
+        instructions: [{ programId: JUPITER, accounts: [], data: '' }, { program: 'spl-token', parsed: { type: 'burnChecked', info: { mint: MINT, authority: PLAYER, tokenAmount: { amount: String(s.burn) } } } }] } } });
+    return s; };
+  const q1 = await sg.quote(me, 'drop', 1, 1);
+  assert.ok(q1.solLamports === lamportsFor(1, SOLUSD) && q1.solUsd === SOLUSD, 'a $1 run: the whole price in SOL ' + JSON.stringify(q1));
+  assert.equal(+(await one('select sol_lamports from public.quotes where id = $1', [q1.id])).sol_lamports, q1.solLamports, 'kept on the quote');
+  const low = solRun(S('SolLow'), q1, 0.8), r1 = await sg.buy(me, q1.id, S('SolLow'));
+  assert.match(r1.error || '', /under 85%/, 'only 80% arrived: refused ' + JSON.stringify(r1));
+  const q2 = await sg.quote(me, 'drop', 1, 1), before = await pool('spin'), s2 = solRun(S('SolOk'), q2, 0.9), r2 = await sg.buy(me, q2.id, S('SolOk'));
+  assert.ok(r2.ok && r2.plays.length === 1, 'paid $1 of SOL, 90% arrived: the full run is sold ' + JSON.stringify(r2));
+  assert.equal(await pool('spin'), before + s2.arrives, 'the pool booked exactly what arrived (the house absorbs the swap fees)');
+  assert.equal(+(await one('select arrived_raw from public.payments where signature = $1', [S('SolOk')])).arrived_raw, s2.arrives, 'the payment records what arrived');
+  await settleAll(me, r2);
+  assert.equal((await createGameServer({ retired: [], db, chain: { getTransaction: async () => null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, poolWallets: POOLS }).quote(me, 'drop', 1, 1)).solLamports, undefined, 'devnet: SANTA only'); }
 console.log('OK: quote → pay → buy a run → settle on real Postgres; cheats refused; every play re-checked; ONE payout per run, only at its end; refunds ride along; stuck runs finished; 10 settles at once all counted; price halving checked');

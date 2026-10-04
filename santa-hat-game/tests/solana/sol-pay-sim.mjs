@@ -10,7 +10,8 @@ import assert from 'node:assert/strict';
 import * as kit from '@solana/kit';
 import * as T22 from '@solana-program/token-2022';
 import { solPurchaseInstructions, purchaseMessage } from '../../mockups/pay.js';
-import { MINT, livePrice, liveFee } from '../../mockups/market.js';
+import { MINT, livePrice, liveFee, lamportsFor, splitPayment, solShares, SOL_FLOOR } from '../../mockups/market.js';
+import { JUPITER } from '../../server/verify.js';
 
 const RPC = process.env.RPC || 'https://api.mainnet-beta.solana.com', rpc = kit.createSolanaRpc(RPC);
 const call = async (method, params) => { for (let i = 0; ; i++) { // the free public server says "too many requests" quickly: wait and ask again
@@ -50,20 +51,26 @@ async function simulate(name, quote, tokens = true) {
   const r = { size, units: sim.unitsConsumed, solIn: built.solIn, solSpent: lamportsOf(pre[0]) - lamportsOf(post[0]), santaLeft: santaOf(post[1]) - santaOf(pre[1]),
     pool: santaOf(post[2]) - santaOf(pre[2]), treasury: lamportsOf(post[3]) - lamportsOf(pre[3]), burned: supply(pre[4]) - supply(post[4]) };
   console.log(`${name}: ${size} bytes (max 1232), ${r.units} compute units; SOL spent ${(r.solSpent / 1e9).toFixed(6)} (~$${(r.solSpent / 1e9 * solUsd).toFixed(3)}), burned ${r.burned / 1e6} SANTA, pool +${r.pool / 1e6} SANTA, treasury +${r.treasury / 1e9} SOL, leftover to the player ${r.santaLeft / 1e6} SANTA`);
-  return { r, p };
+  return { r, p, built };
 }
-const base = (usd, burnBps) => ({ id: 'sim', usd, santaRaw: Math.round((usd / price.usd) * 1e6), price: price.usd, mint: MINT, fee: { bps: fee.bps, max: fee.max }, burnBps, payer: playerAddr, cluster: 'mainnet' });
-
-// 1. a game run: $1, 10% burned, the rest to the pool, all in SANTA
-{ const { r, p } = await simulate('game run $1', { ...base(1, 1000), pool: poolAddr });
-  assert.ok(r.burned === p.split.burn && r.pool >= p.split.arrives && r.santaLeft >= 0 && r.treasury === 0, 'game: burn exact, the pool got at least what the split says, the player\'s own SANTA untouched'); }
-// 2. a Store item: $1, half burned (SANTA bought with SOL), half to the treasury as SOL
-{ const q = { ...base(1, 5000), pool: treasury }, s = (await import('../../mockups/market.js')).splitPayment(q.santaRaw, 5000, q.fee);
-  q.solLamports = Math.ceil(((q.usd * (q.santaRaw - s.burn)) / q.santaRaw / solUsd) * 1e9);
-  const { r, p } = await simulate('Store item $1', q);
-  assert.ok(r.burned === p.split.burn && r.treasury === q.solLamports && r.santaLeft >= 0, 'item: the burn half bought and burned, the other half to the treasury in SOL'); }
+const base = (usd, burnBps, pool, store = false) => { const santaRaw = Math.round((usd / price.usd) * 1e6);
+  return { id: 'sim', usd, santaRaw, price: price.usd, mint: MINT, fee: { bps: fee.bps, max: fee.max }, burnBps, payer: playerAddr, cluster: 'mainnet', pool,
+    solLamports: lamportsFor(usd, solUsd), solUsd, ...(store ? { solStore: true } : {}) }; };
+// The player pays EXACTLY the price in SOL (Cody 2026-10-04); the swap's fees come out of what arrives (at least SOL_FLOOR of it).
+const FEES = 20_000; // lamports: the network fee and a little slack (no new accounts: these wallets already hold SANTA)
+const pct = (a, b) => ((100 * a) / b).toFixed(1) + '%';
+// 1. a game run: $1 of SOL, all swapped; 10% of what it bought burned, the rest to the pool
+{ const q = base(1, 1000, poolAddr), { r, p, built } = await simulate('game run $1', q), want = splitPayment(q.santaRaw, 1000, q.fee), got = splitPayment(built.santa, 1000, q.fee);
+  console.log('   delivered to the pool: ' + pct(r.pool, want.arrives) + ' of what $1 of SANTA would (floor ' + SOL_FLOOR * 100 + '%)');
+  assert.ok(built.instructions.some((i) => i.programAddress === JUPITER), 'the swap goes through Jupiter (the server requires it)');
+  assert.ok(r.solSpent >= q.solLamports && r.solSpent <= q.solLamports + FEES, 'the player paid exactly the price in SOL (plus the network fee): ' + r.solSpent + ' vs ' + q.solLamports);
+  assert.ok(r.burned === got.burn && r.pool >= got.arrives && r.pool >= SOL_FLOOR * want.arrives && r.santaLeft >= 0 && r.treasury === 0, 'game: what the SOL bought is burned 10% and sent on, above the floor'); }
+// 2. a Store item: $1; exactly 50% of the price swapped and ALL of it burned; the other 50% to the treasury as SOL
+{ const q = base(1, 5000, treasury, true), { r, p, built } = await simulate('Store item $1', q), sh = solShares(q.solLamports, 5000, true);
+  console.log('   burned: ' + pct(r.burned, q.santaRaw / 2) + ' of what 50¢ of SANTA would (floor ' + SOL_FLOOR * 100 + '%)');
+  assert.ok(r.solSpent >= q.solLamports && r.solSpent <= q.solLamports + FEES, 'the player paid exactly the price in SOL: ' + r.solSpent + ' vs ' + q.solLamports);
+  assert.ok(r.burned === built.santa && r.burned >= SOL_FLOOR * q.santaRaw / 2 && r.treasury === sh.treasury && r.santaLeft >= 0, 'item: half bought and all burned, half to the treasury in SOL'); }
 // 3. the season pass: $2, all to the treasury as SOL, no swap
-{ const q = { ...base(2, 0), pool: treasury }; q.solLamports = Math.ceil((2 / solUsd) * 1e9);
-  const { r, p } = await simulate('season pass $2', q, false);
-  assert.ok(r.burned === 0 && r.treasury === q.solLamports && r.solIn === 0 && p.gross === 0, 'pass: a plain SOL transfer, nothing burned, no swap'); }
-console.log('OK: paying with SOL works on real mainnet routes (simulated: nothing signed, nothing moved)');
+{ const q = base(2, 0, treasury, true), { r, p, built } = await simulate('season pass $2', q, false);
+  assert.ok(r.burned === 0 && r.treasury === q.solLamports && built.solIn === 0 && r.solSpent <= q.solLamports + FEES, 'pass: a plain SOL transfer of exactly the price, nothing burned, no swap'); }
+console.log('OK: paying with SOL at exactly the price works on real mainnet routes (simulated: nothing signed, nothing moved)');

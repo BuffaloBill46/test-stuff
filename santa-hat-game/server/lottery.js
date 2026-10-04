@@ -11,6 +11,7 @@ import { LOTTERIES, LIVE_LOTTERIES, nextDraw, salesFor, splitPot, drawWinners, B
 import * as fair from '../mockups/fair.js';
 import { MINT, QUOTE_SECONDS, CUSHION } from '../mockups/market.js';
 import { verifyPayment } from './verify.js';
+import { makeSolQuote, solExpect } from './solquote.js';
 
 const DEC = 1e6, isSignature = (s) => /^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(String(s));
 export const LOTTERY_QUOTES_PER_HOUR = 30;
@@ -19,8 +20,9 @@ export const LOTTERY_QUOTES_PER_HOUR = 30;
 // schedule: the real one (midnight UTC etc.); tests pass { nextDraw, salesFor } with draws seconds apart, against the real database.
 // paused: lotteries that sell nothing and open no new draws (default: the ones switched off in lottery.js; tests can pass [] to
 // keep testing a switched-off lottery's rules). Draws already open still finish as normal.
-export function createLottery({ db, chain, livePrice, liveFee, wallet, mint = MINT, cluster = 'mainnet', now = () => Date.now(), f = fair, schedule = { nextDraw, salesFor }, paused = Object.keys(LOTTERIES).filter((k) => !LIVE_LOTTERIES.includes(k)) }) {
+export function createLottery({ db, chain, livePrice, liveFee, wallet, mint = MINT, cluster = 'mainnet', now = () => Date.now(), f = fair, schedule = { nextDraw, salesFor }, liveSol = null, paused = Object.keys(LOTTERIES).filter((k) => !LIVE_LOTTERIES.includes(k)) }) {
   const row = async (q, p) => (await db.query(q, p))[0];
+  const solQuote = makeSolQuote({ db, liveSol, cluster }); // paying with SOL (server/solquote.js)
   const walletOf = async (profile) => (await row('select wallet from public.profiles where id = $1', [profile]))?.wallet;
 
   // The open draw for this lottery at time t (made, with its sealed secret, the first time anyone needs it).
@@ -52,8 +54,8 @@ export function createLottery({ db, chain, livePrice, liveFee, wallet, mint = MI
     const usd = Math.round(L.ticket * n * 100) / 100, santaRaw = Math.round((usd / price.usd) * DEC);
     const q = await row(`insert into public.lottery_quotes (profile_id, draw_id, n, usd, santa_raw, price_usd) values ($1, $2, $3, $4, $5, $6) returning id, created_at`,
       [profile, d.id, n, usd, santaRaw, price.usd]);
-    const fee = await liveFee();
-    return { id: q.id, lottery: kind, n, usd, santaRaw, price: price.usd, expiresAt: new Date(q.created_at).getTime() + QUOTE_SECONDS * 1000,
+    const fee = await liveFee(), sol = await solQuote('lottery_quotes', q.id, usd); // paying with SOL: the whole price in SOL
+    return { id: q.id, lottery: kind, n, usd, santaRaw, ...(sol || {}), price: price.usd, expiresAt: new Date(q.created_at).getTime() + QUOTE_SECONDS * 1000,
       drawsAt: new Date(d.draws_at).getTime(), commit: d.commit,
       mint, pool: wallet, fee: { bps: fee.bps, max: fee.max }, burnBps: BURN_BPS, payer, cluster }; // the page pays exactly like a game run (pay.js)
   }
@@ -66,7 +68,7 @@ export function createLottery({ db, chain, livePrice, liveFee, wallet, mint = MI
     if (q.used_by) return { error: 'quote already used' };
     const [tx, fee, payer] = await Promise.all([chain.getTransaction(signature), liveFee(), walletOf(profile)]);
     const v = verifyPayment(tx, { mint, player: payer, pool: wallet, quoteRaw: +q.santa_raw, quoteAt: new Date(q.created_at).getTime(),
-      quoteSeconds: QUOTE_SECONDS, cushion: CUSHION, burnBps: BURN_BPS, fee });
+      quoteSeconds: QUOTE_SECONDS, cushion: CUSHION, burnBps: BURN_BPS, fee, sol: solExpect(q) });
     if (!v.ok) return { error: v.why };
     await runDraws();
     const next = await drawFor(q.kind, now()); // where late tickets go if this quote's draw already ran (none for Christmas)

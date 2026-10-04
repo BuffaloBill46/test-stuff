@@ -188,5 +188,28 @@ assert.equal((await ask(null, { action: 'lottery-tickets', draw: (await lot.draw
 assert.equal((await ask(null, { action: 'lottery-quote', lottery: 'daily-10', n: 1 })).status, 401, 'buying needs sign-in');
 await waitOpenWindow(); const wq = await ask('ann', { action: 'lottery-quote', lottery: 'daily-10', n: 2 });
 assert.ok(wq.id && wq.pool === LOTTERY && wq.burnBps === 1000 && wq.payer === A.w, 'a signed-in quote: pay the lottery wallet, 10% burned, from your own wallet');
+// Paying with SOL at the price (Cody 2026-10-04; 045): the ticket's whole price in SOL on the quote; the player spends exactly that
+// through Jupiter; what the swap bought (90% here) is burned 10% and the rest goes into the pot: the tickets are sold in full and
+// the pot grows by exactly what arrived. Under 85%: refused.
+{ const { readFileSync } = await import('node:fs');
+  for (let i = 0; i < 2; i++) await db.pg.exec(readFileSync(new URL('../../supabase/045_pay_with_sol_everywhere.sql', import.meta.url), 'utf8')); // safe twice
+  const { JUPITER } = await import('../../server/verify.js'), { lamportsFor } = await import('../../mockups/market.js'), SOLUSD = 121.42;
+  const sl = createLottery({ db, chain, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, wallet: LOTTERY, mint: MINT, schedule, paused: [], cluster: 'mainnet', liveSol: async () => ({ usd: SOLUSD }) });
+  const solPay = (from, q, got) => { const sig = ('LottoSol' + String(++sigNo).padStart(4, '9') + '5'.repeat(80)).slice(0, 88).replace(/[0OIl]/g, '9'), s = splitPayment(Math.floor(q.santaRaw * got), 1000, FEE),
+      b = (i, o, a) => ({ accountIndex: i, mint: MINT, owner: o, uiTokenAmount: { amount: String(a), decimals: 6 } });
+    txs.set(sig, { blockTime: Math.floor(Date.now() / 1000), meta: { err: null, fee: 5000, innerInstructions: [], preBalances: [5e9, 0, 0], postBalances: [5e9 - q.solLamports - 5000, 0, 0],
+      preTokenBalances: [b(1, from, 1e13), b(2, LOTTERY, 1e12)], postTokenBalances: [b(1, from, 1e13), b(2, LOTTERY, 1e12 + s.arrives)] },
+      transaction: { message: { accountKeys: [{ pubkey: from, signer: true }, { pubkey: 'ata', signer: false }, { pubkey: 'lot', signer: false }],
+        instructions: [{ programId: JUPITER, accounts: [], data: '' }, { program: 'spl-token', parsed: { type: 'burnChecked', info: { mint: MINT, authority: from, tokenAmount: { amount: String(s.burn) } } } }] } } });
+    return { sig, arrives: s.arrives }; };
+  await waitOpenWindow();
+  const q1 = await sl.quote(B.id, 'weekly-10', 3);
+  assert.ok(q1.solLamports === lamportsFor(q1.usd, SOLUSD), 'the tickets\' whole price in SOL ' + JSON.stringify(q1));
+  const bad = await sl.buy(B.id, q1.id, solPay(B.w, q1, 0.8).sig);
+  assert.match(bad.error || '', /under 85%/, 'only 80% arrived: refused');
+  const q2 = await sl.quote(B.id, 'weekly-10', 3), drawId = +(await db.query('select draw_id from public.lottery_quotes where id = $1', [q2.id]))[0].draw_id;
+  const pot0 = +(await db.query('select pot_raw from public.lottery_draws where id = $1', [drawId]))[0].pot_raw, p2 = solPay(B.w, q2, 0.9), ok = await sl.buy(B.id, q2.id, p2.sig);
+  assert.ok(ok.ok && ok.tickets.last - ok.tickets.first === 2, 'paid with SOL, 90% arrived: all 3 tickets ' + JSON.stringify(ok));
+  assert.equal(+(await db.query('select pot_raw from public.lottery_draws where id = $1', [drawId]))[0].pot_raw, pot0 + p2.arrives, 'the pot grew by exactly what arrived'); }
 console.log(`OK: lottery end to end: checked payments → numbered tickets → fair draws (re-checked from public data) → exact splits (60/25/15, 1 winner, empty draws), late payments moved or refunded, cheats refused, manual (Cody records each send, checked on the chain) and escrow payouts, books balanced`);
 process.exit(0);

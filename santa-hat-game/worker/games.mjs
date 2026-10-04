@@ -74,7 +74,8 @@ const cluster = env('SOLANA_CLUSTER') || (/devnet/.test(rpcUrl) ? 'devnet' : 'ma
 const price = makePrice({ db, livePrice });
 setInterval(() => price().catch(() => {}), 61_000); // a price sample every minute even when nobody plays (server/price.js MIN_SAMPLES)
 price().catch(() => {});
-const server = createGameServer({ db, chain, livePrice: price, liveFee: feeOfMint, poolWallets, ...mintOpt, cluster });
+const solPrice = keptFee(liveSolPrice); // paying with SOL (mainnet only): the SOL price, remembered a minute, shared by all three
+const server = createGameServer({ db, chain, livePrice: price, liveFee: feeOfMint, poolWallets, ...mintOpt, cluster, liveSol: solPrice });
 
 // Alerts to Cody's Telegram (server/alerts.js; supabase/021): pool wallets read on the chain for the books check.
 // The SANTA (smallest units) a wallet holds, across its token accounts. finalized: the books check; confirmed: what a player sees.
@@ -111,8 +112,8 @@ const handle = makeHandler({
   seasons: createSeasons({ db }), // my season: daily tasks, doors, pass (server/seasons.js)
   shop: createShop({ db, chain, livePrice: price, liveFee: feeOfMint, treasury: env('TREASURY_WALLET') || null, ...mintOpt, cluster,
     rankedPaused: () => existsSync(env('RANKED_PAUSE_FILE') || '/etc/santa/ranked-paused'), // no ticket sales while ranked is paused
-    liveSol: keptFee(liveSolPrice) }), // paying with SOL (mainnet only): the SOL price, remembered a minute
-  lottery: createLottery({ db, chain: { ...chain, latestBlock }, livePrice: price, liveFee: feeOfMint, wallet: env('LOTTERY_WALLET') || null, ...mintOpt, cluster }),
+    liveSol: solPrice }),
+  lottery: createLottery({ db, chain: { ...chain, latestBlock }, livePrice: price, liveFee: feeOfMint, wallet: env('LOTTERY_WALLET') || null, ...mintOpt, cluster, liveSol: solPrice }),
   admin: createAdmin({ db, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), onWeekly: () => server.weeklyChanged(), chain,
     poolWallets: { ...poolWallets, lottery: env('LOTTERY_WALLET') || null, treasury: env('TREASURY_WALLET') || null }, ...mintOpt }),
   relay: makeRelay((method, params) => rpc(method, params, 15000)), // the page's backup Solana reads (read-only, signed in)

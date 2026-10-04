@@ -7,7 +7,7 @@
 //      nothing is signed and nothing moves. A game run ($1) and a Store item ($1) must both come out exactly as the quote says.
 // Run: node --import ./win-chrome.mjs sol-pay-page.mjs   (needs the internet: CDN, Jupiter, public Solana servers)
 import { createRequire } from 'module'; import { readFileSync, existsSync } from 'fs'; import { execSync } from 'child_process'; import path from 'path';
-import { MINT, livePrice, liveFee, splitPayment, liveSolPrice, lamportsFor } from '../../mockups/market.js';
+import { MINT, livePrice, liveFee, splitPayment, liveSolPrice, lamportsFor, solShares, SOL_FLOOR } from '../../mockups/market.js';
 const require = createRequire(import.meta.url);
 const { chromium } = require(path.join(execSync('npm root -g').toString().trim(), 'playwright'));
 const ROOT = new URL('../../mockups', import.meta.url).pathname, fails = [], check = (ok, msg) => { if (!ok) fails.push(msg); console.log((ok ? '  ✓ ' : '  ✗ ') + msg); };
@@ -33,8 +33,8 @@ if (wallets.length < 2) throw new Error('no wallets to simulate with');
 const [PAYER, POOL] = wallets, TREASURY = '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdVnHbSqazR4t'.replace(/[0OIl]/g, '9');
 const [price, fee, sol] = [await livePrice(), await liveFee(MINT, [SIM_RPC]), await liveSolPrice()];
 const base = (usd, burnBps, pool) => ({ id: 'sim', kind: 'x', usd, santaRaw: Math.round((usd / price.usd) * 1e6), price: price.usd, mint: MINT, fee: { bps: fee.bps, max: fee.max }, burnBps, payer: PAYER, cluster: 'mainnet', pool });
-const gameQ = base(1, 1000, POOL), itemQ = base(1, 5000, TREASURY);
-{ const s = splitPayment(itemQ.santaRaw, 5000, itemQ.fee); itemQ.solLamports = lamportsFor((1 * (itemQ.santaRaw - s.burn)) / itemQ.santaRaw, sol.usd); itemQ.solUsd = sol.usd; }
+const gameQ = { ...base(1, 1000, POOL), solLamports: lamportsFor(1, sol.usd), solUsd: sol.usd }, itemQ = { ...base(1, 5000, TREASURY), solLamports: lamportsFor(1, sol.usd), solUsd: sol.usd, solStore: true };
+// the player pays EXACTLY the price in SOL (Cody 2026-10-04); what arrives must clear SOL_FLOOR (85%); FEES: the network fee and slack
 
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } }), errors = [];
@@ -92,12 +92,12 @@ const lam = (a) => (a ? +a.lamports : 0), tok = (a) => (a?.data?.parsed?.info?.t
 const delta = (s, i, f) => f(s.post?.[i]) - f(s.pre?.[i]);
 { const watch = [PAYER, await ata(PAYER), await ata(POOL), MINT], s = await run(gameQ, watch), sp = splitPayment(gameQ.santaRaw, 1000, gameQ.fee);
   check(/captured/.test(s.thrown || '') && !s.err, `game run $1 built by the page and simulated: ${s.err ? JSON.stringify(s.err) + ' ' + (s.logs || []).join(' | ') : s.size ? s.size + ' bytes, ok' : 'never reached the wallet: ' + s.thrown}`);
-  check(delta(s, 3, sup) === -sp.burn && delta(s, 2, tok) >= sp.arrives && delta(s, 1, tok) >= 0,
-    `game run: burned ${-delta(s, 3, sup) / 1e6} (quote ${sp.burn / 1e6}), pool +${delta(s, 2, tok) / 1e6} (≥ ${sp.arrives / 1e6}), the player's own SANTA untouched (+${delta(s, 1, tok) / 1e6}); SOL spent ${(-delta(s, 0, lam) / 1e9).toFixed(6)}`); }
+  check(-delta(s, 3, sup) > 0 && delta(s, 2, tok) >= SOL_FLOOR * sp.arrives && delta(s, 1, tok) >= 0 && -delta(s, 0, lam) >= gameQ.solLamports && -delta(s, 0, lam) <= gameQ.solLamports + 20000,
+    `game run: paid exactly $1 of SOL (${-delta(s, 0, lam)} lamports, price ${gameQ.solLamports}); burned ${-delta(s, 3, sup) / 1e6}; pool +${delta(s, 2, tok) / 1e6} = ${(100 * delta(s, 2, tok) / sp.arrives).toFixed(1)}% of a full $1 (floor ${SOL_FLOOR * 100}%)`); }
 { const watch = [PAYER, await ata(PAYER), TREASURY, MINT], s = await run(itemQ, watch), sp = splitPayment(itemQ.santaRaw, 5000, itemQ.fee);
   check(/captured/.test(s.thrown || '') && !s.err, `Store item $1 built by the page and simulated: ${s.err ? JSON.stringify(s.err) + ' ' + (s.logs || []).join(' | ') : s.size ? s.size + ' bytes, ok' : 'never reached the wallet: ' + s.thrown}`);
-  check(delta(s, 3, sup) === -sp.burn && delta(s, 2, lam) === itemQ.solLamports && delta(s, 1, tok) >= 0,
-    `Store item: burned ${-delta(s, 3, sup) / 1e6} (quote ${sp.burn / 1e6}), treasury +${delta(s, 2, lam)} lamports (quote ${itemQ.solLamports}); SOL spent ${(-delta(s, 0, lam) / 1e9).toFixed(6)}`); }
+  check(-delta(s, 3, sup) >= SOL_FLOOR * itemQ.santaRaw / 2 && delta(s, 2, lam) === solShares(itemQ.solLamports, 5000, true).treasury && -delta(s, 0, lam) >= itemQ.solLamports && -delta(s, 0, lam) <= itemQ.solLamports + 20000,
+    `Store item: paid exactly $1 of SOL; burned ${-delta(s, 3, sup) / 1e6} = ${(200 * -delta(s, 3, sup) / itemQ.santaRaw).toFixed(1)}% of 50¢ worth (floor ${SOL_FLOOR * 100}%); treasury +${delta(s, 2, lam)} lamports = half the price`); }
 check(relayed > 0, `with publicnode blocked, the page read Solana through the game server (${relayed} reads)`);
 check(!errors.length, 'no page errors ' + errors.slice(0, 3).join(' | '));
 await browser.close();

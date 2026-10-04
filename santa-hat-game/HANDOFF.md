@@ -161,13 +161,17 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
-### 2026-10-04 (NEWEST): PAY WITH SOL BUILT + TESTED (044 live; servers 008c98a). SHOWS ONLY ON MAINNET.
+### 2026-10-04 (NEWEST): PAY WITH SOL BUILT + TESTED (044+045; see the line below for the price rule). SHOWS ONLY ON MAINNET.
 - One approval either way. Switch "Pay with: Auto / SANTA / SOL" (paywith.js, remembered; Store + under each game; hidden on
   devnet). Auto = SANTA if the wallet has enough, else SOL. Games/lottery: Jupiter swaps SOL->SANTA in the same transaction,
   then burn + pool as usual. Store: swap only the burn half, burn it, the rest to the treasury AS SOL (quote.solLamports,
   044). Pass: plain SOL transfer. Server check: verify.js (a payment whose SANTA went UP = paid with SOL; quote must be covered).
+- PRICE RULE (Cody 2026-10-04, 045): a SOL payer pays EXACTLY the price in SOL; swap fees come out of what ARRIVES (the house
+  absorbs them): ~90% of the SANTA reaches the pool/burn today. Store: exactly 50% of the price swapped + all burned, 50% to the
+  treasury as SOL. Server refuses a SOL payment not through Jupiter, spending under the price, or delivering < 85% (SOL_FLOOR);
+  the page refuses to sign one under the floor ("pay with SANTA"), so nobody is charged for a refused payment.
 - Tested without money on REAL mainnet (Solana's simulator): tests/solana/sol-pay-sim.mjs and tests/browser/sol-pay-page.mjs
-  (the real page path, publicnode blocked). A $1 run costs ~$1.10 of SOL (pool fees + route price), a $1 item ~$1.05, pass $2.00.
+  (the real page path, publicnode blocked): $1 run = $1.00 of SOL, 90.5% arrives; $1 item: 90.5% of 50c burned, 50c SOL to treasury.
 - FOUND: publicnode (the page's only Solana server) is blocked on some home networks, incl. Cody's PC, and Solana's own server
   refuses browsers (403): payments, SANTA too, failed there. Now the page falls back to reading through the game server
   (server/relay.js, 5 read-only lookups, signed in).
