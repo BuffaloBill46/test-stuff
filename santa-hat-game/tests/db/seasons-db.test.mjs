@@ -1,157 +1,160 @@
-// SEASONS on real Postgres (PGlite), every live file 001–031 in order, then the Pumpkin King items (as 032 makes them) and 033.
-// Proves: the database's season plan is exactly seasons.js's; progress comes only from matches the match server ran (the real
-// server/levels.js finishByReferee, never a page's report); a door opens only when all 3 of the day's tasks are met; every reward
-// is granted exactly once (free looks, level steps, streak bonus, gold costume pieces); the $5 pass grants pieces for doors
-// already opened (backdated); nobody but the servers can write any of it.
+// SEASONS on real Postgres (PGlite): every live file 001–030, the season items (032, 035, 037), 033 and its rewards (036, 038),
+// then 039 SEASON POINTS (Cody, 2026-10-04), twice. Proves:
+//   - the database's 30-door plan is exactly seasons.js's (every door, both tracks, all three seasons);
+//   - points only from what the servers saw: a page's report counts nothing; each of the day's first 10 public Auto matches +10
+//     (+10 more for a top 3); "Log in" +100 once a day, only through season_login; each task met +100; never more than 700 a day;
+//   - doors = points ÷ 300 (at most 30); every prize granted exactly once (looks, level steps, costume pieces, gear, tickets);
+//     the pass backdates every door already reached; a whole season's track adds up exactly;
+//   - season tickets: their own bank, no cap; ranked spends free, then season, then bought; a released one goes back;
+//   - nobody but the servers writes any of it.
 // Run: node seasons-db.test.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { makeDb } from './setup.mjs';
 import { createLevels } from '../../server/levels.js';
-import { SEASONS, seasonAt, dayKey, tasksFor, freeReward, goldReward, seasonDays, PASS_PRICE } from '../../mockups/seasons.js';
+import { SEASONS, seasonAt, dayKey, tasksFor, freeReward, goldReward, seasonDays, dayPoints, doorsFor, DOORS, DOOR_POINTS, SEASON_GEAR, PASS_PRICE } from '../../mockups/seasons.js';
 
 const FILES = ['001_profiles.sql', '002_items_seed.sql', '003_email_profiles.sql', '004_linked_logins.sql', '005_credits_plays.sql', '006_ranked_tickets.sql', '007_rate_limits.sql',
   '008_hats_backpacks.sql', '009_lock_my_plays.sql', '010_levels.sql', '011_lottery.sql', '012_special_snowballs.sql', '013_match_stats.sql', '014_run_sizes.sql',
   '015_special_gear.sql', '016_shop.sql', '017_referee_role.sql', '018_ranked_results.sql', '019_ranked_board.sql', '020_worker_role.sql', '021_alerts.sql',
   '022_ticket_cap.sql', '023_item_prices.sql', '024_reward_claims.sql', '025_stocking.sql', '026_shared_pool.sql', '027_tester_feedback.sql', '028_look_rewards.sql',
-  '029_costumes.sql', '030_daily_reset.sql']; // then 032 (the Pumpkin King) and 033 below
+  '029_costumes.sql', '030_daily_reset.sql'];
 const db = await makeDb(FILES);
-await db.pg.exec(readFileSync(new URL('../../supabase/032_halloween_costume.sql', import.meta.url), 'utf8')); // the Pumpkin King pieces
-const sql033 = readFileSync(new URL('../../supabase/033_seasons.sql', import.meta.url), 'utf8');
-await db.pg.exec(sql033);
-await db.pg.exec(sql033); // safe to apply twice
-// the Thanksgiving items (035: the free looks and the Gobbler), so every season item in catalog.js is in the database
-await db.pg.exec(readFileSync(new URL('../../supabase/035_thanksgiving.sql', import.meta.url), 'utf8'));
-// the Christmas items (037: the free looks and the Gingerbread), the same way
-await db.pg.exec(readFileSync(new URL('../../supabase/037_christmas.sql', import.meta.url), 'utf8'));
-// Thanksgiving's door rewards (036), twice: safe to run twice
-for (let k = 0; k < 2; k++) await db.pg.exec(readFileSync(new URL('../../supabase/036_thanksgiving_rewards.sql', import.meta.url), 'utf8'));
-for (let k = 0; k < 2; k++) await db.pg.exec(readFileSync(new URL('../../supabase/038_christmas_rewards.sql', import.meta.url), 'utf8')); // Christmas's door rewards
+const run = async (f, times = 1) => { for (let k = 0; k < times; k++) await db.pg.exec(readFileSync(new URL('../../supabase/' + f, import.meta.url), 'utf8')); };
+await run('032_halloween_costume.sql'); await run('033_seasons.sql'); await run('035_thanksgiving.sql'); await run('037_christmas.sql');
+await run('036_thanksgiving_rewards.sql'); await run('038_christmas_rewards.sql');
+await run('039_season_points.sql', 2); // safe to apply twice
 
 const S = seasonAt(); assert.ok(S && S.id === 'halloween', 'the test runs during Halloween (Oct 1–31 2026): ' + S?.id);
-const DAY = dayKey(), DAYS = seasonDays(S);
+const DAY = dayKey(), DAYS = seasonDays(S), TASKS = tasksFor(DAY);
+assert.equal((await db.query(`select public.season_day(now())::text as d`))[0].d, DAY, 'the database and the page name the game day the same (9 PM Indiana)');
 
-// 1. the database plan is seasons.js's plan
+// 1. the database plan is seasons.js's: 30 doors a season, both tracks, every door
 for (const s of SEASONS) {
   const r = (await db.query('select extract(epoch from starts) * 1000 as a, extract(epoch from ends) * 1000 as b, pass_usd from public.seasons where id = $1', [s.id]))[0];
   assert.deepEqual([+r.a, +r.b, +r.pass_usd], [s.start, s.end, PASS_PRICE], `${s.id}: same dates and pass price as seasons.js`);
-}
-// every season with rewards in seasons.js (Halloween: 033, Thanksgiving: 036): each door, both tracks, exactly as seasons.js says
-const plan = await db.query(`select door, track, item_id, xp from public.season_rewards where season = 'halloween' order by door, track`);
-for (const SS of SEASONS.filter((x) => x.gold.length || Object.keys(x.free).length)) {
-  const pl = await db.query('select door, track, item_id, xp from public.season_rewards where season = $1 order by door, track', [SS.id]), N = seasonDays(SS).length;
-  assert.equal(pl.filter((p) => p.track === 'free').length, N, `${SS.id}: one free reward per door (${N} doors)`);
-  for (let d = 1; d <= N; d++) {
-    const f = pl.find((p) => p.door === d && p.track === 'free'), g = pl.find((p) => p.door === d && p.track === 'gold');
-    assert.deepEqual(f && (f.item_id ? { kind: 'item', item: f.item_id } : { kind: 'xp', n: f.xp }), freeReward(SS, d), `${SS.id} door ${d} free reward matches seasons.js`);
-    assert.deepEqual(g ? { kind: 'item', item: g.item_id } : null, goldReward(SS, d), `${SS.id} door ${d} gold reward matches seasons.js`);
+  const pl = await db.query('select door, track, item_id, xp, tickets from public.season_rewards where season = $1 order by door, track', [s.id]);
+  assert.equal(pl.length, DOORS * 2, `${s.id}: ${DOORS} doors × 2 tracks`);
+  const asRule = (p) => (p.item_id ? { kind: 'item', item: p.item_id } : p.tickets ? { kind: 'tickets', n: p.tickets } : { kind: 'xp', n: p.xp });
+  for (let d = 1; d <= DOORS; d++) {
+    assert.deepEqual(asRule(pl.find((p) => p.door === d && p.track === 'free')), freeReward(s, d), `${s.id} door ${d} free prize matches seasons.js`);
+    const g = goldReward(s, d); delete g.gear;
+    assert.deepEqual(asRule(pl.find((p) => p.door === d && p.track === 'gold')), g, `${s.id} door ${d} pass prize matches seasons.js`);
   }
 }
-{ const { ITEMS } = await import('../../mockups/catalog.js');
-  for (const it of ITEMS.filter((i) => i.season)) {
-    const r = (await db.query('select slot, name, unlock_level, price_usd, season from public.items where id = $1', [it.id]))[0];
-    assert.deepEqual(r && [r.slot, r.name, r.unlock_level, r.price_usd, r.season], [it.slot, it.name, null, null, it.season], `catalog season item ${it.id} is in the database as a season reward`);
-  }
-  for (const r of plan.filter((p) => p.item_id)) assert.ok(ITEMS.some((i) => i.id === r.item_id && i.season === 'halloween'), `reward ${r.item_id} is a Halloween item in catalog.js`); }
-assert.equal((await db.query(`select public.season_day(now())::text as d`))[0].d, DAY, 'the database and the page name the game day the same (9 PM Indiana)');
+for (const it of SEASON_GEAR) assert.ok((await db.query('select 1 from public.items where id = $1', [it])).length, `the pass's gear ${it} is a real item`);
 
 // players
-let wn = 0; const W = () => ('SNwa11et' + 'ABCDEFGHJK'[wn++]).padEnd(44, '1');
+let wn = 0; const W = () => ('SNwa11et' + 'ABCDEFGHJKLMN'[wn++]).padEnd(44, '1');
 const mk = async (name) => { const id = (await db.query('insert into auth.users default values returning id'))[0].id;
   await db.query(`insert into public.profiles (id, wallet, name, avatar) values ($1, $2, $3, '{}')`, [id, W(), name]); return id; };
 const ava = await mk('Ava'), ben = await mk('Ben'), cid = await mk('Cid');
 const levels = createLevels({ db });
-const tasks = tasksFor(DAY);
-const need = Object.fromEntries(tasks.map((t) => [t.stat, t.need]));
+const tasksJson = JSON.stringify(TASKS.map((t) => ({ id: t.id, stat: t.stat, need: t.need })));
 let mid = 0; const match = (places, stats) => ({ id: 'season-test-match-' + (++mid), auto: true, places, stats });
-const prog = async (p) => (await db.query(`select stats, door from public.season_progress where profile_id = $1 and season = 'halloween' and day = $2::date`, [p, DAY]))[0];
+const prog = async (p) => (await db.query(`select stats, door, points, matches_scored, top3_scored from public.season_progress where profile_id = $1 and season = 'halloween' and day = $2::date`, [p, DAY]))[0];
 const inv = async (p) => (await db.query('select item_id from public.inventory where profile_id = $1 order by item_id', [p])).map((r) => r.item_id);
-const grants = async (p) => (await db.query(`select door, track, item_id, xp from public.season_grants where profile_id = $1 and season = 'halloween' order by door, track`, [p]));
+const grants = async (p) => (await db.query(`select door, track, item_id, xp, tickets from public.season_grants where profile_id = $1 and season = 'halloween' order by door, track`, [p]));
+const login = (p) => db.query(`select public.season_login($1, 'halloween', $2::date, $3) as r`, [p, DAY, tasksJson]).then((r) => r[0].r);
+// a match's counts that meet every rotating task except games/top3/wins/login (those come from the places and the login)
+const fromMatch = (frac) => Object.fromEntries(TASKS.filter((t) => !['login', 'games', 'top3', 'wins'].includes(t.stat)).map((t) => [t.stat, Math.ceil(t.need * frac)]));
 
-// 2. a PAGE's report of a finish never moves season progress; the match server's does
-const half = Object.fromEntries(Object.entries(need).filter(([k]) => k !== 'games' && k !== 'top3').map(([k, n]) => [k, Math.ceil(n / 2)]));
-await levels.finish(ava, match([ava, ben], [half, half]));
+// 2. a PAGE's report never moves anything; the match server's does: +10 a match, +10 more for a top 3
+await levels.finish(ava, match([ava, ben], [fromMatch(0.5), {}]));
 assert.equal(await prog(ava), undefined, 'a page-reported finish: no season progress');
-await levels.finishByReferee(match([ava, ben, null], [half, half, null]));
-const p1 = await prog(ava);
-assert.ok(p1 && p1.stats.games === 1 && !p1.door, `after one server match: counted, door still shut ${JSON.stringify(p1)}`);
-assert.equal((await db.query(`select count(*)::int n from public.season_days where season = 'halloween' and day = $1::date`, [DAY]))[0].n, 1, "the day's tasks are stored once");
+await levels.finishByReferee(match([ben, null, null, ava], [{}, null, null, {}])); // Ava 4th: +10, no top-3 bonus
+let pa = await prog(ava);
+assert.deepEqual([pa.stats.games, pa.matches_scored, pa.top3_scored, pa.points], [1, 1, 0, 10], 'one match, 4th place: +10 ' + JSON.stringify(pa));
+const pb = await prog(ben); // Ben 1st: +10 +10, and a win (a task only if it's one of today's)
+assert.equal(pb.points, 20 + (TASKS.some((t) => t.stat === 'wins') ? 100 : 0), 'a 1st place: +10, +10 top 3' + (TASKS.some((t) => t.stat === 'wins') ? ', and the win task +100' : '') + ': ' + JSON.stringify(pb));
 
-// 3. finishing every task opens the door and grants door 1 (free: one level step) exactly once
-const full = Object.fromEntries(Object.entries(need).filter(([k]) => k !== 'games' && k !== 'top3').map(([k, n]) => [k, n]));
-const lvl0 = (await db.query('select level, xp from public.profiles where id = $1', [ava]))[0];
-await levels.finishByReferee(match([ava, ben], [full, {}]));
-await levels.finishByReferee(match([ava, ben], [full, {}])); // another match after the door: nothing granted twice
-const p2 = await prog(ava);
-assert.ok(p2.door, `all tasks met → the door is open ${JSON.stringify(p2.stats)} need ${JSON.stringify(need)}`);
-const g1 = await grants(ava);
-assert.deepEqual(g1.map((g) => [g.door, g.track]), [[1, 'free']], 'door 1, free track, granted once');
-const lvl1 = (await db.query('select level, xp from public.profiles where id = $1', [ava]))[0];
-assert.ok(lvl1.level * 100 + lvl1.xp > lvl0.level * 100 + lvl0.xp, `door 1 gave a step of level progress (${JSON.stringify(lvl0)} → ${JSON.stringify(lvl1)})`);
-assert.ok(!(await prog(ben))?.door, 'Ben (did nothing) has no door');
+// 3. Log in: +100 once a day, only through season_login; a match can't claim it
+await levels.finishByReferee(match([cid], [{ login: 5 }]));
+assert.ok(!(await prog(cid)).stats.login, "a match's counts can never tick \"Log in\"");
+const l1 = await login(ava), l2 = await login(ava);
+pa = await prog(ava);
+assert.ok(l1.points === 110 && l2.already && pa.stats.login === 1 && pa.points === 110, `log in: +100 once (${JSON.stringify(l1)} / ${JSON.stringify(l2)})`);
 
-// counts are capped and unknown counts ignored; bad task lists refused
+// 4. every task met: +100 each; a perfect day (all 5) marks the calendar; at most 10 matches score; never over 700
+for (let i = 0; i < 12; i++) await levels.finishByReferee(match([ava, ben], [fromMatch(1), {}])); // 12 more wins (1st of 2)
+pa = await prog(ava);
+assert.ok(pa.door, 'all 5 tasks met: a perfect day ' + JSON.stringify(pa.stats));
+assert.deepEqual([pa.matches_scored, pa.top3_scored], [10, 9], 'only the day\'s first 10 matches score (9 of them top 3: the first was 4th)');
+assert.equal(pa.points, dayPoints({ tasksDone: 5, matches: 10, top3: 9 }), 'points = 5 × 100 + 10 × 10 + 9 × 10, as seasons.js works them out');
+assert.equal(pa.points, 690, 'one short of the 700 cap (the first match was 4th)');
+assert.equal(doorsFor(pa.points), 2, '690 points: 2 doors');
+assert.deepEqual((await grants(ava)).map((g) => [g.door, g.track]), [[1, 'free'], [2, 'free']], 'doors 1 and 2 (free), granted once');
+assert.ok((await inv(ava)).includes(S.free[2]), `door 2 gave ${S.free[2]}`);
+// counts are capped, unknown counts ignored, bad task lists and other days refused
 await assert.rejects(() => db.query(`select public.season_record($1, 'halloween', $2::date, '[]', '{}')`, [cid, DAY]), /bad tasks/);
-await assert.rejects(() => db.query(`select public.season_record($1, 'halloween', '2026-10-01', $2, '{}')`, [cid, JSON.stringify(tasks)]), /not today/, "only today's game day");
-await db.query(`select public.season_record($1, 'halloween', $2::date, $3, '{"hits": 99999, "money": 5}')`, [cid, DAY, JSON.stringify(tasks)]);
+await assert.rejects(() => db.query(`select public.season_record($1, 'halloween', '2026-10-01', $2, '{}')`, [cid, tasksJson]), /not today/, "only today's game day");
+await db.query(`select public.season_record($1, 'halloween', $2::date, $3, '{"hits": 99999, "money": 5}')`, [cid, DAY, tasksJson]);
 const pc = await prog(cid);
 assert.ok((pc.stats.hits || 0) <= 500 && !('money' in pc.stats), `counts capped at 500 per match, unknown keys ignored ${JSON.stringify(pc.stats)}`);
 
-// 4. earlier doors (as if opened on earlier days) + the PASS: free looks, gold pieces every 3 doors, the streak bonus, once each
-const past = DAYS.slice(0, DAYS.indexOf(DAY)).slice(-8); // up to 8 days before today, in a row
-for (const d of past) await db.query(`insert into public.season_progress (profile_id, season, day, door) values ($1, 'halloween', $2::date, true) on conflict (profile_id, season, day) do update set door = true`, [ava, d]);
-const doors = past.length + 1;
-await db.query(`select public.season_grant($1, 'halloween')`, [ava]);
-const freeOnly = await grants(ava);
-assert.ok(freeOnly.every((g) => g.track !== 'gold') && freeOnly.filter((g) => g.track === 'free').length === doors, `without the pass: ${doors} free doors, no gold`);
-if (doors >= 2) assert.ok((await inv(ava)).includes('snow_candycorn'), 'door 2 gave the Candy Corn snowballs');
-if (doors >= 7) assert.ok(freeOnly.some((g) => g.track === 'streak' && g.door === 7), '7 days in a row: the streak bonus');
-// the pass, bought through the shop's own path (shop_buy → shop_grant kind 'pass'): backdated pieces for doors already opened
-const q = (await db.query(`insert into public.shop_quotes (profile_id, kind, usd, santa_raw, price_usd, season) values ($1, 'pass', 5, 1000, 0.0003, 'halloween') returning id`, [ava]))[0].id;
-const bought = (await db.query(`select public.shop_buy($1, $2, 1000, 'SNwa11etA') as r`, [q, 'PassSig'.padEnd(88, '5')]))[0].r;
+// 5. the PASS, bought late through the shop's own path: every pass prize for the doors already reached, at once
+const dee = await mk('Dee'), iso = (t) => new Date(t).toISOString().slice(0, 10), dayMs = 86_400_000, today = Date.parse(DAY + 'T12:00:00Z');
+const past = DAYS.slice(0, DAYS.indexOf(DAY)); // earlier days this season, written directly (as if played): 700 points each
+const setDays = async (p, n, pts = 700) => { for (let i = 0; i < n; i++) await db.query(`insert into public.season_progress (profile_id, season, day, door, points) values ($1, 'halloween', $2::date, true, $3) on conflict (profile_id, season, day) do update set points = excluded.points, door = true`, [p, iso(today - (n - 1 - i) * dayMs), pts]); };
+await setDays(dee, 3); // 2,100 points: 7 doors
+await db.query(`select public.season_grant($1, 'halloween')`, [dee]);
+assert.deepEqual((await grants(dee)).filter((g) => g.track === 'free').map((g) => g.door), [1, 2, 3, 4, 5, 6, 7], '2,100 points: 7 free doors');
+const q = (await db.query(`insert into public.shop_quotes (profile_id, kind, usd, santa_raw, price_usd, season) values ($1, 'pass', 5, 1000, 0.0003, 'halloween') returning id`, [dee]))[0].id;
+const bought = (await db.query(`select public.shop_buy($1, $2, 1000, $3) as r`, [q, 'PassSig'.padEnd(88, '5'), W()]))[0].r;
 assert.equal(bought.pass, 'halloween', 'the pass is granted by the shop path: ' + JSON.stringify(bought));
-const gold = (await grants(ava)).filter((g) => g.track === 'gold');
-assert.deepEqual(gold.map((g) => g.item_id), S.gold.slice(0, Math.floor(doors / 3)), `backdated: ${Math.floor(doors / 3)} piece(s) for ${doors} doors, in order`);
-for (const g of gold) assert.ok((await inv(ava)).includes(g.item_id), `${g.item_id} is in the inventory`);
-await db.query(`select public.season_grant($1, 'halloween')`, [ava]); await db.query(`select public.season_grant($1, 'halloween')`, [ava]);
-assert.equal((await grants(ava)).length, freeOnly.length + gold.length, 'granting again gives nothing twice');
-const q2 = (await db.query(`insert into public.shop_quotes (profile_id, kind, usd, santa_raw, price_usd, season) values ($1, 'pass', 5, 1000, 0.0003, 'halloween') returning id`, [ava]))[0].id;
-const again = (await db.query(`select public.shop_buy($1, $2, 1000, 'SNwa11etA') as r`, [q2, 'PassSigTwo'.padEnd(88, '5')]))[0].r;
-assert.ok(again.refunded, 'a second pass for the same season can never be granted: the payment is owed back in full');
+const gd7 = (await grants(dee)).filter((g) => g.track === 'gold');
+assert.deepEqual(gd7.map((g) => g.door), [1, 2, 3, 4, 5, 6, 7], 'backdated: the pass prizes for all 7 doors');
+assert.deepEqual(gd7.filter((g) => g.item_id).map((g) => g.item_id), [S.gold[0], S.gold[1]], 'costume pieces at doors 2 and 6');
+const tix = async (p) => (await db.query('select free_used, extra, season_extra from public.tickets where profile_id = $1', [p]))[0];
+assert.equal((await tix(dee)).season_extra, 4, 'ranked tickets at doors 1, 3, 5, 7 → 4 in the season bank');
+const q2 = (await db.query(`insert into public.shop_quotes (profile_id, kind, usd, santa_raw, price_usd, season) values ($1, 'pass', 5, 1000, 0.0003, 'halloween') returning id`, [dee]))[0].id;
+const again = (await db.query(`select public.shop_buy($1, $2, 1000, $3) as r`, [q2, 'PassSigTwo'.padEnd(88, '5'), W()]))[0].r;
+assert.ok(again.refunded, 'a second pass for the same season is never granted: the payment is owed back in full');
 
-// 4b. a FULL season, not just today's few days: 20 doors in a row (rows written directly; season_grant only counts open doors).
-// Every free look, every level step, both streak bonuses (7, 14), and with the pass the whole Pumpkin King outfit, once each.
-const iso = (t) => new Date(t).toISOString().slice(0, 10), dayMs = 86_400_000, today = Date.parse(DAY + 'T12:00:00Z');
-const dee = await mk('Dee'), eli = await mk('Eli');
-for (let i = 0; i < 20; i++) await db.query(`insert into public.season_progress (profile_id, season, day, door) values ($1, 'halloween', $2::date, true)`, [dee, iso(today - (19 - i) * dayMs)]);
-await db.query(`insert into public.season_passes (profile_id, season, signature, usd, paid_raw) values ($1, 'halloween', $2, 5, 1000)`, [dee, 'DeePass'.padEnd(88, '7')]);
-await db.query(`select public.season_grant($1, 'halloween')`, [dee]); await db.query(`select public.season_grant($1, 'halloween')`, [dee]);
-const gd = await grants(dee), invD = await inv(dee);
-assert.equal(gd.filter((g) => g.track === 'free').length, 20, '20 doors → 20 free rewards');
-for (const it of Object.values(S.free)) assert.ok(invD.includes(it), `free look ${it} owned`);
-assert.deepEqual(gd.filter((g) => g.track === 'gold').map((g) => g.item_id), S.gold, 'the pass: the whole Pumpkin King outfit, in order, one piece every 3 doors');
-for (const it of S.gold) assert.ok(invD.includes(it), `${it} owned`);
-assert.deepEqual(gd.filter((g) => g.track === 'streak').map((g) => g.door), [7, 14], '20 days in a row: streak bonuses at 7 and 14, once each');
-const xpSteps = (await db.query(`select count(*)::int n from public.level_finishes where profile_id = $1 and match_id like 'season:%'`, [dee]))[0].n;
-assert.equal(xpSteps, 20 - Object.keys(S.free).length + 2, 'one level step per non-look door + one per streak bonus, recorded once each');
-// a gap breaks the streak: 6 days, a missed day, 6 days → no bonus
-for (const back of [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]) await db.query(`insert into public.season_progress (profile_id, season, day, door) values ($1, 'halloween', $2::date, true)`, [eli, iso(today - back * dayMs)]);
-await db.query(`select public.season_grant($1, 'halloween')`, [eli]);
-assert.equal((await grants(eli)).filter((g) => g.track === 'streak').length, 0, 'a missed day resets the streak (6 + 6 days: no bonus)');
+// 6. a WHOLE season: 14 perfect days of 700 (9,800 points): all 30 doors, every prize exactly once
+const eli = await mk('Eli');
+await setDays(eli, 14);
+await db.query(`insert into public.season_passes (profile_id, season, signature, usd, paid_raw) values ($1, 'halloween', $2, 5, 1000)`, [eli, 'EliPass'.padEnd(88, '7')]);
+for (let k = 0; k < 3; k++) await db.query(`select public.season_grant($1, 'halloween')`, [eli]);
+const ge = await grants(eli), invE = await inv(eli);
+assert.equal(ge.filter((g) => g.track === 'free').length, 30, 'all 30 free doors (and no 31st: 9,800 points)');
+assert.equal(ge.filter((g) => g.track === 'gold').length, 30, 'all 30 pass doors');
+for (const it of [...Object.values(S.free), ...S.gold, ...SEASON_GEAR]) assert.ok(invE.includes(it), `${it} owned`);
+assert.equal((await tix(eli)).season_extra, 17, '17 ranked tickets in the season bank (no cap)');
+assert.deepEqual(ge.filter((g) => g.track === 'streak').map((g) => g.door), [7, 14], '14 perfect days in a row: streak bonuses at 7 and 14, once each');
+const xpSteps = (await db.query(`select count(*)::int n from public.level_finishes where profile_id = $1 and match_id like 'season:%'`, [eli]))[0].n;
+assert.equal(xpSteps, 25 + 5 + 2, 'level steps: 25 free doors + 5 pass doors + 2 streak bonuses, once each');
+// a gap breaks the streak: 6 perfect days, a missed day, 6 perfect days → no bonus
+const fay = await mk('Fay');
+for (const back of [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]) await db.query(`insert into public.season_progress (profile_id, season, day, door, points) values ($1, 'halloween', $2::date, true, 500)`, [fay, iso(today - back * dayMs)]);
+await db.query(`select public.season_grant($1, 'halloween')`, [fay]);
+assert.equal((await grants(fay)).filter((g) => g.track === 'streak').length, 0, 'a missed day resets the streak (6 + 6 days: no bonus)');
 
-// 5. nobody but the servers writes any of it
+// 7. ranked spends today's free tickets, then season ones, then bought ones; a released ticket goes back where it came from
+await db.query('update public.tickets set free_used = 10, extra = 1 where profile_id = $1', [eli]);
+const hold = async (m) => (await db.query(`select public.hold_ticket($1, $2) as s`, [eli, m]))[0].s;
+assert.equal(await hold('PRN1-a'), 'season', 'free ones used up: a season ticket next');
+assert.equal((await tix(eli)).season_extra, 16);
+assert.equal((await db.query(`select public.release_ticket($1, 'PRN1-a') as r`, [eli]))[0].r, true);
+assert.equal((await tix(eli)).season_extra, 17, 'left before the start: the season ticket comes back');
+await db.query('update public.tickets set season_extra = 0 where profile_id = $1', [eli]);
+assert.equal(await hold('PRN1-b'), 'extra', 'no season tickets: a bought one');
+assert.equal((await db.query('select extra from public.ticket_status($1)', [dee]))[0].extra, 4, 'the ticket count a player sees includes season tickets');
+
+// 8. nobody but the servers writes any of it
 await db.query('set role authenticated'); await db.query(`select set_config('test.uid', $1, false)`, [ben]);
 for (const [what, q3] of [['progress', `insert into public.season_progress (profile_id, season, day, door) values ('${ben}', 'halloween', '${DAY}', true)`],
   ['a pass', `insert into public.season_passes (profile_id, season) values ('${ben}', 'halloween')`],
   ['a grant', `insert into public.season_grants (profile_id, season, door, track, item_id) values ('${ben}', 'halloween', 3, 'gold', 'face_pumpkinking')`],
-  ['season_record', `select public.season_record('${ben}', 'halloween', '${DAY}', '${JSON.stringify(tasks)}', '{"hits": 50}')`],
+  ['season_record', `select public.season_record('${ben}', 'halloween', '${DAY}', '${tasksJson}', '{"hits": 50}')`],
+  ['season_login', `select public.season_login('${ben}', 'halloween', '${DAY}', '${tasksJson}')`],
   ['season_grant', `select public.season_grant('${ben}', 'halloween')`]])
   await assert.rejects(() => db.query(q3), /permission denied|row-level security/, `a signed-in player can't write ${what}`);
-assert.equal((await db.query(`select count(*)::int n from public.season_progress where profile_id = $1`, [ava])).length, 1);
 assert.equal((await db.query(`select count(*)::int n from public.season_grants where profile_id = $1`, [ava]))[0].n, 0, 'and can only read their own grants');
 await db.query('reset role');
 await db.query('set role santa_referee');
-await db.query(`select public.season_record($1, 'halloween', $2::date, $3, '{"hits": 1}')`, [ben, DAY, JSON.stringify(tasks)]);
-await assert.rejects(() => db.query(`select public.season_grant($1, 'halloween')`, [ben]), /permission denied/, 'the match server can record progress, never grant directly');
+await db.query(`select public.season_record($1, 'halloween', $2::date, $3, '{"hits": 1}')`, [ben, DAY, tasksJson]);
+await assert.rejects(() => db.query(`select public.season_grant($1, 'halloween')`, [ben]), /permission denied/, 'the match server can record matches, never grant directly');
+await assert.rejects(() => db.query(`select public.season_login($1, 'halloween', $2::date, $3)`, [ben, DAY, tasksJson]), /permission denied/, 'and can never tick "Log in"');
 await db.query('reset role');
-console.log(`OK: seasons on real Postgres (001–031 + 033 + Thanksgiving 035/036 + Christmas items 037): the plan equals seasons.js (dates, price, every door's rewards); progress only from the match server's own matches; a door opens when all 3 tasks are met; today: ${doors} doors and ${gold.length} gold piece(s) backdated by the pass; a full 20-door season: every free look, the whole Pumpkin King outfit, streak bonuses at 7 and 14 (a missed day resets it), each granted once; a second pass is owed back; players and the match server can't write or grant anything themselves`);
+console.log(`OK: season points on real Postgres (001–030 + 032–039): the 30-door plan equals seasons.js for all three seasons; points only from the servers (+10 a match, +10 a top 3, first 10 matches a day; Log in +100 once; +100 a task; a 690-point day checked against seasons.js); doors = points ÷ ${DOOR_POINTS}; every prize once; the pass backdates; a whole season: 30 + 30 doors, 17 season tickets, 32 level steps, 2 streak bonuses; ranked spends free → season → bought; only the servers write`);

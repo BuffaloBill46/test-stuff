@@ -57,8 +57,9 @@ export function createLevels({ db }) {
     const stats = Array.isArray(match.stats) ? match.stats : [];
     for (let i = 0; i < places.length; i++) {
       const p = places[i]; if (!p || !UUID.test(String(p))) continue;
-      const st = stats[i] || {}, delta = { games: 1, top3: i < 3 ? 1 : 0 };
-      for (const k of STATS) if (k !== 'games' && k !== 'top3' && Number.isFinite(+st[k])) delta[k] = Math.max(0, Math.min(500, Math.floor(+st[k])));
+      // games, top3 and wins come from the places; 'login' never from a match (the game server records it: server/seasons.js)
+      const st = stats[i] || {}, delta = { games: 1, top3: i < 3 ? 1 : 0, wins: i === 0 ? 1 : 0 };
+      for (const k of STATS) if (!['games', 'top3', 'wins', 'login'].includes(k) && Number.isFinite(+st[k])) delta[k] = Math.max(0, Math.min(500, Math.floor(+st[k])));
       try { const r = (await db.query('select public.season_record($1, $2, $3, $4, $5) as r', [p, s.id, day, JSON.stringify(tasks), JSON.stringify(delta)]))[0]?.r; out.push({ place: i + 1, ...(r || {}) }); }
       catch (e) { console.error('levels.finish: season progress failed (is supabase/033 applied?):', e.message); }
     }

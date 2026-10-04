@@ -113,10 +113,11 @@ check(totalHits > N * ROUNDS, `players really played: ${totalHits} hits, ${[...r
 check(ok === N, `${ok}/${N} accounts saved exactly what the match server reported (games, top-3 finishes, season task counts)${bad.length ? ': ' + bad.slice(0, 3).join(' | ') : ''}`);
 const lv = await db.query('select level, count(*)::int n from public.profiles group by level order by level');
 console.log(`  levels after ${ROUNDS} rounds: ${lv.map((r) => `level ${r.level}: ${r.n}`).join(', ')}`);
-const doors = (await one(`select count(*)::int n from public.season_progress where door`)).n;
-console.log(`  season doors opened (all 3 daily tasks done): ${doors}`);
+const doors = (await one(`select count(*)::int n from public.season_progress where door`)).n, pts = await one(`select coalesce(max(points), 0)::int top, coalesce(round(avg(points)), 0)::int avg from public.season_progress`);
+console.log(`  season points today (039): best ${pts.top}, average ${pts.avg} (at most 700); perfect days (all 5 tasks): ${doors}`);
+check(pts.top <= 700, `nobody earned more than 700 season points in a day (best ${pts.top})`);
 { const seasons = createSeasons({ db, now: () => clock }), sample = await seasons.state(players[0].id);
-  check(sample.season?.id === S?.id && sample.tasks.length === 3 && sample.tasks[0].have === Math.min(sample.tasks[0].need, reported.get(players[0].id).games), `a player's season card reads it back: ${sample.tasks.map((t) => `${t.text} ${t.have}/${t.need}`).join(' · ')}`); }
+  check(sample.season?.id === S?.id && sample.tasks.length === 5 && sample.tasks[0].id === 'login' && sample.tasks[0].done && sample.tasks[1].have === Math.min(sample.tasks[1].need, reported.get(players[0].id).games) && sample.points >= 100, `a player's season card reads it back (and ticks Log in): ${sample.tasks.map((t) => `${t.text} ${t.have}/${t.need}`).join(' · ')} · ${sample.points} points, door ${sample.doors}`); }
 
 // ---------- PART 2: 30 wallet accounts buy everything allowed and play the mini games
 console.log(`\nPART 2: ${BUYERS} wallet accounts max out the Store and play the mini games`);
