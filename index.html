@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="bbd46c7902">
+<html lang="en" data-build="6de47dadd2">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -314,6 +314,32 @@ a.taplink { display: inline-block; padding: 11px 0; margin: -11px 0; }
 .season .ssrow img { width: 100%; max-width: 46px; aspect-ratio: 1; height: auto; display: block; margin: 0 auto; }
 .season .ssrow small { display: block; white-space: nowrap; letter-spacing: -.3px; font: 700 9px/1.4 var(--digits); color: var(--dim); text-transform: uppercase; } .season .ssrow li.own small { color: var(--ss); }
 .season .ssq { display: grid; place-items: center; width: 100%; max-width: 46px; aspect-ratio: 1; margin: 0 auto; color: var(--dim); font: 700 18px var(--digits); }
+/* SEASON POINTS (2026-10-04): today's points beside the tasks; the track of 30 doors, each a free prize (top) over a pass prize */
+.season .sstoday { float: right; font: 700 11px/1.3 var(--digits); color: var(--ss); letter-spacing: .5px; }
+.season #ssTasks li .pts { margin-left: auto; margin-right: 8px; font: 700 11px/1.5 var(--digits); color: var(--dim); } .season #ssTasks li.done .pts { color: var(--ss); }
+.season .sstrack { margin-top: 18px; padding-top: 14px; border-top: 2px solid var(--ink); }
+.season .sstrackhead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.season .sstrackhead h3 { margin: 0; font-size: 13px; color: var(--ss); } .season #ssPoints { font: 700 13px/1.3 var(--digits); color: var(--text); font-variant-numeric: tabular-nums; }
+.season .ssbar { height: 10px; margin: 8px 0 6px; background: var(--ink); border: 1px solid rgba(185,205,242,.18); }
+.season .ssbar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--ss), var(--lamp)); transition: width .5s; }
+.season .sskey { display: flex; gap: 14px; margin: 0 0 8px; font-size: 12px; color: var(--dim); } .season .sskey b { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; }
+.season .sskey .kf { background: var(--frost); } .season .sskey .kg { background: var(--ss); }
+.season #ssDoors { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; }
+.season #ssDoors li { position: relative; display: grid; grid-template-rows: auto 1fr 1fr; background: var(--ink); border: 2px solid rgba(185,205,242,.14); min-width: 0; }
+.season #ssDoors .dn { font: 700 10px/1.6 var(--digits); text-align: center; color: var(--dim); border-bottom: 1px solid rgba(185,205,242,.1); }
+.season #ssDoors .pz { display: grid; place-items: center; padding: 3px; min-height: 44px; }
+.season #ssDoors .pz.g { background: var(--ss-dim); border-top: 1px dashed rgba(242,134,46,.35); }
+.season #ssDoors .pz img { width: 100%; max-width: 40px; aspect-ratio: 1; height: auto; display: block; }
+.season #ssDoors .ptag { justify-self: center; align-self: center; font: 700 9px/1.15 var(--digits); text-align: center; color: var(--frost); text-transform: uppercase; letter-spacing: -.2px; }
+.season #ssDoors .pz.g .ptag { color: var(--ss); }
+.season #ssDoors li.future { opacity: .62; }
+.season #ssDoors li.open { border-color: var(--ss); } .season #ssDoors li.open .dn { background: var(--ss); color: var(--ink); }
+.season #ssDoors li.next { border-color: var(--lamp); box-shadow: 0 0 0 2px rgba(255,190,92,.35); } .season #ssDoors li.next .dn { color: var(--lamp); }
+.season #ssDoors .pz.locked { position: relative; } .season #ssDoors .pz.locked > * { opacity: .35; }
+.season #ssDoors .pz.locked::after { content: ''; position: absolute; right: 2px; top: 2px; width: 9px; height: 11px; border: 2px solid var(--ss); border-radius: 4px 4px 1px 1px; border-bottom-width: 6px; opacity: .9; }
+.season #ssDoors .pz.got::after { content: '\2713'; position: absolute; right: 3px; bottom: 1px; font: 800 11px/1 var(--body); color: var(--pine); }
+.season #ssDoors .pz { position: relative; }
+@media (max-width: 640px) { .season #ssDoors { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 .season .ssgold { margin-top: 14px; padding: 10px; background: var(--ss-dim); border: 1px dashed var(--ss); }
 .season .ssgold.has { border-style: solid; }
 .season .ssgold #ssGoldHead { color: var(--ss); }
@@ -326,7 +352,7 @@ a.taplink { display: inline-block; padding: 11px 0; margin: -11px 0; }
 .season .sslegend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 12px; color: var(--dim); margin: 8px 0 0; }
 .season .sslegend .k { width: 12px; height: 12px; display: inline-block; background: var(--ink); border: 1px solid rgba(185,205,242,.3); margin-left: 6px; }
 .season .sslegend .k:first-child { margin-left: 0; } .season .sslegend .k.open { background: var(--ss); } .season .sslegend .k.today { border: 2px solid var(--lamp); } .season .sslegend .k.missed { opacity: .45; }
-.season .ssrewards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 18px; margin-top: 16px; padding-top: 14px; border-top: 2px solid var(--ink); }
+.season .ssrewards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; margin-top: 16px; padding-top: 14px; border-top: 2px solid var(--ink); }
 .season .ssgold { margin: 0; }
 .season .sspass { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 14px; align-items: start; }
 .season #ssOutfit { margin: 0; aspect-ratio: 1; background: radial-gradient(circle at 50% 40%, rgba(242,134,46,.35), var(--ink) 70%); border: 2px solid var(--ss); display: grid; place-items: center; }
@@ -932,37 +958,39 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
     </section>
     <!-- The Season (Cody, 2026-10-03): daily tasks open a door a day; free rewards for everyone, the costume with the $5 pass.
          Rules in seasons.js, filled by seasonui.js. -->
-    <section class="block plaque season" id="season" aria-label="Season calendar" hidden>
+    <!-- SEASON POINTS (Cody, 2026-10-04): points from tasks and matches open a track of 30 prize doors; the calendar stays -->
+    <section class="block plaque season" id="season" aria-label="Season pass" hidden>
       <header class="sshead">
         <div><div class="eyebrow" id="ssEyebrow">Season</div><h2 id="ssTitle">The Calendar</h2></div>
         <div class="ssreset"><i>New tasks in</i><b id="ssReset">—</b></div>
       </header>
-      <ol class="sshow" aria-label="How the calendar works">
-        <li><b>1</b><span>Do today's <em>3 tasks</em> in Auto matches</span></li>
-        <li><b>2</b><span>All 3 done: <em>today's door opens</em></span></li>
-        <li><b>3</b><span>Every door gives a <em>reward</em>. New tasks every day at 9 PM.</span></li>
+      <ol class="sshow" aria-label="How the season works">
+        <li><b>1</b><span>Earn <em>points</em>: 5 daily tasks (+100 each) and Auto matches (+10, top 3 +10 more)</span></li>
+        <li><b>2</b><span>Every <em>300 points</em> opens the next door</span></li>
+        <li><b>3</b><span>Every door has a <em>free prize</em>, and a <em>pass prize</em></span></li>
       </ol>
       <div class="ssbody">
         <div class="sstasks">
-          <h3>Today's tasks</h3>
+          <h3>Today's tasks <span class="sstoday" id="ssToday"></span></h3>
           <ol id="ssTasks"></ol>
           <p class="ssnote" id="ssNote" aria-live="polite"></p>
         </div>
         <div class="sscal">
-          <h3>Your doors this month</h3>
+          <h3>Perfect days (all 5 tasks)</h3>
           <ol class="sswk" aria-hidden="true"><li>S</li><li>M</li><li>T</li><li>W</li><li>T</li><li>F</li><li>S</li></ol>
           <ol id="ssCal"></ol>
-          <p class="sslegend"><span class="k open"></span>opened <span class="k today"></span>today <span class="k missed"></span>missed</p>
+          <p class="sslegend"><span class="k open"></span>perfect <span class="k today"></span>today <span class="k missed"></span>missed</p>
           <p class="ssstreak" id="ssStreak"></p>
         </div>
       </div>
+      <div class="sstrack">
+        <div class="sstrackhead"><h3 id="ssTrackHead">Your doors</h3><span id="ssPoints"></span></div>
+        <div class="ssbar" aria-hidden="true"><i id="ssBar"></i></div>
+        <p class="sskey"><span><b class="kf"></b>free prize (top)</span><span><b class="kg"></b>pass prize (bottom)</span></p>
+        <ol id="ssDoors" aria-label="The 30 doors and their prizes"></ol>
+        <p class="ssnote" id="ssFreeNote" aria-live="polite"></p>
+      </div>
       <div class="ssrewards">
-        <div class="ssfree">
-          <h3>Free for everyone</h3>
-          <p class="sslead">A new look on these doors. Every other door: +1 level step.</p>
-          <ol class="ssrow" id="ssFree"></ol>
-          <p class="ssnote" id="ssFreeNote"></p>
-        </div>
         <div class="ssgold" id="ssGoldBox">
           <h3 id="ssGoldHead">Season pass</h3>
           <div class="sspass">
@@ -1294,6 +1322,6 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 <div id="emotes" hidden></div>
 <div id="joy" hidden></div>
 <div id="zoom" hidden><button id="zoomIn" aria-label="Zoom in">+</button><button id="zoomOut" aria-label="Zoom out">−</button></div>
-<script type="module" src="./online.js?v=bbd46c7902"></script>
+<script type="module" src="./online.js?v=6de47dadd2"></script>
 </body>
 </html>

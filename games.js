@@ -1,23 +1,23 @@
 // Games tab: wires the Slots page (readouts, Pull, full screen, paytable, winners list) to the rules (slots.js) and the
 // 3D Big Hat machine (slots3d.js). DEMO ONLY: play money and a demo pool kept in this browser. No SANTA moves.
-import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount, poolJackpot } from './slots.js?v=bbd46c7902';
-import { JP as DROP_JP } from './plinko.js?v=bbd46c7902';
-import { JP as STOCK_JP } from './stocking.js?v=bbd46c7902';
-import { createMachine, symbolImages } from './slots3d.js?v=bbd46c7902';
-import { poolState, savePool, resetPool, showResult } from './gamepool.js?v=bbd46c7902';
-import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js?v=bbd46c7902';
-import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js?v=bbd46c7902';
-import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js?v=bbd46c7902';
-import { runSummary } from './runui.js?v=bbd46c7902';
-import { livePrice, liveFee, santaFor, fmtSanta } from './market.js?v=bbd46c7902';
-import { FEE } from './slots.js?v=bbd46c7902';
-import { play as sfx } from './sfx.js?v=bbd46c7902';
-import { celebrate, tierOf } from './celebrate.js?v=bbd46c7902';
-import { SERVER, call, settingsReady } from './gameserver.js?v=bbd46c7902';
-import { refreshWallet } from './walletline.js?v=bbd46c7902';
-import { weekStart } from './gameclock.js?v=bbd46c7902';
-import { KINDS, SIZES } from './credits.js?v=bbd46c7902';
-import { initRunPick, priceLabel } from './runpick.js?v=bbd46c7902';
+import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount, poolJackpot } from './slots.js?v=6de47dadd2';
+import { JP as DROP_JP } from './plinko.js?v=6de47dadd2';
+import { JP as STOCK_JP } from './stocking.js?v=6de47dadd2';
+import { createMachine, symbolImages } from './slots3d.js?v=6de47dadd2';
+import { poolState, savePool, resetPool, showResult } from './gamepool.js?v=6de47dadd2';
+import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js?v=6de47dadd2';
+import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js?v=6de47dadd2';
+import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js?v=6de47dadd2';
+import { runSummary } from './runui.js?v=6de47dadd2';
+import { livePrice, liveFee, santaFor, fmtSanta } from './market.js?v=6de47dadd2';
+import { FEE } from './slots.js?v=6de47dadd2';
+import { play as sfx } from './sfx.js?v=6de47dadd2';
+import { celebrate, tierOf } from './celebrate.js?v=6de47dadd2';
+import { SERVER, call, settingsReady } from './gameserver.js?v=6de47dadd2';
+import { refreshWallet } from './walletline.js?v=6de47dadd2';
+import { weekStart } from './gameclock.js?v=6de47dadd2';
+import { KINDS, SIZES } from './credits.js?v=6de47dadd2';
+import { initRunPick, priceLabel } from './runpick.js?v=6de47dadd2';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };

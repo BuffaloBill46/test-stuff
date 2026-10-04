@@ -1,21 +1,31 @@
 // SEASONS (Cody, 2026-10-03): Halloween (to October 31), Thanksgiving (November), Christmas (December 1 to New Year's Day).
-// Each season is a calendar of DOORS. Every game day (9 PM to 9 PM Indiana time, gameclock.js) has 3 daily tasks; finishing
-// all 3 opens that day's door.
-//   FREE track (everyone): every door gives something: a season look on some doors, one step of level progress on the others
-//     (counted like a top-3 finish), plus a bonus step every 7 days in a row (the streak).
-//   GOLD track (the $5 season pass, paid in SANTA like a Store item): the season's costume, one piece every 3 doors, until
-//     the whole outfit is owned. Buying the pass late still counts the doors already opened. Earned pieces are kept forever.
-// Tasks count only in public Auto matches run by the match server (practice runs in the player's own browser and could be
-// faked). This file is the ONE place the rules live: the page shows them, the server and database apply them.
-import { dayStart, nextReset } from './gameclock.js?v=bbd46c7902';
-import { zonedTime, WEEKLY_ZONE } from './lottery.js?v=bbd46c7902';
+// SEASON POINTS (Cody, 2026-10-04, replacing "finish the day's tasks to open that day's door"): players earn points and the
+// season is a TRACK OF 30 DOORS, one every 300 points, each showing its free prize and its pass prize.
+//   Points each game day (9 PM to 9 PM Indiana time, gameclock.js), at most 700:
+//     5 daily tasks, 100 each: "Log in" and "Play 2 Auto matches" every day, plus 3 that rotate;
+//     each of the day's first 10 public Auto matches: +10, and +10 more for a top-3 finish in it.
+//   FREE track (everyone): a season look on 5 doors, one step of level progress (like a top-3 finish) on the others.
+//   PASS track (the $5 season pass, paid in SANTA like a Store item): the 6-piece costume, 5 bonus level steps, 2 cheap special
+//     gear items (halfway, door 15, and the last door, 30) and a ranked ticket on every other door. Season tickets go in their
+//     own bank with no cap (Cody: the 'buy at most 10' rule is unchanged). Buying the pass late gives every door already reached.
+//   The CALENDAR stays (Cody: "keep both"): a day with all 5 tasks done is a perfect day; 7 perfect days in a row: +1 level step.
+// Matches count only in public Auto matches run by the match server (practice runs in the player's own browser and could be
+// faked); "Log in" counts when the game server reads a signed-in player's season. This file is the ONE place the rules live: the
+// page shows them, the server and database (supabase/039) apply them, tests/db/seasons-db.test.mjs checks they agree.
+import { dayStart, nextReset } from './gameclock.js?v=6de47dadd2';
+import { zonedTime, WEEKLY_ZONE } from './lottery.js?v=6de47dadd2';
 
 const at9 = (y, m, d) => zonedTime(y, m, d, 21, WEEKLY_ZONE); // 9 PM Indiana on that date
 
 export const PASS_PRICE = 5; // dollars, paid in SANTA (Cody)
-export const PIECE_EVERY = 3; // a costume piece every 3 doors (6 pieces: door 18 completes the outfit)
-export const STREAK_EVERY = 7; // a streak bonus every 7 days in a row
-// a free door with no look, and each streak bonus: one step of level progress (supabase/033 season_xp)
+export const DOORS = 30, DOOR_POINTS = 300; // 30 doors, one every 300 points (9,000 to finish the track)
+export const POINTS = { task: 100, match: 10, top3: 10, matchesPerDay: 10 }; // at most 5 × 100 + 10 × (10 + 10) = 700 a day
+export const STREAK_EVERY = 7; // a bonus level step every 7 perfect days in a row
+// the pass track, the same shape every season: the costume's pieces in order, bonus level steps, the two gear items, and a
+// ranked ticket on every other door (6 + 5 + 2 + 17 = 30)
+export const PIECE_DOORS = [2, 6, 10, 14, 18, 22], XP_DOORS = [4, 8, 12, 17, 21], GEAR_DOORS = [15, 30];
+export const SEASON_GEAR = ['gear_elfhat', 'gear_kevlar']; // the two cheapest special gear items ($0.50 each in the Store)
+export const doorsFor = (points) => Math.min(DOORS, Math.floor((Number(points) || 0) / DOOR_POINTS));
 
 // The seasons, back to back. start/end: the 9 PM Indiana moments the season opens and closes (end: the last day's reset).
 // free: the free-track looks, by door number (other doors give a step of level progress). gold: the costume pieces, in order.
@@ -48,9 +58,12 @@ export function seasonDays(s) {
   return out;
 }
 
-// THE TASKS. stat: the match count it reads (the match server's per-player counts, sim.js tally; games and top3 from the finish).
+// THE TASKS. stat: the count it reads (the match server's per-player counts, sim.js tally; games, top3 and wins from the finish;
+// login from the game server when a signed-in player's season is read).
 export const TASKS = {
+  login: { stat: 'login', need: 1, text: 'Log in' },
   games: { stat: 'games', need: 2, text: 'Play 2 Auto matches' },
+  wins: { stat: 'wins', need: 1, text: 'Win an Auto match (finish 1st)' }, // (Cody, 2026-10-04: "make up another")
   top3: { stat: 'top3', need: 1, text: 'Finish top 3 in an Auto match' },
   hits: { stat: 'hits', need: 10, text: 'Hit 10 players with snowballs' },
   hatSec: { stat: 'hatSec', need: 15, text: 'Wear the Santa hat for 15 seconds' },
@@ -58,22 +71,35 @@ export const TASKS = {
   catches: { stat: 'catches', need: 1, text: 'Catch the flying hat on your head' },
   specials: { stat: 'specials', need: 3, text: 'Throw 3 special snowballs' },
 };
-export const STATS = ['games', 'top3', 'hits', 'hatSec', 'steals', 'catches', 'specials'];
-// The day's 3 tasks: the same for everyone that day (picked from the day's name, so the page and the server agree). The first
-// is always "play 2 Auto matches"; the other two vary. Throwing specials needs a special snowball, so it's never the only hard one.
+export const STATS = ['login', 'games', 'top3', 'wins', 'hits', 'hatSec', 'steals', 'catches', 'specials'];
+export const TASKS_PER_DAY = 5;
+// The day's 5 tasks: the same for everyone that day (picked from the day's name, so the page and the server agree). "Log in" and
+// "Play 2 Auto matches" every day; 3 of the other 7 rotate.
 export function tasksFor(day) {
   let h = 2166136261; for (const c of String(day)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
-  const pool = ['top3', 'hits', 'hatSec', 'steals', 'catches', 'specials'];
-  const a = pool[h % pool.length], rest = pool.filter((k) => k !== a), b = rest[(h >>> 8) % rest.length];
-  return ['games', a, b].map((id) => ({ id, ...TASKS[id] }));
+  const pool = ['top3', 'wins', 'hits', 'hatSec', 'steals', 'catches', 'specials'], picked = [];
+  for (let k = 0; k < 3; k++) { const i = h % pool.length; picked.push(pool.splice(i, 1)[0]); h = Math.imul(h ^ (h >>> 13), 1103515245) >>> 0; }
+  return ['login', 'games', ...picked].map((id) => ({ id, ...TASKS[id] }));
 }
 export const taskDone = (task, stats) => (Number(stats?.[task.stat]) || 0) >= task.need;
 export const dayDone = (day, stats) => tasksFor(day).every((t) => taskDone(t, stats));
 
-// What door n gives on each track: 'item' (a look id), or 'xp' (a step of level progress).
+// A day's points (the database's season_record works it out the same way; seasons-db.test checks): tasksDone of the day's
+// tasks, and of the day's first 10 Auto matches how many were played and how many finished top 3.
+export const dayPoints = ({ tasksDone = 0, matches = 0, top3 = 0 }) => Math.min(TASKS_PER_DAY, tasksDone) * POINTS.task
+  + Math.min(POINTS.matchesPerDay, matches) * POINTS.match + Math.min(POINTS.matchesPerDay, matches, top3) * POINTS.top3;
+
+// What door n (1–30) gives on each track: { kind: 'item', item } (a look, costume piece or gear), { kind: 'xp', n: 1 } (a step of
+// level progress) or { kind: 'tickets', n: 1 } (a ranked ticket, into the season bank).
 export function freeReward(s, door) { const item = s.free[door]; return item ? { kind: 'item', item } : { kind: 'xp', n: 1 }; }
-export function goldReward(s, door) { const k = door / PIECE_EVERY; return Number.isInteger(k) && k >= 1 && k <= s.gold.length ? { kind: 'item', item: s.gold[k - 1] } : null; }
-// The current streak at the end of a list of done days (sorted keys of every day with its door open, plus the day list).
+export function goldReward(s, door) {
+  const p = PIECE_DOORS.indexOf(door), g = GEAR_DOORS.indexOf(door);
+  if (p >= 0) return { kind: 'item', item: s.gold[p] };
+  if (g >= 0) return { kind: 'item', item: SEASON_GEAR[g], gear: true };
+  if (XP_DOORS.includes(door)) return { kind: 'xp', n: 1 };
+  return door >= 1 && door <= DOORS ? { kind: 'tickets', n: 1 } : null;
+}
+// The current streak of perfect days (all 5 tasks) at the end of a list of perfect days, plus the season's day list.
 export function streakOf(doneDays, allDays, upTo) {
   const done = new Set(doneDays); let n = 0;
   for (let i = allDays.indexOf(upTo); i >= 0 && done.has(allDays[i]); i--) n++;
