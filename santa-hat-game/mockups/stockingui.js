@@ -13,6 +13,7 @@ import { runSummary } from './runui.js';
 import { initRunPick, priceLabel } from './runpick.js';
 import { showResult } from './spinui.js';
 import { play as sfx } from './sfx.js';
+import { celebrate, tierOf } from './celebrate.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);
@@ -21,6 +22,7 @@ const mult = (m) => `${+m.toFixed(2)}×`;
 const amt = (v) => (v < 1 ? `${+(v * 100).toFixed(1)}¢` : money(v + 1e-9)); // exact prizes in the table: 1.75 × 10¢ = 17.5¢
 const MAX_HISTORY = 16, TAX = 0.97;
 let board = null, bet = 0.1, addWinner = () => {}, pool = () => 0, onPool = () => {}, opening = false, fast = false;
+let hold = 0; // a bigger win holds the fireplace a little longer before the next turn (celebrate.js)
 const history = [], test = { run: undefined }; // tests only: the next run's turns, one number each (gifts found, 0–8; 8 = the jackpot)
 const jpNow = (b) => poolJackpot(pool(), JP.pct, b); // what the pool jackpot is worth right now at size b
 const live = { current: null, shown: 0, started: 0, turns: 0, log: [] }; // tests: the turn being shown (decided before its first stocking), how far, what each said
@@ -81,7 +83,7 @@ async function startRun(n) {
       $('#runStock').innerHTML = `Turn <b>${i + 1}</b> of <b>${n}</b>`;
       if (!p.r) { res.textContent = p.refunded ? `Turn ${i + 1} couldn't play (${p.stopped ? 'Stocking Stuffer is paused' : p.why || 'the pool is refilling'}): its price comes back with your winnings.` : `Couldn't play (${p.why}).`; return; }
       await showTurn(p.r, p);
-      if (i < n - 1) await wait(fast ? 60 : 700); // a breath between turns
+      if (i < n - 1) await wait(fast ? 60 : 700 + hold); // a breath between turns (longer after a big win)
     }, forced);
     if (out) { res.innerHTML = runSummary(out, 'turn', 'turns'); showResult(res); }
   } finally { opening = false; fast = false; board.normal(); setButtons(true); $('#runStock').textContent = ''; }
@@ -117,16 +119,18 @@ function landed(r, p) {
   const res = $('#stocking .res'), card = $('#stocking .stockcard'), k = r.found, after = (v) => ` <span class="dim">(${money(v * TAX)} after SANTA's 3% tax)</span>`;
   onPool(p.poolUsd);
   history.unshift(k); history.length = Math.min(history.length, MAX_HISTORY);
-  live.turns++;
+  live.turns++; hold = 0;
   if (r.jackpot) { // 8 gifts in a row: THE POOL JACKPOT, the biggest celebration, with the real dollar amount
-    sfx('jackpot'); card.classList.add('jackpot'); stamp(`POOL JACKPOT ${money(r.pay)}`);
+    card.classList.add('jackpot'); stamp(`POOL JACKPOT ${money(r.pay)}`); hold = celebrate(card, 5, { amount: r.pay, money, fast });
     res.innerHTML = `<span><b>${k} gifts in a row! POOL JACKPOT: ${money(r.pay)}</b> <span class="dim">(${+(r.pct * 100).toFixed(2)}% of the ${money(r.jackpotPool)} Game pool × your ${cents(r.bet)} turn)</span>${after(r.pay)}</span>`;
   } else if (k >= 3) { // a real win: celebrate (bigger for 5+ gifts)
-    const big = k >= 5;
-    sfx(big ? 'bigWin' : 'smallWin'); card.classList.add(big ? 'jackpot' : 'won');
+    // the tier follows the money (3 gifts 3× nice, 10×+ big, 25×+ huge); the jackpot look is the pool jackpot's alone
+    card.classList.add('won'); hold = celebrate(card, tierOf({ ahead: true, mult: r.mult }), { amount: r.pay, money, fast });
     stamp(`${mult(r.mult)} WIN`);
     res.innerHTML = `<span><b>${k} gifts! ${mult(r.mult)} win:</b> ${money(r.pay)}${after(r.pay)}</span>`;
-  } else if (k === 2) res.innerHTML = `<span><b>2 gifts: ${mult(r.mult)} back</b> ${money(r.pay)}${after(r.pay)}</span>`; // a light touch: no stamp
+  } else if (k === 2) { // a light touch: no stamp, the tier-1 chime and sparkles (1.5× is ahead)
+    res.innerHTML = `<span><b>2 gifts: ${mult(r.mult)} back</b> ${money(r.pay)}${after(r.pay)}</span>`; celebrate(card, tierOf({ ahead: r.ahead, mult: r.mult }), { amount: r.pay, money, fast });
+  }
   else if (k === 1) res.innerHTML = `<span class="dim">1 gift, then coal: ${mult(r.mult)} back (${money(r.pay)}). Less than the ${cents(r.bet)} turn.</span>`;
   else res.textContent = 'Coal first. No win this time.';
   if (r.ahead) addWinner(r.bet >= 1 ? 'stock100' : 'stock10', r.pay, r.bet, r.jackpot ? 'pool jackpot' : `${k} gifts · ${mult(r.mult)}`);

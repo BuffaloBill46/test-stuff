@@ -12,6 +12,7 @@ import { runSummary } from './runui.js';
 import { livePrice, liveFee, santaFor, fmtSanta } from './market.js';
 import { FEE } from './slots.js';
 import { play as sfx } from './sfx.js';
+import { celebrate, tierOf } from './celebrate.js';
 import { SERVER, call, settingsReady } from './gameserver.js';
 import { refreshWallet } from './walletline.js';
 import { weekStart } from './gameclock.js';
@@ -190,14 +191,16 @@ async function showPull(p, i, n) {
   const go = view.spin(r.stops, r); if (fast) view.slam(); await go;
   if (p.poolUsd !== undefined) shared().pool = p.poolUsd; // server mode: the server's pool
   shownPool = shared().pool; refreshSpin(); refreshDrop(); refreshStocking(); // the other games show the same pool
+  let hold = 0; // a bigger win holds the screen a little longer before the next pull (celebrate.js)
   const lines = r.wins.length, hatsTxt = r.hats ? `${r.hats} Santa Hat${r.hats > 1 ? 's' : ''} +${money(r.hatPay)}` : '';
   if (r.jackpot) {
-    card.classList.add('jackpot'); stamp('JACKPOT!'); sfx('jackpot');
+    card.classList.add('jackpot'); stamp('JACKPOT!'); hold = celebrate(card, 5, { amount: r.pay, money, fast });
     res.innerHTML = `<b>POOL JACKPOT!</b> ${money(r.pay)}`;
     addWinner('slots', r.pay, M.bet, 'pool jackpot');
   } else if (r.ahead) { // only celebrate when the pull pays more than it cost
     const top = r.wins.some((w) => w.top), big = r.pay >= 10 * M.bet;
-    sfx(big || top ? 'bigWin' : 'smallWin'); card.classList.add('won'); stamp(top ? '100×!' : big ? 'BIG WIN ' + money(r.pay) : 'WIN ' + money(r.pay));
+    // the tier word says NICE / BIG / HUGE WIN, so the stamp keeps to the amount
+    card.classList.add('won'); stamp(top ? '100×!' : 'WIN ' + money(r.pay)); hold = celebrate(card, tierOf({ ahead: true, mult: r.pay / M.bet }), { amount: r.pay, money, fast });
     res.innerHTML = `<b>${top ? '5 Santa Hats!' : big ? 'Big win!' : 'Win!'}</b> ${money(r.pay)}` +
       ` <span class="dim">(${lines} line${lines === 1 ? '' : 's'}${hatsTxt ? ' + ' + hatsTxt : ''})</span>`;
     addWinner('slots', r.pay, M.bet, top ? '5 Santa Hats' : lines > 1 ? lines + ' lines' : '');
@@ -205,7 +208,7 @@ async function showPull(p, i, n) {
     res.innerHTML = `<span class="dim">Returned ${money(r.pay)}${hatsTxt ? ' (' + hatsTxt + ')' : ''}. Less than the $1 pull.</span>`;
   } else res.textContent = 'No win this time.';
   store.set(state); render();
-  if (i < n - 1 && !fast) await new Promise((x) => setTimeout(x, 450)); // a breath between pulls
+  if (i < n - 1 && !fast) await new Promise((x) => setTimeout(x, 450 + hold)); // a breath between pulls (longer after a big win)
 }
 
 // Full screen: the real Fullscreen API where it works, a fixed overlay where it doesn't (iPhone Safari).

@@ -438,6 +438,35 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
 .machine.jackpot .flash { font-size: 68px; color: var(--lamp); text-shadow: 4px 4px 0 var(--hat-dark), -2px -2px 0 var(--ink), 2px -2px 0 var(--ink), -2px 2px 0 var(--ink), 0 0 24px rgba(255,190,92,.6); }
 .machine .flash.show { animation: stamp 2.4s ease-out forwards; }
 .machine.jackpot .flash.show { animation-duration: 4.2s; }
+/* TIERED WIN CELEBRATIONS (celebrate.js; Cody 2026-10-04): t1 win, t2 nice, t3 big, t4 huge, t5 the pool jackpot. Only a play
+   that came out ahead ever gets a tier. The effects layer sits over the game screen, under the stamp and the tier word. */
+.machine .screen .fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+.machine .flash { z-index: 3; }
+/* sized as a share of the game screen (cqw), on one line: fixed px wrapped HUGE WIN over its amount on a phone */
+.machine .screen { container-type: inline-size; }
+.machine .tierword, .machine .tally { position: absolute; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 2; opacity: 0; white-space: nowrap; }
+.machine .tierword { top: 34%; font: 800 12cqw/1 var(--display); letter-spacing: 1px; color: var(--lamp);
+  text-shadow: 4px 4px 0 var(--hat-dark), -2px -2px 0 var(--ink), 2px -2px 0 var(--ink), -2px 2px 0 var(--ink), 0 0 22px rgba(255,190,92,.55); }
+.machine .tally { top: 50%; font: 700 8.5cqw/1 var(--digits); color: var(--brim); font-variant-numeric: tabular-nums;
+  text-shadow: 3px 3px 0 var(--ink), -2px -2px 0 var(--ink), 2px -2px 0 var(--ink), -2px 2px 0 var(--ink), 0 0 16px rgba(255,190,92,.6); }
+.machine .tierword.show, .machine .tally.show { animation: tierpop .5s cubic-bezier(.2,1.6,.4,1) forwards; }
+.machine.t3 .tierword { font-size: 14.5cqw; } .machine.t3 .tally { font-size: 10cqw; color: var(--lamp); }
+.machine.t4 .tierword { font-size: 15.5cqw; color: #fff3c4; } .machine.t4 .tally { top: 54%; font-size: 11cqw; color: var(--lamp); }
+.machine.t5 .tally { top: 56%; font-size: 11.5cqw; color: var(--lamp); }
+@keyframes tierpop { 0% { opacity: 0; transform: scale(.3) rotate(-6deg); } 100% { opacity: 1; transform: scale(1) rotate(-3deg); } }
+.machine.t2 { animation: tglow 1.4s ease-out; }
+.machine.t3 { animation: tglow 2s ease-out; } .machine.t3 .screen { animation: tshake .45s ease-out; }
+.machine.t4, .machine.t5 { animation: tborder .32s steps(2) 8, tglow 3s ease-out; } .machine.t4 .screen, .machine.t5 .screen { animation: tshake .7s ease-out; }
+/* Stocking Stuffer: WHERE you tap picks the stocking, so its fireplace never shakes (a tap during a shake could open the one
+   next to it; stocking-test caught it) — it keeps the glow, rays, confetti and count-up */
+.stockcard.t3 .screen, .stockcard.t4 .screen, .stockcard.t5 .screen { animation: none; }
+.machine.t3 .flash.show { animation-duration: 3s; } .machine.t4 .flash.show { animation-duration: 3.6s; }
+@keyframes tglow { 0% { box-shadow: 0 0 0 3px var(--lamp), 0 0 46px 10px rgba(255,190,92,.7); } 100% { box-shadow: 0 0 0 0 transparent, 0 0 0 0 transparent; } }
+@keyframes tborder { 50% { border-color: var(--lamp); } }
+@keyframes tshake { 0%, 100% { transform: none; } 15% { transform: translate(-6px, 3px) rotate(-.6deg); } 30% { transform: translate(5px, -4px) rotate(.5deg); }
+  45% { transform: translate(-4px, 2px); } 60% { transform: translate(3px, -2px); } 80% { transform: translate(-1px, 1px); } }
+@media (prefers-reduced-motion: reduce) { .machine.t2, .machine.t3, .machine.t4, .machine.t5, .machine .screen { animation: none !important; }
+  .machine .tierword.show, .machine .tally.show { animation: none; opacity: 1; } }
 @keyframes stamp { 0% { opacity: 0; transform: scale(1.9) rotate(-4deg); } 10% { opacity: 1; transform: scale(1) rotate(-4deg); } 80% { opacity: 1; } 100% { opacity: 0; transform: scale(1) rotate(-4deg); } }
 .machine .pullrow { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 /* the run strip under the play buttons: "Spin 3 of 10", Skip ahead, Check last result */

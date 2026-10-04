@@ -27,7 +27,7 @@ cp "$SRC/admin.html" "$OUT/admin.html"   # the escrow controls page (not linked 
 cp "$SRC/plinko.html" "$OUT/plinko.html" # Snowball Drop preview for Cody (not linked from the game)
 cp "$SRC/feedback.html" "$OUT/feedback.html" # focus-group feedback form (TEST_PLAN A; not linked from the game)
 cp "$SRC/guide.html" "$OUT/guide.html"       # the player guide (linked from the Play and Games pages)
-cp "$SRC"/{kit,plaza,sim,net,online,catalog,tabs,slots,slots3d,games,spin,spin3d,spinui,dropui,runui,credits,fair,house,playcredits,market,sfx,matchmaker,gameserver,wallet,pay,levels,lottery,lotteryui,admin,adminmsg,settings,plinko,plinko-page,plinkoboard,stocking,stockingui,stockingboard,specials,gear,runpick,slowdown,themes,shopui,shoprules,refcore,human,ballfx,ranked,gameclock,seasons,seasonui,buildcheck,moneystrip,coach,callouts,walletline,jackpotbar,sharecard,weekly}.js "$SRC/hat-logo.png" "$OUT/"
+cp "$SRC"/{kit,plaza,sim,net,online,catalog,tabs,slots,slots3d,games,spin,spin3d,spinui,dropui,runui,credits,fair,house,playcredits,market,sfx,matchmaker,gameserver,wallet,pay,levels,lottery,lotteryui,admin,adminmsg,settings,plinko,plinko-page,plinkoboard,stocking,stockingui,stockingboard,specials,gear,runpick,slowdown,themes,shopui,shoprules,refcore,human,ballfx,ranked,gameclock,seasons,seasonui,buildcheck,moneystrip,coach,callouts,walletline,jackpotbar,sharecard,weekly,celebrate}.js "$SRC/hat-logo.png" "$OUT/"
 mkdir -p "$OUT/mockups"
 cp "$SRC"/{kit,plaza,themes,village,snowball,bethehat,sleigh,hatchase}.js "$OUT/mockups/"
 { printf '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>\n'

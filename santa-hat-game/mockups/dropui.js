@@ -10,6 +10,7 @@ import { runSummary } from './runui.js';
 import { initRunPick, priceLabel } from './runpick.js';
 import { showResult } from './spinui.js';
 import { play as sfx } from './sfx.js';
+import { celebrate, celebrating, tierOf } from './celebrate.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);
@@ -80,13 +81,15 @@ function landed(r, p) {
   const res = $('#drop .res'), card = $('#drop .dropcard');
   onPool(p.poolUsd);
   history.unshift(r.jackpot ? 'JP' : r.mult); history.length = Math.min(history.length, MAX_HISTORY);
-  card.classList.remove('won', 'jackpot');
+  if (!celebrating(card)) card.classList.remove('won', 'jackpot'); // not while a bigger win is still on screen
   if (r.jackpot) { // THE POOL JACKPOT (board 3's centre): the biggest celebration, with the real dollar amount
-    sfx('jackpot'); card.classList.add('jackpot'); stamp(`POOL JACKPOT ${money(r.pay)}`);
+    card.classList.add('jackpot'); stamp(`POOL JACKPOT ${money(r.pay)}`); celebrate(card, 5, { amount: r.pay, money, fast });
     res.innerHTML = `<span><b>POOL JACKPOT! ${money(r.pay)}</b> <span class="dim">(${+(r.pct * 100).toFixed(2)}% of the ${money(r.jackpotPool)} Game pool × your ${cents(r.bet)} drop; ${money(r.pay * 0.97)} after SANTA's 3% tax)</span></span>`;
     addWinner(r.bet >= 1 ? 'drop100' : 'drop10', r.pay, r.bet, 'pool jackpot');
   } else if (r.ahead) {
-    sfx(r.mult >= 10 ? 'bigWin' : 'smallWin'); card.classList.add(r.mult >= 10 ? 'jackpot' : 'won'); stamp(`${r.mult}× WIN`);
+    // the jackpot look is for the pool jackpot only (a 10× used to borrow it); balls land close together, so a smaller win
+    // never covers a bigger one still on screen (it used to replace a jackpot stamp within 0.4 s)
+    const tier = tierOf({ ahead: true, mult: r.mult }); card.classList.add('won'); if (celebrating(card) <= tier) stamp(`${r.mult}× WIN`); celebrate(card, tier, { amount: r.pay, money, fast });
     res.innerHTML = `<b>${r.mult}× win!</b> ${money(r.pay)}`;
     addWinner(r.bet >= 1 ? 'drop100' : 'drop10', r.pay, r.bet, `${r.mult}×`);
   } else if (r.mult === 1) res.innerHTML = `<span class="dim">Money back: ${money(r.pay)}.</span>`;
