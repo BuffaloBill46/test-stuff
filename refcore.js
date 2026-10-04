@@ -1,8 +1,8 @@
 // The referee's per-player lookups and timings, shared by the page's referee (online.js) and the server referee
 // (server/referee.mjs), so the two can never run different rules. Pure logic: no page, no network.
-import { SLOTS, BY_ID, cleanAvatar, ballRules, specialsIn } from './catalog.js?v=862ea3f445';
-import { levelInfo, clampLevel } from './levels.js?v=862ea3f445';
-import { gearIn } from './gear.js?v=862ea3f445';
+import { SLOTS, BY_ID, cleanAvatar, ballRules, specialsIn } from './catalog.js?v=ebdafb1d6e';
+import { levelInfo, clampLevel } from './levels.js?v=ebdafb1d6e';
+import { gearIn } from './gear.js?v=ebdafb1d6e';
 
 // Free-plan budget is 100 messages/second and every receiver counts, so fuller rooms send snapshots less often.
 export const snapMs = (humans) => (humans <= 4 ? 125 : humans <= 6 ? 170 : 220);
@@ -17,7 +17,10 @@ export const autoStartMs = (humans) => (humans >= 2 ? 15000 : 25000);
 export const TEAM_PAUSED = true;
 export const modeAllowed = (m) => m === 'ffa' || (m === 'team' && !TEAM_PAUSED);
 // PW[N|G]1-5: this week's mode (weekly.js; Cody 2026-10-03), public Auto match rooms like PF, played as Free-for-all
-export const isPublic = (c) => /^P(?:[FTW][NG]?[1-5]|R[NG]?[1-9]\d?)$/.test(c);
+// PUBLIC_ROOMS of each kind (was 5: 40 Free-for-all seats, so the 41st player pressing Auto match at once was turned away; the
+// 50-player simulation found it, 2026-10-04). The match server allows 200 rooms in all (server/referee.js MAX_ROOMS).
+export const PUBLIC_ROOMS = 30;
+export const isPublic = (c) => /^P(?:[FTW][NG]?(?:[1-9]|[12]\d|30)|R[NG]?[1-9]\d?)$/.test(c);
 export const isWeekly = (c) => isPublic(c) && c[1] === 'W';
 export const styleOf = (c) => (isPublic(c) && c[2] === 'N' ? 'normal' : 'gear');
 

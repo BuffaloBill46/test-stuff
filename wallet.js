@@ -6,7 +6,7 @@
 // Safety: the quote names the ONE wallet the server will accept a payment from (`payer`, the account's linked wallet) and
 // the network (`cluster`). We refuse to ask for a signature from any other wallet or on any other network, so a player can
 // never pay for plays the server would then refuse.
-import { purchaseInstructions } from './pay.js?v=862ea3f445';
+import { purchaseInstructions } from './pay.js?v=ebdafb1d6e';
 
 const KIT = 'https://cdn.jsdelivr.net/npm/@solana/kit@8.4.0/+esm';
 const T22 = 'https://cdn.jsdelivr.net/npm/@solana-program/token-2022@0.19.0/+esm';
