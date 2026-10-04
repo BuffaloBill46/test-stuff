@@ -1,19 +1,19 @@
 // Site tabs: Play / Store / Avatar / Ranks, wallet sign-in, avatar editor, leaderboard.
-import { THREE, character, lights, toon, part, build, hatGeo, giftGeo, C, Sparks, TOON } from './kit.js?v=053a1be46c';
-import { BALL_COLOR, tracer, dropStreak } from './ballfx.js?v=053a1be46c';
-import { mountHumanCheck } from './human.js?v=053a1be46c';
-import { GEAR_SLOTS } from './catalog.js?v=053a1be46c';
-import { shopBuy, resumeShop } from './shopui.js?v=053a1be46c';
-import { forSale } from './shoprules.js?v=053a1be46c';
-import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=053a1be46c';
-import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable, COSTUMES, costumeItems, costumeWord, SEASONS } from './catalog.js?v=053a1be46c';
-import { SPECIALS } from './specials.js?v=053a1be46c';
-import { settingsReady, call } from './gameserver.js?v=053a1be46c';
-import { TICKET_MAX } from './ranked.js?v=053a1be46c';
-import { dayStart, weekStart } from './gameclock.js?v=053a1be46c';
-import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js?v=053a1be46c';
-import { refreshSeason } from './seasonui.js?v=053a1be46c';
-import { THEMES, THEME_IDS } from './themes.js?v=053a1be46c';
+import { THREE, character, lights, toon, part, build, hatGeo, giftGeo, C, Sparks, TOON } from './kit.js?v=8332b03617';
+import { BALL_COLOR, tracer, dropStreak } from './ballfx.js?v=8332b03617';
+import { mountHumanCheck } from './human.js?v=8332b03617';
+import { GEAR_SLOTS } from './catalog.js?v=8332b03617';
+import { shopBuy, resumeShop } from './shopui.js?v=8332b03617';
+import { forSale } from './shoprules.js?v=8332b03617';
+import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=8332b03617';
+import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable, COSTUMES, costumeItems, costumeWord, SEASONS } from './catalog.js?v=8332b03617';
+import { SPECIALS } from './specials.js?v=8332b03617';
+import { settingsReady, call } from './gameserver.js?v=8332b03617';
+import { TICKET_MAX } from './ranked.js?v=8332b03617';
+import { dayStart, weekStart } from './gameclock.js?v=8332b03617';
+import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js?v=8332b03617';
+import { refreshSeason } from './seasonui.js?v=8332b03617';
+import { THEMES, THEME_IDS } from './themes.js?v=8332b03617';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };

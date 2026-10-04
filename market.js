@@ -86,3 +86,13 @@ export async function liveSolPrice() {
 }
 // Lamports (a billionth of a SOL) for `usd` dollars, rounded UP so the treasury never gets less than the dollars quoted.
 export const lamportsFor = (usd, solUsd) => Math.ceil((usd / solUsd) * 1e9);
+// PAYING WITH SOL, the player pays EXACTLY the price (Cody 2026-10-04: "they are only charged $1 and whatever makes it to the pool
+// is what it gets"). How a price in SOL (lamports) splits, built by the page (pay.js) and checked by the server (verify.js):
+// games and the lottery swap ALL of it to SANTA; the Store swaps the burn share (50%; the pass 0%) and the rest goes to the
+// treasury AS SOL. SOL_FLOOR: a SOL payment must still deliver at least 85% of what the quote's SANTA would (the swap's fees
+// are ~8-10% today): anything built to deliver less is refused, and the page won't sign one that would land under it.
+export const SOL_FLOOR = 0.85;
+export const solShares = (lamports, burnBps, store) => {
+  const treasury = store ? Math.floor((lamports * (10000 - burnBps)) / 10000) : 0;
+  return { swap: lamports - treasury, treasury };
+};

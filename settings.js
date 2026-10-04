@@ -2,8 +2,8 @@
 // Every change is a new version, wallet-signed and logged; every play records the version it used, so "Check this result"
 // works on old plays after odds change. build() turns settings into the game rules' shapes; check() is the guard rail:
 // it refuses anything that could hurt players or drain a pool, and reports what a change does BEFORE it's signed.
-import { MACHINES, SYMBOLS, SYM, stats, POOL_RULES, pull } from './slots.js?v=053a1be46c';
-import { ITEMS, SLOTS, BY_ID } from './catalog.js?v=053a1be46c';
+import { MACHINES, SYMBOLS, SYM, stats, POOL_RULES, pull } from './slots.js?v=8332b03617';
+import { ITEMS, SLOTS, BY_ID } from './catalog.js?v=8332b03617';
 // SANTA HAT SPIN REMOVED (Cody, 2026-10-04): its prices (spin10/spin100) and wheel (spin) are gone from new settings; records
 // published before still carry them, and they are simply ignored. rules.spin below is the shared Game POOL's key, not the wheel.
 // ONE GAME POOL (Cody, 2026-10-02): Big Hat, Snowball Drop and Stocking Stuffer all play from the shared pool (rules.spin), and
@@ -11,11 +11,11 @@ import { ITEMS, SLOTS, BY_ID } from './catalog.js?v=053a1be46c';
 // as fixed prizes + the jackpot at a stated pool size, and the guard rails check it at BOTH ends of the pool's normal range:
 // the top-off point (topOffBelow, $200: a play never starts below it) and the skim point (skimAt, $1,025: the pool never stays
 // at or above it). The headline figure is at the pool's start (start, $500).
-import { MAX_MULT as DROP_TOP, BETS as DROP_BETS, JP as DROP_JP, paybackAt as dropPaybackAt, payback as dropFixedPayback, jackpotOdds as dropJackpotOdds, realWin as dropWinOf } from './plinko.js?v=053a1be46c';
-import { KINDS } from './credits.js?v=053a1be46c';
+import { MAX_MULT as DROP_TOP, BETS as DROP_BETS, JP as DROP_JP, paybackAt as dropPaybackAt, payback as dropFixedPayback, jackpotOdds as dropJackpotOdds, realWin as dropWinOf } from './plinko.js?v=8332b03617';
+import { KINDS } from './credits.js?v=8332b03617';
 // Stocking Stuffer (Cody, 2026-10-02): its pay table (× the turn price, by gifts 0–7; 8 gifts = the pool jackpot) is editable
-import { DEFAULT_PAYS as STOCK_PAYS, BOARD1_PAYS, PAYS as STOCK_LIVE, JP as STOCK_JP, BETS as STOCK_BETS, MAX_OPEN as STOCK_OPEN, payback as stockPaybackOf, paybackAt as stockPaybackAt, jackpotOdds as stockJackpotOdds, realWin as stockWinOf, topMult as stockTopOf } from './stocking.js?v=053a1be46c';
-import { JACKPOT_PCT } from './slots.js?v=053a1be46c';
+import { DEFAULT_PAYS as STOCK_PAYS, BOARD1_PAYS, PAYS as STOCK_LIVE, JP as STOCK_JP, BETS as STOCK_BETS, MAX_OPEN as STOCK_OPEN, payback as stockPaybackOf, paybackAt as stockPaybackAt, jackpotOdds as stockJackpotOdds, realWin as stockWinOf, topMult as stockTopOf } from './stocking.js?v=8332b03617';
+import { JACKPOT_PCT } from './slots.js?v=8332b03617';
 
 const big = MACHINES.big;
 // The built-in items, captured before applyToGame() can change the shared ones.
