@@ -5,7 +5,7 @@
 <style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style></head>
 <body><script type="module">
 import { THREE, Snow } from './kit.js';
-import { buildPlaza } from './plaza.js';
+import { buildPlaza, makeHat } from './plaza.js';
 import { avatarCharacter } from './tabs.js';
 import { DEFAULT_AVATAR } from './catalog.js';
 
@@ -16,6 +16,11 @@ const LOOKS = [
   { a: { ...DEFAULT_AVATAR, shirt: 'shirt_frostking', pants: 'pants_frostking', face: 'face_frostking', hat: 'hat_icecrown', pack: 'pack_icewings', snow: 'snow_crystal' }, cam: [0.4, 0.35, 4.2], at: [0, 1.7, 0], turn: 0.15, rim: 0x6fc8ff },
   { a: { ...DEFAULT_AVATAR, shirt: 'shirt_nutcracker', pants: 'pants_nutcracker', face: 'face_nutcracker', hat: 'hat_nutcracker', pack: 'pack_drum', snow: 'snow_nutcracker' }, cam: [3.4, 1.9, 1.6], at: [0, 1.55, 0], turn: 0.9, rim: 0xffd27a },
   { a: { ...DEFAULT_AVATAR, shirt: 'shirt_pumpkinking', pants: 'pants_pumpkinking', face: 'face_pumpkinking', hat: 'hat_pumpkinking', pack: 'pack_pumpkinking', snow: 'snow_pumpkinking' }, cam: [-1.5, 0.7, 3.7], at: [0, 1.6, 0], turn: -0.35, rim: 0xff8a1a },
+  // 5, 6: the Thanksgiving and Christmas season costumes (video 3)
+  { a: { ...DEFAULT_AVATAR, shirt: 'shirt_gobbler', pants: 'pants_gobbler', face: 'face_gobbler', hat: 'hat_gobbler', pack: 'pack_gobbler', snow: 'snow_gobbler' }, cam: [1.6, 0.6, 3.8], at: [0, 1.55, 0], turn: 0.4, rim: 0xffa040 },
+  { a: { ...DEFAULT_AVATAR, shirt: 'shirt_gingerbread', pants: 'pants_gingerbread', face: 'face_gingerbread', hat: 'hat_gingerbread', pack: 'pack_gingerbread', snow: 'snow_gingerbread' }, cam: [-1.3, 1.0, 3.9], at: [0, 1.5, 0], turn: -0.3, rim: 0xff6f8a },
+  // 7: the Santa hat itself on its pedestal in the middle of the square, low and close (video 2)
+  { hat: true, cam: [2.4, 2.6, 5.2], at: [0, 1.5, 0], rim: 0xffbe5c },
 ];
 const q = new URLSearchParams(location.search), L = LOOKS[+q.get('who') || 0];
 const W = 720, H = 1280;
@@ -24,11 +29,11 @@ renderer.setPixelRatio(1); renderer.setSize(W, H); document.body.appendChild(ren
 const scene = new THREE.Scene();
 buildPlaza(scene, { theme: q.get('theme') || 'christmas' });
 // out on the open snow in front of the gazebo (the plaza middle), everything placed relative to that spot
-const P = new THREE.Vector3(+(q.get('x') ?? 0), 0, +(q.get('z') ?? 7.5)), at = (x, y, z) => [P.x + x, P.y + y, P.z + z];
-const ch = avatarCharacter(L.a); ch.rotation.y = L.turn; ch.position.copy(P); scene.add(ch);
+const P = new THREE.Vector3(+(q.get('x') ?? 0), 0, L.hat ? 0 : +(q.get('z') ?? 7.5)), at = (x, y, z) => [P.x + x, P.y + y, P.z + z];
+const ch = L.hat ? makeHat(0.88) : avatarCharacter(L.a); if (L.hat) ch.position.set(0, 1.71, 0); else { ch.rotation.y = L.turn; ch.position.copy(P); } scene.add(ch);
 // drama: a warm/cold rim light from behind and a soft key, the backdrop pushed darker by the fog
 const rim = new THREE.DirectionalLight(L.rim, 3.2); rim.position.set(...at(-L.cam[0] * 0.6, 4, -5)); rim.target = ch; scene.add(rim);
-const key = new THREE.PointLight(0xfff1dc, 2.2, 7); key.position.set(...at(L.cam[0] * 0.5 + 1, 2.6, L.cam[2] * 0.6)); scene.add(key);
+const key = new THREE.PointLight(0xfff1dc, L.hat ? 0.8 : 2.2, 7); key.position.set(...at(L.cam[0] * 0.5 + 1, 2.6, L.cam[2] * 0.6)); scene.add(key);
 scene.fog = new THREE.Fog(0x0b1024, 6, 30);
 const cam = new THREE.PerspectiveCamera(38, W / H, 0.1, 400); cam.position.set(...at(...L.cam)); cam.lookAt(...at(...L.at));
 const snow = new Snow(900, [14, 10, 14]); snow.points.position.set(0, 0, 0); scene.add(snow.points);

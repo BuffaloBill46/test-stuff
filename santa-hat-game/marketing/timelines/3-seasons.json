@@ -1,0 +1,29 @@
+{
+  "name": "A costume every season",
+  "clipVolume": 0.35,
+  "segments": [
+    { "t": 0, "dur": 2.4, "fur": true, "lines": [
+      { "text": "New season.", "y": 700, "size": 160, "color": "#f5f1e8", "at": -1 },
+      { "text": "New costume.", "y": 890, "size": 160, "color": "#ffbe5c", "at": 0.6 },
+      { "text": "santahatgames.com", "y": 1300, "font": "body", "size": 70, "weight": 800, "color": "#b9cdf2", "at": -1 } ] },
+    { "t": 2.4, "dur": 3.4, "src": "raw/grok-pumpkinking.mp4", "from": 0.8, "kicker": "HALLOWEEN · NOW", "label": "Pumpkin King", "labelColor": "#ffb347", "kickerColor": "#ff8a1a", "fadeIn": 0.3, "fadeOut": 0.3 },
+    { "t": 5.8, "dur": 3.4, "src": "raw/grok-gobbler.mp4", "from": 0.8, "kicker": "THANKSGIVING · NOVEMBER", "label": "Gobbler", "labelColor": "#ffc27a", "kickerColor": "#ff9a3c", "fadeIn": 0.3, "fadeOut": 0.3, "flash": 0.4 },
+    { "t": 9.2, "dur": 3.4, "src": "raw/grok-gingerbread.mp4", "from": 0.8, "kicker": "CHRISTMAS · DECEMBER", "label": "Gingerbread", "labelColor": "#ffd9e2", "kickerColor": "#ff7a96", "fadeIn": 0.3, "fadeOut": 0.4, "flash": 0.5 },
+    { "t": 12.6, "dur": 4.6, "fur": true, "fadeOut": 0.4, "lines": [
+      { "text": "Daily tasks", "y": 620, "size": 140, "color": "#f5f1e8", "at": 0 },
+      { "text": "open calendar doors", "y": 780, "size": 100, "color": "#b9cdf2", "at": 0.35 },
+      { "text": "Season pass unlocks", "y": 1000, "size": 100, "color": "#f5f1e8", "at": 0.9 },
+      { "text": "the costume", "y": 1120, "size": 100, "color": "#ffbe5c", "at": 0.9 },
+      { "text": "santahatgames.com", "y": 1420, "font": "body", "size": 86, "weight": 800, "color": "#ffbe5c", "at": 1.6 } ] }
+  ],
+  "music": { "bpm": 96, "parts": [
+    { "bells": true, "t": 0.05, "notes": [72, 76, 79, 84, 79, 76], "every": 0.5, "v": 0.15 },
+    { "drone": true, "t": 0, "end": 12.6, "note": 36, "v": 0.1 },
+    { "pad": true, "t": 2.4, "end": 12.6, "root": 48, "v": 0.05, "climb": 4 },
+    { "hit": true, "t": 2.4, "v": 0.8 }, { "hit": true, "t": 5.8, "v": 0.88 }, { "hit": true, "t": 9.2, "v": 0.95 },
+    { "pulse": true, "t": 5.8, "end": 12.6, "v": 0.28 },
+    { "boom": true, "t": 12.6, "v": 0.9 },
+    { "bells": true, "t": 12.7, "notes": [84, 88, 91, 96, 91, 88, 84, 79], "every": 0.5, "v": 0.12 },
+    { "groove": true, "t": 12.6, "end": 17.2, "bass": [36, 36, 40, 43, 41, 41, 40, 38] }
+  ] }
+}

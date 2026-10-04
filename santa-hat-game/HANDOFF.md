@@ -160,7 +160,15 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
-### 2026-10-04 (NEWEST): 50-PLAYER SIMULATION + EXPERIENCE AUDITS, ALL GREEN
+### 2026-10-04 (NEWEST): 4 MARKETING VIDEOS
+- marketing/out (local only, gitignored): 1-player-intro, 2-steal-the-hat, 3-seasons, 4-arcade; 9:16 MP4s, 17-22 s, sent to Cody.
+- How: real game renders (mockups/promo-stills.html via tests/browser/promo-stills.mjs) animated in Cody's Grok Imagine
+  (Chrome, video 6 s 9:16; clips downloaded with his OK into marketing/raw); real match footage (promo-gameplay.mjs) and
+  arcade footage (promo-arcade.mjs), both headed Chrome; edited by marketing/compose.html from marketing/timelines/*.json
+  (promo-compose.mjs): music synthesized in the page, a standard MP4 via WebCodecs + mp4-muxer. promo-frames.mjs = contact sheet.
+- To change a video: edit its timeline JSON and rerun promo-compose.mjs (about 30 s).
+
+### 2026-10-04: 50-PLAYER SIMULATION + EXPERIENCE AUDITS, ALL GREEN
 - `tests/db/full-sim.mjs [players] [buyers] [rounds]`: a private copy of the game (all migrations, the real match server,
   levels, Store, games, lottery, seasons; stand-in chain payments). 30 wallet + 20 email accounts play every round; 30 buyers max
   out the Store, buy levels, tickets, the pass and lottery tickets, and play 900 mini-game plays; every book is checked to balance.
