@@ -80,7 +80,7 @@ Details of each decision: DESIGN_NOTES.md. Audit of the money changes: AUDIT.md 
 **The games (numbers are Cody's calls; about 80% payback on every game because "we lose 16% to fees")**
 - **Spin is two wheels:** main wheel 40 equal segments (0× 20, 1× 12, 2× 5, gold star 3) → a star spins the bonus wheel of 12
   (3× 9, 4× 2, 5× 1). Pays back 80.0%. Fair numbers: the 1st picks the main segment, the 2nd the bonus segment; the re-check
-  replays both. Rules `mockups/spin.js`.
+  replays both. Rules `mockups/spin.js` (removed with the game, 2026-10-04).
 - **Big Hat:** hat bonus 6¢ per Santa Hat on the grid → 78.1% + the pool jackpot ≈ 79.5%. `PAYTABLE.md` regenerated.
 - **Snowball Drop (Plinko) is a third game** on the Games tab (preview also at `/plinko.html`): 8 rows of fair 50/50 bounces
   (one fair number per row, < 0.5 = left), 9 equal presents paying 10× · 5× · 1× · 0.4× · 0× from the edges in; 78.4%.

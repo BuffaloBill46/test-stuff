@@ -18,7 +18,7 @@
 // tests/slots.test.mjs: it prints payback, hit rate and jackpot odds and checks the invariants.
 // ONE GAME POOL (Cody, 2026-10-02): Big Hat, Snowball Drop and Stocking Stuffer all play from ONE shared pool (shown to players
 // as "Game pool"; the database row and wallet keep the old Spin pool's key 'spin'). The old Slots pool wallet is no longer used
-// by any game. The lottery stays separate. POOL_RULES below ARE that shared pool's rules (spin.js SPIN_RULES is the same object).
+// by any game. The lottery stays separate. POOL_RULES below ARE that shared pool's rules (its key is 'spin': it was the retired Spin's pool).
 
 export const FEE = 0.03;                       // SANTA's own transfer tax (read live from the token in the real version)
 export const BURN = 0.10;                      // Games tab: 10% burned, 90% to the pool, after the tax

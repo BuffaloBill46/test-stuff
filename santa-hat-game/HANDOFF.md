@@ -47,7 +47,8 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
   - `net.js`: all networking and accounts (Supabase rooms, games board, sign-in). `?net=local` swaps in
     one-computer stand-ins for testing.
   - `catalog.js`: every avatar item (slot, level or price).
-  - Games tab: `games.js` (Slots page), `spinui.js` (Spin page), `slots.js` / `spin.js` (rules), `slots3d.js` / `spin3d.js` (3D).
+  - Games tab: `games.js` (Big Hat), `dropui.js` / `plinko.js` (Snowball Drop), `stockingui.js` / `stocking.js` (Stocking Stuffer),
+    `gamepool.js` (the demo Game pool), `celebrate.js` (win tiers), `slots3d.js` (3D). Santa Hat Spin was REMOVED 2026-10-04.
   - Snowball Drop: `plinko.js` (rules), `plinkoboard.js` (the board), `dropui.js` (its Games-tab card); preview `plinko.html`.
   - Runs (buy 1/5/10 plays, or any number up to 100 from the box, that play straight away) and fair results: `credits.js` (the run ledger; the file name is older
     than the design), `fair.js` (secrets, fingerprints, numbers), `house.js` (Cody's order; a stand-in for the server),
@@ -591,7 +592,7 @@ branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from
 - **Games tab:** Big Hat slots, Santa Hat Spin and Snowball Drop, each with **Play 1 / 5 / 10 buttons** (one payment, the plays
   run straight away, winnings sent automatically at the end; no credits, no claim button; Cody 2026-10-01),
   **fair results in Cody's order** (payment first, then the secret) with a "Check this result" panel,
-  and the **live SANTA price and live token tax**. Numbers: `PAYTABLE.md`, `mockups/spin.js`.
+  and the **live SANTA price and live token tax**. Numbers: `PAYTABLE.md` (Spin's numbers there are history: the game was removed 2026-10-04).
 
 **Pre-hand-over pass (2026-09-30, evening):** an audit (`AUDIT.md`: 9 findings, all fixed or handed over, incl. skims that only
 happened on paper, price manipulation, and equal payouts silently lost as duplicate transactions), a 100-player focus group

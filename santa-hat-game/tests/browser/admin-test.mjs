@@ -79,7 +79,7 @@ check((await db.query('select count(*)::int as n from public.pool_log'))[0].n ==
 await p.waitForFunction(() => /pays back/.test(document.querySelector('#gsPreview').textContent), null, { timeout: 15000 });
 // payback is fixed prizes + the pool jackpot at the Game pool's $500 start, with the $200 and $1,025 ends (Cody, 2026-10-02)
 { const pv0 = (await p.textContent('#gsPreview')).replace(/\s+/g, ' ');
-  check(/Spin pays back 80\.0%/.test(pv0) && /Big Hat pays back 78\.6% \(fixed prizes 78\.1% \+ the pool jackpot at the \$500 start; 78\.3% at \$200, 79\.1% at \$1,025\)/.test(pv0), 'preview shows today\'s payback with the jackpot: ' + pv0.slice(0, 220));
+  check(!/Spin/.test(pv0) && /Big Hat pays back 78\.6% \(fixed prizes 78\.1% \+ the pool jackpot at the \$500 start; 78\.3% at \$200, 79\.1% at \$1,025\)/.test(pv0), 'preview shows today\'s payback with the jackpot: ' + pv0.slice(0, 220));
   check(/Snowball Drop pays back 78\.5% \(fixed prizes 76\.0% \+ the pool jackpot at the \$500 start; 77\.0% at \$200, 81\.1% at \$1,025\)/.test(pv0) && /top fixed prize 25×/.test(pv0), 'preview shows Snowball Drop\'s payback with its jackpot: ' + (pv0.match(/Snowball Drop pays back[^;]*/) || [''])[0]);
   // Stocking Stuffer's pay table (board 2, 2026-10-02): the preview shows its payback; a top fixed prize the Game pool's top-off can't cover is refused
   check(/Stocking Stuffer pays back 73\.3% \(fixed prizes 72\.4% \+ the pool jackpot at the \$500 start; 72\.7% at \$200, 74\.2% at \$1,025\)/.test(pv0) && /top fixed prize 50×/.test(pv0), 'preview shows Stocking Stuffer\'s 73.3% (72.4% fixed) and 50×: ' + (pv0.match(/Stocking Stuffer pays back[^;]*/) || [''])[0]);
@@ -88,19 +88,20 @@ await p.fill('[data-gs="stock.7"]', '600'); await p.waitForTimeout(700);
 check(await p.evaluate(() => document.querySelector('#gsSave').disabled) && /must cover Stocking Stuffer's top fixed prize \(\$600\)/.test(await p.textContent('#gsPreview')), 'a 600× Stocking Stuffer top prize (more than the Game pool\'s top-off covers) can\'t be published');
 await p.fill('[data-gs="stock.7"]', '50'); await p.fill('[data-gs="stock.1"]', '0.6'); await p.waitForTimeout(700);
 check(/Stocking Stuffer pays back 75\.9% \(fixed prizes 75\.0%/.test(await p.textContent('#gsPreview')), 'a 0.6× one-gift prize previews 75.9% (75.0% fixed): ' + (await p.textContent('#gsPreview')).match(/Stocking Stuffer[^;]*/)?.[0]);
-await p.fill('[data-gs="main.0"]', '30'); await p.waitForTimeout(700);
-check(await p.evaluate(() => document.querySelector('#gsSave').disabled) && /exactly 40 segments/.test(await p.textContent('#gsPreview')), 'a main wheel that isn\'t 40 segments can\'t be published');
-await p.fill('[data-gs="main.0"]', '18'); await p.fill('[data-gs="main.2"]', '6'); await p.fill('[data-gs="main.star"]', '4');
-await p.fill('[data-gs="bonus.3"]', '8'); await p.fill('[data-gs="bonus.4"]', '3');
-await p.fill('[data-gs="big.jackpotOdds"]', '10000'); await p.fill('[data-gs="prices.spin100"]', '2');
+// (Santa Hat Spin's wheel editor was removed with the game, 2026-10-04: an unsafe Big Hat change shows the guard rail instead)
+const hb = await p.inputValue('[data-gs="big.hatBonus"]'); await p.fill('[data-gs="big.hatBonus"]', '0.5'); await p.waitForTimeout(700);
+check(await p.evaluate(() => document.querySelector('#gsSave').disabled) && /Big Hat would pay back/.test(await p.textContent('#gsPreview')), 'a Big Hat paying back too much can\'t be published');
+await p.fill('[data-gs="big.hatBonus"]', hb);
+check(!(await p.$('[data-gs^="main."], [data-gs="prices.spin100"]')), 'no Spin wheel or Spin prices on the admin screen');
+await p.fill('[data-gs="big.jackpotOdds"]', '10000'); await p.fill('[data-gs="prices.big"]', '2');
 await p.evaluate(() => document.querySelector('#gsNew').closest('details').open = true);
 await p.fill('[data-new="id"]', 'shirt_mint'); await p.fill('[data-new="name"]', 'Mint'); await p.fill('[data-new="price"]', '0.3'); await p.tap('#gsAdd');
 await p.waitForTimeout(800);
 const pv = await p.textContent('#gsPreview');
-check(/Spin pays back 94\.2%/.test(pv) && /1 in 10,000/.test(pv) && !(await p.evaluate(() => document.querySelector('#gsSave').disabled)), 'preview of the new settings: ' + pv.slice(0, 160));
+check(/Big Hat pays back/.test(pv) && /1 in 10,000/.test(pv) && !/Spin/.test(pv) && !(await p.evaluate(() => document.querySelector('#gsSave').disabled)), 'preview of the new settings: ' + pv.slice(0, 160));
 await p.tap('#gsSave'); await p.waitForFunction(() => /Published settings version|Refused/.test(document.querySelector('#msg').textContent), null, { timeout: 20000 });
 const gsRow = (await db.query('select version, settings from public.game_settings order by version desc limit 1'))[0];
-check(gsRow?.version === 1 && gsRow.settings.big.jackpotOdds === 10000 && gsRow.settings.prices.spin100 === 2 && gsRow.settings.spin.main['0'] === 18 && gsRow.settings.spin.bonus['4'] === 3, 'settings v1 saved: ' + (await p.textContent('#msg')));
+check(gsRow?.version === 1 && gsRow.settings.big.jackpotOdds === 10000 && gsRow.settings.prices.big === 2 && gsRow.settings.spin === undefined && gsRow.settings.prices.spin100 === undefined, 'settings v1 saved, without the removed Spin\'s fields: ' + (await p.textContent('#msg')));
 check(gsRow?.settings.store.items.some((i) => i.id === 'shirt_mint' && i.price === 0.3), 'the new Mint shirt is in the store');
 check(JSON.stringify(gsRow?.settings.stocking2) === '{"pays":[0,0.6,1.5,3,7,15,25,50],"jackpotPct":0.25}' && JSON.stringify(gsRow?.settings.drop) === '{"jackpotPct":0.25}', 'Stocking Stuffer\'s new pay table (and both jackpot %s) were signed and saved: ' + JSON.stringify(gsRow?.settings.stocking2));
 check(JSON.stringify(gsRow?.settings.stocking?.pays) === '[0,0.5,2.5,6,10,20,40,90,250]', 'board 1\'s table is kept as it was (old turns re-check on it)');

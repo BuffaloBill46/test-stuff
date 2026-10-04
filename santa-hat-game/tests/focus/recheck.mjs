@@ -1,3 +1,5 @@
+// HISTORICAL (2026-10-04): written for the 2026-09-30 focus group against the page of that day (the Santa Hat Spin wheel, since
+// removed, and Big Hat's old pull button). It no longer runs as is; kept as the record of that study. Rewrite before reusing.
 // Re-check the focus-group fixes on a phone: the result line is on screen after a play; the buy confirm focuses Pay.
 import { createRequire } from 'module'; import { readFileSync, existsSync } from 'fs'; import { execSync } from 'child_process'; import path from 'path';
 const require = createRequire(import.meta.url); const { chromium } = require(path.join(execSync('npm root -g').toString().trim(), 'playwright'));

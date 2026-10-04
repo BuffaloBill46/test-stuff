@@ -78,7 +78,7 @@ export function outcome(nums, board = BOARD) {
 // The biggest FIXED prize (25×, the edge presents): a drop only starts if the pool covers it. (Board 2's was the 100× centre.)
 export const MAX_MULT = Math.max(...PAYS);
 export const MAX_MULT_BOARD = { 1: Math.max(...OLD.PAYS), 2: Math.max(...PAYS2), 3: MAX_MULT };
-// One drop against the shared Game pool (the same steps as spin() in spin.js): stop check, top-off, cover the top fixed
+// One drop against the shared Game pool (the same steps as every game: slots.js pull()): stop check, top-off, cover the top fixed
 // prize, the path, pay, skim, top-off. forced (tests only): the path as 0/1 per row (8 rights = the centre = the jackpot).
 // pct: the jackpot's share of the pool (the play's settings; Cody's pool rule `jackpotPct` overrides it, like Big Hat's).
 export function play(state, bet, rand = Math.random, forced, pct = JP.pct) {

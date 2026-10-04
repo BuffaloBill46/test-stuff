@@ -1,3 +1,5 @@
+// HISTORICAL (2026-10-04): written for the 2026-09-30 focus group against the page of that day (the Santa Hat Spin wheel, since
+// removed, and Big Hat's old pull button). It no longer runs as is; kept as the record of that study. Rewrite before reusing.
 // Focus group, part 2: 10 player types walk through the REAL page in a browser, each on their own device and path.
 // Records what they saw and did (texts, tap counts, screenshots in out/). The live SANTA price is fetched for real.
 import { createRequire } from 'module'; import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs'; import { execSync } from 'child_process'; import path from 'path';

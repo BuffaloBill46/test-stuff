@@ -3,7 +3,7 @@
 // Run: PW=<folder with node_modules/playwright> node run-suite.mjs [how many at once=4] [only these tests…]
 // Logs: out/suite/<test>.log; a test passes when it exits 0 and prints no ✗ / FAILED / error.
 import { spawn } from 'child_process'; import { mkdirSync, createWriteStream, readFileSync } from 'fs';
-// spin-test.mjs is not in the list: Spin was retired (the page hides it; games.js RETIRED)
+// (spin-test.mjs is gone: Santa Hat Spin was removed altogether, 2026-10-04)
 const TESTS = ['admin-test', 'controls-test', 'costumes-test', 'drop-test', 'finish-test', 'games-test', 'joystick-test', 'link-test', 'loadout-test',
   'lobby-test', 'lottery-test', 'match-intro-test', 'plinko-test', 'progress-or-test', 'referee-ranked-test', 'referee-server-test', 'runpick-test',
   'server-mode-test', 'settings-mode-test', 'sfx-test', 'shop-test', 'skip-toggle-test', 'stocking-test', 'store-gear-test', 'tabs-test',

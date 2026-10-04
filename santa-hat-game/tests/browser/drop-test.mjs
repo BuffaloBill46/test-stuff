@@ -21,10 +21,10 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   const p = await ctx.newPage(); p.on('pageerror', (e) => errors.push(label + ': ' + e.message)); p.on('console', (m) => { if (m.type() === 'error') errors.push(label + ': ' + m.text()); });
   await p.goto('http://localhost/online.html?net=local'); await p.waitForFunction(() => window.__sq, null, { timeout: 60000 }); await p.waitForTimeout(1200);
   await p.evaluate(() => document.querySelector('#t-games').click());
-  await p.waitForFunction(() => window.__spin, null, { timeout: 90000 }).catch((e) => { console.log('errors so far:', errors); throw e; });
+  await p.waitForFunction(() => window.__pool && window.__drop, null, { timeout: 90000 }).catch((e) => { console.log('errors so far:', errors); throw e; });
   await p.waitForFunction(() => window.__drop, null, { timeout: 30000 });
   await p.evaluate(() => document.querySelector('#drop').scrollIntoView({ block: 'start' })); await p.waitForTimeout(600);
-  const bal = () => p.evaluate(() => window.__slots.state.bal), pool = () => p.evaluate(() => window.__spin.st.pool);
+  const bal = () => p.evaluate(() => window.__slots.state.bal), pool = () => p.evaluate(() => window.__pool.st.pool);
   const waitDone = () => p.waitForFunction(() => !window.__drop.opening && window.__drop.flying === 0, null, { timeout: 120000 });
   const run = async (n, bet, paths) => {
     await p.evaluate(([b]) => document.querySelector(`#drop [data-dbet="${b}"]`).click(), [bet]);
@@ -57,7 +57,7 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
   const won = 2.5 + 0.2; // 25× + 2× on 10¢
   check(Math.abs((await bal()) - (b0 - 0.5 + won * 0.97)) < 1e-9, `${label}: demo money: −$0.50, then +$2.70 less 3% at the end (${await bal()})`);
   check(Math.abs((await pool()) - (pool0 + 0.5 * IN - won)) < 1e-9, `${label}: the shared Game pool got the $0.50 (after burn and tax) and paid $2.70`);
-  check(await p.textContent('#dropPool') === await p.textContent('#spinPool') && await p.textContent('#stockPool') === await p.textContent('#dropPool') && await p.textContent('#slotPool') === await p.textContent('#dropPool'), `${label}: every card shows the same shared Game pool`);
+  check(await p.textContent('#stockPool') === await p.textContent('#dropPool') && await p.textContent('#slotPool') === await p.textContent('#dropPool'), `${label}: every card shows the same shared Game pool`);
   check(/5 drops: \$2\.70 back/.test(await p.textContent('#drop .res')), `${label}: run summary: ${await p.textContent('#drop .res')}`);
   check((await p.locator('#dropHistory li:not(.empty)').count()) === 5, `${label}: last drops strip has the 5`);
   // the 25× in Recent winners, checked now (board 2 wins about 1 drop in 4, so later runs push it off the short list)

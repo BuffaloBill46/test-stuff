@@ -1,26 +1,27 @@
-// Focus group, part 1: 100 simulated players on the REAL game rules (spin.js, slots.js). Hard numbers, not opinions:
+// Focus group, part 1: 100 simulated players on the REAL game rules (plinko.js, slots.js; it ran on the Spin until that game was removed, 2026-10-04: Snowball Drop has the
+// same two sizes and the same pool). Hard numbers, not opinions:
 // how long budgets last, losing streaks, how often players see a real win, who walks away ahead. Writes players.json.
 import { writeFileSync } from 'node:fs';
-import { spin, SPIN_RULES } from '../../mockups/spin.js';
+import { play as dropPlay } from '../../mockups/plinko.js';
 import { pull, POOL_RULES } from '../../mockups/slots.js';
 
 let seed = 20260930; const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
 const pick = (a) => a[Math.floor(rnd() * a.length)];
 const SEGMENTS = [
   // name, budget range $, game mix, buy size, quit rule
-  ['Crypto regular', [20, 60], ['big', 'spin100'], 10, 'double-or-bust'],
-  ['Phone newcomer', [2, 10], ['spin10', 'spin100'], 5, 'budget'],
-  ['Careful budgeter', [1, 5], ['spin10'], 1, 'stop-loss-half'],
-  ['High roller', [100, 300], ['big', 'spin100'], 10, 'budget'],
-  ['Skeptic', [3, 10], ['spin10', 'big'], 1, 'stop-after-20'],
+  ['Crypto regular', [20, 60], ['big', 'drop100'], 10, 'double-or-bust'],
+  ['Phone newcomer', [2, 10], ['drop10', 'drop100'], 5, 'budget'],
+  ['Careful budgeter', [1, 5], ['drop10'], 1, 'stop-loss-half'],
+  ['High roller', [100, 300], ['big', 'drop100'], 10, 'budget'],
+  ['Skeptic', [3, 10], ['drop10', 'big'], 1, 'stop-after-20'],
   ['Competitive gamer', [5, 15], ['big'], 5, 'stop-on-big-win'],
-  ['Collector', [5, 20], ['spin100'], 5, 'stop-loss-half'],
-  ['Small-phone player', [2, 8], ['spin10'], 5, 'budget'],
+  ['Collector', [5, 20], ['drop100'], 5, 'stop-loss-half'],
+  ['Small-phone player', [2, 8], ['drop10'], 5, 'budget'],
   ['Grinder', [30, 80], ['big'], 10, 'budget'],
-  ['Returning daily player', [3, 6], ['spin10', 'spin100', 'big'], 3, 'budget'],
+  ['Returning daily player', [3, 6], ['drop10', 'drop100', 'big'], 3, 'budget'],
 ];
-const BET = { spin10: 0.1, spin100: 1, big: 1 }, SECS = { spin10: 6, spin100: 6, big: 5 };
-const spinPool = { pool: SPIN_RULES.start, prepaid: false }, slotsPool = { pool: POOL_RULES.start, prepaid: false };
+const BET = { drop10: 0.1, drop100: 1, big: 1 }, SECS = { drop10: 6, drop100: 6, big: 5 };
+const spinPool = { pool: POOL_RULES.start, prepaid: false }, slotsPool = { pool: POOL_RULES.start, prepaid: false };
 const players = [];
 for (const [seg, [lo, hi], games, buy, quit] of SEGMENTS) for (let k = 0; k < 10; k++) {
   const budget = Math.round(lo + rnd() * (hi - lo)); let bal = budget, plays = 0, secs = 0, dry = 0, longestDry = 0, realWins = 0, biggest = 0, purchases = 0, credits = 0, jackpot = false, top = false, peak = budget;
@@ -32,7 +33,7 @@ for (const [seg, [lo, hi], games, buy, quit] of SEGMENTS) for (let k = 0; k < 10
     if (quit === 'stop-on-big-win' && biggest >= 10 * bet) break;
     if (credits === 0) { const n = Math.min(buy, Math.floor(bal / bet + 1e-9)); if (n < 1) break; credits = n; bal -= n * bet; purchases++; }
     credits--; plays++; secs += SECS[game];
-    const r = game === 'big' ? pull(slotsPool, 'big') : spin(spinPool, bet);
+    const r = game === 'big' ? pull(slotsPool, 'big') : dropPlay(spinPool, bet);
     if (r.paused) { credits++; break; }
     bal += r.received; peak = Math.max(peak, bal + credits * bet);
     if (r.pay > bet + 1e-9) { realWins++; longestDry = Math.max(longestDry, dry); dry = 0; } else dry++;

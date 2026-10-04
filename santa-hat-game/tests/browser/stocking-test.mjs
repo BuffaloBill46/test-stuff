@@ -27,7 +27,7 @@ for (const [label, vp] of [['phone390', { width: 390, height: 844 }], ['phone320
   await p.evaluate(() => document.querySelector('#t-games').click());
   await p.waitForFunction(() => window.__stocking && window.__slots, null, { timeout: 120000 }).catch((e) => { console.log('errors so far:', errors); throw e; });
   await p.evaluate(() => document.querySelector('#stocking').scrollIntoView({ block: 'start' })); await p.waitForTimeout(800);
-  const bal = () => p.evaluate(() => window.__slots.state.bal), pool = () => p.evaluate(() => window.__spin.st.pool), txt = (s) => p.textContent(s);
+  const bal = () => p.evaluate(() => window.__slots.state.bal), pool = () => p.evaluate(() => window.__pool.st.pool), txt = (s) => p.textContent(s);
   const waitDone = () => p.waitForFunction(() => !window.__stocking.opening, null, { timeout: 240000 });
   const openDialog = async (n, bet, turns) => {
     await p.evaluate(([b]) => document.querySelector(`#stocking [data-sbet="${b}"]`).click(), [bet]);

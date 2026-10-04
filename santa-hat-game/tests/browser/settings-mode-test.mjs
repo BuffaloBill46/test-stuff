@@ -45,7 +45,7 @@ function payFor(q) {
 const akey = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign', 'verify']), aaddr = b58encode(new Uint8Array(await crypto.subtle.exportKey('raw', akey.publicKey)));
 const adminSrv = createAdmin({ db, adminWallets: [aaddr], onSettings: () => server.settingsChanged() });
 const V1 = structuredClone(DEFAULT_SETTINGS); delete V1.version;
-V1.spin.main = { 0: 18, 1: 12, 2: 6, star: 4 }; V1.spin.bonus = { 3: 8, 4: 3, 5: 1 }; V1.big.jackpotOdds = 10000; V1.prices.spin100 = 2;
+V1.big.jackpotOdds = 10000; // (its Spin wheel changes went with the game, 2026-10-04)
 V1.big.counts = { ...V1.big.counts, hat: 9, coal: 24 }; V1.store.items = [{ id: 'shirt_mint', slot: 'shirt', name: 'Mint', color: 0x98e0c0, price: 0.3 }, { id: 'sb_ice', slot: 'sball', name: 'Ice Ball', price: 0.4 }]; // a look, and a special snowball repriced
 { const message = adminMessage({ action: 'set-settings', game: 'all', settings: V1, at: new Date().toISOString(), nonce: 'ab'.repeat(16) });
   const sig = [...new Uint8Array(await crypto.subtle.sign('Ed25519', akey.privateKey, new TextEncoder().encode(message)))].map((x) => x.toString(16).padStart(2, '0')).join('');
@@ -89,9 +89,7 @@ await p.waitForFunction(() => /Rudolph/.test(document.querySelector('#winList')?
 const winText = (await p.textContent('#winList')).replace(/\s+/g, ' ');
 check(/Rudolph/.test(winText) && /\$5\.00/.test(winText) && /5×/.test(winText), `another player's win shows in the shared list: "${winText.slice(0, 120)}"`);
 check(!/wa11et/.test(winText), 'no wallet addresses on the page');
-// The page draws the published settings: prices, the wheel's odds, the Big Hat's jackpot odds, the new store item.
-check(/\$2/.test(await p.textContent('#spin .chip100')) && /win up to \$10/.test(await p.textContent('#spin .chip100')), 'the big spin shows $2 (win up to $10): ' + await p.textContent('#spin .chip100'));
-check(/0×nowin·18of40onthewheel45\.0%/.test((await p.textContent('#oddsList')).replace(/\s+/g, '')), 'the odds legend shows the new wheel: ' + (await p.textContent('#oddsList')).slice(0, 80));
+// The page draws the published settings: prices, the Big Hat's jackpot odds, the new store item.
 // Cody's one jackpot-odds row: the chance a pull hits the Top Line JackPot OR the Pool jackpot, from the PUBLISHED machine
 // (v1 has more Santa Hats on the reels and a 1 in 10,000 Pool jackpot), worked out here from the published numbers.
 { const { stats } = await import('../../mockups/slots.js'), M = build(V1).machine, st = stats(M);
@@ -99,7 +97,7 @@ check(/0×nowin·18of40onthewheel45\.0%/.test((await p.textContent('#oddsList'))
   const want = Math.round(1 / (st.topPerLine * st.lines)).toLocaleString('en-US'), pj = Math.round(1 / M.poolJackpotOdds).toLocaleString('en-US');
   const f = await p.textContent('#slots .facts');
   check(f.includes(`Top Line JackPot oddsabout 1 in ${want}`) && f.includes(`Pool jackpot odds1 in ${pj}`) && pj === '10,000', `the Big Hat facts show the published odds (Top Line about 1 in ${want}, Pool 1 in ${pj}): ` + f); }
-check(await p.evaluate(() => window.__spin.SLICES && window.__spin.view.shownMult !== undefined), 'wheel ready');
+check(await p.evaluate(() => !!window.__pool && !document.querySelector('#spin') && !window.__spin), 'the shared Game pool is ready, and there is no Spin wheel on the page');
 // The Store sells only special snowballs and gear now (Cody, 2026-10-01), so a published look item shows on the Avatar screen with
 // its price. (The admin store editor still edits look items only: see TODO.)
 await p.evaluate(() => document.querySelector('#t-avatar').click()); await p.waitForTimeout(800);

@@ -30,13 +30,13 @@ for (const [label, vp] of [['desk', { width: 1280, height: 900 }], ['phone', { w
     pct: document.querySelector('.machine .pct').textContent, jp: document.querySelector('#jpAmt').textContent, top: document.querySelector('#topAmt').textContent,
     res: document.querySelector('.machine .res').textContent, stamp: document.querySelector('.machine .flash').textContent,
     winners: [...document.querySelectorAll('#winList li:not(.empty)')].map((li) => li.textContent.replace(/\s+/g, ' ').trim()), wide: document.documentElement.scrollWidth > innerWidth }));
-  const state = () => p.evaluate(() => ({ pool: window.__spin.st.pool, bal: window.__slots.state.bal })); // Big Hat plays from the shared Game pool (Cody, 2026-10-02)
+  const state = () => p.evaluate(() => ({ pool: window.__pool.st.pool, bal: window.__slots.state.bal })); // Big Hat plays from the shared Game pool (Cody, 2026-10-02)
   const waitDone = () => p.waitForFunction(() => window.__slots.busy, null, { timeout: 3000 }).catch(() => {}).then(() => p.waitForFunction(() => !window.__slots.busy, null, { timeout: 300000 })).catch((e) => { console.log('errors so far:', errors); throw e; });
   // run one forced pull; `force` is a function evaluated in the page returning stops (or 'JACKPOT') plus the expected pay
   async function forcedPull(force, arg, opts = {}) {
     const exp = await p.evaluate(async ([src, a]) => { const m = await import('./slots.js'); const f = new Function('m', 'a', src); const stops = f(m, a);
       const M = m.MACHINES.big; let pay = 0, grid;
-      if (stops === 'JACKPOT') { pay = (window.__spin.st.pool + m.IN_PER_DOLLAR) * M.jackpotPct; /* the $1 entry reaches the pool when the run is bought, before the pull */ grid = Array.from({ length: 5 }, () => Array(5).fill(m.SYM.hat)); }
+      if (stops === 'JACKPOT') { pay = (window.__pool.st.pool + m.IN_PER_DOLLAR) * M.jackpotPct; /* the $1 entry reaches the pool when the run is bought, before the pull */ grid = Array.from({ length: 5 }, () => Array(5).fill(m.SYM.hat)); }
       else { grid = m.gridFor(M, stops); pay = m.evaluate(M, grid).reduce((s, w) => s + w.pay, 0) + grid.flat().filter((x) => x === m.SYM.hat).length * M.hatBonus * M.bet; }
       window.__slots.test.run = [stops]; return { stops, pay, grid };
     }, [force.toString().replace(/^[^{]*{|}$/g, ''), arg]);
