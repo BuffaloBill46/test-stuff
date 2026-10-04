@@ -3,7 +3,7 @@
 // Message plan (Supabase counts every delivery): the host sends snapshots on the room channel;
 // each player sends their moves on their own channel, which only the host listens to.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm';
-import { humanToken, resetHumanCheck } from './human.js?v=ebdafb1d6e';
+import { humanToken, resetHumanCheck } from './human.js?v=27294b1195';
 
 const SB_URL = 'https://olganobdypnxfpmsxibe.supabase.co';
 const SB_KEY = 'sb_publishable_eLn_YYzLDOTuUAOTZLeyKQ_PLGT8B6N'; // publishable key: meant to be public
