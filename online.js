@@ -1,29 +1,29 @@
 // Santa Hat Legends (the Snowball Square game): lobby, rooms, referee hand-off, smoothing, HUD.
-import './buildcheck.js?v=cd0c395251'; // first: the page and this code come from the same publish (buildcheck.js)
-import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo, Sparks, gearTick, GEAR_TINT, disposeTree } from './kit.js?v=cd0c395251';
-import { buildPlaza, makeHat, shadowBlob } from './plaza.js?v=cd0c395251';
-import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js?v=cd0c395251';
-import { openRoom, accounts, findWallet, gamesBoard } from './net.js?v=cd0c395251';
-import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js?v=cd0c395251';
-import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js?v=cd0c395251';
-import { initSeason, refreshSeason } from './seasonui.js?v=cd0c395251';
-import { initMoneyStrips, refreshBurned } from './moneystrip.js?v=cd0c395251';
-import { initWalletLines, refreshWallet } from './walletline.js?v=cd0c395251';
-import { createCoach } from './coach.js?v=cd0c395251';
-import { createCallouts } from './callouts.js?v=cd0c395251';
-import { VARIANTS, VARIANT_IDS } from './weekly.js?v=cd0c395251';
-import { initJackpotBar } from './jackpotbar.js?v=cd0c395251';
-import { initShareWins } from './sharecard.js?v=cd0c395251';
-import { TICKET_MAX } from './ranked.js?v=cd0c395251';
-import { levelInfo, clampLevel } from './levels.js?v=cd0c395251';
-import { SERVER, call, token as signInToken } from './gameserver.js?v=cd0c395251';
-import { SPECIALS, cantThrow } from './specials.js?v=cd0c395251';
-import { gearIn, effectsOf, heldWith, gearOfMask, statOf, RETIRED } from './gear.js?v=cd0c395251';
-import { initLottery } from './lotteryui.js?v=cd0c395251';
-import { play as sfx, initSoundButtons } from './sfx.js?v=cd0c395251';
-import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js?v=cd0c395251';
-import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js?v=cd0c395251';
-import { snapMs, autoStartMs, isPublic, isWeekly, PUBLIC_ROOMS, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js?v=cd0c395251';
+import './buildcheck.js?v=053a1be46c'; // first: the page and this code come from the same publish (buildcheck.js)
+import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo, Sparks, gearTick, GEAR_TINT, disposeTree } from './kit.js?v=053a1be46c';
+import { buildPlaza, makeHat, shadowBlob } from './plaza.js?v=053a1be46c';
+import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js?v=053a1be46c';
+import { openRoom, accounts, findWallet, gamesBoard } from './net.js?v=053a1be46c';
+import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js?v=053a1be46c';
+import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js?v=053a1be46c';
+import { initSeason, refreshSeason } from './seasonui.js?v=053a1be46c';
+import { initMoneyStrips, refreshBurned } from './moneystrip.js?v=053a1be46c';
+import { initWalletLines, refreshWallet } from './walletline.js?v=053a1be46c';
+import { createCoach } from './coach.js?v=053a1be46c';
+import { createCallouts } from './callouts.js?v=053a1be46c';
+import { VARIANTS, VARIANT_IDS } from './weekly.js?v=053a1be46c';
+import { initJackpotBar } from './jackpotbar.js?v=053a1be46c';
+import { initShareWins } from './sharecard.js?v=053a1be46c';
+import { TICKET_MAX } from './ranked.js?v=053a1be46c';
+import { levelInfo, clampLevel } from './levels.js?v=053a1be46c';
+import { SERVER, call, token as signInToken } from './gameserver.js?v=053a1be46c';
+import { SPECIALS, cantThrow } from './specials.js?v=053a1be46c';
+import { gearIn, effectsOf, heldWith, gearOfMask, statOf, RETIRED } from './gear.js?v=053a1be46c';
+import { initLottery } from './lotteryui.js?v=053a1be46c';
+import { play as sfx, initSoundButtons } from './sfx.js?v=053a1be46c';
+import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js?v=053a1be46c';
+import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js?v=053a1be46c';
+import { snapMs, autoStartMs, isPublic, isWeekly, PUBLIC_ROOMS, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js?v=053a1be46c';
 
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
@@ -877,6 +877,7 @@ if (SERVER) call('market').then((m) => {
   const notes = document.querySelectorAll('.testnote');
   if (m?.cluster === 'devnet') notes.forEach((n) => { n.innerHTML = '<b>Test network</b> Purchases and prizes use test SANTA on Solana devnet: the real steps, with no real value.'; });
   else if (m?.cluster) notes.forEach((n) => { n.hidden = true; });
+  if (m?.cluster === 'mainnet') import('./paywith.js?v=053a1be46c').then((p) => p.showPayWith()); // pay with SANTA or SOL (Cody 2026-10-04)
 }).catch(() => {});
 // The ranked lobby's ticket line (game server 'tickets'): free ones left today, bought ones, when the free ones refill.
 async function showTickets(ranked) {
@@ -1000,7 +1001,7 @@ const app = {
     watchWaiting(tab === 'play'); // the Play page's waiting games, live only while it shows
     if (tab === 'store' || tab === 'games') refreshBurned(); // the money strip's burned-so-far (kept a minute)
     if (tab === 'games') refreshWallet(true); // my wallet under the games
-    if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js?v=cd0c395251')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
+    if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js?v=053a1be46c')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
   },
 };
 let gamesMod = null; // Games tab code loads the first time it's opened

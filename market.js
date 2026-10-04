@@ -76,3 +76,13 @@ export function keptFee(lookup, { fresh = 60_000, stale = 600_000, now = () => D
     try { return await asking; } catch (e) { if (kept && now() - kept.at < stale) return kept.fee; throw e; }
   };
 }
+// The live SOL price in dollars (Jupiter's free price service), for paying with SOL (Cody 2026-10-04): the Store quotes the
+// treasury's share in SOL from it (server/shop.js). READ-ONLY. The server keeps it a minute (keptFee works for any lookup).
+export const WSOL_MINT = 'So11111111111111111111111111111111111111112';
+export async function liveSolPrice() {
+  const usd = +(await getJSON(`https://lite-api.jup.ag/price/v3?ids=${WSOL_MINT}`))?.[WSOL_MINT]?.usdPrice;
+  if (!(usd > 0)) throw new Error('no SOL price found');
+  return { usd, at: Date.now() };
+}
+// Lamports (a billionth of a SOL) for `usd` dollars, rounded UP so the treasury never gets less than the dollars quoted.
+export const lamportsFor = (usd, solUsd) => Math.ceil((usd / solUsd) * 1e9);
