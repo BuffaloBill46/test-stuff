@@ -161,7 +161,15 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
-### 2026-10-04 (NEWEST): SEASON PRIZES MIXED, PASS $2 = THE COSTUME (040-042 live; servers ad36184)
+### 2026-10-04 (NEWEST): 10 TICKS A LEVEL + PASS 100% TREASURY (043 live; servers 5bddf00)
+- Levels: 10 top-3 Auto finishes ("ticks") a level, was 5 (levels.js WINS_PER_LEVEL, 043). 9 -> 10 still 10 first places.
+  Progress already made was kept (nobody had more than 4).
+- The $2 season pass: 100% to the treasury, nothing burned (shoprules burnBpsFor; the page pays in one transfer). The other
+  Store items stay 50% burned / 50% treasury; the "burned so far" strip leaves passes out.
+- NEXT (Cody asked): pay with SOL at checkout, one tap, no extra steps (SOL swapped to SANTA inside the same payment).
+  Needs small REAL mainnet tests: ask Cody before any.
+
+### 2026-10-04: SEASON PRIZES MIXED, PASS $2 = THE COSTUME (040-042 live; servers ad36184)
 - Every door: ONE prize for everyone (5 looks, Elf Hat 15, Kevlar Vest 30, 8 "+1 level tick" at 3,7,11,17,21,24,27,29, 15
   ranked tickets). The $2 pass: just the costume, a piece on 2,6,10,14,18,22. Level ticks a season: 8 + streak (was 30+).
 - Season tickets are counted apart from bought ones (042 season_tickets()); the Store's "buy at most 10" uses bought only.

@@ -522,3 +522,7 @@ one step, so a failed write cannot run the old version; check a first frame befo
 **Two classes named the same thing collide silently (2026-10-04).** The season doors used class "tag" for their labels; `.tag`
 was already the in-match name tag (absolutely positioned top-left), so every label sat in a corner. Check a new class name
 isn't already used site-wide (grep "^\.name" online.html). Same for test ports: run-suite.mjs PORTS lists who shares one.
+
+**A test's pretend wallet must pay what the quote asks, not a copied constant (2026-10-04).** full-sim paid every Store buy
+with SHOP_BURN_BPS (50% burned); when the pass went 100% to the treasury, the server rightly refused those payments and the
+sim failed. Test payers read q.burnBps from the quote, like the real page does.
