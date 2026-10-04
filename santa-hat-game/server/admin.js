@@ -14,7 +14,6 @@
 // Changes take the pool's row lock, so they wait for any play being settled: never mid-pull. Every change is logged publicly.
 // NOT here (needs the pool key; FOR_MAIN_CLAUDE.md): the emergency withdrawal transfer itself.
 import { POOL_RULES } from '../mockups/slots.js';
-import { SPIN_RULES } from '../mockups/spin.js';
 import { check as checkSettings, DEFAULT_SETTINGS } from '../mockups/settings.js';
 import { MINT } from '../mockups/market.js';
 import { botSignals, BOT_RULES } from './bots.js';
@@ -53,7 +52,7 @@ export async function signatureOk(wallet, message, sigHex) {
 }
 // Sane settings only. Money thresholds are dollars (pools are valued at the live SANTA price).
 export function checkRules(game, rules) {
-  const base = game === 'spin' ? SPIN_RULES : POOL_RULES, R = { ...base, ...rules }, bad = [];
+  const base = POOL_RULES, R = { ...base, ...rules }, bad = [];
   const allowed = new Set([...Object.keys(base).filter((k) => k !== 'paused'), 'jackpotPct']);
   for (const k of Object.keys(rules)) if (!allowed.has(k)) bad.push(`${k} can't be set here`);
   for (const k of ['start', 'skimAt', 'skim', 'topOffBelow', 'topOffTo']) if (!(Number.isFinite(R[k]) && R[k] >= 0 && R[k] <= 100000)) bad.push(`${k} must be 0–100,000`);
@@ -90,7 +89,7 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
     if (m.action === 'set-rules' && m.game === 'spin') {
       const [cur] = await db.query('select rules from public.pools where game = $1', ['spin']);
       const [v] = await db.query('select settings from public.game_settings order by version desc limit 1');
-      const R = { ...SPIN_RULES, ...(cur?.rules || {}), ...m.settings }, c = checkSettings(v?.settings || DEFAULT_SETTINGS, { spin: R, slots: R });
+      const R = { ...POOL_RULES, ...(cur?.rules || {}), ...m.settings }, c = checkSettings(v?.settings || DEFAULT_SETTINGS, { spin: R, slots: R });
       if (!c.ok) return { error: c.problems.join('; ') };
     }
     if (m.action === 'set-settings') return saveSettings(m, wallet, message, signature);
@@ -126,7 +125,7 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
     const pools = Object.fromEntries((await db.query('select game, rules from public.pools')).map((p) => [p.game, p.rules || {}]));
     const s = { ...m.settings, version: undefined };
     // one shared Game pool (the 'spin' row) for every game since 2026-10-02: its rules are the ones every guard rail checks
-    const G = { ...SPIN_RULES, ...(pools.spin || {}) }, c = checkSettings(s, { spin: G, slots: G });
+    const G = { ...POOL_RULES, ...(pools.spin || {}) }, c = checkSettings(s, { spin: G, slots: G });
     if (!c.ok) return { error: c.problems.join('; ') };
     return db.tx(async (t) => {
       if ((await t.query('select 1 from public.pool_log where nonce = $1 union all select 1 from public.game_settings where nonce = $1', [m.nonce])).length) return { error: 'this signed message was already used' };

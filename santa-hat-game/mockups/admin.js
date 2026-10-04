@@ -4,7 +4,6 @@ import { adminMessage } from './adminmsg.js';
 import { VARIANTS } from './weekly.js';
 import { LOTTERIES } from './lottery.js';
 import { POOL_RULES } from './slots.js';
-import { SPIN_RULES, MAIN_SLICES, BONUS_SLICES } from './spin.js';
 import { DEFAULT_SETTINGS, check, itemsWith } from './settings.js';
 import { ITEMS, SLOTS } from './catalog.js';
 import { SYMBOLS } from './slots.js';
@@ -13,9 +12,9 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; };
 const SERVER = new URLSearchParams(location.search).get('server');
 // ONE GAME POOL (Cody, 2026-10-02): 'spin' is the shared pool every game plays from; 'slots' the old Slots pool (no game uses it).
-// Both start from the same rules (POOL_RULES = SPIN_RULES). jackpotPct on a pool is an OVERRIDE of every game's published %
+// Both start from the same rules (POOL_RULES). jackpotPct on a pool is an OVERRIDE of every game's published %
 // (empty = each game's own % from the game settings).
-const DEFAULTS = { slots: { ...POOL_RULES }, spin: { ...SPIN_RULES } };
+const DEFAULTS = { slots: { ...POOL_RULES }, spin: { ...POOL_RULES } };
 const POOL_LABEL = { spin: 'Game pool · Big Hat, Snowball Drop, Stocking Stuffer', slots: 'Old Slots pool · no game plays from it' };
 const FIELDS = { start: 'Starting amount ($)', skimAt: 'Skim when the pool reaches ($)', skim: 'Skim amount ($)', topOffBelow: 'Top off below ($)', topOffTo: 'Top off up to ($)', jackpotPct: 'Pool jackpot override (share 0.01–0.5; empty = the % each game publishes)' };
 let wallet = null, address = null, state = null;
@@ -190,7 +189,7 @@ function preview() {
     const s = gather(), sum = (o) => Object.values(o).reduce((a, b) => a + b, 0);
     $('#gsSliceTotal').textContent = `(${sum(s.spin.main)} of ${MAIN_SLICES})`; $('#gsBonusTotal').textContent = `(${sum(s.spin.bonus)} of ${BONUS_SLICES})`;
     const rules = Object.fromEntries((state?.pools || []).map((p) => [p.game, { ...DEFAULTS[p.game], ...p.rules }]));
-    const G = rules.spin || SPIN_RULES, c = check({ ...s, version: 0 }, { spin: G, slots: G }), r = c.report; // one Game pool's rules for every game
+    const G = rules.spin || POOL_RULES, c = check({ ...s, version: 0 }, { spin: G, slots: G }), r = c.report; // one Game pool's rules for every game
     const pb = (x) => `<b>${(x.payback * 100).toFixed(1)}%</b> (fixed prizes ${(x.fixed * 100).toFixed(1)}% + the pool jackpot at the $${x.at} start; ${(x.low * 100).toFixed(1)}% at $${x.lowPool}, ${(x.high * 100).toFixed(1)}% at $${x.highPool.toLocaleString()})`;
     $('#gsPreview').innerHTML = (r ? `<p>Spin pays back <b>${(r.spin.payback * 100).toFixed(1)}%</b>; a real win (2× or more) <b>1 in ${(1 / r.spin.realWin).toFixed(1)}</b> spins; top prize ${r.spin.top}×.</p>
       <p>Big Hat pays back ${pb(r.big)}; a win over the pull price about <b>1 in ${(1 / r.big.realWin).toFixed(1)}</b> pulls; top line prize <b>$${r.big.topPrize.toFixed(2)}</b>${r.big.top100 ? ` (about 1 in ${Math.round(r.big.top100).toLocaleString()})` : ''}; jackpot ${esc(r.big.jackpot)}.</p>

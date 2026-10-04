@@ -201,8 +201,9 @@ function skim(state, result) {
   return result;
 }
 // If the pool is below topOffBelow, the treasury tops it up to topOffTo. Returns the amount added (0 if none).
-function topOff(state) {
-  const R = { ...POOL_RULES, ...(state.rules || {}) };
+// Every game's top-off (Snowball Drop and Stocking Stuffer pass their merged rules; it was a copy in spin.js until the retired
+// Santa Hat Spin was removed, 2026-10-04).
+export function topOff(state, R = { ...POOL_RULES, ...(state.rules || {}) }) {
   if (!(state.pool < R.topOffBelow)) return 0;
   const add = R.topOffTo - state.pool; // what must arrive; the treasury sends a bit more because of the 3% tax
   state.pool += add; state.treasury = (state.treasury || 0) - add / (1 - FEE);
