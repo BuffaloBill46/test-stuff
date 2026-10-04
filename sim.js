@@ -1,9 +1,9 @@
 // Snowball Square match referee. Runs only on the host's browser; everyone else renders its snapshots.
 // Pure game logic, no rendering, so it can be tested headless.
-import { levelInfo } from './levels.js?v=8332b03617';
-import { VARIANTS, VARIANT_IDS } from './weekly.js?v=8332b03617';
-import { SPECIALS, SPECIAL_KINDS, DROP_HIT_RADIUS, cantThrow, costOf } from './specials.js?v=8332b03617';
-import { effectsOf, gearAllowed, resolvePresent, heldWith, gearMask, gearOfMask } from './gear.js?v=8332b03617';
+import { levelInfo } from './levels.js?v=84d2cda39a';
+import { VARIANTS, VARIANT_IDS } from './weekly.js?v=84d2cda39a';
+import { SPECIALS, SPECIAL_KINDS, DROP_HIT_RADIUS, cantThrow, costOf } from './specials.js?v=84d2cda39a';
+import { effectsOf, gearAllowed, resolvePresent, heldWith, gearMask, gearOfMask } from './gear.js?v=84d2cda39a';
 // Ball kinds in snapshots (B[9]): 0 normal, 1 ice, 2 split (before it splits), 3 giant, 4 fire, 5 a split piece.
 const BALL_KIND = { '': 0, ice: 1, split: 2, giant: 3, fire: 4, piece: 5 }, DROP_KIND = { sky: 1, rain: 2 };
 export const KIND_OF = ['', 'ice', 'split', 'giant', 'fire', 'piece'], DROP_OF = ['', 'sky', 'rain']; // the page reads snapshots with these
@@ -16,7 +16,7 @@ export const K = {
   HUMAN_SPEED: 6.4, BOT_SPEED: 5.2, HOLD_SLOW: 0.86, MAX_BALLS: 18, HUMAN_COOL: 0.26,
   STUN: 0.9, // seconds a normal snowball hit knocks you down (special snowballs multiply it: catalog.js → rules.stun)
 };
-export const PTS = { hatSec: 10, header: 50, knock: 25, hit: 5 };
+export const PTS = { hatSec: 10, header: 25, knock: 10, hit: 5 }; // knock the hat off 10, catch the flying hat 25 (Cody 2026-10-04; were 25 and 50)
 export const PILES = [[-8, -5], [8, -6], [-7, 8], [8, 7]];
 // intro: the match load screen (every player, their stats and loadout; also gives every phone time to load in); count: 5…1.
 // Nobody moves, throws or grabs the hat in either (Cody, 2026-10-01). Added at the end so the older numbers keep their meaning.

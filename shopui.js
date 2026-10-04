@@ -4,7 +4,7 @@
 //   payment and grants it → the page reloads what the player owns.
 // Remembered in this browser between paying and the server accepting it, so a closed tab or a dropped network never loses a paid
 // purchase (resumeShop runs on the next visit). Without the game server (today's site) it says plainly that nothing is sold yet.
-import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js?v=8332b03617';
+import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js?v=84d2cda39a';
 
 const PENDING = 'santa.pendingShop';
 const remember = (v) => { try { v ? localStorage.setItem(PENDING, JSON.stringify(v)) : localStorage.removeItem(PENDING); } catch {} };
