@@ -37,6 +37,14 @@ assert.ok(has(/waiting over 10 minutes: is the payout worker running/), 'stuck q
 assert.ok(has(/EMERGENCY STOP is on for the old Slots pool/), 'emergency stop'); assert.ok(has(/MATCH SERVER isn't answering/), 'match server down');
 assert.ok(has(/BOOKS DON'T MATCH the Game pool wallet: the wallet has 7 SANTA MORE/), 'drift found, with direction and size: ' + sent.filter((x) => /BOOKS/.test(x)));
 assert.ok(!has(/BOOKS DON'T MATCH the old Slots/), 'the old Slots pool matches (books + its unsent skim)');
+// A payment ON ITS WAY (2026-10-04, false alarms during the 1,000-play QA): an open quote from the last few minutes (its SANTA not
+// yet recorded) covers a wallet that is ahead of the books; the same difference with no open quote is an alarm (above: 7 SANTA).
+{ const [{ id: oq }] = await db.query(`insert into public.quotes (profile_id, kind, n, bet, usd, santa_raw, price_usd) values ($1, 'drop', 10, 1, 10, 9000000, 0.001) returning id`, [uid]);
+  const runOnce = async () => { const out = []; await createAlerts({ db, telegram: { send: async (x) => { out.push(x); } }, walletRaw: async (g) => (g === 'spin' ? expectSpin + 7500000 : 500000000 + 1000), refereeHealth: async () => {}, now: () => t }).run(); return out; }; // 7.5 SANTA: a new amount (the same alarm isn't repeated for 6 h)
+  assert.ok(!(await runOnce()).some((x) => /BOOKS DON'T MATCH the Game pool/.test(x)), '7.5 SANTA ahead, a 9 SANTA quote still open: a payment on its way, no alarm');
+  await db.query(`update public.quotes set created_at = now() - interval '6 minutes' where id = $1`, [oq]);
+  assert.ok((await runOnce()).some((x) => /BOOKS DON'T MATCH the Game pool wallet: the wallet has [0-9.]+ SANTA MORE/.test(x)), 'the quote is over 5 minutes old: no longer in flight, alarm');
+  await db.query('delete from public.quotes where id = $1', [oq]); }
 assert.ok(sent.every((x) => x.startsWith('🎅 Santa Hat: ')));
 const first = sent.length; assert.equal(r.sent, first);
 // 5 minutes later: nothing new is sent (still the same problems)

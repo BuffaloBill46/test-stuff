@@ -11,3 +11,11 @@ const off = reconcile({ ...base, walletRaw: 1000 + 50 + 25 - 300 - 7 });
 assert.equal(off.ok, false); assert.equal(off.drift, -7, 'SANTA missing from the wallet is caught, to the unit');
 assert.ok(reconcile({ ...base, walletRaw: 1000 + 25 - 300, sendingLanded: new Set([1]), payouts: [{ id: 1, status: 'sending', amount_raw: 50 }] }).ok, 'a payout that landed but isn\'t marked yet is counted as sent');
 console.log('OK: reconciliation: books = wallet + everything still owed; any drift is caught to the smallest unit');
+// Payments in flight (2026-10-04, a false "wallet has MORE" alert during the 1,000-play QA): a payment that has landed in the
+// wallet but isn't recorded yet (the page waits for it to be final) is fine up to what open quotes could bring; beyond it, or LESS, is drift.
+const idle = { ...base, walletRaw: 1000 + 50 + 25 - 300 };
+assert.ok(reconcile({ ...idle, walletRaw: idle.walletRaw + 900, inFlightRaw: 1000 }).ok, 'a payment on its way (open quotes cover it): not an alarm');
+assert.equal(reconcile({ ...idle, walletRaw: idle.walletRaw + 1001, inFlightRaw: 1000 }).ok, false, 'more than any open quote could bring: alarm (a deposit not recorded, a payment never bought)');
+assert.equal(reconcile({ ...idle, walletRaw: idle.walletRaw - 1, inFlightRaw: 1000 }).ok, false, 'LESS is always an alarm, whatever is in flight');
+assert.equal(reconcile({ ...idle, walletRaw: idle.walletRaw + 1 }).ok, false, 'nothing in flight: any difference is drift, as before');
+console.log('OK: reconciliation: payments on their way (open quotes) are not a false alarm; anything beyond them, or any shortfall, still is');

@@ -8,6 +8,8 @@ import { reconcile } from './reconcile.js';
 import { botSignals, BOT_RULES } from './bots.js';
 
 export const REPEAT_HOURS = 6, STUCK_MINUTES = 10;
+// a payment can be accepted up to ~1.5 min after its quote and the page waits up to 1.5 min more for it to be final: 5 is ample
+export const IN_FLIGHT_MINUTES = 5;
 const RAW = 1e6, santa = (raw) => (Number(raw) / RAW).toLocaleString('en-US', { maximumFractionDigits: 0 });
 // The pools' names for Cody: 'spin' is the shared Game pool every game plays from (Cody, 2026-10-02); 'slots' the old Slots pool
 const POOL = (g) => (g === 'spin' ? 'Game' : g === 'slots' ? 'old Slots' : g);
@@ -39,7 +41,9 @@ export function createAlerts({ db, telegram, walletRaw, refereeHealth, games = [
       // every run's payout is sent from the shared Game pool's wallet (worker gameOfRun; 026), so they all count against 'spin'
       const payouts = await db.query(`select po.id, po.status, po.amount_raw from public.payouts po where $1 = 'spin' and po.status <> 'sent'`, [game]);
       const transfers = await db.query(`select id, kind, status, amount_raw from public.pool_transfers where game = $1 and status <> 'sent'`, [game]);
-      const r = reconcile({ bookRaw: +pool.santa_raw, walletRaw: Number(wallet), payouts, transfers });
+      // payments that may be on their way: this pool's price quotes from the last ${IN_FLIGHT_MINUTES} minutes not yet used (reconcile.js)
+      const [fl] = await db.query(`select coalesce(sum(q.santa_raw), 0)::bigint as raw from public.quotes q where $1 = 'spin' and q.used_by is null and q.created_at > now() - make_interval(mins => $2)`, [game, IN_FLIGHT_MINUTES]).catch(() => [{ raw: 0 }]);
+      const r = reconcile({ bookRaw: +pool.santa_raw, walletRaw: Number(wallet), payouts, transfers, inFlightRaw: Number(fl?.raw || 0) });
       if (!r.ok) add(`drift:${game}:${r.drift}`, `BOOKS DON'T MATCH the ${POOL(game)} pool wallet: the wallet has ${santa(Math.abs(r.drift))} SANTA ${r.drift > 0 ? 'MORE' : 'LESS'} than the books say. (More: a deposit not recorded yet? Less: look now.)`);
     }
     const rows = await db.query(`select r.profile_id, pr.name, pr.wallet, q.created_at as quote_at, r.paid_at from public.runs r

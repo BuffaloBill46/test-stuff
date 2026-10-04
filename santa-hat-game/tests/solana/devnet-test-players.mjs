@@ -12,7 +12,7 @@ import { createSolanaRpc, createSolanaRpcSubscriptions, sendAndConfirmTransactio
 import { getTransferSolInstruction } from '@solana-program/system';
 import * as T22 from '@solana-program/token-2022';
 
-const N = Number(process.argv[2]) || 5, SOL_EACH = 200_000_000n, USD_EACH = 100; // 0.2 devnet SOL, $100 of test SANTA
+const N = Number(process.argv[2]) || 5, SOL_EACH = 200_000_000n, USD_EACH = Number(process.env.USD_EACH) || 100; // 0.2 devnet SOL, $100 of test SANTA (USD_EACH=250 for the 1,000-play QA)
 const cfgUrl = new URL('../../devnet.json', import.meta.url), cfg = JSON.parse(readFileSync(cfgUrl, 'utf8'));
 if (!/devnet/.test(cfg.rpc)) throw new Error('devnet only');
 const KEYS = process.env.SANTA_KEYS || 'C:\\santa-devnet-keys', DIR = join(KEYS, 'players'); mkdirSync(DIR, { recursive: true });
