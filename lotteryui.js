@@ -3,8 +3,8 @@
 // Buying uses the same one-payment wallet step as the games (wallet.js: 10% burned, the rest to the lottery wallet). Recent
 // results can be re-checked in this browser: the draw is re-run from public data alone (mockups/lottery.js drawWinners).
 // Without the game server (today's site) buying says so plainly: nothing is sold and nothing is drawn here.
-import { LOTTERIES, LIVE_LOTTERIES, nextDraw, salesFor, drawWinners } from './lottery.js?v=6de47dadd2';
-import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js?v=6de47dadd2';
+import { LOTTERIES, LIVE_LOTTERIES, nextDraw, salesFor, drawWinners } from './lottery.js?v=44d774d5c8';
+import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js?v=44d774d5c8';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -46,8 +46,9 @@ function card(kind) {
     <dl class="lotrows">${i.rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}<div><dt>Draws in</dt><dd>${when}</dd></div></dl>
     ${kind === 'christmas' ? '<p class="lotwhen">Draws December 23, 9 PM Eastern (Indiana time)</p>' : ''}
     <div class="lotbuy" role="group" aria-label="How many ${esc(L.name)} tickets">
-      ${[1, 5, 10].map((n) => `<button type="button" data-amt="${n}">${n}</button>`).join('')}
-      <input type="number" min="1" max="10000" step="1" value="1" aria-label="How many tickets">
+      <button type="button" class="lotstep" data-lstep="-1" aria-label="One ticket fewer"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg></button>
+      <input type="number" inputmode="numeric" min="1" max="10000" step="1" value="1" aria-label="How many tickets">
+      <button type="button" class="lotstep" data-lstep="1" aria-label="One ticket more"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg></button>
     </div>
     <button class="lotgo" data-buy="custom">Buy tickets</button>
     <p class="lotnote" aria-live="polite"></p></article>`;
@@ -134,8 +135,11 @@ async function check(li) {
 export function initLottery() {
   if (!$('#lotGrid')) return;
   render(); setInterval(tick, 1000);
-  // 1 / 5 / 10 pick how many; "Buy tickets" buys that many (or whatever was typed)
-  $('#lotGrid').addEventListener('click', (e) => { const a = e.target.closest('[data-amt]'); if (a) { $('input', a.closest('[data-lot]')).value = a.dataset.amt; return; } });
+  // How many (Cody, 2026-10-04: one number in the middle, starting at 1, tap it to type; an arrow each side counts down / up).
+  // Never below 1 or above 10,000; "Buy tickets" buys that many.
+  const clampN = (v) => Math.max(1, Math.min(10000, Math.floor(Number(v)) || 1));
+  $('#lotGrid').addEventListener('click', (e) => { const a = e.target.closest('[data-lstep]'); if (!a) return; const i = $('input', a.closest('[data-lot]')); i.value = clampN(+i.value + +a.dataset.lstep); });
+  $('#lotGrid').addEventListener('change', (e) => { if (e.target.matches('.lotbuy input')) e.target.value = clampN(e.target.value); });
   $('#lotGrid').addEventListener('click', (e) => { const b = e.target.closest('[data-buy]'); if (!b) return; const c = b.closest('[data-lot]');
     const n = b.dataset.buy === 'custom' ? Math.floor(Number($('input', c).value)) : +b.dataset.buy; buy(c.dataset.lot, n, $('.lotnote', c)); });
   $('#lotResults').addEventListener('click', (e) => { const b = e.target.closest('[data-check]'); if (b) check(b.closest('[data-draw]')); });

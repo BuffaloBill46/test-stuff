@@ -124,12 +124,12 @@
   </section>
 
   <section id="season">
-    <h2>The season calendar and pass</h2>
-    <p id="seasonDates">Each season is a calendar with one door a day.</p>
+    <h2>The season pass: points and doors</h2>
+    <p id="seasonDates">Each season is a track of 30 doors.</p>
     <ol class="steps">
-      <li><i>Every day</i><b>3 daily tasks</b><span>New tasks every day at 9 PM Indiana time. They count in public Auto matches.</span></li>
-      <li><i>All 3 done</i><b>Today's door opens</b><span>One door a day. Missed days stay shut, but the rewards go by how many doors you've opened, so you can catch up.</span></li>
-      <li><i>Every door</i><b>A reward</b><span id="freeLine">A season look on some doors, a step of level progress on the others.</span></li>
+      <li><i>Every day</i><b>Earn points</b><span id="pointsLine">5 daily tasks, 100 points each, and Auto matches. New tasks every day at 9 PM Indiana time.</span></li>
+      <li><i>Every 300 points</i><b>The next door opens</b><span>Points add up all season, so a busy day makes up for a missed one.</span></li>
+      <li><i>Every door</i><b>A free prize and a pass prize</b><span id="freeLine">Every door shows both, so you can see what's coming.</span></li>
     </ol>
     <h3>The tasks you might get</h3>
     <ul id="taskList"></ul>
@@ -191,19 +191,19 @@
   </footer>
 </main>
 <script type="module">
-  import { ITEMS, COSTUMES, SEASONS } from './catalog.js?v=6de47dadd2';
-  import { SPECIALS } from './specials.js?v=6de47dadd2';
-  import { TEAM_PAUSED } from './refcore.js?v=6de47dadd2';
-  import { GEAR, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=6de47dadd2';
-  import { LEVELS, MAX_LEVEL, WINS_PER_LEVEL, MAX_BOUGHT_LEVEL, buyPrice } from './levels.js?v=6de47dadd2';
-  import { RULES, TICKET_MAX, settleRanked } from './ranked.js?v=6de47dadd2';
-  import { LOTTERIES, LIVE_LOTTERIES, SALES_CLOSE_MS } from './lottery.js?v=6de47dadd2';
-  import { SYMBOLS, MACHINES, stats, JACKPOT_PCT, POOL_RULES } from './slots.js?v=6de47dadd2';
-  import * as DROP from './plinko.js?v=6de47dadd2';
-  import * as STOCK from './stocking.js?v=6de47dadd2';
-  import { K, PTS } from './sim.js?v=6de47dadd2';
-  import * as SEASON from './seasons.js?v=6de47dadd2';
-  import { VARIANTS } from './weekly.js?v=6de47dadd2';
+  import { ITEMS, COSTUMES, SEASONS } from './catalog.js?v=44d774d5c8';
+  import { SPECIALS } from './specials.js?v=44d774d5c8';
+  import { TEAM_PAUSED } from './refcore.js?v=44d774d5c8';
+  import { GEAR, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=44d774d5c8';
+  import { LEVELS, MAX_LEVEL, WINS_PER_LEVEL, MAX_BOUGHT_LEVEL, buyPrice } from './levels.js?v=44d774d5c8';
+  import { RULES, TICKET_MAX, settleRanked } from './ranked.js?v=44d774d5c8';
+  import { LOTTERIES, LIVE_LOTTERIES, SALES_CLOSE_MS } from './lottery.js?v=44d774d5c8';
+  import { SYMBOLS, MACHINES, stats, JACKPOT_PCT, POOL_RULES } from './slots.js?v=44d774d5c8';
+  import * as DROP from './plinko.js?v=44d774d5c8';
+  import * as STOCK from './stocking.js?v=44d774d5c8';
+  import { K, PTS } from './sim.js?v=44d774d5c8';
+  import * as SEASON from './seasons.js?v=44d774d5c8';
+  import { VARIANTS } from './weekly.js?v=44d774d5c8';
   // team play paused (refcore.js TEAM_PAUSED, Cody 2026-10-03): the guide says so, and goes back by itself when it reopens
   if (TEAM_PAUSED) document.querySelector('#teamLine').textContent = 'Team play (Nice vs Naughty) is paused for now.';
   const $ = (s) => document.querySelector(s);
@@ -223,13 +223,15 @@
     const nameOf = (id) => ITEMS.find((x) => x.id === id)?.name || id;
     const cur = SEASON.seasonAt() || SEASON.SEASONS.find((s) => s.start > Date.now()) || SEASON.SEASONS[0];
     // a season opens at 9 PM the evening before its first day and closes at 9 PM on its last day
-    $('#seasonDates').innerHTML = 'Seasons: ' + SEASON.SEASONS.map((s) => `<b>${s.name}</b> (${fmt(s.start + 12 * 3600e3)} to ${fmt(s.end - 3600e3)})`).join(', ') + '. Each one is a calendar with one door a day.';
-    $('#taskList').innerHTML = `<li>Every day: <b>${SEASON.TASKS.games.text}</b>, plus 2 of these:</li>` + Object.entries(SEASON.TASKS).filter(([k]) => k !== 'games').map(([, t]) => `<li>${t.text}</li>`).join('');
+    $('#seasonDates').innerHTML = 'Seasons: ' + SEASON.SEASONS.map((s) => `<b>${s.name}</b> (${fmt(s.start + 12 * 3600e3)} to ${fmt(s.end - 3600e3)})`).join(', ') + `. Each one is a track of <b>${SEASON.DOORS}</b> doors, one every <b>${SEASON.DOOR_POINTS}</b> points.`;
+    const P = SEASON.POINTS;
+    $('#pointsLine').innerHTML = `5 daily tasks, <b>${P.task}</b> points each, plus <b>${P.match}</b> for each of your first ${P.matchesPerDay} Auto matches a day and <b>${P.top3}</b> more for a top-3 finish in it: up to <b>${5 * P.task + P.matchesPerDay * (P.match + P.top3)}</b> a day. New tasks every day at 9 PM Indiana time.`;
+    $('#taskList').innerHTML = `<li>Every day: <b>${SEASON.TASKS.login.text}</b> and <b>${SEASON.TASKS.games.text}</b>, plus 3 of these:</li>` + Object.entries(SEASON.TASKS).filter(([k]) => k !== 'games' && k !== 'login').map(([, t]) => `<li>${t.text}</li>`).join('');
     const looks = Object.entries(cur.free);
     $('#freeList').innerHTML = (looks.length ? looks.map(([d, id]) => `<li>${cur.name}, door <b>${d}</b>: ${nameOf(id)}</li>`).join('') : `<li>${cur.name}'s looks are coming soon.</li>`)
-      + `<li>Every other door: one step of level progress (like a top-3 finish).</li><li>Every <b>${SEASON.STREAK_EVERY}</b> days in a row: a bonus step.</li>`;
+      + `<li>Every other door: one step of level progress (like a top-3 finish).</li><li>Every <b>${SEASON.STREAK_EVERY}</b> perfect days in a row (all 5 tasks): a bonus step.</li>`;
     $('#passLine').innerHTML = cur.gold.length
-      ? `The ${cur.name} pass costs <b>$${SEASON.PASS_PRICE}</b> (paid in SANTA, like a Store item) and unlocks <b>the ${cur.costume} costume</b>: ${cur.gold.length} pieces, one every <b>${SEASON.PIECE_EVERY}</b> doors you open (${cur.gold.map(nameOf).join(', ')}). Buy it any time: doors you've already opened count. The pieces are yours to keep.`
+      ? `The ${cur.name} pass costs <b>$${SEASON.PASS_PRICE}</b> (paid in SANTA, like a Store item) and puts a prize on every door: <b>the ${cur.costume} costume</b> (${cur.gold.length} pieces: ${cur.gold.map(nameOf).join(', ')}), <b>${SEASON.SEASON_GEAR.map(nameOf).join('</b> and <b>')}</b> (doors ${SEASON.GEAR_DOORS.join(' and ')}), <b>${SEASON.XP_DOORS.length}</b> bonus level steps, and a <b>ranked ticket</b> on every other door (${SEASON.DOORS - SEASON.PIECE_DOORS.length - SEASON.GEAR_DOORS.length - SEASON.XP_DOORS.length} in all, in their own bank, used after your free daily ones). Buy it any time: the pass prizes of every door you've already reached come at once. Yours to keep.`
       : `The ${cur.name} pass opens soon.`;
     $('#weeklyList').innerHTML = Object.values(VARIANTS).map((v) => `<li><b>${v.name}:</b> ${v.short}</li>`).join(''); }
   for (const [k, v] of Object.entries({ maxHumans: K.MAX_HUMANS })) document.querySelectorAll(`[data-k="${k}"]`).forEach((e) => { e.textContent = v; });
