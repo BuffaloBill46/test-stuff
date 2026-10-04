@@ -16,7 +16,7 @@ export const K = {
   HUMAN_SPEED: 6.4, BOT_SPEED: 5.2, HOLD_SLOW: 0.86, MAX_BALLS: 18, HUMAN_COOL: 0.26,
   STUN: 0.9, // seconds a normal snowball hit knocks you down (special snowballs multiply it: catalog.js → rules.stun)
 };
-export const PTS = { hatSec: 10, header: 50, knock: 25, hit: 5 };
+export const PTS = { hatSec: 10, header: 25, knock: 10, hit: 5 }; // knock the hat off 10, catch the flying hat 25 (Cody 2026-10-04; were 25 and 50)
 export const PILES = [[-8, -5], [8, -6], [-7, 8], [8, 7]];
 // intro: the match load screen (every player, their stats and loadout; also gives every phone time to load in); count: 5…1.
 // Nobody moves, throws or grabs the hat in either (Cody, 2026-10-01). Added at the end so the older numbers keep their meaning.

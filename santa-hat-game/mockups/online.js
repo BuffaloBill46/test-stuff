@@ -2,7 +2,7 @@
 import './buildcheck.js'; // first: the page and this code come from the same publish (buildcheck.js)
 import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo, Sparks, gearTick, GEAR_TINT, disposeTree } from './kit.js';
 import { buildPlaza, makeHat, shadowBlob } from './plaza.js';
-import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF } from './sim.js';
+import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF, PTS } from './sim.js';
 import { openRoom, accounts, findWallet, gamesBoard } from './net.js';
 import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js';
 import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js';
@@ -409,8 +409,8 @@ function handleEvents(v) {
     const [, k, a, b, c, d] = e, mine = (id) => { const me2 = myEnt(v); return me2 && me2.id === id; };
     callouts.onEvent(k, a, b, v); // the call-out feed and the end highlights count every event
     if (k === 'hit') { sfx('splat'); const p = new V3(+b || 0, +c || 1.2, +d || 0); burst.spawn(p, 16, 0xffffff, 3.5, 3); const at = entPos(a, v); if (at) pop(at.setY(2.7), 'SPLAT', mine(a) ? 'bad' : 'white'); }
-    else if (k === 'knock') { sfx('knock'); const at = entPos(a, v); if (at) pop(at.setY(3.1), 'KNOCKED OFF!', mine(a) ? 'bad' : 'white'); const by = entPos(b, v); if (by && b) pop(by.setY(3.1), '+25', mine(b) ? '' : 'green'); }
-    else if (k === 'catch') { sfx('catch'); const at = entPos(a, v); if (at) { burst.spawn(at.clone().setY(2.2), 16, C.gold, 3, 3); pop(at.setY(3.1), 'HEADER +50', 'big'); } }
+    else if (k === 'knock') { sfx('knock'); const at = entPos(a, v); if (at) pop(at.setY(3.1), 'KNOCKED OFF!', mine(a) ? 'bad' : 'white'); const by = entPos(b, v); if (by && b) pop(by.setY(3.1), '+' + PTS.knock, mine(b) ? '' : 'green'); } // the points from the rules (sim.js PTS), never a copy
+    else if (k === 'catch') { sfx('catch'); const at = entPos(a, v); if (at) { burst.spawn(at.clone().setY(2.2), 16, C.gold, 3, 3); pop(at.setY(3.1), 'HEADER +' + PTS.header, 'big'); } }
     else if (k === 'boing') { sfx('boing'); const at = entPos(a, v); if (at) pop(at.setY(2.9), 'BOING', 'white'); }
     else if (k === 'zone') { const at = entPos(a, v); if (at) pop(at.setY(2.9), '+' + (+b || 0), mine(a) ? '' : 'green'); } // King of the Gazebo
     else if (k === 'pts') { const at = entPos(a, v); if (at) pop(at.setY(2.9), '+' + (+b || 0), mine(a) ? '' : 'green'); }

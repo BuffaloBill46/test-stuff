@@ -1,4 +1,4 @@
-// The Player Progress box (Cody, 2026-10-01): under "Buy level N", "or win 5 matches top 3 or better" with a counter (2 / 5).
+// The Player Progress box (Cody, 2026-10-01): under "Buy level N", "or win 10 matches top 3 or better" with a counter (2 / 10; 10 ticks a level since 2026-10-04).
 // Shown only where a level can be bought (levels 1–4); from level 5 up the levels are earned only and the line above says so.
 // Run: node progress-or-test.mjs
 import { createRequire } from 'module'; import { readFileSync, existsSync } from 'fs'; import { execSync } from 'child_process'; import path from 'path';
@@ -19,9 +19,9 @@ for (const [w, h] of [[1200, 800], [384, 740], [320, 620]]) {
   const show = (prof) => p.evaluate(async (prof) => { (await import('./tabs.js')).renderProgress(prof); const o = document.querySelector('#pgOr'), r = o.getBoundingClientRect(), b = document.querySelector('#pgBuy').getBoundingClientRect();
     return { hidden: o.hidden || r.height === 0, text: o.textContent.replace(/\s+/g, ' ').trim(), below: r.top >= b.bottom - 1, inside: r.right <= innerWidth && r.left >= 0, scroll: document.documentElement.scrollWidth > innerWidth }; }, prof);
   const guest = await show(null);
-  check(!guest.hidden && guest.text === 'or win 5 matches top 3 or better 0 / 5', `${w}×${h} guest: "${guest.text}"`);
+  check(!guest.hidden && guest.text === 'or win 10 matches top 3 or better 0 / 10', `${w}×${h} guest: "${guest.text}"`);
   const l3 = await show({ level: 3, xp: 2, rank_points: 40 });
-  check(!l3.hidden && l3.text === 'or win 5 matches top 3 or better 2 / 5' && l3.below && l3.inside && !l3.scroll, `${w}×${h} level 3, 2 done: "${l3.text}", under the button, on screen`);
+  check(!l3.hidden && l3.text === 'or win 10 matches top 3 or better 2 / 10' && l3.below && l3.inside && !l3.scroll, `${w}×${h} level 3, 2 done: "${l3.text}", under the button, on screen`);
   await p.locator('#progress').screenshot({ path: `out/progress-or-${w}x${h}.png` });
   const l5 = await show({ level: 5, xp: 1, rank_points: 40 });
   check(l5.hidden && await p.evaluate(() => document.querySelector('#pgBuy').hidden), `${w}×${h} level 5: no Buy button, no "or" line (earned only)`);

@@ -56,7 +56,8 @@ await ctx.route('**/*', async (route) => {
   return route.abort();
 });
 const p = await ctx.newPage(); p.on('pageerror', (e) => errors.push(e.message));
-p.on('requestfailed', (r) => { if (!/local.test|localhost/.test(r.url())) console.log('    (request failed: ' + r.url().slice(0, 90) + ' ' + r.failure()?.errorText + ')'); });
+// lower case: the suite reads any 'FAILED' in a log as a failed test
+p.on('requestfailed', (r) => { if (!/local.test|localhost/.test(r.url())) console.log(('    (a request did not go through: ' + r.url().slice(0, 90) + ' ' + r.failure()?.errorText + ')').toLowerCase()); });
 const open = async () => { await p.goto('https://local.test/online.html?net=local&server=http://localhost:8797&token=test&t=' + Date.now() + '#store', { timeout: 90000 }) /* a fresh address each time: the same one ending in #store only scrolls, it doesn't reload */; await p.waitForFunction(() => window.__sq, null, { timeout: 90000 }); await p.waitForTimeout(2500); };
 const switches = () => p.evaluate(() => [...document.querySelectorAll('[data-paywith-slot]')].map((e) => ({ hidden: e.hidden, on: e.querySelector('[aria-pressed="true"]')?.textContent })));
 

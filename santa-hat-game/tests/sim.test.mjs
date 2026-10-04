@@ -1,4 +1,7 @@
 import { createSim, K, PTS, PHASES, constrain } from '../mockups/sim.js';
+// Match points (Cody 2026-10-04): knocking the hat off someone 10, catching the flying hat on your head 25 (were 25 and 50); wearing it 10 a second, a hit 5.
+import assert from 'node:assert/strict';
+assert.deepEqual(PTS, { hatSec: 10, header: 25, knock: 10, hit: 5 }, 'the match points are as Cody set them');
 
 let seed = 1;
 const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
