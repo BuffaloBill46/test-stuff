@@ -489,3 +489,11 @@ reward_claims.found were strings, so jackpot alerts and the jackpot banner could
 real match on the live server and checking the table. Fix: worker/pgjson.mjs on every postgres(...) connection; 208 rows repaired.
 Rules: (1) a new database feature isn't done until a REAL live action wrote the row and the row was read back; (2) any new
 postgres(...) connection spreads ...JSONB; (3) jsonb_typeof(...) = 'object'/'array' is a cheap live check after a deploy.
+
+## 2026-10-04: code that runs while a file is still loading can't use names defined lower in that file
+gameserver.js loads the published settings at load time (settingsReady). Moving the "always ask the live server" list and the
+public-actions check BEFORE the first await in call() made that load read two names defined further down; the error was
+swallowed by a catch, and in server mode the page quietly kept the built-in prices and odds. settings-mode-test caught it, but
+only because the FULL browser suite was run (it isn't in the usual per-change set). Rules: anything run at load time sits below
+everything it uses (the note in gameserver.js says so); a catch that hides an error logs it; run the whole suite after a day of
+changes, not just the tests near the change.

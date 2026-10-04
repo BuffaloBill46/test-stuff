@@ -11,6 +11,7 @@ await ctx.route('**/*', async (route) => {
   if (url.includes('cdn.jsdelivr.net/npm/three@')) return route.fulfill({ body: readFileSync(path.resolve('node_modules/three/build', url.split('/build/')[1])), contentType: 'text/javascript' });
   if (/cdn\.jsdelivr\.net\/npm\/|fonts\.googleapis|fonts\.gstatic/.test(url)) { try { return route.fulfill({ body: fetchCurl(url), contentType: url.includes('googleapis') ? 'text/css' : url.includes('gstatic') ? 'font/woff2' : 'text/javascript' }); } catch { return route.abort(); } }
   if (url.startsWith('http://local.test/')) { const p = url.replace('http://local.test/', '').split('#')[0].split('?')[0]; const f = path.join(ROOT, p); if (!existsSync(f)) return route.fulfill({ status: 404, body: 'nf' }); return route.fulfill({ body: readFileSync(f), contentType: p.endsWith('.js') ? 'text/javascript' : p.endsWith('.png') ? 'image/png' : 'text/html' }); }
+  if (url.startsWith('https://api.santahatgames.com')) return route.fulfill({ contentType: 'application/json', body: '{"winners":[],"modes":[],"now":null,"gamesRaw":0,"lotteryRaw":0,"storeRaw":0,"totalRaw":0}' }); // the page's public reads from the live game server (winners, weekly, burned)
   return route.abort();
 });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));

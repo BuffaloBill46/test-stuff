@@ -18,11 +18,6 @@ export async function token() {
   if (testToken && /^http:\/\/localhost[:/]/.test(SERVER || '')) return testToken;
   try { return (await accounts().session())?.access_token || null; } catch { return null; }
 }
-// Server mode: the published game settings, applied to the page before anything is drawn (settings.js → applyToGame).
-export const settingsReady = SERVER ? (async () => {
-  try { const r = await call('settings'); if (r?.settings) { const { applyToGame } = await import('./settings.js'); applyToGame(r.settings); return r; } } catch {}
-  return null;
-})() : Promise.resolve(null);
 // The actions anyone may call without signing in: must match the server's public ones (server/http.js; tests/public-actions.test.mjs).
 // (It once listed only three, so guests' lottery cards and draw re-checks never asked the server.)
 export const PUBLIC_ACTIONS = ['pools', 'settings', 'stats', 'lottery-tickets', 'lottery', 'winners', 'market', 'burned', 'weekly'];
@@ -60,3 +55,11 @@ export async function call(action, body = {}) {
   const r = await fetch(READ_LIVE.includes(action) ? SERVER || LIVE_GAMES : SERVER, { method: 'POST', headers: { 'content-type': 'application/json', ...(t ? { authorization: 'Bearer ' + t } : {}) }, body: JSON.stringify({ action, ...body }) });
   try { return await r.json(); } catch { return { error: `the game server answered ${r.status}` }; }
 }
+// Server mode: the published game settings, applied to the page before anything is drawn (settings.js → applyToGame).
+// KEEP THIS BELOW call() AND EVERYTHING call() READS (PUBLIC_ACTIONS, READ_LIVE, LIVE_GAMES): it runs while this file is
+// still loading, so a name defined further down isn't there yet; the error was swallowed by the catch below and the page
+// quietly kept the built-in settings (settings-mode-test caught it, 2026-10-04).
+export const settingsReady = SERVER ? (async () => {
+  try { const r = await call('settings'); if (r?.settings) { const { applyToGame } = await import('./settings.js'); applyToGame(r.settings); return r; } } catch (e) { console.error('published settings not loaded:', e); }
+  return null;
+})() : Promise.resolve(null);

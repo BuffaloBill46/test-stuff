@@ -288,7 +288,7 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   async function wallet(profile) {
     const w = (await row('select wallet from public.profiles where id = $1', [profile]))?.wallet;
     if (!w) return { wallet: null };
-    if (!chain.tokenBalance) return { wallet: w, error: 'wallet balance isn\'t available here' };
+    if (!chain.tokenBalance) return { wallet: w, santaRaw: null, unavailable: true }; // a server that can't read wallets: the page says it couldn't read it
     let k = walletKept.get(w);
     if (!k || Date.now() - k.at > 10_000) {
       k = { at: Date.now(), raw: await chain.tokenBalance(w, mint) }; walletKept.set(w, k);
@@ -313,9 +313,12 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   let burnKept = { at: 0, v: null };
   async function burned() {
     if (burnKept.v && Date.now() - burnKept.at < 60_000) return burnKept.v;
-    const r = (await db.query(`select (select coalesce(sum(burned_raw), 0) from public.payments)::text as games,
-      (select coalesce(sum(burned_raw), 0) from public.lottery_buys)::text as lottery,
-      (select coalesce(sum(santa_raw), 0) from public.shop_quotes where used_by is not null)::text as store_paid`))[0];
+    // each part on its own: a database without one of them (an older test database, the lottery not set up) has burned nothing
+    // there, rather than failing the whole answer; a real read error is logged
+    const sumOf = async (what, q) => (await db.query(q).catch((e) => { console.error(`burned: ${what} not readable:`, e.message); return [{ n: '0' }]; }))[0].n;
+    const r = { games: await sumOf('game runs', 'select coalesce(sum(burned_raw), 0)::text as n from public.payments'),
+      lottery: await sumOf('lottery', 'select coalesce(sum(burned_raw), 0)::text as n from public.lottery_buys'),
+      store_paid: await sumOf('Store', 'select coalesce(sum(santa_raw), 0)::text as n from public.shop_quotes where used_by is not null') };
     const fee = feeKept.fee || (await liveFee().catch(() => null)) || { bps: 300, max: Infinity };
     const games = +r.games, lottery = +r.lottery, store = splitPayment(+r.store_paid, SHOP_BURN_BPS, fee).burn;
     burnKept = { at: Date.now(), v: { gamesRaw: games, lotteryRaw: lottery, storeRaw: store, totalRaw: games + lottery + store } };

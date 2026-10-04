@@ -70,7 +70,9 @@ await p.evaluate(() => { document.querySelector('#msg').textContent = ''; }); //
 await p.fill('#fields [data-k="jackpotPct"]', '0.25'); await p.tap('#save');
 await p.waitForFunction(() => /Done|Refused/.test(document.querySelector('#msg').textContent), null, { timeout: 15000 });
 check((await rules()).jackpotPct === 0.25, 'the Game pool jackpot override back at 25%: ' + (await p.textContent('#msg')));
-await p.tap('[data-act="resume"][data-game="spin"]'); await p.waitForFunction(async () => /Running/.test(document.querySelector('.pools').textContent), null, { timeout: 15000 }).catch(() => {});
+// wait for THIS action's answer ("Running" was already on the page from the other pool, so it never waited)
+await p.evaluate(() => { document.querySelector('#msg').textContent = ''; });
+await p.tap('[data-act="resume"][data-game="spin"]'); await p.waitForFunction(() => /Done: resume/.test(document.querySelector('#msg').textContent), null, { timeout: 15000 }).catch(() => {});
 check((await rules()).paused === false, 'Resume');
 check((await db.query('select count(*)::int as n from public.pool_log'))[0].n === 4, 'four signed changes in the public log (stop, the jackpot %, back to 25%, resume)');
 // Game settings editor: the preview updates; an unsafe change can't be published; a safe one is signed and saved; a new item.

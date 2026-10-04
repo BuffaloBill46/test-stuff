@@ -71,7 +71,8 @@ export function makeHandler(deps) {
     if (body?.action === 'market') { // public: the price quotes use and the token's tax (the page's info line)
       try { return reply(origin, 200, await deps.server.market()); } catch (e) { console.error('market error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
     }
-    if (body?.action === 'weekly' && deps.server.weekly) { // public: the weekly modes switched on, and this week's (supabase/034)
+    if (body?.action === 'weekly') { // public: the weekly modes switched on, and this week's (supabase/034); a server without them: none
+      if (!deps.server.weekly) return reply(origin, 200, { modes: [], now: null });
       try { return reply(origin, 200, await deps.server.weekly()); } catch (e) { console.error('weekly error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
     }
     if (body?.action === 'burned') { // public: SANTA burned by the game so far (the Store and Games pages' money strip)
