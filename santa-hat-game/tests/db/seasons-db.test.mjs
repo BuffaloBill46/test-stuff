@@ -25,6 +25,8 @@ await run('032_halloween_costume.sql'); await run('033_seasons.sql'); await run(
 await run('036_thanksgiving_rewards.sql'); await run('038_christmas_rewards.sql');
 await run('039_season_points.sql', 2); // safe to apply twice
 await run('040_pass_price.sql', 2); // the $2 pass
+await run('041_season_mixed_prizes.sql', 2); // one mixed prize a door for everyone; the pass is the costume
+await run('042_season_ticket_count.sql', 2); // season tickets counted apart from bought ones
 
 const S = seasonAt(); assert.ok(S && S.id === 'halloween', 'the test runs during Halloween (Oct 1–31 2026): ' + S?.id);
 const DAY = dayKey(), DAYS = seasonDays(S), TASKS = tasksFor(DAY);
@@ -35,12 +37,14 @@ for (const s of SEASONS) {
   const r = (await db.query('select extract(epoch from starts) * 1000 as a, extract(epoch from ends) * 1000 as b, pass_usd from public.seasons where id = $1', [s.id]))[0];
   assert.deepEqual([+r.a, +r.b, +r.pass_usd], [s.start, s.end, PASS_PRICE], `${s.id}: same dates and pass price as seasons.js`);
   const pl = await db.query('select door, track, item_id, xp, tickets from public.season_rewards where season = $1 order by door, track', [s.id]);
-  assert.equal(pl.length, DOORS * 2, `${s.id}: ${DOORS} doors × 2 tracks`);
+  assert.equal(pl.filter((p) => p.track === 'free').length, DOORS, `${s.id}: a prize for everyone on all ${DOORS} doors`);
+  assert.equal(pl.filter((p) => p.track === 'gold').length, s.gold.length, `${s.id}: the pass is just the ${s.gold.length} costume pieces`);
   const asRule = (p) => (p.item_id ? { kind: 'item', item: p.item_id } : p.tickets ? { kind: 'tickets', n: p.tickets } : { kind: 'xp', n: p.xp });
   for (let d = 1; d <= DOORS; d++) {
-    assert.deepEqual(asRule(pl.find((p) => p.door === d && p.track === 'free')), freeReward(s, d), `${s.id} door ${d} free prize matches seasons.js`);
-    const g = goldReward(s, d); delete g.gear;
-    assert.deepEqual(asRule(pl.find((p) => p.door === d && p.track === 'gold')), g, `${s.id} door ${d} pass prize matches seasons.js`);
+    const f = freeReward(s, d); delete f.gear;
+    assert.deepEqual(asRule(pl.find((p) => p.door === d && p.track === 'free')), f, `${s.id} door ${d}: everyone's prize matches seasons.js`);
+    const gr = pl.find((p) => p.door === d && p.track === 'gold');
+    assert.deepEqual(gr ? asRule(gr) : null, goldReward(s, d), `${s.id} door ${d}: the pass piece (or none) matches seasons.js`);
   }
 }
 for (const it of SEASON_GEAR) assert.ok((await db.query('select 1 from public.items where id = $1', [it])).length, `the pass's gear ${it} is a real item`);
@@ -104,10 +108,9 @@ const q = (await db.query(`insert into public.shop_quotes (profile_id, kind, usd
 const bought = (await db.query(`select public.shop_buy($1, $2, 1000, $3) as r`, [q, 'PassSig'.padEnd(88, '5'), W()]))[0].r;
 assert.equal(bought.pass, 'halloween', 'the pass is granted by the shop path: ' + JSON.stringify(bought));
 const gd7 = (await grants(dee)).filter((g) => g.track === 'gold');
-assert.deepEqual(gd7.map((g) => g.door), [1, 2, 3, 4, 5, 6, 7], 'backdated: the pass prizes for all 7 doors');
-assert.deepEqual(gd7.filter((g) => g.item_id).map((g) => g.item_id), [S.gold[0], S.gold[1]], 'costume pieces at doors 2 and 6');
+assert.deepEqual(gd7.map((g) => [g.door, g.item_id]), [[2, S.gold[0]], [6, S.gold[1]]], 'backdated: the costume pieces of doors 2 and 6, the only pass prizes');
 const tix = async (p) => (await db.query('select free_used, extra, season_extra from public.tickets where profile_id = $1', [p]))[0];
-assert.equal((await tix(dee)).season_extra, 4, 'ranked tickets at doors 1, 3, 5, 7 → 4 in the season bank');
+assert.equal((await tix(dee)).season_extra, 3, 'everyone\'s ranked tickets at doors 1, 4, 6 → 3 in the season bank (with or without the pass)');
 const q2 = (await db.query(`insert into public.shop_quotes (profile_id, kind, usd, santa_raw, price_usd, season) values ($1, 'pass', 5, 1000, 0.0003, 'halloween') returning id`, [dee]))[0].id;
 const again = (await db.query(`select public.shop_buy($1, $2, 1000, $3) as r`, [q2, 'PassSigTwo'.padEnd(88, '5'), W()]))[0].r;
 assert.ok(again.refunded, 'a second pass for the same season is never granted: the payment is owed back in full');
@@ -119,12 +122,12 @@ await db.query(`insert into public.season_passes (profile_id, season, signature,
 for (let k = 0; k < 3; k++) await db.query(`select public.season_grant($1, 'halloween')`, [eli]);
 const ge = await grants(eli), invE = await inv(eli);
 assert.equal(ge.filter((g) => g.track === 'free').length, 30, 'all 30 free doors (and no 31st: 9,800 points)');
-assert.equal(ge.filter((g) => g.track === 'gold').length, 30, 'all 30 pass doors');
+assert.equal(ge.filter((g) => g.track === 'gold').length, 6, 'the pass: the 6 costume pieces');
 for (const it of [...Object.values(S.free), ...S.gold, ...SEASON_GEAR]) assert.ok(invE.includes(it), `${it} owned`);
-assert.equal((await tix(eli)).season_extra, 17, '17 ranked tickets in the season bank (no cap)');
+assert.equal((await tix(eli)).season_extra, 15, '15 ranked tickets in the season bank (no cap)');
 assert.deepEqual(ge.filter((g) => g.track === 'streak').map((g) => g.door), [7, 14], '14 perfect days in a row: streak bonuses at 7 and 14, once each');
 const xpSteps = (await db.query(`select count(*)::int n from public.level_finishes where profile_id = $1 and match_id like 'season:%'`, [eli]))[0].n;
-assert.equal(xpSteps, 25 + 5 + 2, 'level steps: 25 free doors + 5 pass doors + 2 streak bonuses, once each');
+assert.equal(xpSteps, 8 + 2, 'level ticks: 8 doors + 2 streak bonuses, once each (it was 30+ before Cody\'s mix)');
 // a gap breaks the streak: 6 perfect days, a missed day, 6 perfect days → no bonus
 const fay = await mk('Fay');
 for (const back of [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]) await db.query(`insert into public.season_progress (profile_id, season, day, door, points) values ($1, 'halloween', $2::date, true, 500)`, [fay, iso(today - back * dayMs)]);
@@ -135,12 +138,14 @@ assert.equal((await grants(fay)).filter((g) => g.track === 'streak').length, 0, 
 await db.query('update public.tickets set free_used = 10, extra = 1 where profile_id = $1', [eli]);
 const hold = async (m) => (await db.query(`select public.hold_ticket($1, $2) as s`, [eli, m]))[0].s;
 assert.equal(await hold('PRN1-a'), 'season', 'free ones used up: a season ticket next');
-assert.equal((await tix(eli)).season_extra, 16);
+assert.equal((await tix(eli)).season_extra, 14);
 assert.equal((await db.query(`select public.release_ticket($1, 'PRN1-a') as r`, [eli]))[0].r, true);
-assert.equal((await tix(eli)).season_extra, 17, 'left before the start: the season ticket comes back');
+assert.equal((await tix(eli)).season_extra, 15, 'left before the start: the season ticket comes back');
 await db.query('update public.tickets set season_extra = 0 where profile_id = $1', [eli]);
 assert.equal(await hold('PRN1-b'), 'extra', 'no season tickets: a bought one');
-assert.equal((await db.query('select extra from public.ticket_status($1)', [dee]))[0].extra, 4, 'the ticket count a player sees includes season tickets');
+// season tickets never use up the 'buy at most 10' room (full-sim found it): ticket_status's extra is BOUGHT only; the season count apart
+assert.equal((await db.query('select extra from public.ticket_status($1)', [dee]))[0].extra, 0, "season tickets aren't counted as bought ones (the Store's room to buy stays 10)");
+assert.equal((await db.query('select public.season_tickets($1) as n', [dee]))[0].n, 3, 'the season bank is counted on its own (3)');
 
 // 8. nobody but the servers writes any of it
 await db.query('set role authenticated'); await db.query(`select set_config('test.uid', $1, false)`, [ben]);
@@ -158,4 +163,4 @@ await db.query(`select public.season_record($1, 'halloween', $2::date, $3, '{"hi
 await assert.rejects(() => db.query(`select public.season_grant($1, 'halloween')`, [ben]), /permission denied/, 'the match server can record matches, never grant directly');
 await assert.rejects(() => db.query(`select public.season_login($1, 'halloween', $2::date, $3)`, [ben, DAY, tasksJson]), /permission denied/, 'and can never tick "Log in"');
 await db.query('reset role');
-console.log(`OK: season points on real Postgres (001–030 + 032–039): the 30-door plan equals seasons.js for all three seasons; points only from the servers (+10 a match, +10 a top 3, first 10 matches a day; Log in +100 once; +100 a task; a 690-point day checked against seasons.js); doors = points ÷ ${DOOR_POINTS}; every prize once; the pass backdates; a whole season: 30 + 30 doors, 17 season tickets, 32 level steps, 2 streak bonuses; ranked spends free → season → bought; only the servers write`);
+console.log(`OK: season points on real Postgres (001–030 + 032–039): the 30-door plan equals seasons.js for all three seasons; points only from the servers (+10 a match, +10 a top 3, first 10 matches a day; Log in +100 once; +100 a task; a 690-point day checked against seasons.js); doors = points ÷ ${DOOR_POINTS}; every prize once; the pass backdates; a whole season: 30 doors for everyone (5 looks, 2 gear, 8 level ticks, 15 tickets) + 6 costume pieces with the pass, 10 level ticks with the streak; ranked spends free → season → bought; only the servers write`);

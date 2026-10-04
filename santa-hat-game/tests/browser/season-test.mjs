@@ -13,8 +13,8 @@ const S = seasonAt(); if (!S) { console.log('no season running today: nothing to
 const DAY = dayKey(), ALL = seasonDays(S), IDX = ALL.indexOf(DAY), TASKS = tasksFor(DAY), DOORLIST = Array.from({ length: DOORS }, (_, i) => i + 1);
 // a signed-in player with the pass, 2,180 points (7 doors), a perfect day every day so far but today; today: Log in done, 230 points
 const POINTS_NOW = 2180, OPEN = Math.floor(POINTS_NOW / DOOR_POINTS), perfect = ALL.slice(0, IDX);
-const grantsFor = (track, n) => DOORLIST.slice(0, n).map((d) => { const r = track === 'free' ? freeReward(S, d) : goldReward(S, d);
-  return { door: d, track, item: r.kind === 'item' ? r.item : null, xp: r.kind === 'xp' ? 1 : null, tickets: r.kind === 'tickets' ? r.n : null }; });
+const grantsFor = (track, n) => DOORLIST.slice(0, n).map((d) => { const r = track === 'free' ? freeReward(S, d) : goldReward(S, d); if (!r) return null;
+  return { door: d, track, item: r.kind === 'item' ? r.item : null, xp: r.kind === 'xp' ? 1 : null, tickets: r.kind === 'tickets' ? r.n : null }; }).filter(Boolean);
 const me = { season: { id: S.id, name: S.name, costume: S.costume, passPrice: 2, endsAt: S.end, startsAt: S.start }, day: DAY, dayEndsAt: Date.now() + 5 * 3600e3,
   tasks: TASKS.map((t, i) => ({ id: t.id, text: t.text, need: t.need, have: i === 0 ? t.need : Math.floor(t.need / 2), done: i === 0 })),
   points: POINTS_NOW, doors: OPEN, nextAt: (OPEN + 1) * DOOR_POINTS, today: { points: 230, matches: 3, top3: 1, max: 700 },
@@ -48,7 +48,7 @@ const read = () => p.evaluate(() => ({
   cal: [...document.querySelectorAll('#ssCal li:not(.pad)')].map((l) => l.className), pads: document.querySelectorAll('#ssCal li.pad').length,
   doors: [...document.querySelectorAll('#ssDoors li')].map((l) => ({ cls: l.className, n: l.querySelector('.dn').textContent, label: l.getAttribute('aria-label'),
     free: { img: !!l.querySelector('.pz.f img'), tag: l.querySelector('.pz.f .ptag')?.textContent || '', got: l.querySelector('.pz.f').classList.contains('got') },
-    gold: { img: !!l.querySelector('.pz.g img'), tag: l.querySelector('.pz.g .ptag')?.textContent || '', got: l.querySelector('.pz.g').classList.contains('got'), locked: l.querySelector('.pz.g').classList.contains('locked') } })),
+    gold: l.querySelector('.pz.g') ? { img: !!l.querySelector('.pz.g img'), got: l.querySelector('.pz.g').classList.contains('got'), locked: l.querySelector('.pz.g').classList.contains('locked') } : null })),
   trackHead: document.querySelector('#ssTrackHead').textContent, points: document.querySelector('#ssPoints').textContent, bar: document.querySelector('#ssBar').style.width,
   freeNote: document.querySelector('#ssFreeNote').textContent,
   gold: [...document.querySelectorAll('#ssGold li')].map((l) => [l.className, !!l.querySelector('img'), l.querySelector('small').textContent]),
@@ -67,14 +67,15 @@ check(TASKS[0].text === 'Log in' && TASKS[1].text === 'Play 2 Auto matches', '"L
 check(/up to 700 pts a day/.test(v.today) && /Sign in to earn points/.test(v.note), `a guest: "${v.today}", told to sign in`);
 check(v.cal.length === ALL.length && v.cal[IDX] === 'today' && v.cal.slice(0, IDX).every((c) => c === 'missed') && v.cal.slice(IDX + 1).every((c) => c === 'shut'), `the calendar: ${ALL.length} days, today (${DAY}) ringed`);
 const [y, m, d] = ALL[0].split('-').map(Number); check(v.pads === new Date(Date.UTC(y, m - 1, d)).getUTCDay(), `the 1st sits under its weekday (${v.pads} blanks)`);
-check(v.how.length === 3 && /points/.test(v.how[0]) && /300 points/.test(v.how[1]) && /free prize/.test(v.how[2]) && /pass prize/.test(v.how[2]), 'how it works, in 3 steps: ' + v.how.join(' / '));
+check(v.how.length === 3 && /points/.test(v.how[0]) && /300 points/.test(v.how[1]) && /a prize/.test(v.how[2]) && /costume/.test(v.how[2]), 'how it works, in 3 steps: ' + v.how.join(' / '));
 check(v.doors.length === DOORS && v.doors.every((x, i) => x.n === String(i + 1)), `${DOORS} doors, numbered`);
-check(v.doors.every((x, i) => kindOf(x.free) === freeReward(S, i + 1).kind && kindOf(x.gold) === goldReward(S, i + 1).kind), 'EVERY door shows its free prize and its pass prize, as seasons.js says');
-check(v.doors.every((x) => x.gold.locked) && v.doors[0].cls === 'next' && v.doors.slice(1).every((x) => x.cls === 'future'), 'no pass: every pass prize shows a lock; door 1 is next');
-check(/Door 15 \(4,500 points\).*pass Elf Hat/.test(v.doors[14].label) && /Door 30 \(9,000 points\).*pass I\.C\.E\. Kevlar Vest/.test(v.doors[29].label), `each door says what it gives: "${v.doors[14].label}"`);
+check(v.doors.every((x, i) => kindOf(x.free) === freeReward(S, i + 1).kind && !!x.gold === !!goldReward(S, i + 1)), 'EVERY door shows its prize for everyone; only the 6 costume doors show a pass piece');
+check(v.doors.filter((x) => x.gold).length === 6 && v.doors.filter((x) => x.free.tag === '+1 leveltick').length === 8, `6 pass pieces, 8 "+1 level tick" doors (${v.doors.filter((x) => x.free.tag === '+1 leveltick').length})`);
+check(v.doors.filter((x) => x.gold).every((x) => x.gold.locked) && v.doors[0].cls === 'next' && v.doors.slice(1).every((x) => x.cls.startsWith('future')), 'no pass: the costume pieces show a lock; door 1 is next');
+check(/Door 15 \(4,500 points\): Elf Hat/.test(v.doors[14].label) && /Door 30 \(9,000 points\): I\.C\.E\. Kevlar Vest/.test(v.doors[29].label) && /with the pass: /.test(v.doors[1].label), `each door says what it gives: "${v.doors[14].label}" / "${v.doors[1].label}"`);
 check(/^0 points · next door at 300$/.test(v.points) && v.bar === '0%', `points: "${v.points}"`);
 check(v.outName === `The ${S.costume}` && v.outfitImg && v.gold.length === S.gold.length && v.gold.every((g) => g[1]), `the pass preview: "${v.outName}", ${v.gold.length} pieces with pictures`);
-check(/17 ranked tickets/.test(v.goldLead) && /5 bonus level steps/.test(v.goldLead) && /Elf Hat/.test(v.goldLead), `the pass says what it gives: "${v.goldLead.slice(0, 120)}…"`);
+check(/doors 2, 6, 10, 14, 18, 22/.test(v.goldLead) && !/ticket|level/.test(v.goldLead), `the pass is just the costume: "${v.goldLead.slice(0, 120)}…"`);
 check(!v.buyHidden && v.buyText === 'Get the pass · $2.00' && /\$2\.00/.test(v.goldHead), `"${v.buyText}" (${v.goldHead})`);
 check(/^\d+h \d{2}m$/.test(v.reset), `new tasks countdown ${v.reset}`);
 await p.click('#ssBuy'); await p.waitForTimeout(300);
@@ -90,7 +91,7 @@ check(v.tasks[0][2] && v.tasks[0][1] === '1/1' && !v.tasks[1][2], `progress per 
 check(/today 230 \/ 700 pts/.test(v.today) && /3 of 10 scored/.test(v.note), `today: "${v.today}", "${v.note.slice(0, 60)}"`);
 check(v.cal.slice(0, IDX).every((c) => c === 'open') && v.cal[IDX] === 'today', `perfect days lit (${IDX})`);
 check(v.trackHead === `Your doors · ${OPEN} of ${DOORS} open` && v.points === '2,180 points · next door at 2,400' && Math.abs(parseFloat(v.bar) - ((POINTS_NOW - OPEN * DOOR_POINTS) / DOOR_POINTS) * 100) < 0.01, `"${v.trackHead}", "${v.points}", bar ${v.bar}`);
-check(v.doors.slice(0, OPEN).every((x) => x.cls === 'open' && x.free.got && x.gold.got && !x.gold.locked) && v.doors[OPEN].cls === 'next' && v.doors.slice(OPEN + 1).every((x) => x.cls === 'future'), `doors 1–${OPEN} open, both prizes ticked; door ${OPEN + 1} next`);
+check(v.doors.slice(0, OPEN).every((x) => x.cls.startsWith('open') && x.free.got && (!x.gold || (x.gold.got && !x.gold.locked))) && v.doors[OPEN].cls.startsWith('next') && v.doors.slice(OPEN + 1).every((x) => x.cls.startsWith('future')), `doors 1–${OPEN} open, prizes and pieces ticked; door ${OPEN + 1} next`);
 const piecesGot = [2, 6].filter((dd) => dd <= OPEN).length;
 check(v.gold.filter((g) => g[0] === 'own').length === piecesGot && v.goldHead.includes(`yours · ${piecesGot} of ${S.gold.length} pieces`) && v.buyHidden, `pass owned: "${v.goldHead}", no buy button`);
 check(v.streak.includes(`${perfect.length} perfect day`), `"${v.streak.slice(0, 50)}"`);
@@ -102,7 +103,7 @@ answer = { ...me, pass: false, granted: me.granted.filter((g) => g.track !== 'go
 await p.evaluate(async () => (await import('./seasonui.js')).refreshSeason({ id: 'p1' })); await p.waitForTimeout(600);
 v = await read();
 check(/perfect day/.test(v.note) && v.cal[IDX] === 'open', 'all 5 done: today shows as a perfect day');
-check(!v.buyHidden && v.gold.every((g) => g[0] !== 'own') && v.doors.every((x) => x.gold.locked), 'no pass: pass prizes locked, buy button shown');
+check(!v.buyHidden && v.gold.every((g) => g[0] !== 'own') && v.doors.filter((x) => x.gold).every((x) => x.gold.locked), 'no pass: costume pieces locked, buy button shown');
 await p.click('#ssBuy'); await p.waitForTimeout(1200);
 const q = got.filter((b) => b.action === 'shop-quote').at(-1);
 check(q?.kind === 'pass', `asked the shop for a pass price (${JSON.stringify(q)})`);

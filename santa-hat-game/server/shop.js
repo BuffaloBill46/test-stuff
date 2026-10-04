@@ -91,7 +91,9 @@ export function createShop({ db, chain, livePrice, liveFee, treasury, mint = MIN
   // My ranked tickets (supabase/006 ticket_status): free left today, bought extras, held right now, when the free ones refill.
   async function tickets(profile) {
     const r = (await db.query('select * from public.ticket_status($1)', [profile]))[0];
-    return r ? { free: +r.free_left, extra: +r.extra, held: +r.held, resetsAt: new Date(r.resets_at).getTime() } : { error: 'no profile yet' };
+    // season: the season ticket bank (supabase/039, 042), shown on top of free + bought; never part of the 'buy at most 10' room
+    const season = r ? +((await db.query('select public.season_tickets($1) as n', [profile]).catch(() => [{ n: 0 }]))[0]?.n || 0) : 0;
+    return r ? { free: +r.free_left, extra: +r.extra, season, held: +r.held, resetsAt: new Date(r.resets_at).getTime() } : { error: 'no profile yet' };
   }
   return { quote, buy, owned, tickets };
 }

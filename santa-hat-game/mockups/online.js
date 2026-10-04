@@ -887,7 +887,7 @@ async function showTickets(ranked) {
   if (r?.error === 'sign in first') { el.textContent = 'Sign in to play ranked.'; el.hidden = false; return; }
   if (!r || r.error || !Number.isFinite(r.free)) return;
   const h = Math.max(0, Math.ceil((r.resetsAt - Date.now()) / 3600000));
-  el.innerHTML = `Your tickets <b>${r.free + r.extra} / ${TICKET_MAX}</b> · 10 free a day${r.free < 10 ? ` · refill in ${h} h` : ''}`;
+  el.innerHTML = `Your tickets <b>${r.free + r.extra} / ${TICKET_MAX}</b>${r.season ? ` + <b>${r.season}</b> season` : ''} · 10 free a day${r.free < 10 ? ` · refill in ${h} h` : ''}`;
   el.hidden = false;
 }
 // ---------- lobbies: Unranked (FFA / TEAM) and FFA RANKED, each with a live games list and Watch now

@@ -107,10 +107,12 @@ export async function refreshTickets(profile) {
   // call is refused in the page itself (gameserver.js call: no sign-in, no request), so it costs no server call
   const r = await call('tickets').catch(() => null);
   if (r?.error === 'sign in first') { if (el) el.textContent = 'Sign in'; return r; }
-  if (el) el.textContent = r && Number.isFinite(r.free) ? `${r.free + r.extra} / ${TICKET_MAX}` : '—';
+  // season tickets (the season pass track) come on top of the 25 free + bought (Cody, 2026-10-04: their own bank, no cap)
+  const sz = +r?.season || 0;
+  if (el) el.textContent = r && Number.isFinite(r.free) ? `${r.free + r.extra} / ${TICKET_MAX}${sz ? ` + ${sz} season` : ''}` : '—';
   const chip = document.querySelector('#tixchip'); // the top bar's chip (computers)
-  if (chip && r && Number.isFinite(r.free)) { chip.classList.remove('soon'); chip.querySelector('b').textContent = `${r.free + r.extra}/${TICKET_MAX}`;
-    chip.title = `Ranked tickets: ${r.free} free left today${r.extra ? `, ${r.extra} bought` : ''}. 1 per ranked match.`; }
+  if (chip && r && Number.isFinite(r.free)) { chip.classList.remove('soon'); chip.querySelector('b').textContent = `${r.free + r.extra}/${TICKET_MAX}${sz ? ` +${sz}` : ''}`;
+    chip.title = `Ranked tickets: ${r.free} free left today${r.extra ? `, ${r.extra} bought` : ''}${sz ? `, ${sz} from the season` : ''}. 1 per ranked match.`; }
   return r;
 }
 

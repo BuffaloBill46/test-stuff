@@ -325,10 +325,12 @@ a.taplink { display: inline-block; padding: 11px 0; margin: -11px 0; }
 .season .sskey { display: flex; gap: 14px; margin: 0 0 8px; font-size: 12px; color: var(--dim); } .season .sskey b { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; }
 .season .sskey .kf { background: var(--frost); } .season .sskey .kg { background: var(--ss); }
 .season #ssDoors { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; }
-.season #ssDoors li { position: relative; display: grid; grid-template-rows: auto 1fr 1fr; background: var(--ink); border: 2px solid rgba(185,205,242,.14); min-width: 0; }
+.season #ssDoors li { position: relative; display: grid; grid-template-rows: auto 1fr auto; background: var(--ink); border: 2px solid rgba(185,205,242,.14); min-width: 0; }
 .season #ssDoors .dn { font: 700 10px/1.6 var(--digits); text-align: center; color: var(--dim); border-bottom: 1px solid rgba(185,205,242,.1); }
 .season #ssDoors .pz { display: grid; place-items: center; padding: 3px; min-height: 44px; }
-.season #ssDoors .pz.g { background: var(--ss-dim); border-top: 1px dashed rgba(242,134,46,.35); }
+.season #ssDoors .pz.g { min-height: 0; padding: 2px 3px 3px; background: var(--ss-dim); border-top: 1px dashed rgba(242,134,46,.45); }
+.season #ssDoors .pz.g small { display: block; font: 700 8px/1.2 var(--digits); letter-spacing: .5px; text-transform: uppercase; color: var(--ss); }
+.season #ssDoors .pz.g img { max-width: 30px; }
 .season #ssDoors .pz img { width: 100%; max-width: 40px; aspect-ratio: 1; height: auto; display: block; }
 .season #ssDoors .ptag { justify-self: center; align-self: center; font: 700 9px/1.15 var(--digits); text-align: center; color: var(--frost); text-transform: uppercase; letter-spacing: -.2px; }
 .season #ssDoors .pz.g .ptag { color: var(--ss); }
@@ -972,7 +974,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       <ol class="sshow" aria-label="How the season works">
         <li><b>1</b><span>Earn <em>points</em>: 5 daily tasks (+100 each) and Auto matches (+10, top 3 +10 more)</span></li>
         <li><b>2</b><span>Every <em>300 points</em> opens the next door</span></li>
-        <li><b>3</b><span>Every door has a <em>free prize</em>, and a <em>pass prize</em></span></li>
+        <li><b>3</b><span>Every door has a <em>prize</em>; the pass adds the <em>costume</em>, a piece on 6 doors</span></li>
       </ol>
       <div class="ssbody">
         <div class="sstasks">
@@ -991,7 +993,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       <div class="sstrack">
         <div class="sstrackhead"><h3 id="ssTrackHead">Your doors</h3><span id="ssPoints"></span></div>
         <div class="ssbar" aria-hidden="true"><i id="ssBar"></i></div>
-        <p class="sskey"><span><b class="kf"></b>free prize (top)</span><span><b class="kg"></b>pass prize (bottom)</span></p>
+        <p class="sskey"><span><b class="kf"></b>everyone's prize</span><span><b class="kg"></b>pass: a costume piece</span></p>
         <ol id="ssDoors" aria-label="The 30 doors and their prizes"></ol>
         <p class="ssnote" id="ssFreeNote" aria-live="polite"></p>
       </div>
