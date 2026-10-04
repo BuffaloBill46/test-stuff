@@ -1,0 +1,4 @@
+# big media stays on this PC (raw clips, renders, checks); the recipes (timelines, compose page, stills) are kept
+raw/
+out/
+check/

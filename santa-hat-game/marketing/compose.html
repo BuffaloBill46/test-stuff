@@ -1,0 +1,151 @@
+<!doctype html>
+<!-- Marketing video editor (2026-10-04). Plays a timeline (window.TIMELINE, set by tests/browser/promo-compose.mjs) onto a
+     1080x1920 canvas with music made right here (Web Audio: nothing licensed, nothing downloaded) and the browser records it.
+     Segments: card (solid colour + lines of text), clip (a video, cover-fit, fades, slow zoom, a label).
+     Overlays: text drawn over whatever is playing. Music: bells, drone, riser, hits, a beat, all on the timeline's clock. -->
+<html><head><meta charset="utf-8"><title>Compose</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@600;800&family=Alegreya+Sans:wght@500;700;800&family=Silkscreen:wght@400;700&display=swap">
+<style>html,body{margin:0;background:#000}canvas{width:405px;height:720px;display:block}</style></head>
+<body><canvas id="c" width="1080" height="1920"></canvas>
+<script>
+const W = 1080, H = 1920, c = document.getElementById('c'), g = c.getContext('2d');
+const COL = { ink: '#0c0f1a', night: '#121830', plaque: '#1b2344', frost: '#b9cdf2', text: '#eef2fb', hat: '#cf3128', lit: '#ff7a66', lamp: '#ffbe5c', brim: '#f5f1e8', pine: '#7fe0a0' };
+const FONT = { display: "'Grenze Gotisch', Georgia, serif", body: "'Alegreya Sans', sans-serif", pixel: "'Silkscreen', monospace" };
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x)), ease = (x) => x * x * (3 - 2 * x);
+
+// ---------- music: everything synthesized on the timeline clock (t = seconds from the start)
+function music(ac, out, M, T0) {
+  const at = (t) => T0 + t, master = ac.createGain(); master.gain.value = M.volume ?? 0.9; master.connect(out);
+  const comp = ac.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4; comp.connect(master);
+  const bus = comp, rev = ac.createConvolver(), rl = ac.sampleRate * 2.2, ir = ac.createBuffer(2, rl, ac.sampleRate);
+  for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < rl; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / rl) ** 2.6; }
+  rev.buffer = ir; const revG = ac.createGain(); revG.gain.value = 0.32; rev.connect(revG); revG.connect(bus);
+  const noiseBuf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate); { const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+  const noise = (t, dur) => { const s = ac.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.start(at(t)); s.stop(at(t + dur + 0.1)); return s; };
+  const hz = (m) => 440 * 2 ** ((m - 69) / 12);
+  const env = (node, t, a, peak, d, end) => { const p = node.gain; p.setValueAtTime(0.0001, at(t)); p.exponentialRampToValueAtTime(peak, at(t + a)); p.exponentialRampToValueAtTime(0.0001, at(t + a + d)); return end; };
+  const bell = (t, m, v = 0.18) => { for (const [mul, amp] of [[1, 1], [2.76, 0.5], [5.4, 0.25], [8.93, 0.12]]) { const o = ac.createOscillator(), gn = ac.createGain(); o.type = 'sine'; o.frequency.value = hz(m) * mul;
+      o.connect(gn); gn.connect(bus); gn.connect(rev); env(gn, t, 0.005, v * amp, 1.6 / mul ** 0.4); o.start(at(t)); o.stop(at(t + 2)); } };
+  const kick = (t, v = 0.9) => { const o = ac.createOscillator(), gn = ac.createGain(); o.frequency.setValueAtTime(150, at(t)); o.frequency.exponentialRampToValueAtTime(42, at(t + 0.18));
+    o.connect(gn); gn.connect(bus); env(gn, t, 0.003, v, 0.42); o.start(at(t)); o.stop(at(t + 0.6)); };
+  const snare = (t, v = 0.35) => { const s = noise(t, 0.25), f = ac.createBiquadFilter(), gn = ac.createGain(); f.type = 'bandpass'; f.frequency.value = 1900; f.Q.value = 0.8;
+    s.connect(f); f.connect(gn); gn.connect(bus); gn.connect(rev); env(gn, t, 0.002, v, 0.18); };
+  const hat = (t, v = 0.08) => { const s = noise(t, 0.08), f = ac.createBiquadFilter(), gn = ac.createGain(); f.type = 'highpass'; f.frequency.value = 7500; s.connect(f); f.connect(gn); gn.connect(bus); env(gn, t, 0.001, v, 0.05); };
+  const boom = (t, v = 1) => { kick(t, v); const o = ac.createOscillator(), gn = ac.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(70, at(t)); o.frequency.exponentialRampToValueAtTime(30, at(t + 1.8));
+      o.connect(gn); gn.connect(bus); env(gn, t, 0.01, v * 0.8, 2.2); o.start(at(t)); o.stop(at(t + 2.5));
+    const s = noise(t, 2.5), f = ac.createBiquadFilter(), g2 = ac.createGain(); f.type = 'highpass'; f.frequency.value = 3000; s.connect(f); f.connect(g2); g2.connect(bus); g2.connect(rev); env(g2, t, 0.005, v * 0.22, 2.3); };
+  const swoosh = (t, dur, v = 0.25) => { const s = noise(t, dur), f = ac.createBiquadFilter(), gn = ac.createGain(); f.type = 'bandpass'; f.Q.value = 2;
+    f.frequency.setValueAtTime(300, at(t)); f.frequency.exponentialRampToValueAtTime(6000, at(t + dur)); s.connect(f); f.connect(gn); gn.connect(bus); gn.connect(rev);
+    gn.gain.setValueAtTime(0.0001, at(t)); gn.gain.exponentialRampToValueAtTime(v, at(t + dur)); gn.gain.exponentialRampToValueAtTime(0.0001, at(t + dur + 0.08)); };
+  // pad: a minor chord whose loudness, brightness and pitch climb across [t0, t1]
+  const pad = (t0, t1, root, v = 0.07, climb = 0) => { const f = ac.createBiquadFilter(), gn = ac.createGain(); f.type = 'lowpass'; f.frequency.setValueAtTime(400, at(t0)); f.frequency.exponentialRampToValueAtTime(5200, at(t1));
+    f.connect(gn); gn.connect(bus); gn.connect(rev); gn.gain.setValueAtTime(0.0001, at(t0)); gn.gain.exponentialRampToValueAtTime(v, at(t1 - 0.05)); gn.gain.exponentialRampToValueAtTime(0.0001, at(t1 + 0.12));
+    for (const iv of [0, 3, 7, 12, 15]) for (const det of [-6, 6]) { const o = ac.createOscillator(); o.type = 'sawtooth'; o.detune.value = det; o.frequency.setValueAtTime(hz(root + iv), at(t0));
+      if (climb) o.frequency.exponentialRampToValueAtTime(hz(root + iv + climb), at(t1)); o.connect(f); o.start(at(t0)); o.stop(at(t1 + 0.2)); } };
+  const drone = (t0, t1, m, v = 0.12) => { const o = ac.createOscillator(), gn = ac.createGain(); o.type = 'triangle'; o.frequency.value = hz(m); o.connect(gn); gn.connect(bus);
+    gn.gain.setValueAtTime(0.0001, at(t0)); gn.gain.exponentialRampToValueAtTime(v, at(t0 + 0.8)); gn.gain.setValueAtTime(v, at(t1 - 0.3)); gn.gain.exponentialRampToValueAtTime(0.0001, at(t1)); o.start(at(t0)); o.stop(at(t1 + 0.1)); };
+  const bass = (t, m, dur, v = 0.22) => { const o = ac.createOscillator(), f = ac.createBiquadFilter(), gn = ac.createGain(); o.type = 'sawtooth'; o.frequency.value = hz(m); f.type = 'lowpass'; f.frequency.value = 700;
+    o.connect(f); f.connect(gn); gn.connect(bus); env(gn, t, 0.01, v, dur); o.start(at(t)); o.stop(at(t + dur + 0.1)); };
+  const beat = 60 / M.bpm;
+  for (const p of M.parts) {
+    if (p.bells) p.notes.forEach((m, i) => bell(p.t + i * beat * (p.every ?? 1), m, p.v));
+    if (p.drone) drone(p.t, p.end, p.note, p.v);
+    if (p.pad) pad(p.t, p.end, p.root, p.v, p.climb);
+    if (p.hit) { kick(p.t, p.v ?? 0.9); swoosh(p.t - 0.45, 0.45, 0.16); }
+    if (p.pulse) for (let t = p.t; t < p.end - 0.01; t += beat * (p.every ?? 1)) kick(t, p.v ?? 0.45);
+    if (p.roll) { let t = p.t, step = beat / 2; while (t < p.end - 0.02) { snare(t, 0.12 + 0.3 * (t - p.t) / (p.end - p.t)); step = Math.max(beat / 8, step * 0.86); t += step; } swoosh(p.end - 1.2, 1.2, 0.3); }
+    if (p.boom) boom(p.t, p.v ?? 1);
+    if (p.groove) { const seq = p.bass; let i = 0; for (let t = p.t; t < p.end - 0.01; t += beat / 2, i++) {
+        if (i % 2 === 0) kick(t, 0.75); if (i % 4 === 2) snare(t, 0.32); hat(t + beat / 4, 0.07); if (seq) bass(t, seq[Math.floor(i / 2) % seq.length], beat / 2 * 0.9); } }
+    if (p.stab) { pad(p.t, p.t + 0.6, p.root, p.v ?? 0.09, 0); }
+  }
+}
+
+// ---------- drawing
+function cover(img, iw, ih, zoom = 1, dx = 0, dy = 0) { const s = Math.max(W / iw, H / ih) * zoom, w = iw * s, h = ih * s; g.drawImage(img, (W - w) / 2 + dx, (H - h) / 2 + dy, w, h); }
+function text(str, x, y, o = {}) {
+  g.save(); g.font = `${o.weight ?? 800} ${o.size ?? 80}px ${FONT[o.font ?? 'display']}`; g.textAlign = o.align ?? 'center'; g.textBaseline = 'middle';
+  if (o.spacing) g.letterSpacing = o.spacing + 'px';
+  if (o.shadow !== false) { g.shadowColor = 'rgba(0,0,0,.7)'; g.shadowBlur = o.blur ?? 18; g.shadowOffsetY = 4; }
+  if (o.stroke) { g.lineWidth = o.stroke; g.strokeStyle = COL.ink; g.lineJoin = 'round'; g.strokeText(str, x, y); }
+  g.fillStyle = o.color ?? COL.text; g.fillText(str, x, y); g.restore();
+}
+function card(seg, lt) {
+  g.fillStyle = seg.bg ?? COL.night; g.fillRect(0, 0, W, H);
+  // the site's fur trim: a white scalloped band (the top bar's edge)
+  if (seg.fur !== false) { g.fillStyle = COL.brim; for (const y of [seg.furTop ?? 210, seg.furBottom ?? 1700]) { g.fillRect(0, y - 14, W, 28); for (let x = 0; x <= W; x += 54) { g.beginPath(); g.arc(x, y + 14, 27, 0, Math.PI); g.fill(); } } }
+  for (const l of seg.lines) { const k = clamp((lt - (l.at ?? 0)) / 0.25); if (k <= 0) continue; g.globalAlpha = k; text(l.text, W / 2, l.y, { ...l, y: undefined }); g.globalAlpha = 1; }
+}
+function vignette(a = 0.55) { const r = g.createRadialGradient(W / 2, H * 0.45, H * 0.25, W / 2, H / 2, H * 0.75); r.addColorStop(0, 'rgba(0,0,0,0)'); r.addColorStop(1, `rgba(0,0,0,${a})`); g.fillStyle = r; g.fillRect(0, 0, W, H); }
+
+window.compose = async function (TL) {
+  // every weight the timelines use, loaded before the first frame (a late font swapped mid-shot in the first cut)
+  for (const f of ["800 80px 'Grenze Gotisch'", "600 80px 'Grenze Gotisch'", "700 40px 'Silkscreen'", "400 40px 'Silkscreen'", "800 40px 'Alegreya Sans'", "700 40px 'Alegreya Sans'", "500 40px 'Alegreya Sans'"]) await document.fonts.load(f);
+  await document.fonts.ready;
+  const { Muxer, ArrayBufferTarget } = await import('https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/build/mp4-muxer.mjs');
+  const vids = {};
+  for (const s of TL.segments) if (s.src && !vids[s.src]) { const v = document.createElement('video'); v.src = s.src; v.preload = 'auto'; v.playsInline = true; v.muted = true;
+    await new Promise((r, j) => { v.oncanplaythrough = r; v.onerror = () => j(new Error('cannot load ' + s.src)); v.load(); }); vids[s.src] = v; }
+  const FPS = 30, SR = 48000, total = TL.segments.reduce((m, s) => Math.max(m, s.t + s.dur), 0) + (TL.tail ?? 0.4);
+  // ---- sound, made ahead of time on the same clock as the pictures: the music plus each clip's own sound (with its fades)
+  const off = new OfflineAudioContext(2, Math.ceil(SR * total), SR);
+  music(off, off.destination, TL.music, 0);
+  for (const s of TL.segments) if (s.src && !s.mute) {
+    const buf = await off.decodeAudioData(await (await fetch(s.src)).arrayBuffer()).catch(() => null); if (!buf) continue;
+    const src = off.createBufferSource(), gn = off.createGain(), v = (s.volume ?? TL.clipVolume ?? 0.35), fi = s.fadeIn ?? 0.35, fo = s.fadeOut ?? 0.35;
+    src.buffer = buf; src.connect(gn); gn.connect(off.destination);
+    gn.gain.setValueAtTime(0, s.t); gn.gain.linearRampToValueAtTime(v, s.t + fi); gn.gain.setValueAtTime(v, s.t + s.dur - fo); gn.gain.linearRampToValueAtTime(0, s.t + s.dur);
+    src.start(s.t, s.from ?? 0, s.dur); }
+  const audio = await off.startRendering();
+  // ---- a standard MP4 (H.264 + AAC, index up front so every player knows the length)
+  const target = new ArrayBufferTarget(), muxer = new Muxer({ target, fastStart: 'in-memory', firstTimestampBehavior: 'offset',
+    video: { codec: 'avc', width: W, height: H, frameRate: FPS }, audio: { codec: 'aac', numberOfChannels: 2, sampleRate: SR } });
+  let err = null;
+  const venc = new VideoEncoder({ output: (c, m) => muxer.addVideoChunk(c, m), error: (e) => (err = e) });
+  venc.configure({ codec: 'avc1.640028', width: W, height: H, bitrate: TL.bitrate ?? 9e6, framerate: FPS, avc: { format: 'avc' } });
+  const aenc = new AudioEncoder({ output: (c, m) => muxer.addAudioChunk(c, m), error: (e) => (err = e) });
+  aenc.configure({ codec: 'mp4a.40.2', sampleRate: SR, numberOfChannels: 2, bitrate: 192000 });
+  const L = audio.getChannelData(0), R = audio.getChannelData(1), N = 1024;
+  for (let i = 0; i < L.length; i += N) { const n = Math.min(N, L.length - i), d = new Float32Array(n * 2); d.set(L.subarray(i, i + n), 0); d.set(R.subarray(i, i + n), n);
+    const ad = new AudioData({ format: 'f32-planar', sampleRate: SR, numberOfFrames: n, numberOfChannels: 2, timestamp: Math.round((i / SR) * 1e6), data: d }); aenc.encode(ad); ad.close(); }
+  // ---- pictures: played live (the clips run at their real speed), each 1/30 s frame stamped with its exact time
+  const started = new Set(); let k = 0; const t0 = performance.now() + 300;
+  await new Promise((done) => {
+    const frame = () => {
+      const t = (performance.now() - t0) / 1000;
+      if (t >= 0) {
+        g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+        draw(t, TL, vids, started);
+        while (k / FPS <= t && k / FPS < total) { const vf = new VideoFrame(c, { timestamp: Math.round((k / FPS) * 1e6), duration: Math.round(1e6 / FPS) }); venc.encode(vf, { keyFrame: k % 60 === 0 }); vf.close(); k++; }
+      } else { for (const s of TL.segments) if (s.src && !started.has(s) && s.t <= 0.2) { started.add(s); const v = vids[s.src]; v.currentTime = s.from ?? 0; v.play(); } }
+      if (k / FPS < total) requestAnimationFrame(frame); else done();
+    };
+    requestAnimationFrame(frame);
+  });
+  await venc.flush(); await aenc.flush(); if (err) throw err; muxer.finalize();
+  const buf = new Uint8Array(target.buffer); let s = '';
+  for (let i = 0; i < buf.length; i += 32768) s += String.fromCharCode(...buf.subarray(i, i + 32768));
+  return { mime: 'video/mp4', b64: btoa(s), seconds: total, frames: k };
+};
+function draw(t, TL, vids, started) {
+  for (const s of TL.segments) {
+    if (t < s.t - 0.6 || t > s.t + s.dur) continue;
+    if (s.src) { const v = vids[s.src];
+      if (!started.has(s) && t >= s.t - 0.15) { started.add(s); v.currentTime = s.from ?? 0; v.playbackRate = s.rate ?? 1; v.play(); }
+      if (t < s.t) continue; const lt = t - s.t, p = lt / s.dur;
+      const fi = s.fadeIn ?? 0.35, fo = s.fadeOut ?? 0.35, a = Math.min(clamp(lt / fi), clamp((s.dur - lt) / fo));
+      g.globalAlpha = a; const z = (s.zoom0 ?? 1.02) + ((s.zoom1 ?? 1.1) - (s.zoom0 ?? 1.02)) * ease(p);
+      cover(v, v.videoWidth, v.videoHeight, z, (s.pan ?? 0) * p * 60, 0); g.globalAlpha = 1;
+      if (s.vignette !== false) { g.globalAlpha = a; vignette(s.vignette ?? 0.5); g.globalAlpha = 1; }
+      if (s.flash && lt < 0.25) { g.fillStyle = 'rgba(255,255,255,' + ((1 - lt / 0.25) * s.flash) + ')'; g.fillRect(0, 0, W, H); }
+      if (s.label) { const la = clamp((lt - 0.25) / 0.3) * clamp((s.dur - lt - 0.1) / 0.3), y = s.labelY ?? 1560, slide = (1 - ease(clamp((lt - 0.25) / 0.4))) * 40;
+        g.globalAlpha = la; if (s.kicker) text(s.kicker, W / 2, y - 92 + slide, { font: 'pixel', size: 38, weight: 700, color: s.kickerColor ?? COL.lamp, spacing: 6 });
+        text(s.label, W / 2, y + slide, { size: s.labelSize ?? 128, color: s.labelColor ?? COL.brim, stroke: 10 }); g.globalAlpha = 1; }
+    } else if (s.lines) { if (t >= s.t) { const lt = t - s.t, fo = s.fadeOut ?? 0; g.globalAlpha = fo ? clamp((s.dur - lt) / fo) : 1; card(s, lt); g.globalAlpha = 1; } }
+  }
+  for (const o of TL.overlays || []) if (t >= o.t && t <= o.t + o.dur) { const lt = t - o.t, a = clamp(lt / (o.fadeIn ?? 0.3)) * clamp((o.dur - lt) / (o.fadeOut ?? 0.3));
+    if (o.band) { g.globalAlpha = a * (o.bandAlpha ?? 0.72); g.fillStyle = o.bandColor ?? COL.ink; g.fillRect(0, o.band[0], W, o.band[1]); }
+    g.globalAlpha = a; for (const l of o.lines) text(l.text, W / 2, l.y, l); g.globalAlpha = 1; }
+}
+window.readyToCompose = true;
+</script></body></html>
