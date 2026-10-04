@@ -47,3 +47,38 @@ const refused = {
 for (const [name, tx] of Object.entries(refused)) { const r = verifyPayment(tx, expect); assert.equal(r.ok, false, `should refuse: ${name}`); }
 assert.equal(verifyPayment(null, expect).ok, false, 'not found');
 console.log(`OK: good payment accepted (${good.paid} paid, ${good.burned} burned, ${good.arrived} arrived); ${Object.keys(refused).length + 1} cheating attempts refused`);
+
+// PAID WITH SOL (Cody 2026-10-04; mockups/pay.js): the same transaction swaps SOL for SANTA into the player's wallet first, so their
+// SANTA goes UP (the leftover), then burns and pays as usual. The quote is then the amount; the pool and the burn must cover it.
+function solPayment({ bought = expect.quoteRaw + 50_000_000, burnFactor = 1, arriveShort = 0, signed = true, player = PLAYER } = {}) {
+  const tx = payment({ burnFactor, arriveShort, signed, player }), s = splitPayment(expect.quoteRaw, 1000, FEE), spent = Math.floor(s.burn * burnFactor) + (expect.quoteRaw - s.burn);
+  tx.meta.postTokenBalances[0] = bal(1, player, 50_000_000_000 + bought - spent);
+  tx.meta.innerInstructions = [{ index: 1, instructions: [{ program: 'spl-token', parsed: { type: 'transferChecked', info: { destination: 'PLAYERata', mint: MINT, tokenAmount: { amount: String(bought) } } } }] }];
+  return tx;
+}
+const sol = verifyPayment(solPayment(), expect);
+assert.ok(sol.ok && sol.sol && sol.paid === expect.quoteRaw, 'a game run paid with SOL: accepted, counted as the quote ' + JSON.stringify(sol));
+for (const [name, tx] of Object.entries({ 'SOL: the pool got less than the quote': solPayment({ arriveShort: 1 }), 'SOL: skipped the burn': solPayment({ burnFactor: 0 }),
+  'SOL: not signed by the player': solPayment({ signed: false }) })) assert.equal(verifyPayment(tx, expect).ok, false, `should refuse: ${name}`);
+
+// The Store with SOL: only the burn half is swapped and burned; the treasury gets `lamports` of SOL (accountKeys / pre- and
+// postBalances line up: that's how Solana reports SOL moving). The pass: no swap, no burn, just SOL.
+const TREAS = 'TREASURYwa11et11111111111111111111111111111', LAMPORTS = 4_241_618;
+function storeSol({ burnBps = 5000, lamports = LAMPORTS, burnFactor = 1, bought = 0, quoteRaw = expect.quoteRaw } = {}) {
+  const s = splitPayment(quoteRaw, burnBps, FEE), burn = Math.floor(s.burn * burnFactor), have = 50_000_000_000;
+  return { blockTime: Math.floor((NOW + 5000) / 1000),
+    meta: { err: null, innerInstructions: [], preBalances: [3_000_000_000, 1, 10_000_000], postBalances: [3_000_000_000 - lamports - 5000, 1, 10_000_000 + lamports],
+      preTokenBalances: [bal(1, PLAYER, have)], postTokenBalances: [bal(1, PLAYER, have + bought - burn)] },
+    transaction: { message: { accountKeys: [{ pubkey: PLAYER, signer: true, writable: true }, { pubkey: 'PLAYERata', signer: false }, { pubkey: TREAS, signer: false, writable: true }],
+      instructions: burn ? [{ program: 'spl-token', parsed: { type: 'burnChecked', info: { account: 'PLAYERata', authority: PLAYER, mint: MINT, tokenAmount: { amount: String(burn) } } } }] : [] } } };
+}
+const item = { ...expect, pool: TREAS, burnBps: 5000, lamports: LAMPORTS }, half = splitPayment(expect.quoteRaw, 5000, FEE).burn;
+const itemOk = verifyPayment(storeSol({ bought: half + 9_000_000 }), item);
+assert.ok(itemOk.ok && itemOk.sol && itemOk.lamports === LAMPORTS && itemOk.burned === half, 'a Store item paid with SOL: burn half bought + burned, SOL to the treasury ' + JSON.stringify(itemOk));
+assert.match(verifyPayment(storeSol({ bought: half + 9_000_000, lamports: LAMPORTS - 1 }), item).why, /treasury received/, 'one lamport short: refused');
+assert.match(verifyPayment(storeSol({ bought: half + 9_000_000, burnFactor: 0.5 }), item).why, /burned/, 'burned too little: refused');
+const pass = { ...expect, pool: TREAS, burnBps: 0, lamports: 16_472_303 };
+assert.ok(verifyPayment(storeSol({ burnBps: 0, lamports: 16_472_303 }), pass).ok, 'the pass paid with SOL: a plain transfer');
+assert.equal(verifyPayment(storeSol({ burnBps: 0, lamports: 16_000_000 }), pass).ok, false, 'the pass, SOL short: refused');
+assert.equal(verifyPayment(storeSol({ burnBps: 0, lamports: 16_472_303 }), { ...pass, lamports: undefined }).ok, false, 'SOL to a quote that offered no SOL price (games, lottery): refused');
+console.log('OK: paid with SOL: a game run (swap, burn, pool) and a Store item / the pass (burn half, SOL to the treasury) accepted; short SOL, short pool, short or skipped burn, unsigned: refused');

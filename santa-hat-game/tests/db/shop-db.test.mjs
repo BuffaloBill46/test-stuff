@@ -103,6 +103,31 @@ assert.match((await shop.quote(A.id, { kind: 'item', id: 'shirt_red' })).error, 
 // 7. Closed shop (no treasury set): nothing can be quoted, so no payment is ever taken.
 assert.match((await createShop({ db, chain, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, treasury: null }).quote(A.id, { kind: 'item', id: 'sb_split' })).error, /not open/);
 
+// 7b. Paying with SOL (Cody 2026-10-04; 044): on mainnet, with a SOL price, every quote also carries the treasury's share in SOL
+//     (lamports, rounded up), kept on the quote; a payment that swaps the burn half, burns it and sends that SOL is granted; a
+//     lamport short is refused. Without 044 yet, or on devnet, or with the SOL price down: SANTA only, nothing breaks.
+{ const SOLUSD = 121.42, sh = (o = {}) => createShop({ db, chain, livePrice: async () => ({ usd: PRICE }), liveFee: async () => FEE, treasury: TREASURY, mint: MINT, cluster: 'mainnet', liveSol: async () => ({ usd: SOLUSD }), ...o });
+  const C = await mk('Cy');
+  assert.equal((await sh().quote(C.id, { kind: 'item', id: 'sb_split' })).solLamports, undefined, 'before 044: SANTA only');
+  for (let i = 0; i < 2; i++) await db.pg.exec(readFileSync(new URL('../../supabase/044_pay_with_sol.sql', import.meta.url), 'utf8')); // safe twice
+  assert.equal((await sh({ cluster: 'devnet' }).quote(C.id, { kind: 'item', id: 'sb_split' })).solLamports, undefined, 'devnet: SANTA only (no swaps there)');
+  assert.equal((await sh({ liveSol: async () => { throw new Error('down'); } }).quote(C.id, { kind: 'item', id: 'sb_split' })).solLamports, undefined, 'SOL price down: SANTA only');
+  const solPay = (q, lamports) => { const sig = ('SolPay' + String(++sigNo).padStart(4, '9') + '5'.repeat(80)).slice(0, 88).replace(/[0OIl]/g, '9'), s = splitPayment(q.santaRaw, SHOP_BURN_BPS, FEE),
+      b = (i, o, a) => ({ accountIndex: i, mint: MINT, owner: o, uiTokenAmount: { amount: String(a), decimals: 6 } });
+    txs.set(sig, { blockTime: Math.floor(Date.now() / 1000), meta: { err: null, innerInstructions: [], preBalances: [5e9, 0, 1e9], postBalances: [5e9 - lamports - 5000, 0, 1e9 + lamports],
+      preTokenBalances: [b(1, C.w, 0)], postTokenBalances: [b(1, C.w, 7_000_000)] }, // swapped in a bit more than the burn; the rest stays theirs
+      transaction: { message: { accountKeys: [{ pubkey: C.w, signer: true }, { pubkey: 'CyATA', signer: false }, { pubkey: TREASURY, signer: false }],
+        instructions: [{ program: 'spl-token', parsed: { type: 'burnChecked', info: { mint: MINT, authority: C.w, tokenAmount: { amount: String(s.burn) } } } }] } } });
+    return sig; };
+  const q = await sh().quote(C.id, { kind: 'item', id: 'sb_split' }), s = splitPayment(q.santaRaw, SHOP_BURN_BPS, FEE);
+  assert.ok(q.solLamports === Math.ceil(((q.usd * (q.santaRaw - s.burn)) / q.santaRaw / SOLUSD) * 1e9) && q.solUsd === SOLUSD, 'the treasury share in SOL, rounded up: ' + q.solLamports);
+  assert.equal(+(await db.query('select sol_lamports from public.shop_quotes where id = $1', [q.id]))[0].sol_lamports, q.solLamports, 'kept on the quote');
+  assert.match((await sh().buy(C.id, q.id, solPay(q, q.solLamports - 1))).error, /treasury received/, 'a lamport short: refused');
+  assert.ok(!(await owns(C, 'sb_split')));
+  const q2 = await sh().quote(C.id, { kind: 'item', id: 'sb_split' }), ok = await sh().buy(C.id, q2.id, solPay(q2, q2.solLamports));
+  assert.ok(ok.ok && await owns(C, 'sb_split'), 'paid with SOL: granted ' + JSON.stringify(ok));
+  assert.equal(+(await db.query('select paid_raw from public.item_purchases where profile_id = $1', [C.id]))[0].paid_raw, q2.santaRaw, 'recorded at the quote\'s SANTA amount'); }
+
 // 8. The website (signed-in or not) can't read or write any shop table, or run the grant.
 for (const role of ['anon', 'authenticated']) {
   await db.pg.exec(`set role ${role}`);
