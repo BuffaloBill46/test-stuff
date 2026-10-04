@@ -7,8 +7,8 @@
 //     the whole outfit is owned. Buying the pass late still counts the doors already opened. Earned pieces are kept forever.
 // Tasks count only in public Auto matches run by the match server (practice runs in the player's own browser and could be
 // faked). This file is the ONE place the rules live: the page shows them, the server and database apply them.
-import { dayStart, nextReset } from './gameclock.js?v=a32ed5a9e0';
-import { zonedTime, WEEKLY_ZONE } from './lottery.js?v=a32ed5a9e0';
+import { dayStart, nextReset } from './gameclock.js?v=adc1e07a70';
+import { zonedTime, WEEKLY_ZONE } from './lottery.js?v=adc1e07a70';
 
 const at9 = (y, m, d) => zonedTime(y, m, d, 21, WEEKLY_ZONE); // 9 PM Indiana on that date
 
@@ -27,7 +27,10 @@ export const SEASONS = [
   { id: 'thanksgiving', name: 'Thanksgiving', icon: '🦃', start: at9(2026, 10, 31), end: at9(2026, 11, 30), costume: 'Gobbler',
     free: { 2: 'snow_cranberry', 5: 'shirt_pumpkinpie', 9: 'pants_harvestgold', 14: 'snow_mapleleaf', 20: 'shirt_cornhusk' },
     gold: ['face_gobbler', 'hat_gobbler', 'shirt_gobbler', 'pants_gobbler', 'pack_gobbler', 'snow_gobbler'] },
-  { id: 'christmas', name: 'Christmas', icon: '🎄', start: at9(2026, 11, 30), end: at9(2027, 1, 1), costume: null, free: {}, gold: [] },
+  // Christmas (2026-10-03): 5 festive looks free, and the pass's costume, Gingerbread (catalog.js, supabase/037 + 038)
+  { id: 'christmas', name: 'Christmas', icon: '🎄', start: at9(2026, 11, 30), end: at9(2027, 1, 1), costume: 'Gingerbread',
+    free: { 2: 'snow_candycane', 5: 'shirt_peppermint', 9: 'pants_evergreen', 14: 'snow_silverflake', 20: 'pants_hollyred' },
+    gold: ['face_gingerbread', 'hat_gingerbread', 'shirt_gingerbread', 'pants_gingerbread', 'pack_gingerbread', 'snow_gingerbread'] },
 ];
 export const seasonById = (id) => SEASONS.find((s) => s.id === id) || null;
 // The season running at time t, or null (between seasons).

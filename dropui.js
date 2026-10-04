@@ -2,14 +2,14 @@
 // pool readout and its jackpot (board 3: the centre present), odds, last drops. Every drop runs in the house's order (paid → secret locked → drawn → revealed;
 // playcredits.js / house.js), on the Spin pool (shared, Cody); the run's winnings are sent at the end. The board only
 // animates the path the draw already decided. DEMO: the same demo balance as Slots.
-import { jackpotOdds, JP, PAYS2, JACKPOT_BIN, ROWS, BINS } from './plinko.js?v=a32ed5a9e0';
-import { poolJackpot } from './slots.js?v=a32ed5a9e0';
-import { createBoard } from './plinkoboard.js?v=a32ed5a9e0';
-import { playRun, short } from './playcredits.js?v=a32ed5a9e0';
-import { runSummary } from './runui.js?v=a32ed5a9e0';
-import { initRunPick, priceLabel } from './runpick.js?v=a32ed5a9e0';
-import { showResult } from './spinui.js?v=a32ed5a9e0';
-import { play as sfx } from './sfx.js?v=a32ed5a9e0';
+import { jackpotOdds, JP, PAYS2, JACKPOT_BIN, ROWS, BINS } from './plinko.js?v=adc1e07a70';
+import { poolJackpot } from './slots.js?v=adc1e07a70';
+import { createBoard } from './plinkoboard.js?v=adc1e07a70';
+import { playRun, short } from './playcredits.js?v=adc1e07a70';
+import { runSummary } from './runui.js?v=adc1e07a70';
+import { initRunPick, priceLabel } from './runpick.js?v=adc1e07a70';
+import { showResult } from './spinui.js?v=adc1e07a70';
+import { play as sfx } from './sfx.js?v=adc1e07a70';
 
 const $ = (s, el = document) => el.querySelector(s);
 const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);

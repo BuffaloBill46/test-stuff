@@ -191,19 +191,19 @@
   </footer>
 </main>
 <script type="module">
-  import { ITEMS, COSTUMES, SEASONS } from './catalog.js?v=a32ed5a9e0';
-  import { SPECIALS } from './specials.js?v=a32ed5a9e0';
-  import { TEAM_PAUSED } from './refcore.js?v=a32ed5a9e0';
-  import { GEAR, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=a32ed5a9e0';
-  import { LEVELS, MAX_LEVEL, WINS_PER_LEVEL, MAX_BOUGHT_LEVEL, buyPrice } from './levels.js?v=a32ed5a9e0';
-  import { RULES, TICKET_MAX, settleRanked } from './ranked.js?v=a32ed5a9e0';
-  import { LOTTERIES, LIVE_LOTTERIES, SALES_CLOSE_MS } from './lottery.js?v=a32ed5a9e0';
-  import { SYMBOLS, MACHINES, stats, JACKPOT_PCT, POOL_RULES } from './slots.js?v=a32ed5a9e0';
-  import * as DROP from './plinko.js?v=a32ed5a9e0';
-  import * as STOCK from './stocking.js?v=a32ed5a9e0';
-  import { K, PTS } from './sim.js?v=a32ed5a9e0';
-  import * as SEASON from './seasons.js?v=a32ed5a9e0';
-  import { VARIANTS } from './weekly.js?v=a32ed5a9e0';
+  import { ITEMS, COSTUMES, SEASONS } from './catalog.js?v=adc1e07a70';
+  import { SPECIALS } from './specials.js?v=adc1e07a70';
+  import { TEAM_PAUSED } from './refcore.js?v=adc1e07a70';
+  import { GEAR, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=adc1e07a70';
+  import { LEVELS, MAX_LEVEL, WINS_PER_LEVEL, MAX_BOUGHT_LEVEL, buyPrice } from './levels.js?v=adc1e07a70';
+  import { RULES, TICKET_MAX, settleRanked } from './ranked.js?v=adc1e07a70';
+  import { LOTTERIES, LIVE_LOTTERIES, SALES_CLOSE_MS } from './lottery.js?v=adc1e07a70';
+  import { SYMBOLS, MACHINES, stats, JACKPOT_PCT, POOL_RULES } from './slots.js?v=adc1e07a70';
+  import * as DROP from './plinko.js?v=adc1e07a70';
+  import * as STOCK from './stocking.js?v=adc1e07a70';
+  import { K, PTS } from './sim.js?v=adc1e07a70';
+  import * as SEASON from './seasons.js?v=adc1e07a70';
+  import { VARIANTS } from './weekly.js?v=adc1e07a70';
   // team play paused (refcore.js TEAM_PAUSED, Cody 2026-10-03): the guide says so, and goes back by itself when it reopens
   if (TEAM_PAUSED) document.querySelector('#teamLine').textContent = 'Team play (Nice vs Naughty) is paused for now.';
   const $ = (s) => document.querySelector(s);
@@ -229,7 +229,7 @@
     $('#freeList').innerHTML = (looks.length ? looks.map(([d, id]) => `<li>${cur.name}, door <b>${d}</b>: ${nameOf(id)}</li>`).join('') : `<li>${cur.name}'s looks are coming soon.</li>`)
       + `<li>Every other door: one step of level progress (like a top-3 finish).</li><li>Every <b>${SEASON.STREAK_EVERY}</b> days in a row: a bonus step.</li>`;
     $('#passLine').innerHTML = cur.gold.length
-      ? `The ${cur.name} pass costs <b>$${SEASON.PASS_PRICE}</b> (paid in SANTA, like a Store item) and unlocks <b>${cur.costume}</b>: ${cur.gold.length} pieces, one every <b>${SEASON.PIECE_EVERY}</b> doors you open (${cur.gold.map(nameOf).join(', ')}). Buy it any time: doors you've already opened count. The pieces are yours to keep.`
+      ? `The ${cur.name} pass costs <b>$${SEASON.PASS_PRICE}</b> (paid in SANTA, like a Store item) and unlocks <b>the ${cur.costume} costume</b>: ${cur.gold.length} pieces, one every <b>${SEASON.PIECE_EVERY}</b> doors you open (${cur.gold.map(nameOf).join(', ')}). Buy it any time: doors you've already opened count. The pieces are yours to keep.`
       : `The ${cur.name} pass opens soon.`;
     $('#weeklyList').innerHTML = Object.values(VARIANTS).map((v) => `<li><b>${v.name}:</b> ${v.short}</li>`).join(''); }
   for (const [k, v] of Object.entries({ maxHumans: K.MAX_HUMANS })) document.querySelectorAll(`[data-k="${k}"]`).forEach((e) => { e.textContent = v; });
