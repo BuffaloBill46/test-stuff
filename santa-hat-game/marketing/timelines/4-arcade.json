@@ -1,30 +1,327 @@
 {
-  "name": "The arcade",
-  "clipVolume": 0,
-  "segments": [
-    { "t": 0, "dur": 2.4, "fur": true, "lines": [
-      { "text": "3 quick games", "y": 700, "size": 150, "color": "#f5f1e8", "at": -1 },
-      { "text": "between snowball fights", "y": 870, "size": 96, "color": "#b9cdf2", "at": 0.5 },
-      { "text": "santahatgames.com", "y": 1300, "font": "body", "size": 70, "weight": 800, "color": "#ffbe5c", "at": -1 } ] },
-    { "t": 2.4, "dur": 4.4, "src": "raw/arcade-slots.webm", "from": 0.6, "mute": true, "fit": "contain", "width": 0.92, "cy": 860, "zoom0": 1.0, "zoom1": 1.04, "vignette": false, "kicker": "SPIN THE REELS", "label": "Big Hat", "labelY": 1600, "fadeIn": 0.25, "fadeOut": 0.25, "flash": 0.3 },
-    { "t": 6.8, "dur": 4.4, "src": "raw/arcade-drop.webm", "from": 1.0, "mute": true, "fit": "contain", "width": 0.96, "cy": 860, "zoom0": 1.0, "zoom1": 1.04, "vignette": false, "kicker": "DROP A SNOWBALL", "label": "Snowball Drop", "labelY": 1600, "fadeIn": 0.25, "fadeOut": 0.25, "flash": 0.3 },
-    { "t": 11.2, "dur": 4.4, "src": "raw/arcade-stocking.webm", "from": 2.5, "mute": true, "fit": "contain", "width": 0.96, "cy": 860, "zoom0": 1.0, "zoom1": 1.04, "vignette": false, "kicker": "PICK A STOCKING", "label": "Stocking Stuffer", "labelY": 1600, "fadeIn": 0.25, "fadeOut": 0.3, "flash": 0.3 },
-    { "t": 15.6, "dur": 3.0, "fur": true, "lines": [
-      { "text": "Big Hat", "y": 620, "size": 120, "color": "#ff7a66", "at": 0 },
-      { "text": "Snowball Drop", "y": 770, "size": 120, "color": "#b9cdf2", "at": 0.15 },
-      { "text": "Stocking Stuffer", "y": 920, "size": 120, "color": "#7fe0a0", "at": 0.3 },
-      { "text": "santahatgames.com", "y": 1260, "font": "body", "size": 86, "weight": 800, "color": "#ffbe5c", "at": 0.6 } ] }
-  ],
-  "music": { "bpm": 120, "parts": [
-    { "bells": true, "t": 0.05, "notes": [79, 83, 86, 91], "every": 0.5, "v": 0.15 },
-    { "drone": true, "t": 0, "end": 2.4, "note": 43, "v": 0.1 },
-    { "boom": true, "t": 2.4, "v": 0.8 },
-    { "groove": true, "t": 2.4, "end": 15.6, "bass": [43, 43, 47, 50, 48, 48, 47, 45] },
-    { "hit": true, "t": 6.8, "v": 0.6 }, { "hit": true, "t": 11.2, "v": 0.6 },
-    { "bells": true, "t": 4.4, "notes": [91, 86, 83, 86], "every": 1, "v": 0.08 },
-    { "bells": true, "t": 8.8, "notes": [88, 91, 95, 91], "every": 1, "v": 0.08 },
-    { "boom": true, "t": 15.6, "v": 0.9 },
-    { "bells": true, "t": 15.7, "notes": [79, 83, 86, 91, 95], "every": 0.5, "v": 0.14 },
-    { "stab": true, "t": 15.6, "root": 55, "v": 0.07 }
-  ] }
+ "name": "The arcade",
+ "clipVolume": 0,
+ "segments": [
+  {
+   "t": 0,
+   "dur": 2.4,
+   "fur": true,
+   "lines": [
+    {
+     "text": "3 quick games",
+     "y": 700,
+     "size": 150,
+     "color": "#f5f1e8",
+     "at": -1
+    },
+    {
+     "text": "between snowball fights",
+     "y": 870,
+     "size": 96,
+     "color": "#b9cdf2",
+     "at": 0.5
+    },
+    {
+     "text": "santahatgames.com",
+     "y": 1300,
+     "font": "body",
+     "size": 70,
+     "weight": 800,
+     "color": "#ffbe5c",
+     "at": -1
+    }
+   ]
+  },
+  {
+   "t": 2.4,
+   "dur": 5.4,
+   "src": "raw/arcade-slots.webm",
+   "log": "raw/arcade-slots.json",
+   "from": 9.6,
+   "mute": true,
+   "fit": "contain",
+   "width": 0.86,
+   "cy": 860,
+   "zoom0": 1,
+   "zoom1": 1,
+   "vignette": false,
+   "kicker": "SPIN THE REELS",
+   "label": "Big Hat",
+   "labelY": 1665,
+   "fadeIn": 0.25,
+   "fadeOut": 0.25,
+   "flash": 0.3
+  },
+  {
+   "t": 7.8,
+   "dur": 5,
+   "src": "raw/arcade-drop.webm",
+   "log": "raw/arcade-drop.json",
+   "from": 1.2,
+   "mute": true,
+   "fit": "contain",
+   "width": 0.86,
+   "cy": 860,
+   "zoom0": 1,
+   "zoom1": 1,
+   "vignette": false,
+   "kicker": "DROP A SNOWBALL",
+   "label": "Snowball Drop",
+   "labelY": 1665,
+   "fadeIn": 0.25,
+   "fadeOut": 0.25,
+   "flash": 0.3
+  },
+  {
+   "t": 12.8,
+   "dur": 5.4,
+   "src": "raw/arcade-stocking.webm",
+   "log": "raw/arcade-stocking.json",
+   "from": 10.6,
+   "mute": true,
+   "fit": "contain",
+   "width": 0.86,
+   "cy": 860,
+   "zoom0": 1,
+   "zoom1": 1,
+   "vignette": false,
+   "kicker": "PICK A STOCKING",
+   "label": "Stocking Stuffer",
+   "labelY": 1665,
+   "fadeIn": 0.25,
+   "fadeOut": 0.25,
+   "flash": 0.3
+  },
+  {
+   "t": 18.2,
+   "dur": 3,
+   "fur": true,
+   "lines": [
+    {
+     "text": "Every game has a",
+     "y": 560,
+     "size": 100,
+     "color": "#b9cdf2",
+     "at": 0
+    },
+    {
+     "text": "pool jackpot",
+     "y": 700,
+     "size": 150,
+     "color": "#ffbe5c",
+     "at": 0.15
+    },
+    {
+     "text": "Big Hat · Snowball Drop · Stocking Stuffer",
+     "y": 900,
+     "font": "body",
+     "size": 46,
+     "weight": 700,
+     "color": "#f5f1e8",
+     "at": 0.4
+    },
+    {
+     "text": "santahatgames.com",
+     "y": 1260,
+     "font": "body",
+     "size": 86,
+     "weight": 800,
+     "color": "#ffbe5c",
+     "at": 0.6
+    }
+   ]
+  }
+ ],
+ "music": {
+  "bpm": 120,
+  "volume": 1.15,
+  "parts": [
+   {
+    "bells": true,
+    "t": 0.05,
+    "notes": [
+     79,
+     83,
+     86,
+     91
+    ],
+    "every": 0.5,
+    "v": 0.15
+   },
+   {
+    "drone": true,
+    "t": 0,
+    "end": 2.4,
+    "note": 43,
+    "v": 0.08
+   },
+   {
+    "boom": true,
+    "t": 2.4,
+    "v": 0.7
+   },
+   {
+    "groove": true,
+    "t": 2.4,
+    "end": 18.2,
+    "bass": [
+     43,
+     43,
+     47,
+     50,
+     48,
+     48,
+     47,
+     45
+    ]
+   },
+   {
+    "hit": true,
+    "t": 7.8,
+    "v": 0.6
+   },
+   {
+    "hit": true,
+    "t": 12.8,
+    "v": 0.6
+   },
+   {
+    "roll": true,
+    "t": 4.219,
+    "end": 5.219
+   },
+   {
+    "boom": true,
+    "t": 5.219,
+    "v": 1
+   },
+   {
+    "bells": true,
+    "t": 5.269,
+    "notes": [
+     91,
+     95,
+     98,
+     103,
+     98,
+     103
+    ],
+    "every": 0.25,
+    "v": 0.13
+   },
+   {
+    "stab": true,
+    "t": 5.219,
+    "root": 55,
+    "v": 0.1
+   },
+   {
+    "roll": true,
+    "t": 9.421,
+    "end": 10.421
+   },
+   {
+    "boom": true,
+    "t": 10.421,
+    "v": 1
+   },
+   {
+    "bells": true,
+    "t": 10.471,
+    "notes": [
+     91,
+     95,
+     98,
+     103,
+     98,
+     103
+    ],
+    "every": 0.25,
+    "v": 0.13
+   },
+   {
+    "stab": true,
+    "t": 10.421,
+    "root": 55,
+    "v": 0.1
+   },
+   {
+    "roll": true,
+    "t": 14.585,
+    "end": 15.585
+   },
+   {
+    "boom": true,
+    "t": 15.585,
+    "v": 1
+   },
+   {
+    "bells": true,
+    "t": 15.635000000000002,
+    "notes": [
+     91,
+     95,
+     98,
+     103,
+     98,
+     103
+    ],
+    "every": 0.25,
+    "v": 0.13
+   },
+   {
+    "stab": true,
+    "t": 15.585,
+    "root": 55,
+    "v": 0.1
+   },
+   {
+    "boom": true,
+    "t": 18.2,
+    "v": 0.9
+   },
+   {
+    "bells": true,
+    "t": 18.3,
+    "notes": [
+     79,
+     83,
+     86,
+     91,
+     95
+    ],
+    "every": 0.5,
+    "v": 0.14
+   },
+   {
+    "stab": true,
+    "t": 18.2,
+    "root": 55,
+    "v": 0.08
+   },
+   {
+    "groove": true,
+    "t": 18.2,
+    "end": 21.2,
+    "bass": [
+     43,
+     43,
+     47,
+     50,
+     43,
+     43,
+     50,
+     55
+    ]
+   },
+   {
+    "pad": true,
+    "t": 18.2,
+    "end": 21.2,
+    "root": 55,
+    "v": 0.07,
+    "climb": 0
+   }
+  ]
+ }
 }

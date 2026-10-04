@@ -51,8 +51,23 @@ function music(ac, out, M, T0) {
     gn.gain.setValueAtTime(0.0001, at(t0)); gn.gain.exponentialRampToValueAtTime(v, at(t0 + 0.8)); gn.gain.setValueAtTime(v, at(t1 - 0.3)); gn.gain.exponentialRampToValueAtTime(0.0001, at(t1)); o.start(at(t0)); o.stop(at(t1 + 0.1)); };
   const bass = (t, m, dur, v = 0.22) => { const o = ac.createOscillator(), f = ac.createBiquadFilter(), gn = ac.createGain(); o.type = 'sawtooth'; o.frequency.value = hz(m); f.type = 'lowpass'; f.frequency.value = 700;
     o.connect(f); f.connect(gn); gn.connect(bus); env(gn, t, 0.01, v, dur); o.start(at(t)); o.stop(at(t + dur + 0.1)); };
+  // pluck: a plucked string (pizzicato) — the waltz's bass and chords and a warm melody voice
+  const pluck = (t, m, v = 0.2, dur = 0.4) => { const f = ac.createBiquadFilter(), gn = ac.createGain(); f.type = 'lowpass'; f.frequency.setValueAtTime(3200, at(t)); f.frequency.exponentialRampToValueAtTime(500, at(t + dur));
+    f.connect(gn); gn.connect(bus); gn.connect(rev); env(gn, t, 0.004, v, dur);
+    for (const [type, mul, amp] of [['triangle', 1, 1], ['sawtooth', 1, 0.35], ['sine', 2, 0.25]]) { const o = ac.createOscillator(), og = ac.createGain(); o.type = type; o.frequency.value = hz(m) * mul; og.gain.value = amp; o.connect(og); og.connect(f); o.start(at(t)); o.stop(at(t + dur + 0.1)); } };
+  // sleigh bells: a shaken cluster of tiny high rings
+  const jingle = (t, v = 0.06) => { for (let k = 0; k < 3; k++) { const s = noise(t + k * 0.012, 0.12), f = ac.createBiquadFilter(), gn = ac.createGain(); f.type = 'bandpass'; f.frequency.value = 6500 + k * 1700; f.Q.value = 9;
+    s.connect(f); f.connect(gn); gn.connect(bus); gn.connect(rev); env(gn, t + k * 0.012, 0.002, v, 0.1); } };
+  const THIRD = { m: 3, M: 4 };
   const beat = 60 / M.bpm;
   for (const p of M.parts) {
+    // waltz: one chord per bar of 3 — bass on 1, the chord plucked on 2 and 3. chords: [[root, 'm'|'M'], ...]
+    if (p.waltz) p.chords.forEach(([r, q], i) => { const t = p.t + i * 3 * beat, c = [r + THIRD[q], r + 7, r + 12];
+      pluck(t, r - 12, p.v ?? 0.24, beat * 1.4); for (const b of [1, 2]) c.forEach((m) => pluck(t + b * beat, m, (p.v ?? 0.24) * 0.38, beat * 0.8)); });
+    // melody: [[note, beats], ...] (note null = a rest) on a bell (music box) or a pluck
+    if (p.melody) { let t = p.t; for (const [m, b] of p.notes) { if (m != null) (p.inst === 'pluck' ? pluck(t, m, p.v ?? 0.18, beat * b * 0.95) : bell(t, m, p.v ?? 0.16)); t += b * beat; } }
+    if (p.jingle) for (let t = p.t; t < p.end - 0.01; t += beat * (p.every ?? 1)) jingle(t, p.v ?? 0.06);
+    if (p.chord) { const iv = p.quality === 'M' ? [0, 4, 7, 12, 16] : [0, 3, 7, 12, 15]; for (const i of iv) pluck(p.t, p.root + i, p.v ?? 0.12, p.dur ?? 2); }
     if (p.bells) p.notes.forEach((m, i) => bell(p.t + i * beat * (p.every ?? 1), m, p.v));
     if (p.drone) drone(p.t, p.end, p.note, p.v);
     if (p.pad) pad(p.t, p.end, p.root, p.v, p.climb);
@@ -91,6 +106,7 @@ window.compose = async function (TL) {
   const vids = {};
   for (const s of TL.segments) if (s.src && !vids[s.src]) { const v = document.createElement('video'); v.src = s.src; v.preload = 'auto'; v.playsInline = true; v.muted = true;
     await new Promise((r, j) => { v.oncanplaythrough = r; v.onerror = () => j(new Error('cannot load ' + s.src)); v.load(); }); vids[s.src] = v; }
+  for (const s of TL.segments) if (s.log) s._log = await (await fetch(s.log)).json();
   const FPS = 30, SR = 48000, total = TL.segments.reduce((m, s) => Math.max(m, s.t + s.dur), 0) + (TL.tail ?? 0.4);
   // ---- sound, made ahead of time on the same clock as the pictures: the music plus each clip's own sound (with its fades)
   const off = new OfflineAudioContext(2, Math.ceil(SR * total), SR);
@@ -135,6 +151,29 @@ window.compose = async function (TL) {
   for (let i = 0; i < buf.length; i += 32768) s += String.fromCharCode(...buf.subarray(i, i + 32768));
   return { mime: 'video/mp4', b64: btoa(s), seconds: total, frames: k, levels, peak };
 };
+// The page's own text over a game screen, from the recorder's log (promo-arcade.mjs: what the page showed, and when): the pool
+// jackpot amount above, the WIN / POOL JACKPOT stamp over the screen (a jackpot stamp held at least 2.6 s: the next ball
+// replaced it in 0.4 s), the run's "won $…" below. Times follow the clip's own playhead.
+function gameText(s, v, x, y, w, h) {
+  const now = v.currentTime, ev = s._log.events.filter((e) => e[0] <= now);
+  // pool jackpot plaque
+  g.save(); g.fillStyle = 'rgba(12,15,26,.88)'; g.strokeStyle = COL.lamp; g.lineWidth = 4; const py = y - 150; g.fillRect(x, py, w, 120); g.strokeRect(x, py, w, 120);
+  g.restore(); text('POOL JACKPOT', x + 30, py + 60, { font: 'pixel', size: 40, weight: 700, color: COL.text, align: 'left', shadow: false });
+  text(s._log.jackpot, x + w - 30, py + 62, { font: 'pixel', size: 66, weight: 700, color: COL.lamp, align: 'right', shadow: false });
+  // won bar
+  const won = ev.filter((e) => e[1] === 'won').at(-1)?.[2] || ''; g.save(); g.fillStyle = 'rgba(12,15,26,.88)'; g.fillRect(x, y + h + 24, w, 96); g.restore();
+  text('THIS RUN', x + 30, y + h + 72, { font: 'pixel', size: 36, weight: 700, color: COL.frost, align: 'left', shadow: false });
+  text(won, x + w - 30, y + h + 72, { font: 'pixel', size: 44, weight: 700, color: COL.lamp, align: 'right', shadow: false });
+  // stamp: the newest one, but a jackpot holds the screen for 2.6 s
+  const stamps = ev.filter((e) => e[1] === 'stamp'), jp = stamps.filter((e) => e[3] && e[2]).at(-1);
+  let st = stamps.at(-1); if (jp && now - jp[0] < 2.6) st = jp;
+  if (st && st[2]) { const age = now - st[0], k = Math.min(1, age / 0.18), big = st[3];
+    g.save(); g.translate(x + w / 2, y + h * (big ? 0.42 : 0.16)); g.rotate(-0.07); g.scale(1.6 - 0.6 * ease(k), 1.6 - 0.6 * ease(k)); g.globalAlpha *= Math.min(1, age / 0.1);
+    if (big) { g.fillStyle = 'rgba(255,190,92,.25)'; g.beginPath(); g.ellipse(0, 0, w * 0.55, 150, 0, 0, Math.PI * 2); g.fill(); }
+    const lines = big ? st[2].replace(/^POOL JACKPOT /, 'POOL JACKPOT\n').split('\n') : [st[2]];
+    lines.forEach((ln, i) => text(ln, 0, (i - (lines.length - 1) / 2) * (big ? 120 : 0), { size: big ? 128 : 92, color: big ? COL.lamp : COL.brim, stroke: 12 }));
+    g.restore(); }
+}
 function draw(t, TL, vids, started) {
   for (const s of TL.segments) {
     if (t < s.t - 0.6 || t > s.t + s.dur) continue;
@@ -144,9 +183,10 @@ function draw(t, TL, vids, started) {
       const fi = s.fadeIn ?? 0.35, fo = s.fadeOut ?? 0.35, a = Math.min(clamp(lt / fi), clamp((s.dur - lt) / fo));
       g.globalAlpha = a; const z = (s.zoom0 ?? 1.02) + ((s.zoom1 ?? 1.1) - (s.zoom0 ?? 1.02)) * ease(p);
       // contain: a game screen that isn't phone-shaped, framed whole on the site's night blue (with the fur trim)
-      if (s.fit === 'contain') { card({ bg: s.bg, fur: s.fur, lines: [] }, 0); const w = W * (s.width ?? 0.94) * z, h = w * v.videoHeight / v.videoWidth, cy = s.cy ?? 900;
+      if (s.fit === 'contain') { card({ bg: s.bg, fur: s.fur, furTop: s.furTop ?? 150, furBottom: s.furBottom ?? 1800, lines: [] }, 0); const w = W * (s.width ?? 0.94) * z, h = w * v.videoHeight / v.videoWidth, cy = s.cy ?? 900;
         g.save(); g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 40; g.fillStyle = COL.ink; g.fillRect((W - w) / 2 - 8, cy - h / 2 - 8, w + 16, h + 16); g.restore();
-        g.drawImage(v, (W - w) / 2, cy - h / 2, w, h); }
+        g.drawImage(v, (W - w) / 2, cy - h / 2, w, h);
+        if (s._log) gameText(s, v, (W - w) / 2, cy - h / 2, w, h); }
       else cover(v, v.videoWidth, v.videoHeight, z, (s.pan ?? 0) * p * 60, 0); g.globalAlpha = 1;
       if (s.vignette !== false) { g.globalAlpha = a; vignette(s.vignette ?? 0.5); g.globalAlpha = 1; }
       if (s.flash && lt < 0.25) { g.fillStyle = 'rgba(255,255,255,' + ((1 - lt / 0.25) * s.flash) + ')'; g.fillRect(0, 0, W, H); }
@@ -159,5 +199,27 @@ function draw(t, TL, vids, started) {
     if (o.band) { g.globalAlpha = a * (o.bandAlpha ?? 0.72); g.fillStyle = o.bandColor ?? COL.ink; g.fillRect(0, o.band[0], W, o.band[1]); }
     g.globalAlpha = a; for (const l of o.lines) text(l.text, W / 2, l.y, l); g.globalAlpha = 1; }
 }
+// A recorded picture sequence (promo-arcade.mjs: dir/index.json { crop, frames: [[file, seconds]] }) → a cropped MP4 at a
+// steady 30 fps, one picture decoded at a time (hundreds of full pages never sit in memory at once).
+window.framesToMp4 = async function (dir, fps = 30) {
+  const { Muxer, ArrayBufferTarget } = await import('https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/build/mp4-muxer.mjs');
+  const idx = await (await fetch(dir + '/index.json')).json(), load = async (f) => createImageBitmap(await (await fetch(dir + '/' + f)).blob());
+  const first = await load(idx.frames[0][0]), [cx, cy, cw, ch] = idx.crop, sx = Math.round(cx * first.width), sy = Math.round(cy * first.height);
+  const w = Math.round(cw * first.width / 2) * 2, h = Math.round(ch * first.height / 2) * 2, cv = new OffscreenCanvas(w, h), g2 = cv.getContext('2d');
+  const target = new ArrayBufferTarget(), muxer = new Muxer({ target, fastStart: 'in-memory', video: { codec: 'avc', width: w, height: h, frameRate: fps } });
+  let err = null; const enc = new VideoEncoder({ output: (c, m) => muxer.addVideoChunk(c, m), error: (e) => (err = e) });
+  enc.configure({ codec: 'avc1.640028', width: w, height: h, bitrate: 10e6, framerate: fps });
+  const end = idx.frames.at(-1)[1]; let j = 0, shown = -1, bmp = first;
+  for (let k = 0; k / fps <= end; k++) {
+    while (j + 1 < idx.frames.length && idx.frames[j + 1][1] <= k / fps) j++;
+    if (j !== shown) { if (bmp !== first) bmp.close?.(); bmp = await load(idx.frames[j][0]); shown = j; }
+    g2.drawImage(bmp, sx, sy, w, h, 0, 0, w, h);
+    const vf = new VideoFrame(cv, { timestamp: Math.round((k / fps) * 1e6), duration: Math.round(1e6 / fps) }); enc.encode(vf, { keyFrame: k % 60 === 0 }); vf.close();
+    if (enc.encodeQueueSize > 8) await new Promise((r) => setTimeout(r, 5));
+  }
+  await enc.flush(); if (err) throw err; muxer.finalize();
+  const buf = new Uint8Array(target.buffer); let s = ''; for (let i = 0; i < buf.length; i += 32768) s += String.fromCharCode(...buf.subarray(i, i + 32768));
+  return { b64: btoa(s), w, h, seconds: end };
+};
 window.readyToCompose = true;
 </script></body></html>

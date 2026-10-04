@@ -510,3 +510,10 @@ small sideways phones; run phone-shots after any top-bar change.
 (Cody: "can't really hear it") while its hits peaked at 1.69 (over full scale: crackle). compose.html now reports loudness per
 second and the peak, and ends in a limiter + soft clip. Aim: title about -12, build climbing to -8, drop/gameplay -10 to -12, peak
 under 1. Make the payoff at least as loud as the build.
+
+
+**Never record with screen capture (2026-10-04).** For the arcade jackpot clips Claude tried getDisplayMedia with Chrome's
+auto-accept test switches: it recorded Cody's WHOLE MONITOR (other windows included), and a failed file write let the old
+script run again, so it happened 4 times. Every capture was deleted at once (local only, never sent). Rules: record pages with
+the canvas (captureStream) or the DevTools page screencast, never getDisplayMedia; never chain "write a script" and "run it" in
+one step, so a failed write cannot run the old version; check a first frame before trusting a new recorder.
