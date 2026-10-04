@@ -24,6 +24,7 @@ import { makeLimiter, memoryStore } from '../server/ratelimit.js';
 import { createLevels } from '../server/levels.js';
 import { createLottery } from '../server/lottery.js';
 import { createShop } from '../server/shop.js';
+import { makeRelay } from '../server/relay.js';
 import { createSeasons } from '../server/seasons.js';
 import { createAlerts, makeTelegram } from '../server/alerts.js';
 import { livePrice, liveFee, keptFee, liveSolPrice } from '../mockups/market.js';
@@ -114,6 +115,7 @@ const handle = makeHandler({
   lottery: createLottery({ db, chain: { ...chain, latestBlock }, livePrice: price, liveFee: feeOfMint, wallet: env('LOTTERY_WALLET') || null, ...mintOpt, cluster }),
   admin: createAdmin({ db, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), onWeekly: () => server.weeklyChanged(), chain,
     poolWallets: { ...poolWallets, lottery: env('LOTTERY_WALLET') || null, treasury: env('TREASURY_WALLET') || null }, ...mintOpt }),
+  relay: makeRelay((method, params) => rpc(method, params, 15000)), // the page's backup Solana reads (read-only, signed in)
   profileFor,
 });
 

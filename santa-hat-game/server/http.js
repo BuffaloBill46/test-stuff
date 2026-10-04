@@ -92,7 +92,8 @@ export function makeHandler(deps) {
         case 'quote': out = await s.quote(profile, String(body.kind), Number(body.n), Number(body.bet)); break;
         case 'buy': out = await s.buy(profile, String(body.quote), String(body.signature)); break;
         case 'settle': out = await s.settle(profile, String(body.ticket), String(body.seed)); break;
-        case 'wallet': out = await s.wallet(profile); break; // my linked wallet's SANTA (under each game's play buttons)
+        case 'wallet': out = await s.wallet(profile); break;
+        case 'rpc': if (!deps.relay) return reply(origin, 400, { error: 'unknown action' }); out = await deps.relay(String(body.method), body.params); break; // the wallet step's backup Solana reads (server/relay.js) // my linked wallet's SANTA (under each game's play buttons)
         // levels (server/levels.js): a player's own progress; the host reporting a finished Auto match
         case 'progress': if (!deps.levels) return reply(origin, 400, { error: 'unknown action' }); out = await deps.levels.progress(profile); break;
         case 'lottery-quote': if (!deps.lottery) return reply(origin, 400, { error: 'unknown action' }); out = await deps.lottery.quote(profile, String(body.lottery), Number(body.n)); break;
