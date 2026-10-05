@@ -157,8 +157,8 @@
       <p><b>18+ and real money.</b> These games are played with SANTA on Solana. Only play with what you can afford to lose.</p>
       <p>Every entry: <b>10% is burned</b> and the rest goes into the <b>Game pool</b> that all three games pay from. Pick how many plays you want; the SANTA price is locked for the whole run, and everything the run wins is sent to your wallet at the end.</p>
       <p><b>3% SANTA tax:</b> winnings arrive 3% lighter. The SANTA token does that, not the game.</p>
-      <p><b>Pay with SANTA or SOL:</b> the same one approval either way. Pick <b>Auto</b>, <b>SANTA</b> or <b>SOL</b> under each game (Auto
-        uses SANTA when your wallet has enough). With SOL you pay exactly the price; it's swapped to SANTA inside the same payment, and the
+      <p><b>Pay with SANTA or SOL:</b> the same one approval either way. It's <b>SANTA</b> unless you switch: tap your name
+        (top right) and pick <b>SOL</b> under <b>Pay with</b>; it stays picked everywhere. With SOL you pay exactly the price; it's swapped to SANTA inside the same payment, and the
         swap's fees come out of what reaches the pool, not out of your pocket. Your very first SOL payment may also include Solana's small
         refundable account deposit (about 25¢), once. Winnings are always paid in SANTA.</p>
       <p><b>Provably fair:</b> after a run, tap <b>Check last result</b> to re-run it from the revealed secret and check it yourself.</p>
@@ -198,20 +198,20 @@
   </footer>
 </main>
 <script type="module">
-  import './sitefoot.js?v=6b1810f1b3'; // version, ©, X, Support and "How to get SANTA" at the bottom (Cody 2026-10-04)
-  import { ITEMS, COSTUMES, SEASONS } from './catalog.js?v=6b1810f1b3';
-  import { SPECIALS } from './specials.js?v=6b1810f1b3';
-  import { TEAM_PAUSED } from './refcore.js?v=6b1810f1b3';
-  import { GEAR, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=6b1810f1b3';
-  import { LEVELS, MAX_LEVEL, WINS_PER_LEVEL, MAX_BOUGHT_LEVEL, buyPrice } from './levels.js?v=6b1810f1b3';
-  import { RULES, TICKET_MAX, settleRanked } from './ranked.js?v=6b1810f1b3';
-  import { LOTTERIES, LIVE_LOTTERIES, SALES_CLOSE_MS } from './lottery.js?v=6b1810f1b3';
-  import { SYMBOLS, MACHINES, stats, JACKPOT_PCT, POOL_RULES } from './slots.js?v=6b1810f1b3';
-  import * as DROP from './plinko.js?v=6b1810f1b3';
-  import * as STOCK from './stocking.js?v=6b1810f1b3';
-  import { K, PTS } from './sim.js?v=6b1810f1b3';
-  import * as SEASON from './seasons.js?v=6b1810f1b3';
-  import { VARIANTS } from './weekly.js?v=6b1810f1b3';
+  import './sitefoot.js?v=1bfe9c1383'; // version, ©, X, Support and "How to get SANTA" at the bottom (Cody 2026-10-04)
+  import { ITEMS, COSTUMES, SEASONS } from './catalog.js?v=1bfe9c1383';
+  import { SPECIALS } from './specials.js?v=1bfe9c1383';
+  import { TEAM_PAUSED } from './refcore.js?v=1bfe9c1383';
+  import { GEAR, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=1bfe9c1383';
+  import { LEVELS, MAX_LEVEL, WINS_PER_LEVEL, MAX_BOUGHT_LEVEL, buyPrice } from './levels.js?v=1bfe9c1383';
+  import { RULES, TICKET_MAX, settleRanked } from './ranked.js?v=1bfe9c1383';
+  import { LOTTERIES, LIVE_LOTTERIES, SALES_CLOSE_MS } from './lottery.js?v=1bfe9c1383';
+  import { SYMBOLS, MACHINES, stats, JACKPOT_PCT, POOL_RULES } from './slots.js?v=1bfe9c1383';
+  import * as DROP from './plinko.js?v=1bfe9c1383';
+  import * as STOCK from './stocking.js?v=1bfe9c1383';
+  import { K, PTS } from './sim.js?v=1bfe9c1383';
+  import * as SEASON from './seasons.js?v=1bfe9c1383';
+  import { VARIANTS } from './weekly.js?v=1bfe9c1383';
   // team play paused (refcore.js TEAM_PAUSED, Cody 2026-10-03): the guide says so, and goes back by itself when it reopens
   if (TEAM_PAUSED) document.querySelector('#teamLine').textContent = 'Team play (Nice vs Naughty) is paused for now.';
   const $ = (s) => document.querySelector(s);
