@@ -34,7 +34,7 @@ for (const [w, h] of [[1280, 860], [390, 760]]) {
   const foot = await p.evaluate(() => { const x = document.querySelector('#acct .acctfoot .xlink'), b = document.querySelector('#supportBtn'), sheet = document.querySelector('#acct');
     const rx = x.getBoundingClientRect(), rb = b.getBoundingClientRect(), last = [...sheet.children].filter((c) => !c.hidden && c.offsetParent).pop();
     return { href: x.href, target: x.target, rel: x.rel, text: x.textContent.trim(), sameRow: Math.abs((rx.top + rx.bottom) / 2 - (rb.top + rb.bottom) / 2) < 6, side: rb.left > rx.right,
-      visible: rx.width > 0 && rb.width > 0 && rx.right <= innerWidth && rb.right <= innerWidth, lastIsFoot: last?.classList.contains('acctfoot'), formHidden: document.querySelector('#supportForm').hidden }; });
+      visible: rx.width > 0 && rb.width > 0 && rx.right <= innerWidth && rb.right <= innerWidth, lastIsFoot: last?.classList.contains('acctfoot') || (last?.classList.contains('getsantaline') && last.previousElementSibling?.classList.contains('acctfoot')), /* "How to get SANTA" sits just under it (Cody 2026-10-04) */ formHidden: document.querySelector('#supportForm').hidden }; });
   check(foot.href === 'https://x.com/Santahatgame' && foot.target === '_blank' && /noopener/.test(foot.rel) && foot.text === '@Santahatgame', `${w}px: the X link is the game's account, opens in a new tab ("${foot.text}")`);
   check(foot.sameRow && foot.side && foot.visible && foot.lastIsFoot && foot.formHidden, `${w}px: at the bottom of the sign-in sheet, Support right beside the X link, both on screen; the form closed`);
   await p.click('#supportBtn'); await p.waitForTimeout(200);
