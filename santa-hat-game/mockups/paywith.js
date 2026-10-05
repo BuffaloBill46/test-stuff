@@ -15,7 +15,7 @@ export function payWith() {
 export function setPayWith(v) {
   if (!(v in CHOICES)) return;
   mem = v; try { localStorage.setItem(KEY, v); } catch {}
-  render();
+  render(); document.dispatchEvent(new CustomEvent('santa:paywith')); // the wallet line under each game moves its green (walletline.js)
 }
 const slots = () => document.querySelectorAll('[data-paywith-slot]'), notes = () => document.querySelectorAll('[data-paywith-note]');
 export function payWithHtml(now = payWith()) {

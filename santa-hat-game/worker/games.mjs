@@ -65,6 +65,7 @@ const rpc = async (method, params, ms = 20000) => (await (await fetch(rpcUrl, { 
   body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }), signal: AbortSignal.timeout(ms) })).json());
 const chain = {
   tokenBalance: (owner) => tokenRaw(owner, 'confirmed'), // a player's own wallet, under the games (server/games.js wallet)
+  solBalance: (owner) => solRaw(owner), // ...and its SOL (lamports, confirmed), shown under the SANTA
   async getTransaction(signature) {
     // maxSupportedTransactionVersion 1 (2026-10-05): Phantom now sends some transfers in Solana's version-1 format; asked with 0,
     // Solana REFUSES those, and the refusal looked like "not finalized yet" forever (Cody's real deposits were version 1).

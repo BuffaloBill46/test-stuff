@@ -49,8 +49,21 @@ answer = { wallet: null }; await p.click('#slots [data-wallet-refresh]').catch((
 check((await shown(p))[0].startsWith('Your wallet: none linked to this account'), `no wallet linked: "${(await shown(p))[0]}"`);
 answer = { error: 'something went wrong on our side; please try again' }; await p.evaluate(async () => (await import('./walletline.js')).refreshWallet(true)); await p.waitForTimeout(300);
 check(/couldn't read it just now/.test((await shown(p))[0]), 'a failed read says so (never a made-up number)');
+// MAINNET: the SOL under the SANTA, the one I pay with lit green, the "Paying with" line kept (Cody 2026-10-05)
+answer = { wallet: 'W', santaRaw: 54321e6, usd: 46.21, cluster: 'mainnet', solLamports: 91_200_000, solUsd: 13.4 };
+await p.evaluate(async () => { localStorage.removeItem('santa.payWith'); (await import('./paywith.js')).showPayWith(); await (await import('./walletline.js')).refreshWallet(true); }); await p.waitForTimeout(300);
+s = await shown(p);
+check(s.length === 3 && s.every((t) => t === 'Your wallet 54,321 SANTA ≈ $46.21 0.0912 SOL ≈ $13.40 Refresh'), `SANTA, then SOL under it: "${s[0]}"`);
+const lit = () => p.evaluate(() => [...document.querySelectorAll('#slots [data-wallet] .wrow.on')].map((e) => e.dataset.wcoin));
+check(JSON.stringify(await lit()) === '["santa"]', 'paying with SANTA (the default): the SANTA row is green');
+check(/Paying with SANTA/.test(await p.evaluate(() => document.querySelector('#slots [data-paywith-note]')?.textContent || '')), 'the "Paying with SANTA" line is still there');
+await p.evaluate(async () => (await import('./paywith.js')).setPayWith('sol')); await p.waitForTimeout(100);
+check(JSON.stringify(await lit()) === '["sol"]', 'switched to SOL: the green moves to SOL at once (no new server call needed)');
+check(/Paying with SOL/.test(await p.evaluate(() => document.querySelector('#slots [data-paywith-note]')?.textContent || '')), 'and the line says "Paying with SOL"');
+await p.locator('#slots .pullrow').screenshot({ path: 'out/wallet-line-sol.png' });
+await p.evaluate(async () => (await import('./paywith.js')).setPayWith('santa'));
 await p.context().close();
 check(!errors.length, 'no page errors ' + errors.join(' | '));
 await browser.close();
 if (fails.length) { console.log('FAIL:', fails.length); process.exit(1); }
-console.log('OK: wallet line under every game: guest, signed in (SANTA + dollars), Refresh, spaced auto refresh, no wallet, failed read');
+console.log('OK: wallet line under every game: guest, signed in (SANTA + dollars; mainnet: SOL under it, the one paid with in green, moves when switched, "Paying with" kept), Refresh, spaced auto refresh, no wallet, failed read');

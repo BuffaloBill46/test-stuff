@@ -254,6 +254,10 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 .walletline { margin: 6px 0 0; font-size: 14px; color: var(--dim); display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
 .walletline b { font: 700 15px/1.2 var(--digits); color: var(--lamp); font-variant-numeric: tabular-nums; } .walletline em { font-style: normal; color: var(--text); }
 .walletline button { background: none; border: 0; padding: 0; color: var(--frost); text-decoration: underline; font: inherit; cursor: pointer; }
+/* the wallet's SANTA and SOL, one under the other; the one this player pays with lit green (Cody 2026-10-05) */
+.walletline .wrows { display: grid; gap: 3px; } .walletline .wrow { display: flex; gap: 8px; align-items: baseline; padding: 2px 8px; border-left: 3px solid transparent; }
+.walletline .wrow.on { border-left-color: var(--pine); background: rgba(127,224,160,.12); } .walletline .wrow.on b { color: var(--pine); }
+.walletline .wrows:has(.on) .wrow:not(.on) b { color: var(--dim); }
 /* Pay with: Auto / SANTA / SOL (paywith.js), one remembered choice; shown on mainnet only */
 .paywithline { margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 14px; color: var(--dim); }
 .paywithline .pwseg { display: inline-flex; border: 2px solid var(--ink); }

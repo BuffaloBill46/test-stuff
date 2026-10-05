@@ -389,11 +389,14 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     if (!chain.tokenBalance) return { wallet: w, santaRaw: null, unavailable: true }; // a server that can't read wallets: the page says it couldn't read it
     let k = walletKept.get(w);
     if (!k || Date.now() - k.at > 10_000) {
-      k = { at: Date.now(), raw: await chain.tokenBalance(w, mint) }; walletKept.set(w, k);
+      // the SOL too (Cody 2026-10-05: shown under the SANTA, the one they pay with in green); a failed SOL read is just left out
+      const [raw, sol] = await Promise.all([chain.tokenBalance(w, mint), chain.solBalance ? chain.solBalance(w).catch(() => null) : null]);
+      k = { at: Date.now(), raw, sol }; walletKept.set(w, k);
       if (walletKept.size > 5000) walletKept.delete(walletKept.keys().next().value); // never grows without end
     }
-    const price = await livePrice().catch(() => null);
-    return { wallet: w, santaRaw: k.raw, usd: price ? (k.raw / 1e6) * price.usd : null, cluster };
+    const [price, solP] = await Promise.all([livePrice().catch(() => null), Number.isFinite(k.sol) && liveSol ? liveSol().catch(() => null) : null]);
+    return { wallet: w, santaRaw: k.raw, usd: price ? (k.raw / 1e6) * price.usd : null, cluster,
+      ...(Number.isFinite(k.sol) ? { solLamports: k.sol, solUsd: solP?.usd ? (k.sol / 1e9) * solP.usd : null } : {}) };
   }
   // Public: the weekly modes Cody has switched on (supabase/034) and this week's one (weekly.js; null = none). Kept 30 s.
   let weeklyKept = { at: 0, v: null };
