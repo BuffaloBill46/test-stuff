@@ -165,6 +165,8 @@ between two devices has never been tested from here. Cody and friends testing on
 internal names (#tab-games, data-tab="games", the #games link) so links and tests don't break. Docs say Arcade from here.
 
 ### 2026-10-05 (NEWEST): LIVE ON MAINNET (Cody's GO ~12:55 UTC; LAUNCH_CHECKLIST "LIVE")
+- HOUSE BOT AIM (live 17:57 UTC): each house bot hits 10%-48% (its own, fixed; sim.js aimOf). Their board % still holds the
+  ~10 earlier matches at ~50% each, so it moves slowly; asked Cody whether to clear just those bot throw counts or play more rounds.
 - BACKUP: DigitalOcean snapshot `santa-after-go-2026-10-05` (2.63 GB, live settings). Old pre-GO snapshot: Cody deletes it himself.
   Payout worker sends a Telegram alert if payouts fail 6 passes in a row (~30 s), repeats every 30 min, and says when they work again.
 - Switched with go-mainnet --go; deposits recorded (books = wallet); main site real (LAUNCHED = true). Test site's /api answers 503
