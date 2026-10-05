@@ -8,7 +8,7 @@ const TESTS = ['admin-test', 'controls-test', 'costumes-test', 'drop-test', 'fin
   'lobby-test', 'lottery-test', 'match-intro-test', 'plinko-test', 'progress-or-test', 'referee-ranked-test', 'referee-server-test', 'runpick-test',
   'server-mode-test', 'settings-mode-test', 'sfx-test', 'shop-test', 'skip-toggle-test', 'stocking-test', 'store-gear-test', 'tabs-test',
   'theme-test', 'visuals-gear-test', 'button-audit', 'specials-play', 'gear-play', 'games-howto-shots', 'sb-lock-test', 'guide-test',
-  'season-test', 'wallet-line-test', 'sol-pay-page', 'support-test', 'errorreport-test', 'aim-test', 'share-test', 'getsanta-test'];
+  'season-test', 'wallet-line-test', 'sol-pay-page', 'support-test', 'errorreport-test', 'aim-test', 'share-test', 'getsanta-test', 'payoutwatch-test'];
 // the fixed local port each one opens (two tests with the same port wait for each other)
 const PORTS = { 'admin-test': 8788, 'shop-test': 8788, 'settings-mode-test': 8787, 'server-mode-test': 8787, 'button-audit': 8787, 'finish-test': 8794,
   'lottery-test': 8795, 'referee-ranked-test': 8094, 'referee-server-test': 8092, 'guide-test': 8793, 'season-test': 8786 };

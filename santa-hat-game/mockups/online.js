@@ -10,6 +10,7 @@ import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } 
 import { initSeason, refreshSeason } from './seasonui.js';
 import { initMoneyStrips, refreshBurned } from './moneystrip.js';
 import { initWalletLines, refreshWallet } from './walletline.js';
+import { initPayoutWatch } from './payoutwatch.js'; // winnings that couldn't go out: a pop-up asking for a ticket, only then (Cody 2026-10-05)
 import { setSolPay, setCoinFee } from './sitefoot.js'; // version, ©, X, Support and "How to get SANTA" at the bottom (Cody 2026-10-04)
 import './supportui.js'; // the Support button by the X link, bottom of the sign-in sheet (Cody 2026-10-04)
 import { createCoach } from './coach.js';
@@ -1027,6 +1028,7 @@ const tabs = initTabs(app);
 initSeason({ thumbnail, onBought: () => tabs.reloadMine() }); // the Season card (seasonui.js); a bought pass reloads what I own
 initMoneyStrips(); // the Store and Games pages' money strip (moneystrip.js): burn, treasury, pool, burned so far
 initWalletLines(); // my wallet's SANTA under each game's play buttons (walletline.js)
+initPayoutWatch(); // my winnings not sent yet → "send a ticket" pop-up (payoutwatch.js)
 // the pool jackpot banner for everyone (jackpotbar.js); its button opens Games at that game
 initShareWins(); // Share this win buttons after a winning run (sharecard.js)
 // THIS WEEK'S MODE (weekly.js): only modes Cody has switched on in the admin screen (supabase/034) run; the game server says which

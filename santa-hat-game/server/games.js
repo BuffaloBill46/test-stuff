@@ -53,6 +53,16 @@ const isSignature = (s) => /^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(String(s));
 // The safety cap on a run's payout: n × the most one play can pay (or its refunded price), + any pool jackpot it won. Only
 // an amount the game could NOT have produced (a bug or a break-in) is frozen for Cody; he can release it on the admin screen.
 const DEC = 1e6;
+// THE $30 FLOOR (Cody 2026-10-05: "it should pause if the santa balance gets below $30"): no NEW Arcade runs while the Game pool
+// has under $30 of SANTA it really holds: its books minus any top-off still waiting for Cody's deposit (the books count a top-off
+// as soon as it's due). Winnings already won keep paying (payouts never pause); runs open again by themselves once it's back
+// over $30. The page already says "The prize pool is refilling. Try again soon; nothing was charged."
+export const MIN_POOL_USD = 30;
+export async function poolHoldsRaw(query, game) {
+  const [r] = await query(`select p.santa_raw - coalesce((select sum(t.amount_raw) from public.pool_transfers t where t.game = p.game and t.kind = 'top-off' and t.status <> 'sent'), 0) as raw
+    from public.pools p where p.game = $1`, [game]);
+  return r ? Number(r.raw) : null;
+}
 
 // mint: which token is SANTA here (defaults to real SANTA; set to the test token on devnet, e.g. the SANTA_MINT secret).
 // cluster: the network the page must sign on ('mainnet' | 'devnet'); it goes in every quote with the wallet that must pay.
@@ -104,6 +114,8 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     const price = await livePrice(), p = await row('select * from public.pools where game = $1', [KINDS[kind].game]);
     const can = canTake(kind, poolState(p, price.usd), bet, cfg);
     if (!can.ok) return { refused: true, stopped: !!can.stopped };
+    const holds = await poolHoldsRaw(db.query, KINDS[kind].game);
+    if (holds !== null && (holds / DEC) * price.usd < MIN_POOL_USD) return { refused: true, low: true }; // the $30 floor (above)
     // (A waiting top-off no longer stops new runs. Cody, 2026-10-03: "a game that stops working all the time is bad and I don't
     // have the funds to create a big cushion". The top-off is booked when due; the alert (server/alerts.js "needs a TOP-OFF")
     // tells him to deposit it. Accepted risk, his call: until he does, the books count SANTA the wallet doesn't have yet, so
@@ -286,6 +298,17 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   // Only the signed-in player's OWN linked wallet; read on chain by this server (chain.tokenBalance), remembered 10 s per wallet
   // so a busy page costs at most one network read per wallet every 10 s. No wallet linked (an email account): says so.
   const walletKept = new Map();
+  // MY WINNINGS NOT SENT YET (Cody 2026-10-05: "if a player hits and the pool can't cover it tell them to send a ticket and they
+  // will get their funds sent to them. Only have that pop up if it happens"). The player's own Arcade winnings still unsent after
+  // WAIT_MINUTES, or whose send has failed at least twice (the pool short of SANTA or SOL). Held ones have their own message.
+  // They keep retrying anyway (server/payouts.js); the page's pop-up asks for a ticket so Cody hears from the player too.
+  const WAIT_MINUTES = 3;
+  async function waiting(profile) {
+    const rows = await db.query(`select po.id, po.amount_usd, r.kind, po.created_at from public.payouts po join public.runs r on r.id = po.run_id
+      where r.profile_id = $1 and po.status in ('queued', 'sending', 'failed')
+        and (po.attempts >= 2 or po.status = 'failed' or po.created_at < now() - make_interval(mins => $2)) order by po.id`, [profile, WAIT_MINUTES]);
+    return { ok: true, waiting: rows.map((x) => ({ id: +x.id, usd: +x.amount_usd, kind: x.kind, at: new Date(x.created_at).getTime() })) };
+  }
   async function wallet(profile) {
     const w = (await row('select wallet from public.profiles where id = $1', [profile]))?.wallet;
     if (!w) return { wallet: null };
@@ -326,5 +349,5 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     burnKept = { at: Date.now(), v: { gamesRaw: games, lotteryRaw: lottery, storeRaw: store, totalRaw: games + lottery + store } };
     return burnKept.v;
   }
-  return { quote, buy, settle, tidy, winners, weekWinners, pools, settings, market, burned, wallet, weekly, weeklyChanged, settingsChanged };
+  return { quote, buy, settle, tidy, winners, weekWinners, pools, settings, market, burned, wallet, waiting, weekly, weeklyChanged, settingsChanged };
 }

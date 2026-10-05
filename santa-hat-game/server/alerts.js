@@ -5,6 +5,7 @@
 // waiting over 10 minutes (the payout worker stopped?), a top-off waiting for Cody's deposit, an emergency stop, the match
 // server not answering, books ≠ wallet (server/reconcile.js), a STRONG bot signal (server/bots.js).
 import { reconcile } from './reconcile.js';
+import { poolHoldsRaw, MIN_POOL_USD } from './games.js';
 import { botSignals, BOT_RULES } from './bots.js';
 
 export const REPEAT_HOURS = 6, STUCK_MINUTES = 10;
@@ -15,7 +16,10 @@ const RAW = 1e6, santa = (raw) => (Number(raw) / RAW).toLocaleString('en-US', { 
 const POOL = (g) => (g === 'spin' ? 'Game' : g === 'slots' ? 'old Slots' : g);
 
 // telegram: { send(text) }; walletRaw(game) → the pool wallet's SANTA (raw) on the chain; refereeHealth() → throws if down.
-export function createAlerts({ db, telegram, walletRaw, refereeHealth, games = ['spin', 'slots'], now = () => Date.now() }) {
+// LOW_SOL (2026-10-05, "payouts never pause"): a wallet that pays winners needs SOL for network fees and for opening a new winner's
+// SANTA account (~0.002 SOL each); below this it's warned, long before it runs out.
+export const LOW_SOL = 0.1;
+export function createAlerts({ db, telegram, walletRaw, refereeHealth, solRaw = null, solWallets = {}, livePrice = null, games = ['spin', 'slots'], now = () => Date.now() }) {
   async function findings() {
     const out = [], add = (key, text) => out.push({ key, text });
     // Good news too (Cody's list, 2026-10-03): every POOL JACKPOT won in the last 3 hours, once each (3 h < REPEAT_HOURS, so it
@@ -28,6 +32,13 @@ export function createAlerts({ db, telegram, walletRaw, refereeHealth, games = [
     for (const p of await db.query(`select id, amount_usd from public.payouts where status = 'held' order by id`)) add(`held:${p.id}`, `A payout is HELD for you: payout #${p.id}, $${(+p.amount_usd).toFixed(2)} (the safety cap froze it, or the winner closed their SANTA account again within a day; the server log says which). Look at it in the admin screen (Release if it's real).`);
     for (const t of ['payouts', 'pool_transfers', 'lottery_payouts']) {
       for (const p of await db.query(`select id from public.${t} where status = 'failed' order by id`)) add(`failed:${t}:${p.id}`, `A send FAILED 5 times: ${t} #${p.id}. It needs a look (wallet empty? network down?).`);
+      // WE OWE (Cody 2026-10-05: "have alert in telegram, we owe wallet address x amount of santa"): per winner, the winnings stuck
+      // by the same rule as the player's "send a ticket" pop-up (server/games.js waiting: unsent after 3 minutes, or failed twice)
+      if (t === 'payouts') for (const o of await db.query(`select to_wallet, sum(amount_raw)::bigint as raw, sum(amount_usd)::numeric as usd, count(*)::int as n
+          from public.payouts where status in ('queued', 'sending', 'failed') and (attempts >= 2 or status = 'failed' or created_at < now() - interval '3 minutes')
+          group by to_wallet order by to_wallet`)) add(`owe:${o.to_wallet}:${o.raw}`, `WE OWE ${o.to_wallet} ${santa(o.raw)} SANTA (≈ $${(+o.usd).toFixed(2)}, ${o.n} winning${o.n > 1 ? 's' : ''} not sent yet). It keeps retrying and goes out as soon as the Game pool can cover it; the player has been asked to send a ticket.`);
+      // payouts never give up (server/payouts.js, Cody 2026-10-05): from the 5th failed try, still retrying every 2 minutes
+      for (const p of await db.query(`select id from public.${t} where status = 'sending' and attempts >= 5 order by id`)) add(`retrying:${t}:${p.id}`, `A send has failed 5+ times and is STILL BEING RETRIED every 2 minutes: ${t} #${p.id}. Usually the pool wallet is short of SANTA or SOL (top it up) or Solana is having trouble. It pays the moment it can.`);
       const [s] = await db.query(`select count(*)::int as n from public.${t} where status in ('queued', 'sending') and created_at < now() - make_interval(mins => $1)`, [STUCK_MINUTES]);
       if (s.n) add(`stuck:${t}`, `${s.n} ${t.replace('_', ' ')} waiting over ${STUCK_MINUTES} minutes: is the payout worker running on the Droplet?`);
     }
@@ -44,7 +55,20 @@ export function createAlerts({ db, telegram, walletRaw, refereeHealth, games = [
       // payments that may be on their way: this pool's price quotes from the last ${IN_FLIGHT_MINUTES} minutes not yet used (reconcile.js)
       const [fl] = await db.query(`select coalesce(sum(q.santa_raw), 0)::bigint as raw from public.quotes q where $1 = 'spin' and q.used_by is null and q.created_at > now() - make_interval(mins => $2)`, [game, IN_FLIGHT_MINUTES]).catch(() => [{ raw: 0 }]);
       const r = reconcile({ bookRaw: +pool.santa_raw, walletRaw: Number(wallet), payouts, transfers, inFlightRaw: Number(fl?.raw || 0) });
+      // the moment payouts would start failing: the wallet holds less SANTA than the winnings waiting to go out (they keep retrying
+      // and pay as soon as SANTA arrives; this tells Cody to add it now)
+      const owed = payouts.reduce((a, p) => a + Number(p.amount_raw), 0) + transfers.filter((x) => x.kind !== 'top-off' && x.kind !== 'deposit').reduce((a, x) => a + Number(x.amount_raw), 0);
+      if (owed > Number(wallet)) add(`short:${game}`, `URGENT: the ${POOL(game)} pool wallet holds ${santa(Number(wallet))} SANTA but ${santa(owed)} SANTA of winnings are waiting to be sent. Deposit SANTA to the pool wallet now: the waiting winnings go out the moment it arrives.`);
       if (!r.ok) add(`drift:${game}:${r.drift}`, `BOOKS DON'T MATCH the ${POOL(game)} pool wallet: the wallet has ${santa(Math.abs(r.drift))} SANTA ${r.drift > 0 ? 'MORE' : 'LESS'} than the books say. (More: a deposit not recorded yet? Less: look now.)`);
+    }
+    // the $30 floor (server/games.js MIN_POOL_USD, Cody 2026-10-05): new Arcade runs are refused until the pool is refilled
+    if (livePrice) { try { const usd = (await livePrice()).usd, holds = await poolHoldsRaw(db.query, 'spin');
+      if (holds !== null && usd > 0 && (holds / 1e6) * usd < MIN_POOL_USD) add('floor:spin', `ARCADE PAUSED: the Game pool holds only $${((holds / 1e6) * usd).toFixed(2)} of SANTA (under $${MIN_POOL_USD}), so no new runs are taken. Winnings already won still pay. Deposit SANTA to the Game pool wallet (and record it on the admin screen): the Arcade reopens by itself above $${MIN_POOL_USD}.`);
+    } catch { /* no price right now: next time */ } }
+    if (solRaw) for (const [label, address] of Object.entries(solWallets)) {
+      if (!address) continue;
+      let lamports; try { lamports = await solRaw(address); } catch { continue; } // the chain didn't answer: next time
+      if (Number(lamports) / 1e9 < LOW_SOL) add(`lowsol:${label}`, `LOW SOL: the ${label} wallet has ${(Number(lamports) / 1e9).toFixed(4)} SOL (warning below ${LOW_SOL}). It pays network fees and opens new winners' SANTA accounts; send it about 0.3 SOL soon (${address}).`);
     }
     const rows = await db.query(`select r.profile_id, pr.name, pr.wallet, q.created_at as quote_at, r.paid_at from public.runs r
       join public.payments pa on pa.signature = r.signature join public.quotes q on q.id = pa.quote_id join public.profiles pr on pr.id = r.profile_id

@@ -13,11 +13,18 @@
 // refuses to save one signature for two rows (unique tx), which stops the worker loudly if an adapter ever forgets.
 // chain = { sign(payout) → { signature, tx, blockhash }, send(tx), status(signature, blockhash) → 'landed'|'pending'|'expired'|'failed' }
 export const MAX_ATTEMPTS = 5;
+// PAYOUTS NEVER GIVE UP (Cody 2026-10-05: "make sure payouts never pause. That is a big no no"). After MAX_ATTEMPTS tries a send
+// used to be marked 'failed' and never tried again, so a few minutes of Solana trouble, or a pool short of SANTA or SOL until it
+// was topped up, stranded winnings for good. Now it keeps trying, once every RETRY_EVERY_MS, until it lands (the alert says so
+// from the 5th try). Never paying twice is unchanged: a retry signs fresh only when the saved transaction can never land.
+// When it was last tried is kept in memory: a worker restart just means one try sooner.
+export const RETRY_EVERY_MS = 120_000;
+const lastTry = new Map();
 
 // table: 'payouts' (winners), 'pool_transfers' (skims, and top-offs once approved) or 'lottery_payouts' (lottery
 // winners and refunds, when the lottery pays automatically) or 'reward_sweeps' (reward tokens from the pools to the treasury,
 // when Cody claims them: supabase/024). Same rules for all.
-export async function runPayouts({ db, chain, limit = 20, table = 'payouts' }) {
+export async function runPayouts({ db, chain, limit = 20, table = 'payouts', now = Date.now, tries = lastTry }) {
   const T = { payouts: 'public.payouts', pool_transfers: 'public.pool_transfers', lottery_payouts: 'public.lottery_payouts', reward_sweeps: 'public.reward_sweeps' }[table];
   if (!T) throw new Error('unknown table ' + table);
   const report = { sent: 0, pending: 0, resigned: 0, failed: 0 };
@@ -39,7 +46,11 @@ export async function runPayouts({ db, chain, limit = 20, table = 'payouts' }) {
   return report;
 
   async function signAndSend(p) {
-    if (p.attempts >= MAX_ATTEMPTS) { await db.query(`update ${T} set status = 'failed' where id = $1`, [p.id]); report.failed++; return; }
+    if (p.attempts >= MAX_ATTEMPTS) { // past the 5th try: keep trying, spaced out (never 'failed', never given up)
+      const key = table + ':' + p.id, at = tries.get(key);
+      if (at !== undefined && now() - at < RETRY_EVERY_MS) { report.waiting = (report.waiting || 0) + 1; return; }
+      tries.set(key, now()); report.retried = (report.retried || 0) + 1;
+    }
     const s = await chain.sign(p);
     // the adapter refused to sign this one (solanachain.js rent-drain guard): park it for Cody, never block the others
     // (each table's own "waits for Cody" status: winnings 'held' (admin release), lottery prizes 'manual' (paid by hand), anything
