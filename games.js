@@ -1,25 +1,25 @@
 // Games tab: wires the Slots page (readouts, Pull, full screen, paytable, winners list) to the rules (slots.js) and the
 // 3D Big Hat machine (slots3d.js). DEMO ONLY: play money and a demo pool kept in this browser. No SANTA moves.
-import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount, poolJackpot } from './slots.js?v=e76ac7b780';
-import { JP as DROP_JP } from './plinko.js?v=e76ac7b780';
-import { JP as STOCK_JP } from './stocking.js?v=e76ac7b780';
-import { createMachine, symbolImages } from './slots3d.js?v=e76ac7b780';
-import { poolState, savePool, resetPool, showResult } from './gamepool.js?v=e76ac7b780';
-import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js?v=e76ac7b780';
-import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js?v=e76ac7b780';
-import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js?v=e76ac7b780';
-import { runSummary } from './runui.js?v=e76ac7b780';
-import { livePrice, liveFee, santaFor, fmtSanta } from './market.js?v=e76ac7b780';
-import { initPoolSanta, setPoolPrice } from './poolsanta.js?v=e76ac7b780'; // the Game pool in SANTA too, under each $ total (Cody 2026-10-05)
-import { FEE } from './slots.js?v=e76ac7b780';
-import { play as sfx } from './sfx.js?v=e76ac7b780';
-import { celebrate, tierOf } from './celebrate.js?v=e76ac7b780';
-import { SERVER, call, settingsReady } from './gameserver.js?v=e76ac7b780';
-import { refreshWallet } from './walletline.js?v=e76ac7b780';
-import { weekStart } from './gameclock.js?v=e76ac7b780';
-import { KINDS, SIZES } from './credits.js?v=e76ac7b780';
-import { initRunPick, priceLabel } from './runpick.js?v=e76ac7b780';
-import { bigShare } from './sharecard.js?v=e76ac7b780'; // "Share this win" on a big single win (Cody 2026-10-04)
+import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount, poolJackpot } from './slots.js?v=2d3bd4b23e';
+import { JP as DROP_JP } from './plinko.js?v=2d3bd4b23e';
+import { JP as STOCK_JP } from './stocking.js?v=2d3bd4b23e';
+import { createMachine, symbolImages } from './slots3d.js?v=2d3bd4b23e';
+import { poolState, savePool, resetPool, showResult } from './gamepool.js?v=2d3bd4b23e';
+import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js?v=2d3bd4b23e';
+import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js?v=2d3bd4b23e';
+import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js?v=2d3bd4b23e';
+import { runSummary } from './runui.js?v=2d3bd4b23e';
+import { livePrice, liveFee, santaFor, fmtSanta } from './market.js?v=2d3bd4b23e';
+import { initPoolSanta, setPoolPrice } from './poolsanta.js?v=2d3bd4b23e'; // the Game pool in SANTA too, under each $ total (Cody 2026-10-05)
+import { FEE } from './slots.js?v=2d3bd4b23e';
+import { play as sfx } from './sfx.js?v=2d3bd4b23e';
+import { celebrate, tierOf } from './celebrate.js?v=2d3bd4b23e';
+import { SERVER, call, settingsReady } from './gameserver.js?v=2d3bd4b23e';
+import { refreshWallet } from './walletline.js?v=2d3bd4b23e';
+import { weekStart } from './gameclock.js?v=2d3bd4b23e';
+import { KINDS, SIZES } from './credits.js?v=2d3bd4b23e';
+import { initRunPick, priceLabel } from './runpick.js?v=2d3bd4b23e';
+import { bigShare } from './sharecard.js?v=2d3bd4b23e'; // "Share this win" on a big single win (Cody 2026-10-04)
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -266,6 +266,21 @@ export async function initGames(opts = {}) {
   window.__slots = { state, view, test, get shownPool() { return shownPool; }, get busy() { return busy; }, get fast() { return fast; } };
 }
 
+// THE REAL GAME POOL ON THE PAGE (found at GO, 2026-10-05): in server mode the readouts only moved after this player's own play,
+// so until then they showed the browser's demo pool (the $125 start), not the real one. Now the page reads the shared Game pool's
+// books from the server ('pools') at the live price when it loads, and every 30 s while the Arcade is open. Not saved to the demo.
+let lastPrice = null;
+async function syncServerPool(price = lastPrice) {
+  if (!SERVER || !(price?.usd > 0)) return;
+  lastPrice = price;
+  const r = await call('pools').catch(() => null), spin = r?.pools?.find((x) => x.game === 'spin');
+  const usd = (Number(spin?.santaRaw) / 1e6) * price.usd;
+  if (!spin || !Number.isFinite(usd)) return;
+  poolState().pool = usd; refreshDrop(); refreshStocking();
+  if (!busy) { shownPool = usd; render(); }
+}
+if (typeof window !== 'undefined') setInterval(() => { const g = document.querySelector('#tab-games'); if (SERVER && g && !g.hidden && !document.hidden) syncServerPool(); }, 30_000);
+
 // Live SANTA price and the token's live tax (read-only lookups). Refreshed every minute while the page is open.
 async function showMarket() {
   const el = $('#liveMarket');
@@ -275,7 +290,7 @@ async function showMarket() {
   // 403), which left two errors in every visitor's console (live-player test, 2026-10-02); the 3% badge says it anyway.
   const [p, f] = await Promise.allSettled([m?.usd > 0 ? { usd: m.usd } : livePrice(), m?.fee ? m.fee : SERVER ? liveFee() : Promise.reject(new Error('demo: no tax lookup'))]);
   const bits = [];
-  if (p.status === 'fulfilled') { setPrice(p.value); setPoolPrice(p.value); bits.push(`1 SANTA = <b>$${p.value.usd.toPrecision(3)}</b> · $1 ≈ <b>${fmtSanta(santaFor(1, p.value))} SANTA</b>`); }
+  if (p.status === 'fulfilled') { setPrice(p.value); setPoolPrice(p.value); syncServerPool(p.value); bits.push(`1 SANTA = <b>$${p.value.usd.toPrecision(3)}</b> · $1 ≈ <b>${fmtSanta(santaFor(1, p.value))} SANTA</b>`); }
   if (f.status === 'fulfilled') {
     const pct = f.value.bps / 100;
     bits.push(`token tax <b>${pct}%</b> (read live from the token)`);

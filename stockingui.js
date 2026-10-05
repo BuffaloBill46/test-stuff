@@ -5,16 +5,16 @@
 // playcredits.js / house.js): the WHOLE turn is decided before the first stocking jiggles; the board only shows it.
 // Celebrations follow the money (LESSONS: no losses dressed as wins): the jackpot gets the biggest, with its dollar amount; 3+
 // gifts celebrate (5+ bigger); 2 gifts (1.5×) a light touch; 1 gift (0.5×) is a loss and is said plainly. Winners absorb SANTA's 3% tax, and the messages say so.
-import { PAYS, WAYS, TOTAL, GIFTS, STOCKINGS, ROW, MAX_OPEN, JP, topMult } from './stocking.js?v=e76ac7b780';
-import { poolJackpot } from './slots.js?v=e76ac7b780';
-import { createStockings } from './stockingboard.js?v=e76ac7b780';
-import { playRun, short } from './playcredits.js?v=e76ac7b780';
-import { runSummary } from './runui.js?v=e76ac7b780';
-import { initRunPick, priceLabel } from './runpick.js?v=e76ac7b780';
-import { showResult } from './gamepool.js?v=e76ac7b780';
-import { play as sfx } from './sfx.js?v=e76ac7b780';
-import { celebrate, tierOf } from './celebrate.js?v=e76ac7b780';
-import { bigShare } from './sharecard.js?v=e76ac7b780'; // "Share this win" on a big single win (Cody 2026-10-04)
+import { PAYS, WAYS, TOTAL, GIFTS, STOCKINGS, ROW, MAX_OPEN, JP, topMult } from './stocking.js?v=2d3bd4b23e';
+import { poolJackpot } from './slots.js?v=2d3bd4b23e';
+import { createStockings } from './stockingboard.js?v=2d3bd4b23e';
+import { playRun, short } from './playcredits.js?v=2d3bd4b23e';
+import { runSummary } from './runui.js?v=2d3bd4b23e';
+import { initRunPick, priceLabel } from './runpick.js?v=2d3bd4b23e';
+import { showResult } from './gamepool.js?v=2d3bd4b23e';
+import { play as sfx } from './sfx.js?v=2d3bd4b23e';
+import { celebrate, tierOf } from './celebrate.js?v=2d3bd4b23e';
+import { bigShare } from './sharecard.js?v=2d3bd4b23e'; // "Share this win" on a big single win (Cody 2026-10-04)
 
 const $ = (s, el = document) => el.querySelector(s);
 const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);
