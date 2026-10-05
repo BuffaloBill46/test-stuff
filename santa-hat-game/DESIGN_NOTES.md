@@ -58,6 +58,13 @@ per player in the pot (bots included), bots can win, and bots play under player-
 - **Avatar items:** 50% burned, 50% to the treasury.
 - **Lottery:** 90% to winners, 10% burned.
 
+### Decided 2026-10-05 (Cody)
+- **Payouts never pause** ("a big no no"): a send that keeps failing retries every 2 minutes forever (never 'failed').
+- **NO automatic top-off from the Treasury.** Cody deposits by hand when the "needs a TOP-OFF" alert comes (pool under $200).
+- **The $30 floor:** no NEW Arcade runs while the Game pool really holds under $30; winnings still pay; reopens by itself.
+- **Stuck winnings:** the player gets a pop-up (once per payout) to send a ticket; Cody gets "WE OWE <wallet> x SANTA".
+- **At least 2 bots a match** unless 8 real players fill it. **Ranked pot:** 2 points per level, 5 per bot.
+
 ### Decided 2026-10-04 (Cody)
 - **Pay with SOL** anywhere SANTA is taken (games, lottery, Store, pass), one approval, chosen once (Auto / SANTA / SOL; Auto =
   SANTA when the wallet has enough). The player pays EXACTLY the price in SOL; Jupiter swaps it to SANTA inside the same payment;
