@@ -59,6 +59,8 @@ per player in the pot (bots included), bots can win, and bots play under player-
 - **Lottery:** 90% to winners, 10% burned.
 
 ### Decided 2026-10-05 (Cody)
+- **House bots' hit % ranges 10%-48%:** each house bot has its own fixed accuracy, spread evenly over all of them (sim.js aimOf),
+  in their own matches and in real ones. A bot's deliberate miss is a lob into open space. Ordinary practice bots are unchanged.
 - **Payouts never pause** ("a big no no"): a send that keeps failing retries every 2 minutes forever (never 'failed').
 - **NO automatic top-off from the Treasury.** Cody deposits by hand when the "needs a TOP-OFF" alert comes (pool under $200).
 - **The $30 floor:** no NEW Arcade runs while the Game pool really holds under $30; winnings still pay; reopens by itself.

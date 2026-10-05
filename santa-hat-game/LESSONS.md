@@ -578,3 +578,9 @@ worker, whose limited login (020) may not read that column; every test ran as th
 payout pass failed "permission denied for table runs" for ~50 minutes until Cody asked why his winnings had not arrived. Fixed
 by 051 (worker reads run id + signature); worker-role-db now runs the real gate as santa_worker and fails without 051. Also: a
 watch that only logs "payouts pass failed" is not an alert; WE OWE caught it (Cody), the 15-minute watch was not yet approved.
+
+**A "miss" in a crowd still hits somebody: measure the miss, don't assume it (2026-10-05).** To spread house bots' hit % from 10%
+to 48% (Cody), scattering their aim did almost nothing (8x the scatter still hit 31%), and even throwing EVERY ball 60-110 degrees
+off still hit 21%: bots crowd the hat, and a snowball starts 0.45 m in front of the thrower, right beside the next player. Only
+a wide throw into the most open direction really missed (0.9%). Each try was measured on 400 simulated matches, not reasoned
+about; tests/botaim.test.mjs holds each bot on its own target.

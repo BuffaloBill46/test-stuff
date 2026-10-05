@@ -5,7 +5,7 @@
 // Run: node tests/referee-housebots.test.mjs
 import assert from 'node:assert/strict';
 import { createReferee } from '../server/referee.js';
-import { PHASES } from '../mockups/sim.js';
+import { PHASES, aimOf } from '../mockups/sim.js';
 
 const HB = Array.from({ length: 6 }, (_, i) => ({ id: `00000000-0000-4000-8000-00000000000${i}`, name: ['frostbyte', 'Kaylee_x', 'mikey2012', 'ghostpepper', 'TannerB', 'Icicle'][i], avatar: { hat: 'hat_red' }, level: 1 + i }));
 let t = 1_000_000;
@@ -23,6 +23,10 @@ assert.ok(bots.length >= 2, 'the room has bots');
 assert.equal(hb.length, bots.length, 'every bot is told to the screen as a house bot: ' + JSON.stringify(hb.map((x) => x[1])));
 assert.ok(hb.every(([id, n, av, l]) => bots.some((r) => r[0] === id) && HB.some((b) => b.name === n && b.level === l) && av?.hat === 'hat_red'), 'with its name, look and level');
 assert.equal(new Set(hb.map((x) => x[1])).size, hb.length, 'a different house bot for each bot');
+{ // each plays with its own house bot's aim (sim.js aimOf, Cody 2026-10-05: 10%-48%)
+  const room = [...ref.rooms.values()].find((r) => r.hb?.size), allIds = HB.map((b) => b.id);
+  assert.ok(room.sim.S.ents.filter((e) => e.bot).every((e) => e.shot === aimOf(room.hb.get(e.id).id, allIds) && e.shot >= 0.1 && e.shot <= 0.48), 'each bot aims as its house bot does');
+}
 // a second room prefers house bots not already playing in the first
 const b = conn(); b.say({ t: 'join', code: 'pf2', me: { id: 'bobby02', n: 'Bob', j: 0, a: {}, l: 1 } }); run(1);
 const inA = new Set(hb.map((x) => x[1])), inB = b.last('peers').hb.map((x) => x[1]);

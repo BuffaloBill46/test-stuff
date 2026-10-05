@@ -13,7 +13,7 @@
 //   join may carry token: the player's Supabase sign-in token (checked with identify; see createReferee)
 // server → page: { t: 'peers', ps, own } · { t: 'snap', d } · { t: 'emote', d } · { t: 'board', games } · { t: 'err', why }
 //   · { t: 'counted', d: { place, level, xp, up } } my Auto match finish counted toward levels (server-recorded)
-import { createSim, K } from '../mockups/sim.js';
+import { createSim, K, aimOf } from '../mockups/sim.js';
 import { snapMs, autoStartMs, isPublic, isWeekly, PUBLIC_ROOMS, styleOf, botName, refereeOpts, modeAllowed } from '../mockups/refcore.js';
 import { weeklyAt } from '../mockups/weekly.js';
 import { settleRanked, RULES } from '../mockups/ranked.js';
@@ -94,11 +94,11 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
     const busy = new Set(), here = new Set([...room.hb.values()].map((b) => b.id));
     for (const r of rooms.values()) for (const b of r.hb?.values() || []) busy.add(b.id);
     for (const e of bots) {
-      if (room.hb.has(e.id)) { e.hb = true; continue; }
+      if (room.hb.has(e.id)) { e.hb = true; e.shot = aimOf(room.hb.get(e.id).id, hbList.map((x) => x.id)); continue; }
       const free = hbList.filter((b) => !busy.has(b.id)), pool = free.length ? free : hbList.filter((b) => !here.has(b.id));
       if (!pool.length) continue;
       const b = pool[Math.floor(rand() * pool.length)], p = { id: b.id, n: b.name, a: b.avatar, l: b.level || 1 };
-      room.hb.set(e.id, p); busy.add(b.id); here.add(b.id); e.hb = true; changed = true;
+      room.hb.set(e.id, p); busy.add(b.id); here.add(b.id); e.hb = true; e.shot = aimOf(b.id, hbList.map((x) => x.id)); changed = true; // its own aim (sim.js aimOf)
     }
     return changed;
   }
