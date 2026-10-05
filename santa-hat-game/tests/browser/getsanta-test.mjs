@@ -42,6 +42,9 @@ check(d.text.includes(MINT) && /Phantom/.test(d.text) && /SOL/.test(d.text) && /
 const jup = await p.getAttribute('#getSantaDlg [data-gs-jup]', 'href');
 check(/^https:\/\/jup\.ag\/swap\/SOL-/.test(jup) && jup.endsWith(MINT), 'the Jupiter link swaps SOL for that exact address');
 check(await p.evaluate(() => document.querySelector('[data-gs-solpay]').hidden), "pay-with-SOL isn't offered while the game doesn't take SOL (test network)");
+check(/set by the coin's team/.test(d.text), "the coin's tax isn't guessed while the game hasn't said it");
+await p.evaluate(async () => (await import('./sitefoot.js')).setCoinFee({ bps: 300, max: 1 })); // what online.js passes on mainnet
+check(await p.evaluate(() => document.querySelector('[data-gs-fee]').textContent === '3% right now'), "on mainnet it shows the tax the game server read from Solana");
 await p.click('#getSantaDlg [data-gs-copy]'); await p.waitForTimeout(300);
 check((await p.evaluate(() => navigator.clipboard.readText().catch(() => ''))) === MINT, 'Copy puts the address on the clipboard');
 await p.click('#getSantaDlg [data-gs-close]'); await p.waitForTimeout(200);

@@ -555,3 +555,7 @@ accounts with the real ATA instruction, and get SANTA with a real swap.
 **Reset only what the market owns on a mainnet copy (2026-10-04).** Resetting every writable account a swap touched also wiped
 the PLAYER's token account for Jupiter's in-between token, so the copy charged its ~0.002 SOL deposit again on every swap (looked
 like players paying rent each time). Skip accounts our own wallets own; then the deposit is paid once, as on mainnet.
+
+**A page on our site cannot read Solana directly (2026-10-04).** Solana's public node answers 403 to a browser on
+santahatgames.com, so anything the PAGE asks Solana for (the coin's tax, balances) fails quietly there, even though it worked in
+the local test. Get it from the game server (its 'market' answer, or the read-only relay) and check it on the LIVE site.

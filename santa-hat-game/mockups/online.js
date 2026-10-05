@@ -10,7 +10,7 @@ import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } 
 import { initSeason, refreshSeason } from './seasonui.js';
 import { initMoneyStrips, refreshBurned } from './moneystrip.js';
 import { initWalletLines, refreshWallet } from './walletline.js';
-import { setSolPay } from './sitefoot.js'; // version, ©, X, Support and "How to get SANTA" at the bottom (Cody 2026-10-04)
+import { setSolPay, setCoinFee } from './sitefoot.js'; // version, ©, X, Support and "How to get SANTA" at the bottom (Cody 2026-10-04)
 import './supportui.js'; // the Support button by the X link, bottom of the sign-in sheet (Cody 2026-10-04)
 import { createCoach } from './coach.js';
 import { createCallouts } from './callouts.js';
@@ -895,7 +895,7 @@ if (SERVER) call('market').then((m) => {
   const notes = document.querySelectorAll('.testnote');
   if (m?.cluster === 'devnet') notes.forEach((n) => { n.innerHTML = '<b>Test network</b> Purchases and prizes use test SANTA on Solana devnet: the real steps, with no real value.'; });
   else if (m?.cluster) notes.forEach((n) => { n.hidden = true; });
-  if (m?.cluster === 'mainnet') { import('./paywith.js').then((p) => p.showPayWith()); setSolPay(true); } // pay with SANTA or SOL (Cody 2026-10-04)
+  if (m?.cluster === 'mainnet') { import('./paywith.js').then((p) => p.showPayWith()); setSolPay(true); setCoinFee(m.fee); } // pay with SANTA or SOL (Cody 2026-10-04)
 }).catch(() => {});
 // The ranked lobby's ticket line (game server 'tickets'): free ones left today, bought ones, when the free ones refill.
 async function showTickets(ranked) {
