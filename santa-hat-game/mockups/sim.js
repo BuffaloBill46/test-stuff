@@ -12,7 +12,7 @@ export const K = {
   ARENA: 13.2, HEAD_Y: 2.05, BALL_G: 7, BALL_SPEED: 18, HAT_G: 16, PED_TOP: 1.71,
   // ROUND_TIME: seconds a round (Cody, 2026-10-02: was 90)
   // ROUNDS: rounds a match (Cody, 2026-10-03: one round; was 3)
-  ROUND_TIME: 60, ROUNDS: 1, BREAK_TIME: 6, END_TIME: 12, INTRO_TIME: 5, COUNT_TIME: 5, MAX_HUMANS: 8, MIN_BODIES: 4,
+  ROUND_TIME: 60, ROUNDS: 1, BREAK_TIME: 6, END_TIME: 12, INTRO_TIME: 5, COUNT_TIME: 5, MAX_HUMANS: 8, MIN_BODIES: 4, MIN_BOTS: 2, // MIN_BOTS: at least 2 bots a match unless real players fill all 8 places (Cody 2026-10-05)
   HUMAN_SPEED: 6.4, BOT_SPEED: 5.2, HOLD_SLOW: 0.86, MAX_BALLS: 18, HUMAN_COOL: 0.26,
   STUN: 0.9, // seconds a normal snowball hit knocks you down (special snowballs multiply it: catalog.js → rules.stun)
 };
@@ -97,12 +97,15 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
       if (reassign) H.forEach((e, i) => { e.team = i % 2; });
       else H.forEach((e) => { if (e.team < 0) { const n0 = H.filter((o) => o.team === 0).length, n1 = H.filter((o) => o.team === 1).length; e.team = n0 <= n1 ? 0 : 1; } });
       const n = [0, 1].map((t) => H.filter((e) => e.team === t).length);
-      const target = Math.max(n[0], n[1], K.MIN_BODIES / 2);
+      let target = Math.max(n[0], n[1], K.MIN_BODIES / 2);
+      // at least MIN_BOTS bots (one more each side) while the arena has room for them (Cody 2026-10-05)
+      while (2 * target - H.length < K.MIN_BOTS && 2 * (target + 1) <= K.MAX_HUMANS) target++;
       for (const t of [0, 1]) fitBots(t, target - n[t]);
     } else {
       H.forEach((e) => { e.team = 0; });
       S.ents.filter((e) => e.bot && e.team !== 1).forEach(removeEnt);
-      fitBots(1, Math.max(0, K.MIN_BODIES - H.length));
+      // bots fill to MIN_BODIES, and there are always at least MIN_BOTS of them unless real players fill the arena (Cody 2026-10-05)
+      fitBots(1, Math.max(0, Math.min(K.MAX_HUMANS - H.length, Math.max(K.MIN_BOTS, K.MIN_BODIES - H.length))));
     }
   }
   function fitBots(team, want) {

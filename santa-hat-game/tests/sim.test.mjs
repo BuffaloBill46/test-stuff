@@ -21,6 +21,11 @@ function checkInvariants(sim, tag) {
   }
   const humans = S.ents.filter((e) => !e.bot).length;
   if (humans < K.MIN_BODIES && S.ents.length < K.MIN_BODIES) fail(tag + ' bots not filling', { n: S.ents.length });
+  // at least 2 bots unless real players fill the arena (Cody 2026-10-05); team matches: as many as the room allows with even sides
+  const bots = S.ents.length - humans, room = K.MAX_HUMANS - humans;
+  if (S.mode !== 'team' && bots < Math.min(K.MIN_BOTS, room)) fail(tag + ' fewer than 2 bots', { humans, bots });
+  if (S.mode === 'team' && bots < Math.min(K.MIN_BOTS, room) && S.ents.length + 2 <= K.MAX_HUMANS) fail(tag + ' fewer than 2 bots (team)', { humans, bots });
+  if (S.ents.length > K.MAX_HUMANS && humans <= K.MAX_HUMANS && bots > 0) fail(tag + ' bots past a full arena', { humans, bots });
   if (S.mode === 'team') {
     const n = [0, 1].map((t) => S.ents.filter((e) => e.team === t).length);
     if (n[0] !== n[1]) fail(tag + ' unbalanced teams', n);
