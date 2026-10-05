@@ -115,6 +115,14 @@ if the Droplet ever died, the pool's money would be stuck without a copy of its 
 - Mainnet settings staged on the Droplet, Cody's Phantom in them; no placeholders left.
 - The full test suite, a live 1,000-plays-per-game QA, every Store item bought live, and the SOL path on a copy of mainnet.
 
+## LIVE (2026-10-05, ~12:55 UTC): Cody said GO
+- [x] go-mainnet --go: backup /var/backups/santa/db-2026-10-05T12-54-42-636Z.json, test money cleared, mainnet settings, test site
+  paused (503), services up, the server says mainnet.
+- [x] Both Game pool deposits recorded: books 345,379.17 SANTA = the wallet.
+- [x] LAUNCHED = true, main site published (build 2d3bd4b23e); fixed right after: the pool readouts now show the real pool on load.
+- [ ] Cody: one 10¢ SANTA play and one ~$1 purchase paid with SOL, from his Phantom. Then announce.
+- Watch: santa-launch-watch every 15 min through 2026-10-08.
+
 ## READY FOR GO (2026-10-05, while Cody napped): the exact steps
 State: wallets funded (Game pool 345,379.17 SANTA ≈ $139 + 0.245 SOL; lottery 0.0295 SOL; treasury 0.05 SOL), keys backed up on
 Cody's PC, `node go-mainnet.mjs` (check only) says **READY**. Pool rules are Cody's 2026-10-05 ones (code defaults): start $125, games

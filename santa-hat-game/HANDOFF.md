@@ -164,7 +164,12 @@ between two devices has never been tested from here. Cody and friends testing on
 **Naming (Cody, 2026-10-04): the Games tab is now the ARCADE** (nav bar, page heading "Santa Hat Arcade", guide). Code keeps its
 internal names (#tab-games, data-tab="games", the #games link) so links and tests don't break. Docs say Arcade from here.
 
-### 2026-10-05 (NEWEST): READY FOR GO. Waiting only on Cody's "GO" (LAUNCH_CHECKLIST "READY FOR GO": the exact steps)
+### 2026-10-05 (NEWEST): LIVE ON MAINNET (Cody's GO ~12:55 UTC; LAUNCH_CHECKLIST "LIVE")
+- Switched with go-mainnet --go; deposits recorded (books = wallet); main site real (LAUNCHED = true). Test site's /api answers 503
+  (Caddy test-api.caddy; its devnet line in test-api.caddy.devnet). Devnet settings kept as /etc/santa/*.env.devnet.
+- Waiting on Cody: his 10¢ SANTA play + ~$1 SOL purchase, then the announcement.
+
+### 2026-10-05: READY FOR GO. Waiting only on Cody's "GO" (LAUNCH_CHECKLIST "READY FOR GO": the exact steps)
 - Wallets funded (Game pool 345,379.17 SANTA ≈ $139 + 0.245 SOL; lottery 0.0295 SOL; treasury 0.05 SOL); keys backed up to Cody's
   PC (C:\santa-mainnet-keys, verified); `node go-mainnet.mjs` says READY. The two Game pool deposits to record are listed there.
 - Cody's pool rules (code defaults, slots.js POOL_RULES): start $125, games play down to $30 (covers(): his backing up to $125
