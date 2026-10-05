@@ -25,6 +25,7 @@ import * as kit from '@solana/kit';
 import * as T22 from '@solana-program/token-2022';
 import { runPayouts } from '../server/payouts.js';
 import { makePaymentGate } from '../server/paymentgate.js';
+import { makeTelegram } from '../server/alerts.js';
 import { makeSolanaChain, makeSweepChain } from '../server/solanachain.js';
 import { queueRewardClaims, chainBalances } from '../server/rewards.js';
 import { liveFee } from '../mockups/market.js';
@@ -73,6 +74,19 @@ const statusRpc = kit.createSolanaRpc(rpcUrl);
 const gatedPayouts = makePaymentGate({ db, statuses: async (sig) => (await statusRpc.getSignatureStatuses([sig], { searchTransactionHistory: true }).send()).value[0] }).gate(adapter('payouts'));
 const chains = { ...Object.fromEntries(tables.slice(0, 3).map((t) => [t, adapter(t)])), payouts: gatedPayouts, reward_sweeps: sweepChain };
 const pools = { spin: env('SPIN_POOL_WALLET'), slots: env('SLOTS_POOL_WALLET'), lottery: env('LOTTERY_POOL_WALLET') }, balances = chainBalances(kit.createSolanaRpc(rpcUrl));
+// PAYOUTS FAILING → TELEGRAM AT ONCE (Cody 2026-10-05, after payouts silently failed ~50 min: "permission denied for table runs").
+// When a money table's pass has failed 6 times in a row (~30 s), Cody gets one message with the reason; again every 30 minutes while
+// it lasts; and one when it works again. Needs TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID in worker.env (without them: logged only).
+const telegram = env('TELEGRAM_BOT_TOKEN') && env('TELEGRAM_CHAT_ID') ? makeTelegram({ token: env('TELEGRAM_BOT_TOKEN'), chatId: env('TELEGRAM_CHAT_ID'), db }) : null;
+const failing = new Map(); // table → { n, since, told, why }
+const NAMES = { payouts: 'Arcade winnings', pool_transfers: 'pool transfers (skims / top-offs)', lottery_payouts: 'lottery prizes', reward_sweeps: 'reward sweeps' };
+async function tell(text) { if (!telegram) { console.error('PAYOUT ALERT (no Telegram in worker.env):', text); return; } try { await telegram.send('🎅 Santa Hat: ' + text); } catch (e) { console.error('payout alert: Telegram failed', e.message); } }
+async function failed(t, why) {
+  const f = failing.get(t) || { n: 0, since: Date.now(), told: 0 }; f.n++; f.why = why; failing.set(t, f);
+  if (f.n >= 6 && Date.now() - f.told > 30 * 60_000) { f.told = Date.now();
+    await tell(`PAYOUTS ARE FAILING: ${NAMES[t] || t} could not be sent for ${Math.round((Date.now() - f.since) / 1000)} s. Reason: ${String(why).slice(0, 160)}. Winnings wait safely and go out once it's fixed; tell Claude.`); }
+}
+async function worked(t) { const f = failing.get(t); if (!f) return; failing.delete(t); if (f.told) await tell(`Payouts are working again: ${NAMES[t] || t} are going out.`); }
 async function pass() {
   // Cody's reward claims become sweeps first (024 not applied yet: skipped quietly, like a missing money table below)
   if ((await db.query('select to_regclass($1) is not null as x', ['public.reward_claims']))[0].x) {
@@ -85,7 +99,8 @@ async function pass() {
     try {
       const r = await runPayouts({ db, chain: chains[t], table: t });
       if (r.sent || r.pending || r.resigned || r.failed) console.log(new Date().toISOString(), t, JSON.stringify(r));
-    } catch (e) { console.error(new Date().toISOString(), t, 'pass failed:', e.message); }
+      await worked(t);
+    } catch (e) { console.error(new Date().toISOString(), t, 'pass failed:', e.message); await failed(t, e.message); }
   }
 }
 console.log(`worker: ${env('SOLANA_CLUSTER', /devnet/.test(rpcUrl) ? 'devnet' : 'mainnet')}, keys: ${Object.entries(keys).filter(([, v]) => v).map(([k]) => k).join(', ') || 'none'}`);
