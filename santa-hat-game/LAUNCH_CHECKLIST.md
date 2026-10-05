@@ -120,7 +120,9 @@ if the Droplet ever died, the pool's money would be stuck without a copy of its 
   paused (503), services up, the server says mainnet.
 - [x] Both Game pool deposits recorded: books 345,379.17 SANTA = the wallet.
 - [x] LAUNCHED = true, main site published (build 2d3bd4b23e); fixed right after: the pool readouts now show the real pool on load.
-- [ ] Cody: one 10¢ SANTA play and one ~$1 purchase paid with SOL, from his Phantom. Then announce.
+- [x] Cody's real-money checks (2026-10-05, audited): Arcade 3 runs / 7 plays in SANTA (all 3 winnings sent, 1st try); Store 4 buys
+  paid in SOL ($6, exact price; treasury +0.033175 SOL); lottery 7 tickets. Books = Solana to the unit: Game pool 342,585.70 SANTA,
+  lottery 6,104.94 SANTA, treasury 0.083175 SOL. Next: announce.
 - Watch: santa-launch-watch every 15 min through 2026-10-08.
 
 ## READY FOR GO (2026-10-05, while Cody napped): the exact steps
