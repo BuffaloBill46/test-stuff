@@ -213,7 +213,9 @@ async function enterRoom(code, quick, opts = {}) {
     const players = r.peers().filter((p) => !p.w).length, watchers = r.peers().filter((p) => p.w && p.id !== me.id).length;
     if (me.w && watchers >= MAX_WATCHERS) { r.leave(); status(`That game already has ${MAX_WATCHERS} watchers. Try another.`); return; }
     if (!me.w && players > K.MAX_HUMANS) { r.leave(); if (quick) continue; status(`Room ${c} is full (8 players).`); return; }
-    room = r; roomCode = opts.ranked || serverPicks ? r.code() : c; practice = false; break;
+    room = r; roomCode = opts.ranked || serverPicks ? r.code() : c; practice = false;
+    if (opts.mine) store.set('sq_mycode', c); // a private room code I typed (Create / Join): filled in next time
+    break;
   }
   if (!room) { status('All public rooms are full right now. Try a private room.'); return; }
   roomMode = isPublic(roomCode) ? (roomCode[1] === 'T' && modeAllowed('team') ? 'team' : 'ffa') : null; autoStart = isPublic(roomCode); cdEnd = null;
@@ -1011,8 +1013,19 @@ if (REFEREE) {
   board.tour.signIn(signInToken);
 }
 $('#quick').addEventListener('click', () => (lobbyKind === 'ranked' ? enterRoom('', false, { ranked: true }) : enterRoom('', true)));
-$('#create').addEventListener('click', () => enterRoom(rid(4).toUpperCase().replace(/[^A-Z0-9]/g, 'X'), false));
-$('#joinBtn').addEventListener('click', () => { const c = cleanCode($('#code').value); if (c.length < 3) { status('Type the room code your friend shared.'); return; } enterRoom(c, false); });
+// PRIVATE ROOMS WITH YOUR OWN CODE (Cody 2026-10-05: "the password you use to create it is the same password they join with"):
+// Create opens the room with the code typed in the box (3-6 letters or numbers); empty: a random one as before. Not a public
+// room's code. The code is remembered on this device (sq_mycode) and filled in next time, for families playing night after night.
+function privateCode() {
+  const c = cleanCode($('#code').value);
+  if (!c) return rid(4).toUpperCase().replace(/[^A-Z0-9]/g, 'X');
+  if (c.length < 3) { status('A room code is 3 to 6 letters or numbers.'); return null; }
+  if (isPublic(c)) { status('That code belongs to the public games. Pick another one.'); return null; }
+  return c;
+}
+$('#create').addEventListener('click', () => { const c = privateCode(); if (c) enterRoom(c, false, { mine: true }); });
+{ const kept = cleanCode(store.get('sq_mycode') || ''); if (kept && !$('#code').value) $('#code').value = kept; }
+$('#joinBtn').addEventListener('click', () => { const c = cleanCode($('#code').value); if (c.length < 3) { status('Type the room code your friend shared.'); return; } enterRoom(c, false, isPublic(c) ? {} : { mine: true }); });
 $('#practice').addEventListener('click', startPractice);
 $('#playUnranked').addEventListener('click', () => openLobby('unranked'));
 $('#playBig').addEventListener('click', () => { tabs.show('play'); scrollTo(0, 0); }); // Home's Play now: the Play page and its match types (Cody 2026-10-03)

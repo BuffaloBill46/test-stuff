@@ -108,6 +108,7 @@ input[type=text], input[type=number] { width: 100%; font: 500 17px/1.2 var(--bod
 input[type=text]:focus-visible, input[type=number]:focus-visible { outline: 3px solid var(--lamp); outline-offset: 1px; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch; }
 .row > input { flex: 1; min-width: 0; text-transform: uppercase; font-family: var(--digits); letter-spacing: 2px; }
+.codehint { margin: 2px 0 6px !important; font-size: 13px !important; line-height: 1.35 !important; } .codehint b { color: var(--text); }
 .go { font: 800 24px/1 var(--display); letter-spacing: .5px; color: var(--brim); background: var(--hat); cursor: pointer;
   border: 2px solid var(--ink); border-radius: 4px; padding: 10px 22px 16px; box-shadow: inset 0 -8px 0 var(--brim), inset 0 -10px 0 #d9d2c2, 3px 3px 0 var(--ink); text-shadow: 1px 1px 0 var(--hat-dark); }
 .go:hover { background: #dd3a30; } .go:active { transform: translate(2px, 2px); box-shadow: inset 0 -8px 0 var(--brim), 1px 1px 0 var(--ink); }
@@ -1433,7 +1434,8 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       <label><input type="checkbox" data-astyle="gear"> <span>Special gear <small>your specials and gear count</small></span></label>
     </div>
     <div id="tourBox" hidden><button class="sec" id="tourney">Tournament</button><div id="tourAdmin" hidden></div></div>
-    <div class="row unr"><input id="code" type="text" maxlength="6" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code"><button class="sec" id="joinBtn">Join room</button></div>
+    <div class="row unr"><input id="code" type="text" maxlength="6" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code (your own, 3 to 6 letters or numbers)"><button class="sec" id="joinBtn">Join room</button></div>
+    <p class="codehint unr dim">Pick your own room code (3 to 6 letters or numbers): <b>Create</b> opens the room, friends type the same code and <b>Join</b>. Use the same code every time; this device remembers it.</p>
     <div class="row unr"><button class="sec" id="create">Create private room</button><button class="sec" id="practice">Practice vs bots</button></div>
   </div>
   <p id="status" role="status"></p>
