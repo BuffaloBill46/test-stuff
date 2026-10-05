@@ -136,6 +136,9 @@ let careerOf = null;
 const short1 = (raw) => { const n = (raw || 0) / 1e6; return n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K' : String(Math.round(n)); };
 export const aimText = (c) => (c ? `${c.thrown} thrown · ${c.hits} hit · ${c.thrown ? Math.min(100, Math.round((100 * c.hits) / c.thrown)) : 0}%` : '—');
 export const santaText = (c) => (c ? `${short1(c.spentRaw)} spent · ${short1(c.wonRaw)} won` : '—');
+// the Ranked board's two career lines, label first and in the readable font (Cody 2026-10-05: "on my phone it's hard to tell SANTA 0 used 0 won")
+const careerLines = (c) => `<small class="career">Throws <b>${c.thrown}</b> · Hits <b>${c.hits}</b> · <b>${c.thrown ? Math.min(100, Math.round((100 * c.hits) / c.thrown)) : 0}%</b></small>`
+  + `<small class="career">SANTA spent <b>${short1(c.spentRaw)}</b> · won <b>${short1(c.wonRaw)}</b></small>`;
 async function fillCareer(el, profile) {
   const aim = el.querySelector('#pgAim'), money = el.querySelector('#pgMoney'); if (!aim || !money) return;
   if (!profile?.id || !careerOf) { aim.textContent = money.textContent = profile ? '—' : 'Sign in'; return; }
@@ -578,7 +581,7 @@ export function initTabs(app) {
       const rows = await app.accounts.leaderboard(since);
       lb.innerHTML = rows.length
         ? `<table class="lb"><thead><tr><th>#</th><th>Player</th><th>Level</th><th style="text-align:right">${since ? (which === 'today' ? 'Points today' : 'Points this week') : 'Points'}</th></tr></thead><tbody>${
-            rows.map((r, i) => `<tr class="${p && r.wallet === p.wallet ? 'me' : ''}"><td class="n">${i + 1}</td><td>${esc(r.name)}<small>${esc(short(r.wallet))}</small>${r.career ? `<small class="career">${aimText(r.career)}</small><small class="career">SANTA ${santaText(r.career)}</small>` : ''}</td><td>${r.level}</td><td class="p">${r.rank_points}</td></tr>`).join('')}</tbody></table>`
+            rows.map((r, i) => `<tr class="${p && r.wallet === p.wallet ? 'me' : ''}"><td class="n">${i + 1}</td><td>${esc(r.name)}<small>${esc(short(r.wallet))}</small>${r.career ? careerLines(r.career) : ''}</td><td>${r.level}</td><td class="p">${r.rank_points}</td></tr>`).join('')}</tbody></table>`
         : since ? `<p class="dim">No ranked matches ${which === 'today' ? 'today' : 'this week'} yet. Play ranked to be first on this board.</p>` : '<p class="dim">No players yet. Sign in to be first on the board.</p>';
     } catch (e) { lb.innerHTML = `<p class="dim">Couldn't load the leaderboard right now. ${esc(e.message)}</p>`; }
   }
