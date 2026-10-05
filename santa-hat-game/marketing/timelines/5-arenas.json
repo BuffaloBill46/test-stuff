@@ -1,0 +1,266 @@
+{
+ "name": "Arenas: Halloween + Christmas",
+ "clipVolume": 0.18,
+ "segments": [
+  {
+   "t": 0,
+   "dur": 3,
+   "fur": true,
+   "lines": [
+    {
+     "text": "santahatgames.com",
+     "y": 560,
+     "font": "body",
+     "size": 92,
+     "weight": 800,
+     "color": "#ffbe5c",
+     "at": -1
+    },
+    {
+     "text": "Free to play",
+     "y": 820,
+     "size": 150,
+     "color": "#f5f1e8",
+     "at": -1
+    },
+    {
+     "text": "Email saves rank",
+     "y": 1020,
+     "size": 124,
+     "color": "#b9cdf2",
+     "at": -1
+    },
+    {
+     "text": "Upgrades paid in SANTA",
+     "y": 1210,
+     "size": 108,
+     "color": "#ff7a66",
+     "at": -1
+    }
+   ]
+  },
+  {
+   "t": 3,
+   "dur": 6.6,
+   "src": "raw/gameplay-halloween.webm",
+   "from": 1.2,
+   "mute": true,
+   "zoom0": 1.18,
+   "zoom1": 1.04,
+   "fadeIn": 0.05,
+   "fadeOut": 0.35,
+   "flash": 0.8,
+   "vignette": 0.35
+  },
+  {
+   "t": 9.6,
+   "dur": 6.8,
+   "src": "raw/gameplay-christmas.webm",
+   "from": 1.2,
+   "mute": true,
+   "zoom0": 1.18,
+   "zoom1": 1.04,
+   "fadeIn": 0.35,
+   "fadeOut": 0.5,
+   "flash": 0.9,
+   "vignette": 0.35
+  }
+ ],
+ "overlays": [
+  {
+   "t": 3.3,
+   "dur": 3,
+   "lines": [
+    {
+     "text": "HALLOWEEN ARENA",
+     "y": 250,
+     "font": "pixel",
+     "size": 64,
+     "weight": 700,
+     "color": "#ff8a1a",
+     "stroke": 8
+    },
+    {
+     "text": "Steal the Santa hat",
+     "y": 345,
+     "size": 96,
+     "color": "#ffbe5c",
+     "stroke": 8
+    }
+   ]
+  },
+  {
+   "t": 9.9,
+   "dur": 3,
+   "lines": [
+    {
+     "text": "CHRISTMAS ARENA",
+     "y": 250,
+     "font": "pixel",
+     "size": 64,
+     "weight": 700,
+     "color": "#cfe8ff",
+     "stroke": 8
+    },
+    {
+     "text": "8 players · 1 hat",
+     "y": 345,
+     "size": 96,
+     "color": "#f5f1e8",
+     "stroke": 8
+    }
+   ]
+  },
+  {
+   "t": 13.4,
+   "dur": 3,
+   "band": [
+    1380,
+    400
+   ],
+   "lines": [
+    {
+     "text": "Play free now",
+     "y": 1490,
+     "size": 130,
+     "color": "#f5f1e8"
+    },
+    {
+     "text": "santahatgames.com",
+     "y": 1650,
+     "font": "body",
+     "size": 86,
+     "weight": 800,
+     "color": "#ffbe5c"
+    }
+   ]
+  }
+ ],
+ "music": {
+  "bpm": 100,
+  "volume": 1.15,
+  "parts": [
+   {
+    "bells": true,
+    "t": 0.05,
+    "notes": [
+     76,
+     79,
+     81,
+     83,
+     81,
+     79
+    ],
+    "every": 0.5,
+    "v": 0.2
+   },
+   {
+    "drone": true,
+    "t": 0,
+    "end": 3,
+    "note": 40,
+    "v": 0.07
+   },
+   {
+    "boom": true,
+    "t": 3,
+    "v": 0.9
+   },
+   {
+    "stab": true,
+    "t": 3,
+    "root": 52,
+    "v": 0.12
+   },
+   {
+    "groove": true,
+    "t": 3,
+    "end": 9.6,
+    "bass": [
+     40,
+     40,
+     43,
+     45,
+     40,
+     40,
+     47,
+     45
+    ]
+   },
+   {
+    "pad": true,
+    "t": 3,
+    "end": 9.6,
+    "root": 52,
+    "v": 0.12,
+    "climb": 0
+   },
+   {
+    "pulse": true,
+    "t": 3,
+    "end": 9.6,
+    "v": 0.4
+   },
+   {
+    "boom": true,
+    "t": 9.6,
+    "v": 1
+   },
+   {
+    "stab": true,
+    "t": 9.6,
+    "root": 55,
+    "v": 0.12
+   },
+   {
+    "groove": true,
+    "t": 9.6,
+    "end": 16.4,
+    "bass": [
+     43,
+     43,
+     47,
+     48,
+     43,
+     43,
+     50,
+     48
+    ]
+   },
+   {
+    "pad": true,
+    "t": 9.6,
+    "end": 16.3,
+    "root": 55,
+    "v": 0.12,
+    "climb": 0
+   },
+   {
+    "pulse": true,
+    "t": 9.6,
+    "end": 16.3,
+    "v": 0.45
+   },
+   {
+    "bells": true,
+    "t": 10.2,
+    "notes": [
+     88,
+     91,
+     93,
+     95,
+     93,
+     91,
+     88,
+     86,
+     88,
+     91,
+     93,
+     95
+    ],
+    "every": 1,
+    "v": 0.12
+   }
+  ]
+ }
+}

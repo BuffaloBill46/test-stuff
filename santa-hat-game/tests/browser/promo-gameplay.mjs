@@ -7,7 +7,11 @@ const require = createRequire(import.meta.url);
 const { chromium } = require(path.join(execSync('npm root -g').toString().trim(), 'playwright'));
 const ROOT = path.resolve('../../mockups'), OUT = path.resolve('../../marketing/raw'); mkdirSync(OUT, { recursive: true });
 const SECS = +(process.argv[2] || 14), ZOOM = process.argv[3] || '1.7', TAG = process.argv[4] || 'a';
-const W = 540, H = 960;
+// Options (Cody 2026-10-05: "show them playing in the halloween arena and then the xmas arena, then 1 screenshot of each arena full
+// with them playing"): THEME=halloween|christmas (the plaza), BODIES=8 (a full arena: me + 7), W/H (the window), SHOT=<file.png> with
+// SHOT_AT=<seconds> (one picture of the page at that moment, saved to marketing/stills/), NOREC=1 (picture only, no video).
+const W = +(process.env.W || 540), H = +(process.env.H || 960), THEME = process.env.THEME || '', BODIES = +(process.env.BODIES || 5);
+const SHOT = process.env.SHOT || '', SHOT_AT = +(process.env.SHOT_AT || 8), NOREC = !!process.env.NOREC;
 const LOOKS = [
   { face: 'face_panda', shirt: 'shirt_coal', pants: 'pants_snow', hat: 'hat_earmuffs' },
   { shirt: 'shirt_frostking', pants: 'pants_frostking', face: 'face_frostking', hat: 'hat_icecrown', pack: 'pack_icewings', snow: 'snow_crystal' },
@@ -18,27 +22,30 @@ const LOOKS = [
 const browser = await chromium.launch({ headless: false, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 2 });
 await ctx.addInitScript(([looks, zoom]) => {
-  localStorage.setItem('santa.coached', '1'); localStorage.setItem('sh_zoom', zoom);
+  localStorage.setItem('santa.coached', '1'); localStorage.setItem('sh_zoom', zoom); localStorage.setItem('sq_name', 'SnowStorm');
+  if (globalThis.__theme) localStorage.setItem('sh_theme', globalThis.__theme);
   globalThis.__promo = { queue: looks.map((l) => ({ shirt: 'shirt_red', pants: 'pants_navy', face: 'face_dots', skin: 'skin_2', hat: 'hat_none', pack: 'pack_none', snow: 'snow_white', ...l })), map: {} };
 }, [LOOKS, ZOOM]);
+if (THEME) await ctx.addInitScript((t) => { localStorage.setItem('sh_theme', t); }, THEME);
 await ctx.route('**/*', async (route) => { const url = route.request().url();
   if (url.includes('cdn.jsdelivr.net/npm/three@')) return route.fulfill({ body: readFileSync(path.resolve('node_modules/three/build', url.split('/build/')[1])), contentType: 'text/javascript' });
   if (/cdn\.jsdelivr\.net\/npm\/|fonts\.googleapis|fonts\.gstatic/.test(url)) { try { return route.fulfill({ body: execSync(`curl -sS -L -A "Mozilla/5.0 Chrome/120" "${url}"`, { maxBuffer: 1e8 }), contentType: url.includes('googleapis') ? 'text/css' : url.includes('gstatic') ? 'font/woff2' : 'text/javascript' }); } catch { return route.fulfill({ status: 503, body: '' }); } }
   if (url.startsWith('http://localhost/')) { const p = url.replace('http://localhost/', '').split(/[?#]/)[0], f = path.join(ROOT, p); if (!existsSync(f)) return route.fulfill({ status: 404, body: 'nf' });
     let body = readFileSync(f);
-    if (p === 'sim.js') body = body.toString().replace('MIN_BODIES: 4,', 'MIN_BODIES: 5,'); // me + the four costumes
+    if (p === 'sim.js') body = body.toString().replace('MIN_BODIES: 4,', `MIN_BODIES: ${BODIES},`); // me + the four costumes (+ more: a full arena)
     if (p === 'refcore.js') body = body.toString().replace('export function botAvatar(id) {', 'export function botAvatar(id) { const P = globalThis.__promo; if (P) { if (!(id in P.map) && P.queue.length) P.map[id] = cleanAvatar(P.queue.shift()); if (P.map[id]) return P.map[id]; }');
     return route.fulfill({ body, contentType: p.endsWith('.js') ? 'text/javascript' : p.endsWith('.png') ? 'image/png' : p.endsWith('.css') ? 'text/css' : 'text/html' }); }
   return route.fulfill({ status: 503, body: '' }); });
 const page = await ctx.newPage(); page.on('pageerror', (e) => console.log('ERR', e.message));
 await page.goto('http://localhost/online.html?net=local', { timeout: 90000 }); await page.waitForFunction(() => window.__sq, null, { timeout: 90000 });
-await page.evaluate(() => { const s = window.__sq; Object.assign(s.me.a, { shirt: 'shirt_red', pants: 'pants_navy', face: 'face_dots', skin: 'skin_2', hat: 'hat_beanie', pack: 'pack_none' }); s.me.l = 8; s.startPractice(); });
+await page.evaluate(() => { const s = window.__sq; s.me.n = 'SnowStorm'; Object.assign(s.me.a, { shirt: 'shirt_red', pants: 'pants_navy', face: 'face_dots', skin: 'skin_2', hat: 'hat_beanie', pack: 'pack_none' }); s.me.l = 8; s.startPractice(); });
 await page.waitForFunction(() => document.querySelector('#start'), null, { timeout: 30000 }); await page.evaluate(() => document.querySelector('#start').click());
 await page.waitForFunction(() => { const s = window.__sq; if (/^(intro|count)$/.test(s.sim?.S.phase)) s.sim.S.time = 0; return s.view?.phase === 'play'; }, null, { timeout: 60000 });
 // the browser's own recorder on the game's 3D view (no HUD: just the match), 30 fps
 await page.evaluate(() => { const c = [...document.querySelectorAll('canvas')].sort((a, b) => b.width * b.height - a.width * a.height)[0];
   const rec = new MediaRecorder(c.captureStream(30), { mimeType: 'video/webm;codecs=vp9', videoBitsPerSecond: 12e6 }); const parts = [];
   rec.ondataavailable = (e) => parts.push(e.data); window.__rec = { rec, parts }; rec.start(500); });
+let shotDone = !SHOT;
 const t0 = Date.now();
 // play like a person: run in bursts, throw at whoever is nearest (a tap on their spot on the screen)
 const keys = ['KeyW', 'KeyA', 'KeyS', 'KeyD'];
@@ -59,6 +66,7 @@ while (Date.now() - t0 < SECS * 1000) {
     await page.waitForTimeout(250);
   }
   await page.keyboard.up(k); await page.keyboard.up(k2);
+  if (!shotDone && Date.now() - t0 >= SHOT_AT * 1000) { shotDone = true; await page.screenshot({ path: path.join(OUT, '..', 'stills', SHOT) }); console.log('picture', SHOT); }
   if (process.env.DBG) console.log(await page.evaluate(() => { const S = window.__sq.sim.S; return [S.phase, S.time?.toFixed?.(1), window.__sq.view?.phase, S.ents.map((e) => e.x.toFixed(1)).join(" ")].join(" | "); }));
 }
 const b64 = await page.evaluate(() => new Promise((done) => { const { rec, parts } = window.__rec; rec.onstop = async () => { const buf = new Uint8Array(await new Blob(parts).arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i += 32768) s += String.fromCharCode(...buf.subarray(i, i + 32768)); done(btoa(s)); }; rec.stop(); }));

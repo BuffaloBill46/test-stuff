@@ -27,7 +27,7 @@ import { initLottery } from './lotteryui.js';
 import { play as sfx, initSoundButtons } from './sfx.js';
 import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js';
 import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js';
-import { snapMs, autoStartMs, isPublic, isWeekly, PUBLIC_ROOMS, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js';
+import { snapMs, autoStartMs, isPublic, isWeekly, PUBLIC_ROOMS, styleOf, botAvatar, botName, BOT_NAMES, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js';
 
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
@@ -142,7 +142,17 @@ const inRoom = () => !!room || practice;
 // (on the referee server my own name is the one it checked, like everyone else's: a signed-in player's saved name)
 // HOUSE BOTS (Cody 2026-10-05): the match server says which house bot account each bot plays as: its name and look on screen
 let hbMap = new Map();
-const nameOf = (e) => (e.bot ? hbMap.get(e.id)?.n || botName(e.id) : (e.peer === me.id && room?.kind !== 'server' ? me.n : names.get(e.peer) || (e.peer === me.id ? me.n : '')) || 'Player');
+// bots NOT played by a house bot (practice, a server without them): a name from the list, never one another bot in the match
+// already has (2026-10-05: two "snowday"s in one practice match; botName(id) alone can land two ids on the same name)
+const botNames = new Map();
+function uniqueBotName(e) {
+  if (botNames.has(e.id)) return botNames.get(e.id);
+  const here = new Set((sim?.S.ents || currentView?.ents || []).filter((x) => x.bot && x.id !== e.id && botNames.has(x.id)).map((x) => botNames.get(x.id)));
+  let n = botName(e.id), k = BOT_NAMES.indexOf(n);
+  for (let i = 0; here.has(n) && i < BOT_NAMES.length; i++) n = BOT_NAMES[(k + 1 + i) % BOT_NAMES.length];
+  botNames.set(e.id, n); return n;
+}
+const nameOf = (e) => (e.bot ? hbMap.get(e.id)?.n || uniqueBotName(e) : (e.peer === me.id && room?.kind !== 'server' ? me.n : names.get(e.peer) || (e.peer === me.id ? me.n : '')) || 'Player');
 
 // ---------- referee hand-off
 function becomeHost() {
