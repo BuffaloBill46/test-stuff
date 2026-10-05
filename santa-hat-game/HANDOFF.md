@@ -175,6 +175,10 @@ internal names (#tab-games, data-tab="games", the #games link) so links and test
   (recoverUnreported), Telegram when it finds one. "Your last turns" read from the server (my-turns).
 - GitHub (21:00-21:30 UTC): Pages build stuck "queued" and a runner not acquired (GitHub's side); lock.test failed once on
   main, passed on the branch for the same commit (overloaded runner?) — watch it. The site may lag the servers until it clears.
+- BOOKS (23:40 UTC): Cody swapped ~0.123 SOL into 42,030.81 SANTA inside the Game pool (tx 4u47gAD9…); recorded as a deposit
+  (record-deposit, codyAdmin) → books 440,303.40 = wallet. Runs 116-122 = Cody playing (116-118 from the TREASURY wallet as
+  "Player FiP8", 119-122 from Deputy), all paid. Wallets then: pool 440,303.40 SANTA + 0.122 SOL; lottery 9,519.71 + 0.0295 SOL;
+  treasury 1,058.69 + 0.0285 SOL.
 - WATCH FIXED (~21:55 UTC): the 15-min launch watch had run no checks since 17:24 (stuck on approvals). Now it uses only two
   pre-approved commands (the ssh check; worker/watchlog.mjs for the date + its log, rule in .claude/settings.local.json with
   Cody's OK), and watch.mjs itself tells a deploy's restart from a crash. First clean run logged "OK" (out/watch/).
