@@ -62,7 +62,7 @@ const inTurn = (fn) => { const run = turn.then(fn, fn); turn = run.catch(() => {
 // (players, our wallets, the SANTA token) is reset to mainnet's live state.
 const OURS = new Set();
 async function resync(sig) {
-  const tx = await raw('getTransaction', [sig, { encoding: 'jsonParsed', commitment: 'confirmed', maxSupportedTransactionVersion: 0 }]).catch(() => null);
+  const tx = await raw('getTransaction', [sig, { encoding: 'jsonParsed', commitment: 'confirmed', maxSupportedTransactionVersion: 1 }]).catch(() => null);
   for (const k of tx?.transaction?.message?.accountKeys || []) {
     if (!k.writable || OURS.has(k.pubkey)) continue;
     // never a token account one of OUR wallets owns (e.g. the player's account for a swap's in-between token, which Jupiter
@@ -108,7 +108,7 @@ const FILES = readdirSync(new URL('../../supabase/', import.meta.url)).filter((f
 const db = await makeDb(FILES), prof = {};
 for (const n of ['S1', 'S2', 'S3', 'N1']) prof[n] = await db.player(W[n].address, n);
 await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', $1, '{}'), ('slots', 0, '{}') on conflict (game) do update set santa_raw = excluded.santa_raw`, [String(await santaOf(W.pool.address))]);
-const chain = { getTransaction: (s) => raw('getTransaction', [s, { encoding: 'jsonParsed', commitment: 'finalized', maxSupportedTransactionVersion: 0 }]).catch(() => null),
+const chain = { getTransaction: (s) => raw('getTransaction', [s, { encoding: 'jsonParsed', commitment: 'finalized', maxSupportedTransactionVersion: 1 }]).catch(() => null),
   latestBlock: async () => { const r = await raw('getLatestBlockhash', [{ commitment: 'finalized' }]); return { blockhash: r.value.blockhash, slot: r.context.slot }; } };
 const opts = { db, chain, livePrice: async () => price, liveFee: () => liveFee(MINT, [FORK]), mint: MINT, cluster: 'mainnet', liveSol: async () => sol };
 const server = createGameServer({ ...opts, poolWallets: { spin: W.pool.address, slots: W.pool.address } });

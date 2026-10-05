@@ -63,7 +63,12 @@ const rpc = async (method, params, ms = 20000) => (await (await fetch(rpcUrl, { 
 const chain = {
   tokenBalance: (owner) => tokenRaw(owner, 'confirmed'), // a player's own wallet, under the games (server/games.js wallet)
   async getTransaction(signature) {
-    return (await rpc('getTransaction', [signature, { encoding: 'jsonParsed', commitment: 'finalized', maxSupportedTransactionVersion: 0 }])).result ?? null; // null until finalized
+    // maxSupportedTransactionVersion 1 (2026-10-05): Phantom now sends some transfers in Solana's version-1 format; asked with 0,
+    // Solana REFUSES those, and the refusal looked like "not finalized yet" forever (Cody's real deposits were version 1).
+    // A refusal is logged so a future format change can't hide the same way; it still answers null (a busy node: ask again).
+    const j = await rpc('getTransaction', [signature, { encoding: 'jsonParsed', commitment: 'finalized', maxSupportedTransactionVersion: 1 }]);
+    if (j.error) console.error('getTransaction refused', signature.slice(0, 12), j.error.code, String(j.error.message).slice(0, 160));
+    return j.result ?? null; // null until finalized
   },
 };
 // The newest FINALIZED block (the lottery mixes its hash into each draw, taken after sales closed).

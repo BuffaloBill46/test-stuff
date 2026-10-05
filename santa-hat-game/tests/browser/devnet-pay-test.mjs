@@ -32,7 +32,7 @@ const db = await makeDb();
 const me = await db.player(player.address, 'Cody');
 await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', $1, '{}'), ('slots', $1, '{}')`, [String(await bal(pool.address))]);
 const chain = { async getTransaction(sig) { // what the Edge Function does (supabase/functions/games/index.ts)
-  const r = await fetch(cfg.rpc, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getTransaction', params: [sig, { encoding: 'jsonParsed', commitment: 'finalized', maxSupportedTransactionVersion: 0 }] }) });
+  const r = await fetch(cfg.rpc, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getTransaction', params: [sig, { encoding: 'jsonParsed', commitment: 'finalized', maxSupportedTransactionVersion: 1 }] }) });
   return (await r.json()).result ?? null; } };
 const PRICE = cfg.priceUsdAtSetup, feeOf = () => liveFee(mint, [cfg.rpc]);
 const server = createGameServer({ db, chain, livePrice: async () => ({ usd: PRICE }), liveFee: feeOf, poolWallets: { spin: pool.address, slots: pool.address }, mint, cluster: 'devnet' });

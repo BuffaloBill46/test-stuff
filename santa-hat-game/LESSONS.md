@@ -564,3 +564,7 @@ the local test. Get it from the game server (its 'market' answer, or the read-on
 addresses also matched DATABASE_URL (its host is a "pooler") and printed the database password. It was rotated at once (new random
 password set on the Droplet, never displayed; old one refused). Read env files with an exact list of key names, e.g.
 `grep -E "^(SPIN_POOL_WALLET|TREASURY_WALLET)="`, and treat any secret that reached output as exposed: rotate it.
+
+**Read every Solana transaction format (2026-10-05).** Phantom now sends some transfers as "version 1". The server asked for
+version 0 at most, so Solana refused those and the server read the refusal as "not finalized yet", forever and silently. Found on
+Cody's real deposits before recording them. getTransaction asks for version 1 and logs any refusal (tests/txversion).
