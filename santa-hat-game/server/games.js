@@ -22,6 +22,7 @@ import { verifyPayment } from './verify.js';
 import { makeSolQuote, solExpect } from './solquote.js';
 import { weekStart } from '../mockups/gameclock.js';
 import { weeklyAt, ROTATION } from '../mockups/weekly.js';
+import { sweepQuotes } from './recover.js';
 
 // The most ONE play can ever pay (jackpot aside), worked out from the prize table the play ran on, never from what a
 // simulation happened to see (Cody, 2026-10-01: "I don't want a hold on a player that wins"). Big Hat: every line at the top
@@ -353,35 +354,16 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   }
 
   // UNREPORTED PAYMENTS (Cody 2026-10-05: his page froze, he refreshed, then approved the old screen's payment: it reached the
-  // pool but no page was left to report it, so no play existed). A quote nobody bought with, 3 minutes to 2 hours old: the
-  // player's wallet's transactions around it (signaturesOf) are tried through buy() itself, so the payment must pass every
-  // check a page's would (the right pool, amount, burn, from the player, inside the quote's minute). One that does: its plays are
-  // settled (seed: the server's random number, since no page is there to give one) and the winnings paid as usual.
-  // tries: quote id → checks done; each quote is looked at 3 times (about 3, 10 and 30 minutes old), then left alone.
-  const RECOVER_AT_MIN = [3, 10, 30];
+  // pool but no page was left to report it, so no play existed). server/recover.js sweepQuotes finds such a payment (tried
+  // through buy() itself, so every check a page's payment passes applies); here its plays are then settled (seed: the server's
+  // random number, since no page is there to give one) and the winnings paid as usual. The lottery and the Store do the same.
   async function recoverUnreported({ signaturesOf, seed, tries = new Map(), limit = 20 }) {
-    const qs = await db.query(`select q.id, q.profile_id, q.kind, q.created_at, extract(epoch from now() - q.created_at) / 60 as age, p.wallet
-      from public.quotes q join public.profiles p on p.id = q.profile_id
-      where q.used_by is null and q.created_at < now() - interval '3 minutes' and q.created_at > now() - interval '2 hours' and p.wallet is not null
-      order by q.created_at limit $1`, [limit]);
-    const found = [];
-    for (const q of qs) {
-      if (!isKind(q.kind)) continue;
-      const done = tries.get(q.id) || 0; if (done >= RECOVER_AT_MIN.length || Number(q.age) < RECOVER_AT_MIN[done]) continue;
-      tries.set(q.id, done + 1);
-      let sigs = []; try { sigs = await signaturesOf(q.wallet, new Date(q.created_at).getTime()); } catch { tries.set(q.id, done); continue; } // the network: next time
-      for (const sig of sigs) {
-        if (await row('select 1 from public.runs where signature = $1', [sig])) continue; // already a play's payment
-        const b = await buy(q.profile_id, q.id, sig);
-        if (b.error) continue; // not this one (another payment, or not a game payment at all)
-        let won = 0;
-        for (const pl of b.plays || []) { const s = await settle(q.profile_id, pl.ticket, seed()); won += Number(s?.r?.pay) || 0; }
-        found.push({ quote: q.id, wallet: q.wallet, kind: q.kind, run: b.run, plays: (b.plays || []).length, usd: (Number(b.n) || 0) * (Number(b.bet) || 0), won, signature: sig });
-        break;
-      }
-    }
-    for (const id of tries.keys()) if (!qs.some((q) => q.id === id)) tries.delete(id); // past 2 hours or bought: forgotten
-    return found;
+    const buyNew = async (profile, id, sig) => ((await row('select 1 from public.runs where signature = $1', [sig])) ? { error: 'already a play' } : buy(profile, id, sig));
+    return sweepQuotes({ db, table: 'quotes', buy: buyNew, signaturesOf, tries, limit, wanted: (q) => isKind(q.kind), after: async (q, b) => {
+      let won = 0;
+      for (const pl of b.plays || []) { const s = await settle(q.profile_id, pl.ticket, seed()); won += Number(s?.r?.pay) || 0; }
+      return { kind: q.kind, run: b.run, plays: (b.plays || []).length, usd: (Number(b.n) || 0) * (Number(b.bet) || 0), won };
+    } });
   }
   async function wallet(profile) {
     const w = (await row('select wallet from public.profiles where id = $1', [profile]))?.wallet;

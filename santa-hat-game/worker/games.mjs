@@ -120,13 +120,30 @@ async function signaturesOf(wallet, at) {
   if (!Array.isArray(j.result)) throw new Error('no signatures from the network');
   return j.result.filter((x) => !x.err && x.blockTime && x.blockTime * 1000 >= at - 60_000 && x.blockTime * 1000 <= at + 120_000).map((x) => x.signature);
 }
+// The Store and the lottery (made here, before the request handler, so this check can use them too)
+const shop = createShop({ db, chain, livePrice: price, liveFee: feeOfMint, treasury: env('TREASURY_WALLET') || null, ...mintOpt, cluster,
+  rankedPaused: () => existsSync(env('RANKED_PAUSE_FILE') || '/etc/santa/ranked-paused'), // no ticket sales while ranked is paused
+  liveSol: solPrice });
+const lottery = createLottery({ db, chain: { ...chain, latestBlock }, livePrice: price, liveFee: feeOfMint, wallet: env('LOTTERY_WALLET') || null, ...mintOpt, cluster, liveSol: solPrice });
+// One line for Cody per payment found: what it was, what the server did, the wallet (shortened)
+const usd = (n) => '$' + (Number(n) || 0).toFixed(2), short = (w) => `${w.slice(0, 4)}…${w.slice(-4)}`;
+const STORE_WHAT = (f) => (f.kind === 'level' ? `level ${f.level}` : f.kind === 'tickets' ? `${f.n} ranked ticket${f.n === 1 ? '' : 's'}` : f.kind === 'pass' ? 'the season pass' : f.item || 'an item');
+const told = (text) => telegram?.send(`🎅 Santa Hat: a player paid but their page never reported it (it froze or was closed). The server found the payment and ${text}`).catch((e) => console.error('games: recovery telegram failed', e.message));
 setInterval(async () => {
-  try {
-    for (const f of await server.recoverUnreported({ signaturesOf, seed: () => randomBytes(16).toString('hex'), tries: recoverTries })) {
-      console.log('games: recovered an unreported payment', f.kind, 'run', f.run, 'won', f.won);
-      telegram?.send(`🎅 Santa Hat: a player paid but their page never reported it (it froze or was closed). The server found the payment and played it for them: ${KINDS[f.kind]?.name || f.kind} ${f.usd.toFixed(2)} (${f.plays} play${f.plays === 1 ? '' : 's'}, run ${f.run}), won ${f.won.toFixed(2)}${f.won ? ', being sent to them now' : ''}. Wallet ${f.wallet.slice(0, 4)}…${f.wallet.slice(-4)}. It shows in their "Your last turns".`).catch((e) => console.error('games: recovery telegram failed', e.message));
-    }
-  } catch (e) { console.error('games: unreported-payment check failed:', e.message); }
+  for (const [what, sweep] of [
+    ['arcade', () => server.recoverUnreported({ signaturesOf, seed: () => randomBytes(16).toString('hex'), tries: recoverTries })],
+    ['lottery', () => lottery.recoverUnreported({ signaturesOf, tries: recoverTries })],
+    ['store', () => shop.recoverUnreported({ signaturesOf, tries: recoverTries })],
+  ]) {
+    try {
+      for (const f of await sweep()) {
+        console.log('games: recovered an unreported payment', what, f.quote, f.signature.slice(0, 12));
+        if (what === 'arcade') told(`played it for them: ${KINDS[f.kind]?.name || f.kind} ${usd(f.usd)} (${f.plays} play${f.plays === 1 ? '' : 's'}, run ${f.run}), won ${usd(f.won)}${f.won ? ', being sent to them now' : ''}. Wallet ${short(f.wallet)}. It shows in their "Your last turns".`);
+        else if (what === 'lottery') told(f.refunded ? `recorded it, but that draw had already run, so it is owed back in full (${usd(f.usd)}). Wallet ${short(f.wallet)}.` : `entered their ${f.n} lottery ticket${f.n === 1 ? '' : 's'} (${usd(f.usd)}) in the draw. Wallet ${short(f.wallet)}.`);
+        else told(f.refunded ? `recorded it, but it couldn't be granted, so it is owed back in full (${usd(f.usd)}). Wallet ${short(f.wallet)}.` : `gave them what they bought in the Store: ${STORE_WHAT(f)} (${usd(f.usd)}). Wallet ${short(f.wallet)}.`);
+      }
+    } catch (e) { console.error(`games: unreported-payment check (${what}) failed:`, e.message); }
+  }
 }, 60_000);
 // the SOL (lamports) a wallet holds: the wallets that pay winners need it for fees (alerts LOW_SOL)
 async function solRaw(address) { const j = await rpc('getBalance', [address, { commitment: 'confirmed' }], 15000); if (!j.result) throw new Error('no balance'); return j.result.value; }
@@ -152,10 +169,7 @@ const handle = makeHandler({
   limiter: makeLimiter({ store: memoryStore() }),
   levels: createLevels({ db }),
   seasons: createSeasons({ db }), // my season: daily tasks, doors, pass (server/seasons.js)
-  shop: createShop({ db, chain, livePrice: price, liveFee: feeOfMint, treasury: env('TREASURY_WALLET') || null, ...mintOpt, cluster,
-    rankedPaused: () => existsSync(env('RANKED_PAUSE_FILE') || '/etc/santa/ranked-paused'), // no ticket sales while ranked is paused
-    liveSol: solPrice }),
-  lottery: createLottery({ db, chain: { ...chain, latestBlock }, livePrice: price, liveFee: feeOfMint, wallet: env('LOTTERY_WALLET') || null, ...mintOpt, cluster, liveSol: solPrice }),
+  shop, lottery, // made above (the unreported-payment check uses them too)
   support, clientErrors, traffic, // traffic: the visit counter (public "visit")
   admin: createAdmin({ db, support, clientErrors, money: createMoney({ db, livePrice: price }), traffic, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), onWeekly: () => server.weeklyChanged(), chain,
     poolWallets: { ...poolWallets, lottery: env('LOTTERY_WALLET') || null, treasury: env('TREASURY_WALLET') || null }, ...mintOpt }),

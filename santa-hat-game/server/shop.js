@@ -13,6 +13,7 @@ import { burnBpsFor, TICKET_PACKS, forSale } from '../mockups/shoprules.js';
 import { MINT, QUOTE_SECONDS, CUSHION } from '../mockups/market.js';
 import { makeSolQuote, solExpect } from './solquote.js';
 import { verifyPayment } from './verify.js';
+import { sweepQuotes } from './recover.js';
 import { seasonAt, PASS_PRICE } from '../mockups/seasons.js';
 
 const DEC = 1e6, QUOTES_PER_HOUR = 60, isSignature = (s) => /^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(String(s));
@@ -103,5 +104,11 @@ export function createShop({ db, chain, livePrice, liveFee, treasury, mint = MIN
     const season = r ? +((await db.query('select public.season_tickets($1) as n', [profile]).catch(() => [{ n: 0 }]))[0]?.n || 0) : 0;
     return r ? { free: +r.free_left, extra: +r.extra, season, held: +r.held, resetsAt: new Date(r.resets_at).getTime() } : { error: 'no profile yet' };
   }
-  return { quote, buy, owned, tickets };
+  // A Store payment no page reported (it froze or was closed; Cody 2026-10-05): found on the chain and recorded through buy()
+  // itself (server/recover.js), so the item, level, tickets or pass are granted as if the page had reported it (or owed back).
+  async function recoverUnreported({ signaturesOf, tries = new Map(), limit = 20 }) {
+    return sweepQuotes({ db, table: 'shop_quotes', buy, signaturesOf, tries, limit,
+      after: async (q, b) => ({ kind: q.kind, item: q.item_id || null, level: q.to_level || null, n: q.n || null, refunded: !!b.refunded }) });
+  }
+  return { quote, buy, owned, tickets, recoverUnreported };
 }

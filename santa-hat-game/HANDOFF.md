@@ -178,8 +178,9 @@ internal names (#tab-games, data-tab="games", the #games link) so links and test
 - WATCH FIXED (~21:55 UTC): the 15-min launch watch had run no checks since 17:24 (stuck on approvals). Now it uses only two
   pre-approved commands (the ssh check; worker/watchlog.mjs for the date + its log, rule in .claude/settings.local.json with
   Cody's OK), and watch.mjs itself tells a deploy's restart from a crash. First clean run logged "OK" (out/watch/).
-- STILL CODY'S: delete the old DO snapshot santa-before-mainnet-2026-10-03; lock/delete C:santa-mainnet-keys. KNOWN GAPS: the
-  unreported-payment recovery covers the Arcade only (not lottery / Store); first live tournament not run yet; lock.test flaky on CI.
+- STILL CODY'S: delete the old DO snapshot santa-before-mainnet-2026-10-03; lock/delete C:santa-mainnet-keys. KNOWN GAPS: first
+  live tournament not run yet; lock.test flaky on CI. (Unreported-payment recovery now covers the Arcade, lottery tickets AND the
+  Store: server/recover.js sweepQuotes, used by games.js / lottery.js / shop.js; tests db/recover-db + db/recover-all-db.)
 - DONE + LIVE (~21:33 UTC): the wallet line under each game shows SANTA then SOL (each with dollars), the one paid with lit
   green, "Paying with" kept (walletline.js; server wallet() reads SOL). Private rooms: Create uses the code typed in the box
   (3-6, remembered on the device; public codes refused); friends Join with the same code. GitHub's queue cleared: the site

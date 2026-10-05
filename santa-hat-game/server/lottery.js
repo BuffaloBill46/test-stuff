@@ -12,6 +12,7 @@ import * as fair from '../mockups/fair.js';
 import { MINT, QUOTE_SECONDS, CUSHION } from '../mockups/market.js';
 import { verifyPayment } from './verify.js';
 import { makeSolQuote, solExpect } from './solquote.js';
+import { sweepQuotes } from './recover.js';
 
 const DEC = 1e6, isSignature = (s) => /^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(String(s));
 export const LOTTERY_QUOTES_PER_HOUR = 30;
@@ -131,5 +132,11 @@ export function createLottery({ db, chain, livePrice, liveFee, wallet, mint = MI
     return { id: +d.id, lottery: d.kind, secret: d.secret, commit: d.commit, blockhash: d.blockhash, tickets: list.map((b) => [b.first_no, b.n, b.wallet_short]) };
   }
 
-  return { quote, buy, runDraws, draws, drawFor, tickets, mine };
+  // A ticket payment no page reported (it froze or was closed; Cody 2026-10-05): found on the chain and recorded through buy()
+  // itself (server/recover.js), so the tickets are in the draw as if the page had reported it (or refunded, if that draw had run).
+  async function recoverUnreported({ signaturesOf, tries = new Map(), limit = 20 }) {
+    return sweepQuotes({ db, table: 'lottery_quotes', buy, signaturesOf, tries, limit,
+      after: async (q, b) => ({ kind: b.lottery || null, n: Number(q.n) || 0, refunded: !!b.refunded }) });
+  }
+  return { quote, buy, runDraws, draws, drawFor, tickets, mine, recoverUnreported };
 }
