@@ -1,20 +1,20 @@
 // Site tabs: Play / Store / Avatar / Ranks, wallet sign-in, avatar editor, leaderboard.
-import { THREE, character, lights, toon, part, build, hatGeo, giftGeo, C, Sparks, TOON } from './kit.js?v=26d67242a9';
-import { costumeShareButton, usePortraits } from './sharecard.js?v=26d67242a9'; // share a costume (Cody 2026-10-04)
-import { BALL_COLOR, tracer, dropStreak } from './ballfx.js?v=26d67242a9';
-import { mountHumanCheck } from './human.js?v=26d67242a9';
-import { GEAR_SLOTS } from './catalog.js?v=26d67242a9';
-import { shopBuy, resumeShop } from './shopui.js?v=26d67242a9';
-import { forSale } from './shoprules.js?v=26d67242a9';
-import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=26d67242a9';
-import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable, COSTUMES, costumeItems, costumeWord, SEASONS } from './catalog.js?v=26d67242a9';
-import { SPECIALS } from './specials.js?v=26d67242a9';
-import { settingsReady, call } from './gameserver.js?v=26d67242a9';
-import { TICKET_MAX } from './ranked.js?v=26d67242a9';
-import { dayStart, weekStart } from './gameclock.js?v=26d67242a9';
-import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js?v=26d67242a9';
-import { refreshSeason } from './seasonui.js?v=26d67242a9';
-import { THEMES, THEME_IDS } from './themes.js?v=26d67242a9';
+import { THREE, character, lights, toon, part, build, hatGeo, giftGeo, C, Sparks, TOON } from './kit.js?v=f9a8ed5da1';
+import { costumeShareButton, usePortraits } from './sharecard.js?v=f9a8ed5da1'; // share a costume (Cody 2026-10-04)
+import { BALL_COLOR, tracer, dropStreak } from './ballfx.js?v=f9a8ed5da1';
+import { mountHumanCheck } from './human.js?v=f9a8ed5da1';
+import { GEAR_SLOTS } from './catalog.js?v=f9a8ed5da1';
+import { shopBuy, resumeShop } from './shopui.js?v=f9a8ed5da1';
+import { forSale } from './shoprules.js?v=f9a8ed5da1';
+import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=f9a8ed5da1';
+import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable, COSTUMES, costumeItems, costumeWord, SEASONS } from './catalog.js?v=f9a8ed5da1';
+import { SPECIALS } from './specials.js?v=f9a8ed5da1';
+import { settingsReady, call } from './gameserver.js?v=f9a8ed5da1';
+import { TICKET_MAX } from './ranked.js?v=f9a8ed5da1';
+import { dayStart, weekStart } from './gameclock.js?v=f9a8ed5da1';
+import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js?v=f9a8ed5da1';
+import { refreshSeason } from './seasonui.js?v=f9a8ed5da1';
+import { THEMES, THEME_IDS } from './themes.js?v=f9a8ed5da1';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -137,8 +137,8 @@ const short1 = (raw) => { const n = (raw || 0) / 1e6; return n >= 1e6 ? (n / 1e6
 export const aimText = (c) => (c ? `${c.thrown} thrown · ${c.hits} hit · ${c.thrown ? Math.min(100, Math.round((100 * c.hits) / c.thrown)) : 0}%` : '—');
 export const santaText = (c) => (c ? `${short1(c.spentRaw)} spent · ${short1(c.wonRaw)} won` : '—');
 // the Ranked board's two career lines, label first and in the readable font (Cody 2026-10-05: "on my phone it's hard to tell SANTA 0 used 0 won")
-const careerLines = (c) => `<small class="career">Throws <b>${c.thrown}</b> · Hits <b>${c.hits}</b> · <b>${c.thrown ? Math.min(100, Math.round((100 * c.hits) / c.thrown)) : 0}%</b></small>`
-  + `<small class="career">SANTA spent <b>${short1(c.spentRaw)}</b> · won <b>${short1(c.wonRaw)}</b></small>`;
+const careerLines = (c) => `<small class="career"><span>Throws <b>${c.thrown}</b></span> · <span>Hits <b>${c.hits}</b> (<b>${c.thrown ? Math.min(100, Math.round((100 * c.hits) / c.thrown)) : 0}%</b>)</span></small>`
+  + `<small class="career"><span>SANTA spent <b>${short1(c.spentRaw)}</b></span> · <span>won <b>${short1(c.wonRaw)}</b></span></small>`;
 async function fillCareer(el, profile) {
   const aim = el.querySelector('#pgAim'), money = el.querySelector('#pgMoney'); if (!aim || !money) return;
   if (!profile?.id || !careerOf) { aim.textContent = money.textContent = profile ? '—' : 'Sign in'; return; }

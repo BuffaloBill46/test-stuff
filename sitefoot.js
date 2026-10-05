@@ -3,8 +3,8 @@
 // the sign-in sheet) opens a pop-up with the steps: a wallet, SOL into it, SOL swapped for SANTA. The pop-up is also reachable
 // as #get-santa (a link anyone can share); #support opens the Support form on the game page (the guide's Support link uses it).
 // Paying with SOL directly is only mentioned once the game says it takes SOL (online.js calls setSolPay on mainnet).
-import { BUILD } from './buildcheck.js?v=26d67242a9';
-import { MINT } from './market.js?v=26d67242a9';
+import { BUILD } from './buildcheck.js?v=f9a8ed5da1';
+import { MINT } from './market.js?v=f9a8ed5da1';
 
 export const VERSION = '1.0';          // the release players see; raise it for a real release (the build id changes every publish)
 export const YEAR = 2026;

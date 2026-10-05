@@ -2,7 +2,7 @@
 // game week (the week starts like the lottery's: gameclock weekStart), in this order, round and round. A weekly game is a
 // public Auto match room of its own kind (room codes PW…: refcore isPublic), so plain Free-for-all is always there too.
 // This file is the ONE place the modes' rules live: sim.js plays them, the match server and the page read them.
-import { weekStart } from './gameclock.js?v=26d67242a9';
+import { weekStart } from './gameclock.js?v=f9a8ed5da1';
 
 export const VARIANTS = {
   // the hat scores double, but it melts the wearer's snowballs: one every MELT_EVERY seconds worn (never below 0)
