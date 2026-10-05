@@ -19,7 +19,7 @@ import { weeklyAt } from '../mockups/weekly.js';
 import { settleRanked, RULES } from '../mockups/ranked.js';
 import { cleanAvatar, BY_ID, DEFAULT_AVATAR, SB_SLOTS, GEAR_SLOTS } from '../mockups/catalog.js';
 import { clampLevel } from '../mockups/levels.js';
-import { MAX_ENTRANTS, MIN_ENTRANTS, ROUND_SECONDS, COUNTDOWN_MS, BREAK_MS, JOIN_MS, POT_PER_BODY, makeCode, cleanTourCode, cleanRules, planRound, roundsFor, advancers, potShares } from './tourney.js';
+import { MAX_ENTRANTS, MIN_ENTRANTS, TIMES, POT_PER_BODY, makeCode, cleanTourCode, cleanRules, planRound, roundsFor, advancers, potShares } from './tourney.js';
 
 export const MAX_WATCHERS = 4, MAX_ROOMS = 200, BOARD_MS = 3000, TOUR_WATCHERS = 24; // knocked-out tournament players watch the rest
 const better = (a, b) => a.j < b.j || (a.j === b.j && a.id < b.id); // the page's order: who joined first
@@ -79,7 +79,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
       state: 'open', createdAt: now(), startAt: null, startedAt: null, entrants: new Map(), rounds: [], nextAt: null, nextIds: null, total: 0, pot: 0, standings: null, why: '', endAt: null };
     log.log('referee: tournament made', tour.id, JSON.stringify(tour.rules)); pushTour(); return true;
   }
-  function startTour() { if (tour?.state !== 'open') return false; tour.state = 'countdown'; tour.startAt = now() + COUNTDOWN_MS; pushTour(); return true; }
+  function startTour() { if (tour?.state !== 'open') return false; tour.state = 'countdown'; tour.startAt = now() + TIMES.countdownMs; pushTour(); return true; }
   function cancelTour() { if (!tourLive()) return false; endTour('off', 'Called off by the host.'); return true; }
   // entering: the code, or (during the countdown) the announcement's own id (tapping it on any screen). Open until the first game.
   function enterTour(who, m) {
@@ -104,9 +104,9 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
     const plan = planRound(ids, rand), ri = tour.rounds.length, round = { final: plan.final, games: [] };
     plan.groups.forEach((group, gi) => {
       let code; do code = 'X' + makeCode(rand); while (rooms.has(code));
-      const room = makeRoom(code, { roundTime: ROUND_SECONDS });
+      const room = makeRoom(code, { roundTime: TIMES.roundSeconds });
       room.mode = tour.rules.mode; room.sim.S.mode = room.mode; room.style = tour.rules.style;
-      room.tour = { tid: tour.id, ri, gi, allowed: new Set(group), deadline: now() + JOIN_MS, started: false };
+      room.tour = { tid: tour.id, ri, gi, allowed: new Set(group), deadline: now() + TIMES.joinMs, started: false };
       round.games.push({ code, ids: group, adv: null, finish: null, bodies: 0 });
     });
     tour.rounds.push(round); pushTour();
@@ -150,7 +150,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
     const round = tour.rounds.at(-1); if (!round || round.games.some((x) => x.adv === null)) return pushTour();
     if (round.final) return endTour('done', 'Nobody came to the final.');
     tour.nextIds = round.games.flatMap((x) => x.adv).filter((pid) => !tour.entrants.get(pid)?.out);
-    tour.nextAt = now() + BREAK_MS; pushTour();
+    tour.nextAt = now() + TIMES.breakMs; pushTour();
   }
   function endTour(state, why) {
     const T = tour; T.state = state; T.why = why || ''; T.endAt = now(); T.nextAt = null;

@@ -24,6 +24,7 @@ import { SERVER, call, token as signInToken } from './gameserver.js';
 import { SPECIALS, cantThrow } from './specials.js';
 import { gearIn, effectsOf, heldWith, gearOfMask, statOf, RETIRED } from './gear.js';
 import { initLottery } from './lotteryui.js';
+import { createTourUI } from './tourui.js';
 import { play as sfx, initSoundButtons } from './sfx.js';
 import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js';
 import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js';
@@ -109,6 +110,7 @@ let autoStyles = (() => { try { const v = JSON.parse(store.get('sq_astyles') || 
 if (!autoStyles.length) autoStyles = ['normal', 'gear'];
 const MAX_WATCHERS = 4;
 const board = gamesBoard({ local: LOCAL, referee: REFEREE });
+let tourUI = null; // TOURNAMENTS (tourui.js), made once the page is ready
 let bg = createSim(); bg.syncRoster([]); // attract-mode plaza behind the home screen
 const names = new Map(); // peer id -> display name
 const ctl = { x: 0, z: 9, vx: 0, vz: 0, face: Math.PI, ep: -1, q: 0, t: 0, ax: 0, az: 0, cool: 0, throwT: 0, lastSent: 0, wasStun: false, dirty: true };
@@ -134,6 +136,7 @@ function decode(s) {
     // at the end: each real player's snowballs thrown and hits (sim.js T), for the results card's hit % (Cody 2026-10-04)
     aim: new Map((Array.isArray(s.T) ? s.T : []).map((t) => [n(t[0]), { thrown: n(t[1]), hits: n(t[2]) }])),
     cd: n(s.cd), pub: !!s.pub, mid: typeof s.mid === 'string' ? s.mid : '',
+    tr: s.tr && typeof s.tr === 'object' ? { r: n(s.tr.r, 1), of: n(s.tr.of, 1), final: !!s.tr.final } : null, // a tournament game: which round (server/referee.js)
     rk: !!s.rk, wait: !!s.wait, solo: Number.isFinite(s.solo) ? s.solo : null, // ranked (referee server); waiting for a 2nd real player; solo: seconds until 4 bots
   };
 }
@@ -224,7 +227,7 @@ async function enterRoom(code, quick, opts = {}) {
   // Referee server: it recorded my Auto match finish itself (the page reports nothing there); show my new level.
   room.on('counted', (d) => { if (profile && d && Number.isInteger(d.level)) { profile.level = d.level; profile.xp = d.xp; me.l = d.level; renderProgress(profile); } });
   room.on('rank', (d) => { if (d && Number.isFinite(d.change)) { rankNews = d; if (profile && Number.isFinite(d.points)) profile.rank_points = d.points; } });
-  room.on('closed', (why) => { leaveRoom(); openLobby('ranked'); status(String(why || 'Match over.')); }); // the server ended a ranked room
+  room.on('closed', (why, tourGame) => { leaveRoom(); if (tourGame) { tourUI?.open(); return; } openLobby('ranked'); status(String(why || 'Match over.')); }); // the server ended a ranked room (a tournament game: back to the bracket)
   // AUTO MATCH TOGETHER: the server held seats for this friends' room in a public room; everyone moves there (watchers keep watching)
   room.on('goto', (code) => { const watching = !!me.w; leaveRoom(); enterRoom(code, false, watching ? { watch: true } : {}); banner('Off to a public match together'); });
   room.on('err', (why) => { togetherNote = String(why || ''); ui.lastCard = ''; });
@@ -253,6 +256,7 @@ function endActions(v, sorted) {
   const secs = Math.ceil(v.time), place = sorted.findIndex((e) => e.peer === me.id) + 1;
   const nudge = !profile && !me.w && !practice && autoStart && !v.rk && place >= 1 && place <= 3
     ? `<div class="nudge"><b>You finished ${['1st', '2nd', '3rd'][place - 1]}!</b> Sign in and finishes like this count: top 3 moves your level up and counts toward the daily tasks. <button class="sec" data-act="signin">Sign in</button></div>` : '';
+  if (v.tr) return `<div class="endacts"><p>${v.tr.final ? 'Final standings next' : 'Back to the bracket'} in ${secs}s.</p>${me.w ? '' : '<button class="sec" data-act="tour">Bracket now</button>'}</div>`; // a tournament game
   if (me.w) return `${nudge}<p class="dim">Next match in ${secs}s</p>`;
   if (practice) return `${nudge}<div class="endacts"><button class="go" data-act="again">Play again</button><button class="sec" data-act="leave">Leave</button></div>`;
   if (v.rk) return `${nudge}<div class="endacts"><button class="go" data-act="again-ranked">Play again · 1 ticket</button><button class="sec" data-act="leave">Leave</button></div>`;
@@ -264,6 +268,7 @@ $('#panel').addEventListener('click', (e) => {
   if (act === 'again' && practice && sim) { againWanted = true; sim.S.time = 0; } // end → warm-up now, then straight into the next match
   else if (act === 'again-ranked') { leaveRoom(); enterRoom('', false, { ranked: true }); }
   else if (act === 'leave') leaveRoom();
+  else if (act === 'tour') { leaveRoom(); tourUI?.open(); }
   else if (act === 'together' && room?.together) { togetherNote = 'Finding a public game with room for all of you…'; ui.lastCard = ''; room.together(autoModes, autoStyles); }
   else if (act === 'signin') $('#signin')?.click();
 });
@@ -658,7 +663,7 @@ function renderChrome() {
   if (inRoom()) {
     const count = practice ? 1 : room.peers().filter((p) => !p.w).length, watchers = practice ? 0 : room.peers().filter((p) => p.w).length;
     $('#roomchip').innerHTML = practice ? (trial ? `<i>Trying</i><b>${esc(SPECIALS[trial.kind].name)}</b>` : '<i>Practice</i><b>vs bots</b>')
-      : `<i>${me.w ? 'Watching' : autoStart ? 'Auto match' : 'Room'}</i><b>${esc(autoStart ? (currentView?.variant ? VARIANTS[currentView.variant].name : roomMode === 'team' ? 'TEAM' : 'FFA') : roomCode)}</b><span>${idleLeft ? `<em class="idle">Still there? Leaving in ${idleLeft}s</em>` : `${count} playing${watchers ? ` · ${watchers} watching` : ''}${isHost ? ' · you referee' : ''}`}</span>`;
+      : `<i>${me.w ? 'Watching' : currentView?.tr ? 'Tournament' : autoStart ? 'Auto match' : 'Room'}</i><b>${esc(autoStart ? (currentView?.variant ? VARIANTS[currentView.variant].name : roomMode === 'team' ? 'TEAM' : 'FFA') : roomCode)}</b><span>${idleLeft ? `<em class="idle">Still there? Leaving in ${idleLeft}s</em>` : `${count} playing${watchers ? ` · ${watchers} watching` : ''}${isHost ? ' · you referee' : ''}`}</span>`;
   }
   const cnt = inRoom() && v && v.phase === 'count' ? Math.max(1, Math.ceil(v.time)) : 0;
   if (cnt !== ui.lastCount) { ui.lastCount = cnt; const c = $('#count'); c.hidden = !cnt; if (cnt) { c.textContent = cnt; c.classList.remove('show'); void c.offsetWidth; c.classList.add('show'); sfx('tick'); } }
@@ -672,7 +677,11 @@ function renderChrome() {
   const humans = v.ents.filter((e) => !e.bot);
   // lobby / results panel
   let card = '';
-  if (v.phase === 'lobby' && (v.pub || autoStart)) {
+  if (v.phase === 'lobby' && v.tr) { // a tournament game: it starts when its players are in (or at its deadline); no Start button
+    const roster = humans.map((e) => `<li>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}</li>`).join('');
+    card = `<div class="eyebrow">Tournament · ${v.tr.final ? 'the final' : `round ${v.tr.r} of ${v.tr.of}`}${me.w ? ' · watching' : ''}</div><h2>${v.cd ? `Starting in ${Math.ceil(v.cd)}` : 'Starting…'}</h2>
+      <ul class="roster">${roster}</ul><p class="dim">${v.tr.final ? 'The final: everyone here is placed 1st to 8th.' : 'The top 2 real players go through.'} Starts when everyone in this game is here. Bots fill the empty spots.</p>`;
+  } else if (v.phase === 'lobby' && (v.pub || autoStart)) {
     const roster = humans.map((e) => `<li>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}${v.mode === 'team' ? ` <u class="t${e.team}">${TEAM_NAME[e.team]}</u>` : ''}</li>`).join('');
     card = `<div class="eyebrow">${v.rk ? 'Ranked' : 'Auto match'} · ${v.variant ? esc(VARIANTS[v.variant].name) : v.mode === 'team' ? 'TEAM' : 'FFA'}${styleOf(roomCode) === 'normal' ? ' · Normal play' : ' · Special gear'}${me.w ? ' · watching' : ''}</div><h2>${v.wait ? (v.solo !== null ? `Looking for another real player… ${v.solo}s` : 'Looking for another real player…') : v.cd ? `Starting in ${Math.ceil(v.cd)}` : 'Finding players…'}</h2>${v.variant ? `<p class="vrule">${esc(VARIANTS[v.variant].short)}</p>` : ''}
       <ul class="roster">${roster}</ul><p class="dim">${v.rk ? (v.wait && v.solo !== null ? `Nobody yet? In ${v.solo} seconds you play 4 bots instead. ` : 'Ranked plays with real players, or 4 bots if nobody joins. ') + 'Leave before it starts and your ticket comes back. ' : 'More players can still join. '}Bots fill any empty spots when it starts.</p>`;
@@ -687,7 +696,7 @@ function renderChrome() {
       <button class="go" id="start">Start match</button>` : `<p class="wait">Mode: <b>${v.mode === 'team' ? 'Nice vs Naughty' : 'Everyone vs the hat'}</b>. Waiting for the referee to start…</p>`}`;
   } else if (v.phase === 'intro') {
     loadStats(v);
-    card = `<div class="eyebrow">${practice ? 'Practice' : autoStart ? 'Auto match' : 'Room'} · ${v.variant ? 'This week: ' + esc(VARIANTS[v.variant].name) : v.mode === 'team' ? 'Nice vs Naughty' : 'Everyone vs the hat'}</div><h2>Starting in ${Math.ceil(v.time + K.COUNT_TIME)}</h2>${v.variant ? `<p class="vrule">${esc(VARIANTS[v.variant].short)}</p>` : ''}
+    card = `<div class="eyebrow">${practice ? 'Practice' : v.tr ? (v.tr.final ? 'Tournament final' : `Tournament · round ${v.tr.r}`) : autoStart ? 'Auto match' : 'Room'} · ${v.variant ? 'This week: ' + esc(VARIANTS[v.variant].name) : v.mode === 'team' ? 'Nice vs Naughty' : 'Everyone vs the hat'}</div><h2>Starting in ${Math.ceil(v.time + K.COUNT_TIME)}</h2>${v.variant ? `<p class="vrule">${esc(VARIANTS[v.variant].short)}</p>` : ''}
       <ul class="lineup">${[...v.ents].sort((a, b) => (b.peer === me.id) - (a.peer === me.id) || a.bot - b.bot).map((e) => lineupRow(e, v)).join('')}</ul>${SERVER ? '' : '<p class="dim">Games played, top-3 % and rank points show once the game server is live.</p>'}`;
   } else if (v.phase === 'end' && v.res) {
     reportFinish(v); // levels: once per Auto match, from the host (server mode)
@@ -929,14 +938,15 @@ let stopBoard = null;
 // GAMES WAITING FOR PLAYERS (Cody, 2026-10-03) on the Play page: public Auto match rooms (not ranked) still in their waiting
 // room, with someone in them and a free seat (seats held for a friends' group count as taken). Live while the Play page shows.
 let stopWait = null;
-function renderWaiting(list = []) {
-  const el = $('#waitList'); if (!el) return;
+let lastWait = [];
+function renderWaiting(list = lastWait) {
+  lastWait = list; const el = $('#waitList'); if (!el) return; const pin = tourUI?.pinHtml() || ''; // the tournament, pinned on top (Cody 2026-10-05)
   const wait = list.filter((g) => !g.ranked && g.phase === 'lobby' && isPublic(cleanCode(g.code)) && (Number(g.humans) || 0) > 0 && (g.free ?? K.MAX_HUMANS - (Number(g.humans) || 0)) > 0)
     .sort((a, b) => (Number(b.humans) || 0) - (Number(a.humans) || 0));
-  el.innerHTML = wait.length ? wait.map((g) => `<div class="wg"><b>${g.variant && VARIANTS[g.variant] ? 'This week: ' + esc(VARIANTS[g.variant].name) : g.mode === 'team' ? 'Nice vs Naughty' : 'Free-for-all'} · ${(g.style || 'gear') === 'normal' ? 'Normal play' : 'Special gear'}</b>
+  el.innerHTML = pin + (wait.length || pin ? wait.map((g) => `<div class="wg"><b>${g.variant && VARIANTS[g.variant] ? 'This week: ' + esc(VARIANTS[g.variant].name) : g.mode === 'team' ? 'Nice vs Naughty' : 'Free-for-all'} · ${(g.style || 'gear') === 'normal' ? 'Normal play' : 'Special gear'}</b>
       <span><em class="seats">${Number(g.humans) || 0}/${K.MAX_HUMANS}</em> players · ${Number.isFinite(g.starts) && g.starts !== null ? `starts in ${g.starts}s` : 'waiting for more'}</span>
       <button class="go" data-join="${esc(cleanCode(g.code))}">Join</button></div>`).join('')
-    : '<p class="dim">Nobody is waiting right now. <button class="sec" data-act-start>Start one</button> and others will join you.</p>';
+    : '<p class="dim">Nobody is waiting right now. <button class="sec" data-act-start>Start one</button> and others will join you.</p>');
 }
 function watchWaiting(on) {
   if (on && !stopWait) board.watch(renderWaiting).then((stop) => { if (stopWait === 'pending') stopWait = stop; else stop(); }).catch(() => { $('#waitList').innerHTML = '<p class="dim">Could not load the waiting games right now.</p>'; });
@@ -944,6 +954,7 @@ function watchWaiting(on) {
   if (!on && stopWait) { if (typeof stopWait === 'function') stopWait(); stopWait = null; }
 }
 $('#waitList').addEventListener('click', (e) => {
+  if (e.target.closest('[data-tour-open]')) return tourUI?.pinClick();
   const j = e.target.closest('[data-join]'); if (j) return enterRoom(j.dataset.join);
   if (e.target.closest('[data-act-start]')) { openLobby('unranked'); $('#quick').click(); }
 });
@@ -951,7 +962,7 @@ function openLobby(kind) {
   lobbyKind = kind; const ranked = kind === 'ranked';
   $('#lobbyEyebrow').textContent = ranked ? 'Ranked · 1 ticket · sign-in needed' : 'Unranked · free';
   $('#lobbyTitle').textContent = ranked ? 'FFA RANKED' : 'Unranked';
-  $('#tourney').hidden = !ranked;
+  $('#tourBox').hidden = !ranked || !REFEREE;
   document.querySelectorAll('#home .unr').forEach((el) => { el.hidden = ranked; });
   // ranked opens with the referee server (it holds the ticket and picks the room); without it, still 'opening soon'
   showTickets(ranked);
@@ -991,6 +1002,14 @@ document.querySelectorAll('[data-astyle]').forEach((b) => b.addEventListener('ch
   autoStyles = next; store.set('sq_astyles', JSON.stringify(autoStyles)); renderGames();
 }));
 $('#playRanked').addEventListener('click', () => openLobby('ranked'));
+$('#tourney').addEventListener('click', () => tourUI?.open());
+// TOURNAMENTS (Cody 2026-10-05): the bar, the page and the admin's controls (tourui.js), on every page with the match server
+if (REFEREE) {
+  tourUI = createTourUI({ line: board.tour, openSignIn: () => $('#signin')?.click(), modeAllowed,
+    roomNow: () => (room ? roomCode : ''), changed: () => renderWaiting(),
+    enterGame: (code, watch = false) => { if (inRoom()) leaveRoom(); closeLobby(); enterRoom(code, false, watch ? { watch: true } : {}); } });
+  board.tour.signIn(signInToken);
+}
 $('#quick').addEventListener('click', () => (lobbyKind === 'ranked' ? enterRoom('', false, { ranked: true }) : enterRoom('', true)));
 $('#create').addEventListener('click', () => enterRoom(rid(4).toUpperCase().replace(/[^A-Z0-9]/g, 'X'), false));
 $('#joinBtn').addEventListener('click', () => { const c = cleanCode($('#code').value); if (c.length < 3) { status('Type the room code your friend shared.'); return; } enterRoom(c, false); });
@@ -1025,7 +1044,7 @@ if (LOCAL) window.__acct = acct; // tests only (this computer's stand-in account
 const app = {
   me, accounts: acct,
   hasWallet: () => LOCAL || !!findWallet(),
-  get profile() { return profile; }, set profile(p) { profile = p; },
+  get profile() { return profile; }, set profile(p) { const was = profile?.id || null; profile = p; if ((p?.id || null) !== was) board.tour.signIn(signInToken); }, // signed in or out: the tournament line hears who this is
   setIdentity(name, a) { trial = null; locked = armed = ''; me.n = cleanName(name) || me.n; me.a = cleanAvatar(a); me.l = clampLevel(profile?.level); me.pid = profile?.id || null; $('#name').value = me.n; $('#name').readOnly = !!profile; setPreview(me.a); },
   preview: (a) => setPreview(a),
   tryInPractice, // the Store's Try it on a special snowball (tabs.js)

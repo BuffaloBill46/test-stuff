@@ -7,7 +7,8 @@
 // Ranked points: POT_PER_BODY for every player and bot in round 1, split among the final's top 8 by FINAL_SHARE.
 
 export const MAX_ENTRANTS = 64, MIN_ENTRANTS = 2, FINAL_MAX = 8, GAME_MAX = 6, ADVANCE = 2;
-export const ROUND_SECONDS = 90, COUNTDOWN_MS = 60_000, BREAK_MS = 20_000, JOIN_MS = 20_000;
+// the clock (Cody: 60 s countdown, 90 s matches); an object so a browser test can run a whole tournament on a shorter clock
+export const TIMES = { roundSeconds: 90, countdownMs: 60_000, breakMs: 20_000, joinMs: 20_000 };
 export const POT_PER_BODY = 5, FINAL_SHARE = [30, 20, 14, 11, 9, 7, 5, 4]; // % of the pot for places 1-8
 export const RULE_MODES = ['ffa', 'team'], RULE_STYLES = ['normal', 'gear'];
 
