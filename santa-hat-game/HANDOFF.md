@@ -165,6 +165,8 @@ between two devices has never been tested from here. Cody and friends testing on
 internal names (#tab-games, data-tab="games", the #games link) so links and tests don't break. Docs say Arcade from here.
 
 ### 2026-10-05 (NEWEST): LIVE ON MAINNET (Cody's GO ~12:55 UTC; LAUNCH_CHECKLIST "LIVE")
+- BACKUP: DigitalOcean snapshot `santa-after-go-2026-10-05` (2.63 GB, live settings). Old pre-GO snapshot: Cody deletes it himself.
+  Payout worker sends a Telegram alert if payouts fail 6 passes in a row (~30 s), repeats every 30 min, and says when they work again.
 - Switched with go-mainnet --go; deposits recorded (books = wallet); main site real (LAUNCHED = true). Test site's /api answers 503
   (Caddy test-api.caddy; its devnet line in test-api.caddy.devnet). Devnet settings kept as /etc/santa/*.env.devnet.
 - Cody's real-money checks done and audited (books = Solana). RANKED OPEN (2026-10-05): solo after 45 s vs 4 bots; bots 25% easier.
