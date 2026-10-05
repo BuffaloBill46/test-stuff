@@ -175,8 +175,10 @@ internal names (#tab-games, data-tab="games", the #games link) so links and test
   (recoverUnreported), Telegram when it finds one. "Your last turns" read from the server (my-turns).
 - GitHub (21:00-21:30 UTC): Pages build stuck "queued" and a runner not acquired (GitHub's side); lock.test failed once on
   main, passed on the branch for the same commit (overloaded runner?) — watch it. The site may lag the servers until it clears.
-- NEXT (Cody, queued in order): mini games show the SOL balance under the SANTA one, the chosen one highlighted green, keep the
-  "Paying with" line; private rooms: the creator picks the code (a password) and friends join with the same one.
+- DONE + LIVE (~21:33 UTC): the wallet line under each game shows SANTA then SOL (each with dollars), the one paid with lit
+  green, "Paying with" kept (walletline.js; server wallet() reads SOL). Private rooms: Create uses the code typed in the box
+  (3-6, remembered on the device; public codes refused); friends Join with the same code. GitHub's queue cleared: the site
+  (tournaments too) is live.
 - HOUSE BOT AIM (live 17:57 UTC): each house bot hits 10%-48% (its own, fixed; sim.js aimOf). Their board % still holds the
   ~10 earlier matches at ~50% each. Cody chose to reset: the bots' throws/hits were zeroed (copy kept in the locked table
   bot_aim_backup_20261005; players untouched) and 10 more rounds played (41 matches). Board now 11%-50% (luck over 10 matches).
