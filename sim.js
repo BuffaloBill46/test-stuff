@@ -1,9 +1,9 @@
 // Snowball Square match referee. Runs only on the host's browser; everyone else renders its snapshots.
 // Pure game logic, no rendering, so it can be tested headless.
-import { levelInfo } from './levels.js?v=2e92bdf492';
-import { VARIANTS, VARIANT_IDS } from './weekly.js?v=2e92bdf492';
-import { SPECIALS, SPECIAL_KINDS, DROP_HIT_RADIUS, cantThrow, costOf } from './specials.js?v=2e92bdf492';
-import { effectsOf, gearAllowed, resolvePresent, heldWith, gearMask, gearOfMask } from './gear.js?v=2e92bdf492';
+import { levelInfo } from './levels.js?v=c2b42ea65b';
+import { VARIANTS, VARIANT_IDS } from './weekly.js?v=c2b42ea65b';
+import { SPECIALS, SPECIAL_KINDS, DROP_HIT_RADIUS, cantThrow, costOf } from './specials.js?v=c2b42ea65b';
+import { effectsOf, gearAllowed, resolvePresent, heldWith, gearMask, gearOfMask } from './gear.js?v=c2b42ea65b';
 // Ball kinds in snapshots (B[9]): 0 normal, 1 ice, 2 split (before it splits), 3 giant, 4 fire, 5 a split piece.
 const BALL_KIND = { '': 0, ice: 1, split: 2, giant: 3, fire: 4, piece: 5 }, DROP_KIND = { sky: 1, rain: 2 };
 export const KIND_OF = ['', 'ice', 'split', 'giant', 'fire', 'piece'], DROP_OF = ['', 'sky', 'rain']; // the page reads snapshots with these
@@ -14,6 +14,9 @@ export const K = {
   // ROUNDS: rounds a match (Cody, 2026-10-03: one round; was 3)
   ROUND_TIME: 60, ROUNDS: 1, BREAK_TIME: 6, END_TIME: 12, INTRO_TIME: 5, COUNT_TIME: 5, MAX_HUMANS: 8, MIN_BODIES: 4, MIN_BOTS: 2, // MIN_BOTS: at least 2 bots a match unless real players fill all 8 places (Cody 2026-10-05)
   HUMAN_SPEED: 6.4, BOT_SPEED: 5.2, HOLD_SLOW: 0.86, MAX_BALLS: 18, HUMAN_COOL: 0.26,
+  // BOT_EASE (Cody 2026-10-05: "make the bots 25% easier to beat"): bots throw 25% less often (their wait between throws × 1.25)
+  // and aim 25% looser (their aim scatter × 1.25). Their running speed is unchanged.
+  BOT_EASE: 1.25,
   STUN: 0.9, // seconds a normal snowball hit knocks you down (special snowballs multiply it: catalog.js → rules.stun)
 };
 export const PTS = { hatSec: 10, header: 25, knock: 10, hit: 5 }; // knock the hat off 10, catch the flying hat 25 (Cody 2026-10-04; were 25 and 50)
@@ -105,7 +108,8 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
       H.forEach((e) => { e.team = 0; });
       S.ents.filter((e) => e.bot && e.team !== 1).forEach(removeEnt);
       // bots fill to MIN_BODIES, and there are always at least MIN_BOTS of them unless real players fill the arena (Cody 2026-10-05)
-      fitBots(1, Math.max(0, Math.min(K.MAX_HUMANS - H.length, Math.max(K.MIN_BOTS, K.MIN_BODIES - H.length))));
+      // S.wantBots: a room's own number (solo ranked: 4 bots, Cody 2026-10-05), never past a full arena
+      fitBots(1, Math.max(0, Math.min(K.MAX_HUMANS - H.length, Math.max(K.MIN_BOTS, K.MIN_BODIES - H.length, S.wantBots || 0))));
     }
   }
   function fitBots(team, want) {
@@ -213,7 +217,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     }
     let dx = tx - e.x, dz = tz - e.z; const dist = Math.max(1.5, hyp(dx, dz)); const l = hyp(dx, dz) || 1; dx /= l; dz /= l;
     tally(e, 'thrown'); if (kind) tally(e, 'specials'); // thrown: the end-of-match card's hit % (Cody 2026-10-04)
-    e.ammo -= kind ? costOf(kind, e.max) : 1; e.regen = 0; e.cool = e.bot ? 1.1 + rand() * 1.1 : K.HUMAN_COOL; e.throwT = 1; e.face = Math.atan2(dx, dz);
+    e.ammo -= kind ? costOf(kind, e.max) : 1; e.regen = 0; e.cool = e.bot ? (1.1 + rand() * 1.1) * K.BOT_EASE : K.HUMAN_COOL; e.throwT = 1; e.face = Math.atan2(dx, dz);
     if (kind === 'sky' || kind === 'rain') return dropsFrom(e, kind, tx, tz);
     const SP = SPECIALS[kind] || {};
     const speed = K.BALL_SPEED * (SP.speed || 1), tt = dist / speed;
@@ -256,7 +260,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
 
   const nearestPile = (e) => PILES.reduce((b, p) => (hyp(p[0] - e.x, p[1] - e.z) < hyp(b[0] - e.x, b[1] - e.z) ? p : b));
   const nearest = (e, list) => list.reduce((b, o) => (!b || d2(o, e) < d2(b, e) ? o : b), null);
-  const lead = (t, from, noise) => { const tt = d2(t, from) / K.BALL_SPEED; return [t.x + t.vx * tt * 0.8 + (rand() - 0.5) * noise, t.z + t.vz * tt * 0.8 + (rand() - 0.5) * noise]; };
+  const lead = (t, from, noise) => { const tt = d2(t, from) / K.BALL_SPEED, n = noise * K.BOT_EASE; return [t.x + t.vx * tt * 0.8 + (rand() - 0.5) * n, t.z + t.vz * tt * 0.8 + (rand() - 0.5) * n]; };
 
   function ai(e) {
     const mine = wearing(e), h = mine || (S.hats.length > 1 ? nearest(e, S.hats.map((x) => ({ x: x.st === 'air' ? x.lx ?? S.landing.x : x.x, z: x.st === 'air' ? x.lz ?? S.landing.z : x.z, hat: x }))).hat : S.hat);

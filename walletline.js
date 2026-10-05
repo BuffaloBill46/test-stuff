@@ -2,7 +2,7 @@
 // a line with the signed-in player's own wallet: its SANTA and about how much that is in dollars. Read by the game server
 // ('wallet', server/games.js: the account's linked wallet only, remembered 10 s). Refreshed when the Games page opens, after
 // every run, every 30 s while the Games page is on screen, and by its Refresh link. Nothing is guessed: a failed read says so.
-import { call } from './gameserver.js?v=2e92bdf492';
+import { call } from './gameserver.js?v=c2b42ea65b';
 
 const lines = () => document.querySelectorAll('[data-wallet]');
 const amount = (raw) => { const n = raw / 1e6; return n >= 1e6 ? +(n / 1e6).toFixed(2) + 'M' : Math.floor(n).toLocaleString(); };
