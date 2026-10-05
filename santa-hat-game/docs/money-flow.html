@@ -93,12 +93,11 @@
   <text x="1012" y="682" class="t halo" font-size="14" fill="#5fb8f0">(paid in SOL: as SOL)</text>
   <text x="1012" y="790" class="t halo" font-size="14" fill="#5fb8f0">(paid in SOL: as SOL)</text>
 
-  <!-- the pool and the treasury keep each other topped up -->
+  <!-- the pool skims its extra to the treasury (no automatic top-off back: Cody adds money by hand, 2026-10-05) -->
   <g stroke-width="3" fill="none">
-    <path d="M1540 420 C 1590 470, 1590 690, 1540 735" stroke="#9aa6c7" marker-end="url(#g)"/>
-    <path d="M1525 745 C 1570 690, 1570 480, 1525 440" stroke="#5fd38a" stroke-dasharray="8 6" marker-end="url(#w)"/></g>
+    <path d="M1540 420 C 1590 470, 1590 690, 1540 735" stroke="#9aa6c7" marker-end="url(#g)"/></g>
   <text x="1440" y="842" class="t" font-size="15" fill="#c9d3ea" text-anchor="end">pool over $1,025 → $25 skim to the treasury</text>
-  <text x="1440" y="864" class="t" font-size="15" fill="#5fd38a" text-anchor="end">pool under $200 → the treasury tops it up to $500</text>
+  <text x="1440" y="864" class="t" font-size="15" fill="#c9d3ea" text-anchor="end">pool under $30 → new Arcade runs pause (wins still pay)</text>
 
   <!-- money back to players -->
   <rect x="60" y="900" width="1460" height="130" class="node"/>
