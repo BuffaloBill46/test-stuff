@@ -3,10 +3,10 @@
 // and its pass prize, and the $5 pass. Rules from seasons.js; a signed-in player's progress from the game server (server/seasons.js
 // 'season', which also ticks today's "Log in"); a guest sees the same tasks, calendar and doors with nothing earned yet. Match
 // points only come from public Auto matches the match server runs, so the card says so and refreshes after each match.
-import { seasonAt, dayKey, dayEnds, seasonDays, tasksFor, freeReward, goldReward, PASS_PRICE, STREAK_EVERY, DOORS, DOOR_POINTS, POINTS, PIECE_DOORS } from './seasons.js?v=167023048e';
-import { BY_ID } from './catalog.js?v=167023048e';
-import { call } from './gameserver.js?v=167023048e';
-import { shopBuy } from './shopui.js?v=167023048e';
+import { seasonAt, dayKey, dayEnds, seasonDays, tasksFor, freeReward, goldReward, PASS_PRICE, STREAK_EVERY, DOORS, DOOR_POINTS, POINTS, PIECE_DOORS } from './seasons.js?v=2d2d4b29af';
+import { BY_ID } from './catalog.js?v=2d2d4b29af';
+import { call } from './gameserver.js?v=2d2d4b29af';
+import { shopBuy } from './shopui.js?v=2d2d4b29af';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);

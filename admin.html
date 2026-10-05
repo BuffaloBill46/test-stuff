@@ -45,6 +45,12 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
     <p class="dim">Every action is signed by your wallet (a free signature, not a payment) and written to the public log. Stop a pool before any withdrawal, so a top-off can't refill it.</p></div>
   <section class="plaque"><div class="row"><button id="connect" type="button">Connect admin wallet</button><span id="who" class="dim">Not connected.</span></div></section>
   <section class="pools" id="pools"><p class="dim">Loading the pools…</p></section>
+  <section class="plaque" id="trafficBox"><h2>Visitors</h2>
+    <p class="dim">People who opened the site (the game or the guide): unique visitors and page loads, today / 7 days / 30 days, and where
+      they came from. Counted without storing who anyone is (one person on 3 different days counts once each day). Robots aren't counted.
+      Tip: link with <b>santahatgames.com/?ref=x</b> (or ?ref=tiktok, ?ref=discord…) to see what each post brings in.</p>
+    <div class="row"><button type="button" id="trafficLoad">Show visitors</button></div>
+    <div id="trafficView" class="dim">Not loaded yet.</div></section>
   <section class="plaque" id="moneyBox"><h2>Money dashboard</h2>
     <p class="dim">Where the money went: today (since the 9 PM reset), the last 7 days and all time. Arcade runs, the Store and the
       lottery, what was burned, what reached the Game pool, what was paid out, and the Arcade's real payback (the design is ~78%).
@@ -132,5 +138,5 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
       <button type="button" id="depSave">Record deposit</button></div></section>
   <section class="plaque"><h2>Change log</h2><div id="log" class="dim">No changes yet.</div></section>
 </main>
-<script type="module" src="admin.js?v=167023048e"></script>
+<script type="module" src="admin.js?v=2d2d4b29af"></script>
 </body></html>

@@ -3,8 +3,8 @@
 // the sign-in sheet) opens a pop-up with the steps: a wallet, SOL into it, SOL swapped for SANTA. The pop-up is also reachable
 // as #get-santa (a link anyone can share); #support opens the Support form on the game page (the guide's Support link uses it).
 // Paying with SOL directly is only mentioned once the game says it takes SOL (online.js calls setSolPay on mainnet).
-import { BUILD } from './buildcheck.js?v=167023048e';
-import { MINT } from './market.js?v=167023048e';
+import { BUILD } from './buildcheck.js?v=2d2d4b29af';
+import { MINT } from './market.js?v=2d2d4b29af';
 
 export const VERSION = '1.0';          // the release players see; raise it for a real release (the build id changes every publish)
 export const YEAR = 2026;
@@ -137,6 +137,24 @@ export function initSiteFoot() {
   if (START === '#support') setTimeout(support, 300);
 }
 
+// THE TRAFFIC COUNTER (Cody 2026-10-05; server/traffic.js): once per visit (a browser tab), on the real site only, the page tells the
+// game server it was opened: which page, and where the visitor came from (the site name of the link they followed, or ?ref= /
+// ?utm_source= in it, e.g. santahatgames.com/?ref=x). Nothing about the visitor is sent; the server counts without storing who.
+export function sayHello() {
+  try {
+    if (!/(^|.)santahatgames.com$/.test(location.hostname) || location.hostname.startsWith('test.')) return false;
+    if (sessionStorage.getItem('santa.visit')) return false;
+    sessionStorage.setItem('santa.visit', '1');
+  } catch { return false; }
+  const q = new URLSearchParams(location.search), tag = q.get('ref') || q.get('utm_source');
+  let source = ''; try { source = tag ? String(tag).toLowerCase().replace(/[^a-z0-9.-]/g, '').slice(0, 40) : document.referrer ? new URL(document.referrer).hostname : ''; } catch {}
+  const body = JSON.stringify({ action: 'visit', page: /guide/.test(location.pathname) ? 'guide' : 'game', source });
+  // text/plain: no extra "may I?" round trip; keepalive: it still goes if the page is closed right away
+  fetch('https://api.santahatgames.com', { method: 'POST', headers: { 'content-type': 'text/plain' }, body, keepalive: true }).catch(() => {});
+  return true;
+}
+
 if (typeof document !== 'undefined') {
+  setTimeout(sayHello, 1500); // after the page is up, never in its way
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initSiteFoot, { once: true }); else initSiteFoot();
 }

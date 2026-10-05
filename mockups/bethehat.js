@@ -1,6 +1,6 @@
 // Mockup B: Be the Hat. You are the hat. Bounce head to head; never touch the snow.
-import { THREE, C, character, animate, Snow, Burst, toon, part, build, glow, snowmanGeo, reindeerGeo, rng } from './kit.js?v=167023048e';
-import { buildPlaza, makeHat, shadowBlob, ARENA } from './plaza.js?v=167023048e';
+import { THREE, C, character, animate, Snow, Burst, toon, part, build, glow, snowmanGeo, reindeerGeo, rng } from './kit.js?v=2d2d4b29af';
+import { buildPlaza, makeHat, shadowBlob, ARENA } from './plaza.js?v=2d2d4b29af';
 
 const V3 = THREE.Vector3, G = THREE;
 const GRAV = 15, AIR_ACC = 16, AIR_MAX = 6.5;

@@ -1,12 +1,12 @@
 // The escrow admin screen (admin.html): pool status, Stop / Resume, settings. Every action is a message Cody's wallet signs
 // (adminmsg.js); the server checks it (server/admin.js). Open with ?server=<the games Edge Function address>.
-import { adminMessage } from './adminmsg.js?v=167023048e';
-import { VARIANTS } from './weekly.js?v=167023048e';
-import { LOTTERIES } from './lottery.js?v=167023048e';
-import { POOL_RULES } from './slots.js?v=167023048e';
-import { DEFAULT_SETTINGS, check, itemsWith } from './settings.js?v=167023048e';
-import { ITEMS, SLOTS } from './catalog.js?v=167023048e';
-import { SYMBOLS } from './slots.js?v=167023048e';
+import { adminMessage } from './adminmsg.js?v=2d2d4b29af';
+import { VARIANTS } from './weekly.js?v=2d2d4b29af';
+import { LOTTERIES } from './lottery.js?v=2d2d4b29af';
+import { POOL_RULES } from './slots.js?v=2d2d4b29af';
+import { DEFAULT_SETTINGS, check, itemsWith } from './settings.js?v=2d2d4b29af';
+import { ITEMS, SLOTS } from './catalog.js?v=2d2d4b29af';
+import { SYMBOLS } from './slots.js?v=2d2d4b29af';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; };
@@ -62,6 +62,7 @@ async function act(action, game, settings = {}) {
   if (action === 'claim-rewards') { msg(`Claim #${r.claim} sent to the payout worker. It finds the reward tokens and sends them to the treasury within a minute.`, 'ok'); setTimeout(() => act('rewards-status', 'all'), 20000); return; }
   if (action === 'rewards-status') { rewardsList(r); return msg(r.sweeps.length ? 'Reward claims loaded.' : 'No reward sweeps yet.', 'ok'); }
   if (action === 'money-summary') { moneyView(r); return msg('Money dashboard loaded.', 'ok'); }
+  if (action === 'traffic-summary') { trafficView(r); return msg('Visitors loaded.', 'ok'); }
   if (action === 'errors-list') { errorsList(r); const open = r.errors.filter((x) => x.status === 'open').length; return msg(open ? `${open} open error(s) players hit.` : 'No open errors.', 'ok'); }
   if (action === 'errors-fixed') { msg('Marked fixed. If it happens again it reopens (and Telegram says so).', 'ok'); return act('errors-list', 'errors'); }
   if (action === 'support-list') { supportList(r); const open = r.messages.filter((m) => m.status === 'open').length; return msg(open ? `${open} open support message(s).` : 'No open support messages.', 'ok'); }
@@ -90,6 +91,18 @@ $('#botCheck').addEventListener('click', () => act('bot-signals', 'all'));
 // The lottery's manual payouts: who, their FULL wallet (to send to), what for, and how much to send; paste the transaction to record it.
 // Shop refunds owed (016): who, how much, why; paste the refund transaction to record it.
 // the money dashboard (server/money.js): rows of what happened, columns today / 7 days / all time; SANTA and ≈ dollars
+// THE TRAFFIC COUNTER (Cody 2026-10-05; server/traffic.js): visitors and page loads, the last 14 days, where they came from, and
+// what players did this week next to it
+function trafficView(r) {
+  const n = (x) => Number(x || 0).toLocaleString(), esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const P = r.players || {};
+  $('#trafficView').innerHTML = `<table class="tbl"><thead><tr><th></th><th>Today</th><th>7 days</th><th>30 days</th></tr></thead><tbody>
+      <tr><td>Visitors</td><td><b>${n(r.today?.visitors)}</b></td><td><b>${n(r.week?.visitors)}</b></td><td><b>${n(r.month?.visitors)}</b></td></tr>
+      <tr><td>Page loads</td><td>${n(r.today?.loads)}</td><td>${n(r.week?.loads)}</td><td>${n(r.month?.loads)}</td></tr></tbody></table>
+    <h3>Where they came from (30 days)</h3>${(r.sources || []).length ? '<ul>' + r.sources.map((s) => `<li>${esc(s.source)}: <b>${n(s.visitors)}</b></li>`).join('') + '</ul>' : '<p>Nobody yet.</p>'}
+    <h3>Day by day (14 days)</h3>${(r.days || []).length ? '<ul>' + r.days.map((d) => `<li>${esc(String(d.day).slice(0, 10))}: <b>${n(d.visitors)}</b> visitors, ${n(d.loads)} loads</li>`).join('') + '</ul>' : '<p>Nobody yet.</p>'}
+    <h3>This week, players</h3><p>Signed in: <b>${n(P.signedInWeek)}</b> · new accounts: <b>${n(P.newAccountsWeek)}</b> · played a match: <b>${n(P.matchPlayersWeek)}</b> · paid for an Arcade run: <b>${n(P.arcadePlayersWeek)}</b></p>`;
+}
 function moneyView(r) {
   const k = (raw) => { const n = (raw || 0) / 1e6; return n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K' : n.toFixed(0); };
   const usd = (raw) => (r.price ? ' <small class="dim">≈ $' + ((raw || 0) / 1e6 * r.price).toLocaleString(undefined, { maximumFractionDigits: 2 }) + '</small>' : '');
@@ -129,6 +142,7 @@ $('#shopLoad').addEventListener('click', () => act('shop-owed', 'shop'));
 $('#supportLoad').addEventListener('click', () => act('support-list', 'support'));
 $('#errorsLoad').addEventListener('click', () => act('errors-list', 'errors'));
 $('#moneyLoad').addEventListener('click', () => act('money-summary', 'money'));
+$('#trafficLoad').addEventListener('click', () => act('traffic-summary', 'traffic'));
 $('#errorsList').addEventListener('click', (e) => { const b = e.target.closest('[data-errfixed]'); if (b) act('errors-fixed', 'errors', { id: b.dataset.errfixed }); });
 $('#supportList').addEventListener('click', (e) => { const b = e.target.closest('[data-supporthandled]'); if (!b) return;
   const note = prompt(`Mark ticket #${b.dataset.supporthandled} resolved. A short note the PLAYER will see under their ticket (optional, e.g. "payout re-sent"):`, ''); if (note === null) return;

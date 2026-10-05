@@ -2,7 +2,7 @@
 // otherwise the Games tab runs the in-browser demo (house.js). Same steps, same order: the server does the work.
 // Buying needs a wallet to sign the payment: `window.santaPay(quote)` must return the finalized transaction signature.
 // That wallet step can't be built or tested in this workspace (FOR_MAIN_CLAUDE.md); until it exists, buying says so.
-import { accounts } from './net.js?v=167023048e';
+import { accounts } from './net.js?v=2d2d4b29af';
 
 const params = new URLSearchParams(location.search);
 // LAUNCHED (Cody's GO, mainnet): the public site itself plays through the game server, no ?server= needed, and the demo is gone.
@@ -15,7 +15,7 @@ export const STAGING = location.hostname === 'test.santahatgames.com';
 export const SERVER = params.get('server') || (STAGING ? 'https://test.santahatgames.com/api' : LAUNCHED && PUBLIC_SITE ? 'https://api.santahatgames.com' : null);
 const testToken = params.get('token'); // tests only, and only against a local server
 // The wallet step (window.santaPay): loaded only in server mode, so the demo never fetches the Solana libraries.
-export const walletReady = SERVER ? import('./wallet.js?v=167023048e').catch((e) => { console.warn('wallet step unavailable:', e); }) : Promise.resolve();
+export const walletReady = SERVER ? import('./wallet.js?v=2d2d4b29af').catch((e) => { console.warn('wallet step unavailable:', e); }) : Promise.resolve();
 
 export async function token() {
   if (testToken && /^http:\/\/localhost[:/]/.test(SERVER || '')) return testToken;
@@ -23,7 +23,7 @@ export async function token() {
 }
 // The actions anyone may call without signing in: must match the server's public ones (server/http.js; tests/public-actions.test.mjs).
 // (It once listed only three, so guests' lottery cards and draw re-checks never asked the server.)
-export const PUBLIC_ACTIONS = ['pools', 'settings', 'stats', 'lottery-tickets', 'lottery', 'winners', 'market', 'burned', 'weekly', 'support', 'support-status', 'support-clear', 'client-error'];
+export const PUBLIC_ACTIONS = ['pools', 'settings', 'stats', 'lottery-tickets', 'lottery', 'winners', 'market', 'burned', 'weekly', 'support', 'support-status', 'support-clear', 'client-error', 'visit'];
 // What a player reads when a payment didn't happen (button audit 2026-10-02: a failed wallet-library download showed
 // "Failed to fetch dynamically imported module: https://cdn…"). Says "nothing was charged" only where that's certain: the
 // player cancelled, or the wallet step never loaded (wallet.js never throws once a payment is sent, except for a payment the
@@ -64,6 +64,6 @@ export async function call(action, body = {}) {
 // still loading, so a name defined further down isn't there yet; the error was swallowed by the catch below and the page
 // quietly kept the built-in settings (settings-mode-test caught it, 2026-10-04).
 export const settingsReady = SERVER ? (async () => {
-  try { const r = await call('settings'); if (r?.settings) { const { applyToGame } = await import('./settings.js?v=167023048e'); applyToGame(r.settings); return r; } } catch (e) { console.error('published settings not loaded:', e); }
+  try { const r = await call('settings'); if (r?.settings) { const { applyToGame } = await import('./settings.js?v=2d2d4b29af'); applyToGame(r.settings); return r; } } catch (e) { console.error('published settings not loaded:', e); }
   return null;
 })() : Promise.resolve(null);
