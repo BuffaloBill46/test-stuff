@@ -54,6 +54,9 @@
   The chat is remembered in alert_settings, which the reset keeps. A test alert arrived. Alerts now go to Telegram every 5 min.
 - [x] **2. Phantom address** (2026-10-04): DpgDK31RNyA96qYoFgigjxxLScKBG3BAwdPeDfTCB7uN is an admin on the test server now and in
   games.env.mainnet. Cody: keep BOTH admins (his and the codyAdmin stand-in whose key is on Claude's PC, so Claude can test edits).
+- [ ] **At GO: keep the TEST site on test money** (to-do #11, 2026-10-05). test.santahatgames.com sends /api to the game server
+  on 127.0.0.1:8082 (Caddy). When that server switches to games.env.mainnet, first start a second, devnet game server (games.env,
+  another port) and point the test site's /api at it, or the test site would play with REAL SANTA.
 - [ ] 1. Fund the wallets.  - [ ] 6. GO (then one ~$1 purchase paid in SOL from Cody's Phantom, besides the 10¢ SANTA dry run).
 
 ## Final launch QA (2026-10-04)

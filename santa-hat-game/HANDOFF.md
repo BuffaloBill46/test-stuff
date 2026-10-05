@@ -164,7 +164,15 @@ between two devices has never been tested from here. Cody and friends testing on
 **Naming (Cody, 2026-10-04): the Games tab is now the ARCADE** (nav bar, page heading "Santa Hat Arcade", guide). Code keeps its
 internal names (#tab-games, data-tab="games", the #games link) so links and tests don't break. Docs say Arcade from here.
 
-### 2026-10-04 (NEWEST): TODO #9, #10, #10b DONE (site published, build after 20ce85b)
+### 2026-10-05 (NEWEST): TEST SITE LIVE (to-do #11), https://test.santahatgames.com
+- DNS: Cody added A record test → 147.182.219.161 at GoDaddy (Claude's DNS edits are blocked by Claude Code's safety rules).
+- Droplet Caddy: test.santahatgames.com serves /var/www/santa-test; /api goes to the game server 127.0.0.1:8082 (devnet now);
+  noindex header + robots.txt. Publish: `bash deploy-test.sh` (same checks/build as deploy-pages.sh, swapped in at once).
+- Page: gameserver.js STAGING → server https://test.santahatgames.com/api; sitefoot.js shows a TEST SITE strip; server/http.js
+  accepts the test site (servers a5b02d1). Email sign-in there: use the 8-digit code (the email link goes to the main site).
+- At GO: the test site needs its own devnet game server (LAUNCH_CHECKLIST).
+
+### 2026-10-04: TODO #9, #10, #10b DONE (site published, build after 20ce85b)
 - Money flow chart: docs/money-flow.png (source docs/money-flow.html; render it with a small Playwright script, see git c6701cb).
 - Bottom of every page (mockups/sitefoot.js; game page under every tab, and the guide): How to get SANTA, @Santahatgame, Support,
   v1.0 (+ build id), (c) 2026 Santa Hat Legends. Raise VERSION in sitefoot.js for a real release.
