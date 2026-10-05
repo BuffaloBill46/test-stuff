@@ -584,3 +584,8 @@ to 48% (Cody), scattering their aim did almost nothing (8x the scatter still hit
 off still hit 21%: bots crowd the hat, and a snowball starts 0.45 m in front of the thrower, right beside the next player. Only
 a wide throw into the most open direction really missed (0.9%). Each try was measured on 400 simulated matches, not reasoned
 about; tests/botaim.test.mjs holds each bot on its own target.
+
+**A test that passes on a lucky seed is not a property (2026-10-05).** housebots-db asserted "some bot reached level 2" after 10
+games, which needs one bot in the top 3 in all 10. Renaming the bots (053) changed their order and the luck ran out. It now checks
+the real invariant: every match gives exactly 3 level ticks. Also: house bots must never reuse practice-bot names (players have
+seen those as bots); housebots-db checks it.
