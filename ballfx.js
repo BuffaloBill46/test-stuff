@@ -1,7 +1,7 @@
 // SPECIAL SNOWBALLS IN FLIGHT: their colours, tracers and glow, drawn into a Sparks layer (kit.js). Moved out of online.js
 // (2026-10-02) so the Store and Avatar pictures (tabs.js thumbnail) draw them with the SAME code as the game: they can't drift.
-import { THREE, Sparks } from './kit.js?v=6058150d08';
-import { K } from './sim.js?v=6058150d08';
+import { THREE, Sparks } from './kit.js?v=f20a4ced1b';
+import { K } from './sim.js?v=f20a4ced1b';
 
 // How each special snowball looks (specials.js `look`): icy, fire-orange, the split's three colours; giant keeps the thrower's colour.
 export const BALL_COLOR = { ice: () => 0xbfeaff, fire: () => 0xff7a3a, split: () => 0xcf3128, piece: (b) => [0xcf3128, 0x3f9a66, 0xf5f1e8][b.id % 3] };
