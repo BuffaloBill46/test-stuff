@@ -58,6 +58,20 @@ per player in the pot (bots included), bots can win, and bots play under player-
 - **Avatar items:** 50% burned, 50% to the treasury.
 - **Lottery:** 90% to winners, 10% burned.
 
+### Decided 2026-10-04 (Cody)
+- **Pay with SOL** anywhere SANTA is taken (games, lottery, Store, pass), one approval, chosen once (Auto / SANTA / SOL; Auto =
+  SANTA when the wallet has enough). The player pays EXACTLY the price in SOL; Jupiter swaps it to SANTA inside the same payment;
+  the swap's fees come out of what reaches the pool / the burn (~9.5% today), the house absorbs them. Store items: exactly 50% of
+  the price swapped and burned, 50% to the treasury as SOL. A SOL payment must go through Jupiter, spend the full price, deliver
+  at least 85% (SOL_FLOOR), and take no SANTA from a wallet that signed; the page won't sign one under the floor. Mainnet only.
+- **Season pass $2, 100% to the treasury**, nothing burned. Other Store items stay 50% burned / 50% treasury.
+- **Levels: 10 top-3 finishes ("ticks") a level** (was 5); 9 -> 10 still 10 first places.
+- **Match points: knock the hat off 10, catch the flying hat 25** (were 25 and 50); wearing it 10 a second, a hit 5.
+- **Support:** a Support button beside @Santahatgame (x.com/Santahatgame) at the bottom of the sign-in sheet. Every message is a
+  ticket: Cody's Telegram bot sends it at once; the player sees it Pending, then Resolved with Cody's note, and can clear a
+  resolved one (x); Cody resolves them on the admin screen (admin-wallet-signed).
+- **Admins:** Cody's Phantom and the codyAdmin stand-in (so Claude can test edits), on the test server and in the mainnet settings.
+
 ### SANTA's 3% tax (decided; checked on the real token)
 - **The token itself takes 3% on every transfer.** Checked on-chain: SANTA (mint
   `3c7mmVSyEH8jfZXgxvpLsETtko1Y16DyRJ5XYB4snhGt`) is a Token-2022 token with a 300 basis point (3%)

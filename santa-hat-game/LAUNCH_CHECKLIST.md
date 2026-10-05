@@ -1,7 +1,7 @@
 # Mainnet launch checklist (2026-10-03, target ~10 hours)
 
 ## ⚠ Read first
-- **This switches the paid games to REAL money.** Anyone with SANTA can play Big Hat, Snowball Drop and Stocking Stuffer for
+- **This switches the paid games to REAL money.** Anyone with SANTA or SOL can play Big Hat, Snowball Drop and Stocking Stuffer for
   real, and buy Store items, levels and lottery tickets.
 - **Legal:** these are paid games of chance with real-value prizes. In many places that counts as regulated gambling.
   A lawyer's look before opening to the public is still recommended (RESEARCH.md). It's your call; Claude can't judge that.
@@ -97,17 +97,17 @@
   - Found live and fixed: the Droplet stored JSON as text; season tasks, jackpot alerts and the jackpot banner now work
     (checked with a real live match and a real devnet pass purchase).
 
-## What Claude is doing meanwhile (no money involved)
-- A security review of every money path, including the thin-market price question.
-- A **safe switch-over script**. When the site switches, every leftover TEST item must be cleared, so none of it is ever paid
-  out in real SANTA:
-  - unpaid test winnings;
-  - open lottery draws holding test tickets;
-  - test pool balances;
-  - store refunds and reward claims.
-  It's tested on a copy of the database first, with a backup made just before.
-- Mainnet settings staged on the Droplet (not switched on until GO).
-- Rerunning the browser tests that failed today because the test machine was overloaded.
+- **Built 2026-10-04, live on the test network (043–047 applied), nothing to do at GO:**
+  - Pay with SOL (shows only once the server is on mainnet): exactly the price, swapped to SANTA in the same payment.
+  - Levels take 10 ticks; match points: knock the hat off 10, catch the flying hat 25; the season pass 100% to the treasury.
+  - Support tickets (Telegram + admin screen + Pending/Resolved for the player) and the @Santahatgame link.
+  - The books-vs-wallet alert no longer fires for payments on their way.
+
+## What Claude was doing meanwhile: all done (2026-10-04)
+- Security review of every money path, and again of the new SOL payments (one gap found and closed).
+- The safe switch-over script, rehearsed on a full copy of the data; it still clears everything added since (checked).
+- Mainnet settings staged on the Droplet, Cody's Phantom in them; no placeholders left.
+- The full test suite, a live 1,000-plays-per-game QA, every Store item bought live, and the SOL path on a copy of mainnet.
 
 ## At GO (Claude, ~15 minutes, step by step)
 1. Back up the database.
@@ -116,5 +116,5 @@
 4. Record your deposits.
 5. Make the public site use the server (no more demo).
 6. Check that every book matches its wallet.
-7. Your 10¢ dry run.
-8. Announce.
+7. Your 10¢ dry run with SANTA, and one ~$1 purchase paid with SOL from your Phantom (the SOL switch appears now).
+8. Announce (the pinned post: marketing/x-launch-posts.txt).
