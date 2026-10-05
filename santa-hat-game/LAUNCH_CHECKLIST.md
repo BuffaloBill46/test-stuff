@@ -32,7 +32,10 @@
    - Save it as `C:\santa-devnet-keys\telegram-token.txt`.
    - Send your new bot any message, so it can reply to you.
 5. **Decisions:**
-   - **a. Key backup:** if the Droplet ever died, the pool's money would be stuck without a copy of its keys. Options:
+   - **a. Key backup:** (2026-10-05: Claude copied the 3 mainnet key files to Cody's PC, `C:santa-mainnet-keys`, verified
+     identical to the Droplet's and that each secret makes its address; plus a WRITE THIS DOWN sheet per wallet. Cody is writing
+     them down; then: lock the folder (7-Zip AES-256, his own password) or delete the unlocked copy.) The original options:
+if the Droplet ever died, the pool's money would be stuck without a copy of its keys. Options:
      - DigitalOcean snapshot + an encrypted copy on your PC (recommended);
      - a snapshot only;
      - no backup.
