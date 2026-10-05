@@ -3,15 +3,15 @@
 // One run: the confirm dialog (price, SANTA amount) → the payment → the plays, played one after another by the game's own
 // card (dropui.js, stockingui.js, games.js) → the run's winnings sent. Plus "Check this result" for the last play of each game.
 // DEMO: the house runs in this browser and pays from / to the demo balance. Server mode (?server=): the game server does it.
-import { KINDS, newLedger, costOf } from './credits.js?v=2cca0899bc';
-import { createHouse, check } from './house.js?v=2cca0899bc';
-import { newSeed } from './fair.js?v=2cca0899bc';
-import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js?v=2cca0899bc';
-import { FEE } from './slots.js?v=2cca0899bc';
-import { asTapped } from './stocking.js?v=2cca0899bc';
-import { play as sfx } from './sfx.js?v=2cca0899bc';
-import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js?v=2cca0899bc';
-import { withSlowDown } from './slowdown.js?v=2cca0899bc';
+import { KINDS, newLedger, costOf } from './credits.js?v=5cf703f1ce';
+import { createHouse, check } from './house.js?v=5cf703f1ce';
+import { newSeed } from './fair.js?v=5cf703f1ce';
+import { santaFor, fmtSanta, QUOTE_SECONDS } from './market.js?v=5cf703f1ce';
+import { FEE } from './slots.js?v=5cf703f1ce';
+import { asTapped } from './stocking.js?v=5cf703f1ce';
+import { play as sfx } from './sfx.js?v=5cf703f1ce';
+import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js?v=5cf703f1ce';
+import { withSlowDown } from './slowdown.js?v=5cf703f1ce';
 export const serverMode = !!SERVER; // ?server=<address>: plays come from the game server
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -183,7 +183,7 @@ function showProofOf(p) {
 async function cfgForProof(p) {
   if (!serverMode || p.settingsVersion === undefined) return null;
   const r = await call('settings', { version: p.settingsVersion }); if (!r?.settings) return null;
-  const { build } = await import('./settings.js?v=2cca0899bc'); return build(r.settings);
+  const { build } = await import('./settings.js?v=5cf703f1ce'); return build(r.settings);
 }
 async function recheck() {
   const p = shown; if (!p) return;
