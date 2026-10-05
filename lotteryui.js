@@ -3,8 +3,8 @@
 // Buying uses the same one-payment wallet step as the games (wallet.js: 10% burned, the rest to the lottery wallet). Recent
 // results can be re-checked in this browser: the draw is re-run from public data alone (mockups/lottery.js drawWinners).
 // Without the game server (today's site) buying says so plainly: nothing is sold and nothing is drawn here.
-import { LOTTERIES, LIVE_LOTTERIES, nextDraw, salesFor, drawWinners } from './lottery.js?v=2d3bd4b23e';
-import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js?v=2d3bd4b23e';
+import { LOTTERIES, LIVE_LOTTERIES, nextDraw, salesFor, drawWinners } from './lottery.js?v=2e92bdf492';
+import { SERVER, call, walletReady, payError, forPlayer, WALLET_LOAD_FAILED } from './gameserver.js?v=2e92bdf492';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -21,11 +21,22 @@ function left(ms) {
 // Your tickets in each draw, as THIS browser bought them (the server's public answer has totals, not who holds what). Keyed by
 // lottery + draw time, so a new draw starts at 0.
 const MINE = 'santa.myLotteryTickets';
-// The draw's key: the server's own draw time when it has answered (the draw actually open), else this browser's schedule.
-const drawKey = (kind) => kind + '@' + (live?.open?.find((x) => x.lottery === kind)?.drawsAt ?? nextDraw(kind, Date.now()));
-const mineOf = (kind) => { try { return JSON.parse(localStorage.getItem(MINE) || '{}')[drawKey(kind)] || 0; } catch { return 0; } };
+// The draw's key: the server's own draw time when it has answered (the draw actually open), else this browser's schedule, PLUS
+// the draw's own fingerprint (commit) when known. Found at launch (Cody, 2026-10-05: "it showed owned 5 of 0 before I bought it"):
+// keyed by time alone, his 5 test-network Christmas tickets counted in the real Christmas draw (same Dec 23 time) on the same phone.
+// A draw's commit is new for every draw, so test and real draws (and any re-made draw) can never share a count.
+const keyFor = (kind, drawsAt) => { const o = live?.open?.find((x) => x.lottery === kind && (drawsAt === undefined || x.drawsAt === drawsAt));
+  return kind + '@' + (drawsAt ?? o?.drawsAt ?? nextDraw(kind, Date.now())) + (o?.commit ? '#' + o.commit.slice(0, 16) : ''); };
+const drawKey = (kind) => keyFor(kind);
+// signed in on the game server: the SERVER's count of my tickets in each open draw ('lottery-mine'), the truth on any device;
+// this browser's own count is only the fallback (signed out, or no answer)
+let serverMine = null;
+const mineOf = (kind) => {
+  const o = live?.open?.find((x) => x.lottery === kind);
+  if (serverMine && o) return serverMine.find((m) => m.lottery === kind && m.drawsAt === o.drawsAt)?.tickets || 0;
+  try { return JSON.parse(localStorage.getItem(MINE) || '{}')[drawKey(kind)] || 0; } catch { return 0; } };
 // filed under the draw the SERVER says the tickets are in (its reply's drawsAt; moved tickets count in the next draw)
-const addMine = (kind, n, drawsAt) => { try { const m = JSON.parse(localStorage.getItem(MINE) || '{}'), k = drawsAt ? kind + '@' + drawsAt : drawKey(kind); m[k] = (m[k] || 0) + n; localStorage.setItem(MINE, JSON.stringify(m)); } catch {} };
+const addMine = (kind, n, drawsAt) => { try { const m = JSON.parse(localStorage.getItem(MINE) || '{}'), k = keyFor(kind, drawsAt || undefined); m[k] = (m[k] || 0) + n; localStorage.setItem(MINE, JSON.stringify(m)); } catch {} };
 // The card's changing parts (Cody, 2026-10-01: laid out like his other game's lottery cards): a notice, then rows of facts.
 const info = (kind) => { const o = live?.open?.find((x) => x.lottery === kind), L = LOTTERIES[kind], mine = mineOf(kind), sold = o ? o.tickets : 0;
   const notice = !SERVER ? '🧪 Test version: tickets aren\'t on sale yet, so there\'s nothing to win this draw.'
@@ -74,6 +85,7 @@ const tick = () => document.querySelectorAll('[data-left]').forEach((b) => { b.t
 
 async function refresh() {
   try { const r = await call('lottery'); if (r && Array.isArray(r.open)) { live = r; render(); } } catch {}
+  if (SERVER) try { const m = await call('lottery-mine'); serverMine = m?.ok && Array.isArray(m.mine) ? m.mine : null; render(); } catch { serverMine = null; }
 }
 
 // Buying: price (60 s) → the wallet pays once → the server checks the payment and numbers the tickets. Remembered in this
