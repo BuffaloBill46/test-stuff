@@ -1,23 +1,24 @@
 // Games tab: wires the Slots page (readouts, Pull, full screen, paytable, winners list) to the rules (slots.js) and the
 // 3D Big Hat machine (slots3d.js). DEMO ONLY: play money and a demo pool kept in this browser. No SANTA moves.
-import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount, poolJackpot } from './slots.js?v=aaeb88d212';
-import { JP as DROP_JP } from './plinko.js?v=aaeb88d212';
-import { JP as STOCK_JP } from './stocking.js?v=aaeb88d212';
-import { createMachine, symbolImages } from './slots3d.js?v=aaeb88d212';
-import { poolState, savePool, resetPool, showResult } from './gamepool.js?v=aaeb88d212';
-import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js?v=aaeb88d212';
-import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js?v=aaeb88d212';
-import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js?v=aaeb88d212';
-import { runSummary } from './runui.js?v=aaeb88d212';
-import { livePrice, liveFee, santaFor, fmtSanta } from './market.js?v=aaeb88d212';
-import { FEE } from './slots.js?v=aaeb88d212';
-import { play as sfx } from './sfx.js?v=aaeb88d212';
-import { celebrate, tierOf } from './celebrate.js?v=aaeb88d212';
-import { SERVER, call, settingsReady } from './gameserver.js?v=aaeb88d212';
-import { refreshWallet } from './walletline.js?v=aaeb88d212';
-import { weekStart } from './gameclock.js?v=aaeb88d212';
-import { KINDS, SIZES } from './credits.js?v=aaeb88d212';
-import { initRunPick, priceLabel } from './runpick.js?v=aaeb88d212';
+import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount, poolJackpot } from './slots.js?v=2cca0899bc';
+import { JP as DROP_JP } from './plinko.js?v=2cca0899bc';
+import { JP as STOCK_JP } from './stocking.js?v=2cca0899bc';
+import { createMachine, symbolImages } from './slots3d.js?v=2cca0899bc';
+import { poolState, savePool, resetPool, showResult } from './gamepool.js?v=2cca0899bc';
+import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js?v=2cca0899bc';
+import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js?v=2cca0899bc';
+import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js?v=2cca0899bc';
+import { runSummary } from './runui.js?v=2cca0899bc';
+import { livePrice, liveFee, santaFor, fmtSanta } from './market.js?v=2cca0899bc';
+import { FEE } from './slots.js?v=2cca0899bc';
+import { play as sfx } from './sfx.js?v=2cca0899bc';
+import { celebrate, tierOf } from './celebrate.js?v=2cca0899bc';
+import { SERVER, call, settingsReady } from './gameserver.js?v=2cca0899bc';
+import { refreshWallet } from './walletline.js?v=2cca0899bc';
+import { weekStart } from './gameclock.js?v=2cca0899bc';
+import { KINDS, SIZES } from './credits.js?v=2cca0899bc';
+import { initRunPick, priceLabel } from './runpick.js?v=2cca0899bc';
+import { bigShare } from './sharecard.js?v=2cca0899bc'; // "Share this win" on a big single win (Cody 2026-10-04)
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -193,14 +194,14 @@ async function showPull(p, i, n) {
   if (r.jackpot) {
     card.classList.add('jackpot'); stamp('JACKPOT!'); hold = celebrate(card, 5, { amount: r.pay, money, fast });
     res.innerHTML = `<b>POOL JACKPOT!</b> ${money(r.pay)}`;
-    addWinner('slots', r.pay, M.bet, 'pool jackpot');
+    addWinner('slots', r.pay, M.bet, 'pool jackpot'); res.insertAdjacentHTML('beforeend', bigShare('big', r.pay, M.bet, true));
   } else if (r.ahead) { // only celebrate when the pull pays more than it cost
     const top = r.wins.some((w) => w.top), big = r.pay >= 10 * M.bet;
     // the tier word says NICE / BIG / HUGE WIN, so the stamp keeps to the amount
     card.classList.add('won'); stamp(top ? '100×!' : 'WIN ' + money(r.pay)); hold = celebrate(card, tierOf({ ahead: true, mult: r.pay / M.bet }), { amount: r.pay, money, fast });
     res.innerHTML = `<b>${top ? '5 Santa Hats!' : big ? 'Big win!' : 'Win!'}</b> ${money(r.pay)}` +
       ` <span class="dim">(${lines} line${lines === 1 ? '' : 's'}${hatsTxt ? ' + ' + hatsTxt : ''})</span>`;
-    addWinner('slots', r.pay, M.bet, top ? '5 Santa Hats' : lines > 1 ? lines + ' lines' : '');
+    addWinner('slots', r.pay, M.bet, top ? '5 Santa Hats' : lines > 1 ? lines + ' lines' : ''); res.insertAdjacentHTML('beforeend', bigShare('big', r.pay, M.bet));
   } else if (r.pay > 0) {
     res.innerHTML = `<span class="dim">Returned ${money(r.pay)}${hatsTxt ? ' (' + hatsTxt + ')' : ''}. Less than the $1 pull.</span>`;
   } else res.textContent = 'No win this time.';

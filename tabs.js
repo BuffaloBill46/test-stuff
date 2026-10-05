@@ -1,19 +1,20 @@
 // Site tabs: Play / Store / Avatar / Ranks, wallet sign-in, avatar editor, leaderboard.
-import { THREE, character, lights, toon, part, build, hatGeo, giftGeo, C, Sparks, TOON } from './kit.js?v=aaeb88d212';
-import { BALL_COLOR, tracer, dropStreak } from './ballfx.js?v=aaeb88d212';
-import { mountHumanCheck } from './human.js?v=aaeb88d212';
-import { GEAR_SLOTS } from './catalog.js?v=aaeb88d212';
-import { shopBuy, resumeShop } from './shopui.js?v=aaeb88d212';
-import { forSale } from './shoprules.js?v=aaeb88d212';
-import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=aaeb88d212';
-import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable, COSTUMES, costumeItems, costumeWord, SEASONS } from './catalog.js?v=aaeb88d212';
-import { SPECIALS } from './specials.js?v=aaeb88d212';
-import { settingsReady, call } from './gameserver.js?v=aaeb88d212';
-import { TICKET_MAX } from './ranked.js?v=aaeb88d212';
-import { dayStart, weekStart } from './gameclock.js?v=aaeb88d212';
-import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js?v=aaeb88d212';
-import { refreshSeason } from './seasonui.js?v=aaeb88d212';
-import { THEMES, THEME_IDS } from './themes.js?v=aaeb88d212';
+import { THREE, character, lights, toon, part, build, hatGeo, giftGeo, C, Sparks, TOON } from './kit.js?v=2cca0899bc';
+import { costumeShareButton, usePortraits } from './sharecard.js?v=2cca0899bc'; // share a costume (Cody 2026-10-04)
+import { BALL_COLOR, tracer, dropStreak } from './ballfx.js?v=2cca0899bc';
+import { mountHumanCheck } from './human.js?v=2cca0899bc';
+import { GEAR_SLOTS } from './catalog.js?v=2cca0899bc';
+import { shopBuy, resumeShop } from './shopui.js?v=2cca0899bc';
+import { forSale } from './shoprules.js?v=2cca0899bc';
+import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=2cca0899bc';
+import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable, COSTUMES, costumeItems, costumeWord, SEASONS } from './catalog.js?v=2cca0899bc';
+import { SPECIALS } from './specials.js?v=2cca0899bc';
+import { settingsReady, call } from './gameserver.js?v=2cca0899bc';
+import { TICKET_MAX } from './ranked.js?v=2cca0899bc';
+import { dayStart, weekStart } from './gameclock.js?v=2cca0899bc';
+import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js?v=2cca0899bc';
+import { refreshSeason } from './seasonui.js?v=2cca0899bc';
+import { THEMES, THEME_IDS } from './themes.js?v=2cca0899bc';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -26,6 +27,19 @@ const costWords = (S) => (S.cost === 'all' ? 'Costs all your snowballs' : `Costs
 // ---------- item thumbnails: each item rendered once on the real model, cached as an image
 let thumbR = null;
 const thumbs = new Map();
+// A costume on the model, bigger than a Store thumbnail (480 px), for the "New costume" share card (Cody 2026-10-04)
+let portraitR = null;
+export function costumePortrait(set) {
+  if (!portraitR) { portraitR = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); portraitR.setSize(480, 480, false); }
+  const scene = new THREE.Scene(); lights(scene, { hemi: 1.7, moonI: 1.6 });
+  const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50), a = { ...DEFAULT_AVATAR };
+  for (const i of costumeItems(set)) a[i.slot] = i.id;
+  const ch = avatarCharacter(a); ch.rotation.y = -0.55; scene.add(ch); cam.position.set(0, 1.55, 5.4); cam.lookAt(0, 1.5, 0);
+  portraitR.render(scene, cam); const url = portraitR.domElement.toDataURL('image/png');
+  scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); return url;
+}
+// The costumes I have (every piece mine, or unlocked by my level) — for the share row and the one-time "New costume" banner
+const ownedCostumes = (lvl, owned) => Object.entries(COSTUMES).filter(([set]) => costumeItems(set).every((i) => usable(i, lvl, owned))).map(([set, c]) => ({ set, name: c.name, season: !!c.season }));
 export function thumbnail(item) {
   if (thumbs.has(item.id)) return thumbs.get(item.id);
   if (!thumbR) { thumbR = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); thumbR.setSize(160, 160, false); }
@@ -163,6 +177,7 @@ function withGear(a, slot, id) {
 const STAT_NAMES = { hits: 'extra hits', held: 'snowballs held', refill: 'refill speed', speed: 'move speed', size: 'size' };
 const statName = (kind) => (kind === 'present' ? 'a random gear' : STAT_NAMES[statOf(kind)] || '');
 export function initTabs(app) {
+  usePortraits(costumePortrait); // the share cards draw costumes with this page's 3D renderer
   careerOf = (ids) => app.accounts.career ? app.accounts.career(ids) : Promise.resolve({});
   const state = { tab: 'home', slot: 'shirt', sbSlot: 'sb1', gSlot: 'g1', draft: null, owned: new Set(), board: null };
   // The Avatar editor's tabs: the look slots, then Special Snowballs and Special Gear. Special Gear REPLACES Backpacks (Cody,
@@ -197,10 +212,29 @@ export function initTabs(app) {
     btn.textContent = p ? p.name : 'Sign in'; btn.classList.toggle('in', !!p);
     btn.title = p ? (p.wallet ? `Signed in with wallet ${p.wallet}` : 'Signed in with email') : 'Sign in with a wallet or email';
   }
+  // NEW COSTUME (Cody 2026-10-04: share "when they acquire a costume"): once per costume per browser, a banner with Share it / Wear it
+  function announceCostumes(lvl) {
+    const box = $('#costumeNews'); if (!box) return;
+    let seen; try { seen = new Set(JSON.parse(localStorage.getItem('santa.costumesSeen') || '[]')); } catch { seen = new Set(); }
+    const have = ownedCostumes(lvl, state.owned), first = !localStorage.getItem('santa.costumesSeen');
+    const fresh = have.filter((c) => !seen.has(c.set));
+    try { localStorage.setItem('santa.costumesSeen', JSON.stringify(have.map((c) => c.set))); } catch {}
+    // the first time this browser looks, only costumes earned by a season count as news (the level costumes a player grew into
+    // long ago would all pop up at once otherwise)
+    const news = first ? fresh.filter((c) => c.season) : fresh; if (!news.length) return;
+    const c = news[0];
+    box.innerHTML = `<button class="close" data-x aria-label="Close">×</button><div class="eyebrow">New costume</div><h3>You got the ${esc(c.name)} costume!</h3>
+      <p class="row">${costumeShareButton({ name: c.name, set: c.set, how: c.season ? 'Earned on the season pass' : 'Unlocked by levelling up' })}<button type="button" class="go" data-wear="${esc(c.set)}">Wear it</button></p>`;
+    box.hidden = false;
+    box.onclick = (e) => { if (e.target.closest('[data-x]')) box.hidden = true;
+      const w = e.target.closest('[data-wear]'); if (w) { box.hidden = true; show('avatar'); state.draft ||= { name: app.profile?.name || '', a: cleanAvatar(app.profile?.avatar) };
+        const ps = costumeItems(w.dataset.wear); for (const i of ps) state.draft.a[i.slot] = i.id; renderAvatar(); } };
+  }
   async function reloadMine() { try { const p = await app.accounts.profile(); if (p) await afterSignIn(p); } catch {} }
   async function afterSignIn(p) {
     app.profile = p; app.setIdentity(p.name, cleanAvatar(p.avatar)); renderProgress(p);
     try { state.owned = new Set(await app.accounts.inventory()); } catch { state.owned = new Set(); }
+    announceCostumes(p.level || 1);
     renderWho(); if (state.tab === 'avatar') { state.draft = { name: p.name, a: cleanAvatar(p.avatar) }; renderAvatar(); }
     if (state.tab === 'ranks') renderRanks();
     if (state.tab === 'store') renderStore(true);
@@ -418,6 +452,9 @@ export function initTabs(app) {
     // Costumes: one card per costume (tap = wear every piece), then the back pieces (a costume's pack, or none)
     const co = state.slot === 'costume';
     // (a season costume, the Halloween pass's Pumpkin King, says which pass gives it; locked, it can be tried on but not saved)
+    // the Costumes list: a "Share" for every costume I have (Cody 2026-10-04)
+    const avs = $('#avshare'); if (avs) { const mine = co && app.profile ? ownedCostumes(lvl, state.owned) : []; avs.hidden = !mine.length;
+      avs.innerHTML = mine.length ? '<span>Share a costume you have:</span>' + mine.map((c) => costumeShareButton({ name: c.name, set: c.set, how: c.season ? 'Earned on the season pass' : 'Unlocked by levelling up' }, 'Share ' + esc(c.name))).join('') : ''; }
     if (co) { const byLvl = Object.values(COSTUMES).filter((c) => !c.season), bySeason = Object.values(COSTUMES).filter((c) => c.season);
       sbBox.hidden = false; sbBox.innerHTML = `<p class="avrule"><b>Free</b> ${byLvl.map((c) => `level ${c.level}: ${esc(c.name)}`).join(', ')}.${bySeason.map((c) => ` <b>${esc(costumeWord(c))}</b> ${esc(c.name)}.`).join('')} Each piece is also in its own tab, to mix and match.</p>`;
       $('#avgrid').innerHTML = Object.entries(COSTUMES).map(([set, c]) => { const ps = costumeItems(set), ok = ps.every((i) => usable(i, lvl, state.owned)), on = ps.every((i) => d.a[i.slot] === i.id);

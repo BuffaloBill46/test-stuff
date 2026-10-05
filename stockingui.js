@@ -5,15 +5,16 @@
 // playcredits.js / house.js): the WHOLE turn is decided before the first stocking jiggles; the board only shows it.
 // Celebrations follow the money (LESSONS: no losses dressed as wins): the jackpot gets the biggest, with its dollar amount; 3+
 // gifts celebrate (5+ bigger); 2 gifts (1.5×) a light touch; 1 gift (0.5×) is a loss and is said plainly. Winners absorb SANTA's 3% tax, and the messages say so.
-import { PAYS, WAYS, TOTAL, GIFTS, STOCKINGS, ROW, MAX_OPEN, JP, topMult } from './stocking.js?v=aaeb88d212';
-import { poolJackpot } from './slots.js?v=aaeb88d212';
-import { createStockings } from './stockingboard.js?v=aaeb88d212';
-import { playRun, short } from './playcredits.js?v=aaeb88d212';
-import { runSummary } from './runui.js?v=aaeb88d212';
-import { initRunPick, priceLabel } from './runpick.js?v=aaeb88d212';
-import { showResult } from './gamepool.js?v=aaeb88d212';
-import { play as sfx } from './sfx.js?v=aaeb88d212';
-import { celebrate, tierOf } from './celebrate.js?v=aaeb88d212';
+import { PAYS, WAYS, TOTAL, GIFTS, STOCKINGS, ROW, MAX_OPEN, JP, topMult } from './stocking.js?v=2cca0899bc';
+import { poolJackpot } from './slots.js?v=2cca0899bc';
+import { createStockings } from './stockingboard.js?v=2cca0899bc';
+import { playRun, short } from './playcredits.js?v=2cca0899bc';
+import { runSummary } from './runui.js?v=2cca0899bc';
+import { initRunPick, priceLabel } from './runpick.js?v=2cca0899bc';
+import { showResult } from './gamepool.js?v=2cca0899bc';
+import { play as sfx } from './sfx.js?v=2cca0899bc';
+import { celebrate, tierOf } from './celebrate.js?v=2cca0899bc';
+import { bigShare } from './sharecard.js?v=2cca0899bc'; // "Share this win" on a big single win (Cody 2026-10-04)
 
 const $ = (s, el = document) => el.querySelector(s);
 const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);
@@ -123,11 +124,13 @@ function landed(r, p) {
   if (r.jackpot) { // 8 gifts in a row: THE POOL JACKPOT, the biggest celebration, with the real dollar amount
     card.classList.add('jackpot'); stamp(`POOL JACKPOT ${money(r.pay)}`); hold = celebrate(card, 5, { amount: r.pay, money, fast });
     res.innerHTML = `<span><b>${k} gifts in a row! POOL JACKPOT: ${money(r.pay)}</b> <span class="dim">(${+(r.pct * 100).toFixed(2)}% of the ${money(r.jackpotPool)} Game pool × your ${cents(r.bet)} turn)</span>${after(r.pay)}</span>`;
+    res.insertAdjacentHTML('beforeend', bigShare('stocking', r.pay, r.bet, true));
   } else if (k >= 3) { // a real win: celebrate (bigger for 5+ gifts)
     // the tier follows the money (3 gifts 3× nice, 10×+ big, 25×+ huge); the jackpot look is the pool jackpot's alone
     card.classList.add('won'); hold = celebrate(card, tierOf({ ahead: true, mult: r.mult }), { amount: r.pay, money, fast });
     stamp(`${mult(r.mult)} WIN`);
     res.innerHTML = `<span><b>${k} gifts! ${mult(r.mult)} win:</b> ${money(r.pay)}${after(r.pay)}</span>`;
+    res.insertAdjacentHTML('beforeend', bigShare('stocking', r.pay, r.bet));
   } else if (k === 2) { // a light touch: no stamp, the tier-1 chime and sparkles (1.5× is ahead)
     res.innerHTML = `<span><b>2 gifts: ${mult(r.mult)} back</b> ${money(r.pay)}${after(r.pay)}</span>`; celebrate(card, tierOf({ ahead: r.ahead, mult: r.mult }), { amount: r.pay, money, fast });
   }

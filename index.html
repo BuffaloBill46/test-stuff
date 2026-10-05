@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="aaeb88d212">
+<html lang="en" data-build="2cca0899bc">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -738,6 +738,12 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 .way p { margin: 0 0 10px; color: #d6ddf0; }
 .way .row input { text-transform: none; font-family: var(--body); letter-spacing: 0; }
 #acctMsg { color: var(--lamp); margin: 6px 0 0; }
+/* share buttons (sharecard.js): a costume row on the Avatar screen, "Share my score" after a match, the New costume banner */
+.sharerow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0 0; color: var(--dim); }
+.sharescore { margin: 6px 0 0; }
+#costumeNews { position: fixed; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 76px); z-index: 9; width: min(420px, calc(100% - 32px)); padding: 14px 16px; }
+#costumeNews h3 { margin: 4px 0 8px; font: 800 26px/1.1 var(--display); color: var(--lamp); }
+#costumeNews .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; }
 /* the sheet's footer: the X account and Support side by side (supportui.js) */
 .acctfoot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #2c3766; }
 .acctfoot .xlink { display: inline-flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none; font-weight: 700; }
@@ -1300,6 +1306,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       <div class="slots" role="tablist" aria-label="Item type" id="avslots"></div>
       <div class="sbslots" id="avsb" hidden></div>
       <div class="grid" id="avgrid"></div>
+      <p class="sharerow" id="avshare" hidden></p>
       <div class="level" id="avlevel"></div>
       <div class="saverow"><button class="go" id="avsave">Save look</button><button class="sec" id="avbuy" hidden>Buy</button><span id="avmsg" role="status"></span></div>
       <label id="avthemeL">Plaza theme <span class="note">· only you see it</span></label>
@@ -1319,6 +1326,8 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
   </section>
 </main>
 
+<!-- "You got the … costume!" once per costume, with Share it / Wear it (tabs.js announceCostumes; Cody 2026-10-04) -->
+<section id="costumeNews" class="plaque news" role="status" hidden></section>
 <section id="acct" class="plaque sheet" hidden>
   <button class="close" id="acctClose" aria-label="Close">×</button>
   <div id="acctOut">
@@ -1387,6 +1396,6 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 <div id="emotes" hidden></div>
 <div id="joy" hidden></div>
 <div id="zoom" hidden><button id="zoomIn" aria-label="Zoom in">+</button><button id="zoomOut" aria-label="Zoom out">−</button></div>
-<script type="module" src="./online.js?v=aaeb88d212"></script>
+<script type="module" src="./online.js?v=2cca0899bc"></script>
 </body>
 </html>
