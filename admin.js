@@ -1,12 +1,12 @@
 // The escrow admin screen (admin.html): pool status, Stop / Resume, settings. Every action is a message Cody's wallet signs
 // (adminmsg.js); the server checks it (server/admin.js). Open with ?server=<the games Edge Function address>.
-import { adminMessage } from './adminmsg.js?v=84d2cda39a';
-import { VARIANTS } from './weekly.js?v=84d2cda39a';
-import { LOTTERIES } from './lottery.js?v=84d2cda39a';
-import { POOL_RULES } from './slots.js?v=84d2cda39a';
-import { DEFAULT_SETTINGS, check, itemsWith } from './settings.js?v=84d2cda39a';
-import { ITEMS, SLOTS } from './catalog.js?v=84d2cda39a';
-import { SYMBOLS } from './slots.js?v=84d2cda39a';
+import { adminMessage } from './adminmsg.js?v=061ef3d1d2';
+import { VARIANTS } from './weekly.js?v=061ef3d1d2';
+import { LOTTERIES } from './lottery.js?v=061ef3d1d2';
+import { POOL_RULES } from './slots.js?v=061ef3d1d2';
+import { DEFAULT_SETTINGS, check, itemsWith } from './settings.js?v=061ef3d1d2';
+import { ITEMS, SLOTS } from './catalog.js?v=061ef3d1d2';
+import { SYMBOLS } from './slots.js?v=061ef3d1d2';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; };
@@ -61,6 +61,8 @@ async function act(action, game, settings = {}) {
   if (r.error) return msg('Refused: ' + r.error, 'bad');
   if (action === 'claim-rewards') { msg(`Claim #${r.claim} sent to the payout worker. It finds the reward tokens and sends them to the treasury within a minute.`, 'ok'); setTimeout(() => act('rewards-status', 'all'), 20000); return; }
   if (action === 'rewards-status') { rewardsList(r); return msg(r.sweeps.length ? 'Reward claims loaded.' : 'No reward sweeps yet.', 'ok'); }
+  if (action === 'support-list') { supportList(r); const open = r.messages.filter((m) => m.status === 'open').length; return msg(open ? `${open} open support message(s).` : 'No open support messages.', 'ok'); }
+  if (action === 'support-handled') { msg(`Support #${r.id} marked handled.`, 'ok'); return act('support-list', 'support'); }
   if (action === 'shop-owed') { shopList(r); return msg(r.owed.length ? `${r.owed.length} shop refund(s) to send.` : 'No shop refunds owed.', 'ok'); }
   if (action === 'shop-refund-paid') { msg(`Recorded: refund paid (${(r.arrived / 1e6).toLocaleString()} SANTA arrived). It's in the public log.`, 'ok'); return act('shop-owed', 'shop'); }
   if (action === 'lottery-owed') { owedList(r); return msg(r.owed.length ? `${r.owed.length} lottery payment(s) to send.` : 'No lottery winners waiting.', 'ok'); }
@@ -84,11 +86,24 @@ function bots(r) {
 $('#botCheck').addEventListener('click', () => act('bot-signals', 'all'));
 // The lottery's manual payouts: who, their FULL wallet (to send to), what for, and how much to send; paste the transaction to record it.
 // Shop refunds owed (016): who, how much, why; paste the refund transaction to record it.
+// support messages (server/support.js): open first; who wrote (or a guest), how to reach them, where they were, what they said
+function supportList(r) {
+  const open = r.messages.filter((m) => m.status === 'open').length, short = (w) => (w ? w.slice(0, 4) + '…' + w.slice(-4) : '');
+  $('#supportBox').classList.toggle('alert', open > 0);
+  $('#supportList').innerHTML = r.messages.length ? `<table><tr><th>#</th><th>When</th><th>From</th><th>Reach them</th><th>On</th><th>Message</th><th></th></tr>${r.messages.map((m) => `<tr${m.status === 'open' ? '' : ' class="dim"'}>
+    <td>${m.id}</td><td>${esc(new Date(m.at).toLocaleString())}</td><td>${m.name ? esc(m.name) + (m.wallet ? ' <code>' + esc(short(m.wallet)) + '</code>' : '') : 'guest'}</td>
+    <td>${esc(m.contact || '—')}</td><td>${esc(m.page || '')}</td><td style="white-space:pre-wrap;max-width:420px">${esc(m.message)}</td>
+    <td>${m.status === 'open' ? `<button type="button" data-supporthandled="${m.id}">Mark handled</button>` : 'handled' + (m.note ? ': ' + esc(m.note) : '')}</td></tr>`).join('')}</table>` : 'No support messages yet.';
+}
 function shopList(r) {
   $('#shopBox').classList.toggle('alert', r.owed.length > 0);
   $('#shopOwed').innerHTML = r.owed.length ? `<table><tr><th>Player</th><th>Send to</th><th>Why</th><th>Send</th><th>Transaction</th></tr>${r.owed.map((o, i) => `<tr><td>${esc(o.name || 'player')}</td><td><code>${esc(o.wallet)}</code></td><td>${esc(o.why)}</td><td><b>${(o.raw / 1e6).toLocaleString(undefined, { maximumFractionDigits: 6 })} SANTA</b></td><td><input type="text" placeholder="paste the signature" data-shoptx="${i}"><button type="button" data-shoppaid="${i}" data-refund="${esc(o.id)}">Record</button></td></tr>`).join('')}</table>` : 'Nobody owed.';
 }
 $('#shopLoad').addEventListener('click', () => act('shop-owed', 'shop'));
+$('#supportLoad').addEventListener('click', () => act('support-list', 'support'));
+$('#supportList').addEventListener('click', (e) => { const b = e.target.closest('[data-supporthandled]'); if (!b) return;
+  const note = prompt(`Mark support #${b.dataset.supporthandled} handled. A note to keep with it (optional):`, ''); if (note === null) return;
+  act('support-handled', 'support', { id: +b.dataset.supporthandled, note }); });
 // Claim rewards (024): the claims and what each sent (known reward tokens by name; others by their mint)
 const REWARD_NAMES = { HTmQz7My6MehV7bjhJ6jde8nDND1yvsz68d24LP7YgUQ: 'GP', Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re: 'GLDX' };
 const POOL_NAMES = { spin: 'Game pool', slots: 'Old Slots pool', lottery: 'Lottery wallet' };

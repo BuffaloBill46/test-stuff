@@ -70,6 +70,12 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
       transaction here: it's checked on the chain before it's recorded.</p>
     <div class="row"><button type="button" id="shopLoad">Show refunds owed</button></div>
     <div id="shopOwed" class="dim">Not loaded yet.</div></section>
+  <section class="plaque" id="supportBox"><h2>Support messages</h2>
+    <p class="dim">What players sent with the Support button (at the bottom of the sign-in sheet, next to the X link). Each one also
+      went straight to your Telegram bot. Open ones first. Mark one handled once you've dealt with it (signed with your admin
+      wallet; your note is kept with it).</p>
+    <div class="row"><button type="button" id="supportLoad">Show support messages</button></div>
+    <div id="supportList" class="dim">Not loaded yet.</div></section>
   <section class="plaque" id="rewardsBox"><h2>Claim rewards</h2>
     <p class="dim">Reward tokens sent to SANTA holders (GP, GLDX, any other) land in the Game pool, the old Slots pool and the Lottery wallets.
       Claiming sends every token in those three wallets that is NOT SANTA to the treasury. SANTA is never touched and nothing can
@@ -114,5 +120,5 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
       <button type="button" id="depSave">Record deposit</button></div></section>
   <section class="plaque"><h2>Change log</h2><div id="log" class="dim">No changes yet.</div></section>
 </main>
-<script type="module" src="admin.js?v=84d2cda39a"></script>
+<script type="module" src="admin.js?v=061ef3d1d2"></script>
 </body></html>

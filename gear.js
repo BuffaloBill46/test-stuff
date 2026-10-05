@@ -10,8 +10,8 @@
 //   takes just ONE extra hit with an Elf Hat (Cody, 2026-10-01: "it still takes 2 hits if they have gear on").
 //   present: at match start it becomes one random OTHER gear the player's level allows (resolvePresent).
 //   minLevel: worn only from that level (Santa Costume: level 3+, like Snowball Rain's level 5 in specials.js).
-import { BY_ID, GEAR_SLOTS, cleanAvatar } from './catalog.js?v=84d2cda39a';
-import { levelInfo } from './levels.js?v=84d2cda39a';
+import { BY_ID, GEAR_SLOTS, cleanAvatar } from './catalog.js?v=061ef3d1d2';
+import { levelInfo } from './levels.js?v=061ef3d1d2';
 export const GEAR = {
   pumpkin: { name: 'Pumpkin Costume', stat: 'hits', hits: 1, note: '+1 hit (2 snowballs to knock you down)' },
   kevlar: { name: 'I.C.E. Kevlar Vest', stat: 'hits', hits: 1, note: '+1 hit' },
