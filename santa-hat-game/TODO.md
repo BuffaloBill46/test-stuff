@@ -177,7 +177,7 @@ stop cheating and spam:
 ## Later
 - [ ] Wager mode (players bet SANTA, FFA).
 - [x] **Recent winners list shared across players (built, 2026-09-30):** the server's public `winners` action lists everyone's recent real wins (names only, never wallets); the page shows it in server mode. Tested in `tests/db/server.test.mjs` and `tests/browser/server-mode-test.mjs`. The demo still shows this browser's wins.
-- [ ] Tournaments.
+- [x] Tournaments (2026-10-05: admin-made, code entry, bracket, 90 s games, live; DESIGN_NOTES "TOURNAMENTS").
 - [x] **Sound effects (2026-09-30):** made in code (`mockups/sfx.js`): sleigh bells, snow thumps, throws, knocks, reel clacks, wheel ticks, wins; mute button remembered. Test: `tests/browser/sfx-test.mjs`. Still to judge by ear on a real phone.
 - [x] **Bots use emotes sometimes (2026-09-30):** 30% on a catch, knock or hit, at most once per 8 s per bot, no extra messages. Checked in `tests/sim.test.mjs`.
 - [ ] Merging two accounts that both have progress (linking refuses this today).
@@ -207,3 +207,4 @@ stop cheating and spam:
 - 3% SANTA tax notice on the Play page intro, the Wager card and the Lottery block. Decided: winners absorb the tax.
 - Unranked lobby (FFA or TEAM, Auto match into public games, private room code, practice) and the FFA RANKED lobby layout (Tournament greyed out, Coming soon).
 - Live games list with Watch now: up to 4 watchers per game, who see the match but never play or count as players.
+- [ ] Watch tests/db/lock.test.mjs on GitHub: failed once on main (c279cf7) while the same commit passed on the branch, during GitHub runner trouble (2026-10-05). If it fails again, get the log (needs a GitHub sign-in) and fix the race.

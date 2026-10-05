@@ -165,6 +165,18 @@ between two devices has never been tested from here. Cody and friends testing on
 internal names (#tab-games, data-tab="games", the #games link) so links and tests don't break. Docs say Arcade from here.
 
 ### 2026-10-05 (NEWEST): LIVE ON MAINNET (Cody's GO ~12:55 UTC; LAUNCH_CHECKLIST "LIVE")
+- TOURNAMENTS (live ~21:00 UTC; DESIGN_NOTES "TOURNAMENTS"; server/tourney.js + referee.js, mockups/tourui.js; 054 applied):
+  Cody's Phantom (ADMIN_WALLETS, now also in referee.env; backup referee.env.bak-2026-10-05) makes one in the ranked lobby
+  (Tournament button → his row: rules, Create, code, Start, Call off). Kept in the match server's memory: DON'T restart
+  santa-referee during a tournament. Finished ones saved in public.tournaments (standings: who Cody sends prizes to).
+  Tests: tourney, db/tourney-db, browser/tourney-browser-test. Not yet tried by Cody on the live site.
+- UNREPORTED PAYMENTS (live): Cody's $1 Stocking Stuffer (page froze, he refreshed, approved the old popup) reached the pool
+  with no play. Recovered by hand (run 115, won $0.50, payout 101 sent). Now automatic: games server once a minute
+  (recoverUnreported), Telegram when it finds one. "Your last turns" read from the server (my-turns).
+- GitHub (21:00-21:30 UTC): Pages build stuck "queued" and a runner not acquired (GitHub's side); lock.test failed once on
+  main, passed on the branch for the same commit (overloaded runner?) — watch it. The site may lag the servers until it clears.
+- NEXT (Cody, queued in order): mini games show the SOL balance under the SANTA one, the chosen one highlighted green, keep the
+  "Paying with" line; private rooms: the creator picks the code (a password) and friends join with the same one.
 - HOUSE BOT AIM (live 17:57 UTC): each house bot hits 10%-48% (its own, fixed; sim.js aimOf). Their board % still holds the
   ~10 earlier matches at ~50% each. Cody chose to reset: the bots' throws/hits were zeroed (copy kept in the locked table
   bot_aim_backup_20261005; players untouched) and 10 more rounds played (41 matches). Board now 11%-50% (luck over 10 matches).
