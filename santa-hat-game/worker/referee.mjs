@@ -23,7 +23,10 @@ const addressOf = (req) => { const direct = req.socket.remoteAddress || ''; retu
 
 const SB_URL = process.env.SUPABASE_URL || 'https://olganobdypnxfpmsxibe.supabase.co';
 const SB_KEY = process.env.SUPABASE_KEY || 'sb_publishable_eLn_YYzLDOTuUAOTZLeyKQ_PLGT8B6N'; // publishable: meant to be public
-let identify = null, finish = null, ranked = null, houseBots = null;
+let identify = null, finish = null, ranked = null, houseBots = null, tourneyDone = null;
+// ADMIN_WALLETS (comma-separated, as in games.env): a signed-in player whose profile has one of these wallets is the admin, the
+// only one who can make, start or call off a TOURNAMENT (Cody 2026-10-05; server/referee.js).
+const ADMIN = new Set((process.env.ADMIN_WALLETS || '').split(',').map((x) => x.trim()).filter(Boolean));
 // WEEKLY MODES Cody has switched on (supabase/034; the admin screen), read once a minute. Unreadable (no database, 034 not yet
 // applied, a network hiccup): kept as last read, and [] at the start = every weekly mode OFF (never on by accident).
 let weeklyOnList = [], readWeekly = null;
@@ -39,7 +42,11 @@ if (process.env.DATABASE_URL) {
     if (!r.ok) return null;
     const user = await r.json(); if (!user?.id) return null;
     const p = (await db.query('select * from public.referee_profile($1)', [user.id]))[0]; // 017: the referee login's one lookup
-    return p ? { pid: p.id, l: p.level, a: p.avatar, n: p.name, rp: p.rank_points } : null;
+    if (!p) return null;
+    // 054 lets this login read the wallet column; if that ever fails, the player is simply not the admin (sign-in still works)
+    let admin = false;
+    if (ADMIN.size) try { admin = ADMIN.has((await db.query('select wallet from public.profiles where id = $1', [p.id]))[0]?.wallet); } catch (e) { console.error('referee: admin check failed:', e.message); }
+    return { pid: p.id, l: p.level, a: p.avatar, n: p.name, rp: p.rank_points, admin };
   };
   finish = createLevels({ db }).finishByReferee;
   readWeekly = async () => { try { weeklyOnList = (await db.query('select id from public.weekly_modes where "on"')).map((r) => r.id); } catch (e) { console.error('referee: weekly modes read failed:', e.message); } };
@@ -55,11 +62,13 @@ if (process.env.DATABASE_URL) {
   };
   // the house bots (supabase/050; Cody 2026-10-05): who the bots in matches play as
   houseBots = async () => (await db.query('select * from public.house_bots()')).map((r) => ({ id: r.id, name: r.name, avatar: r.avatar, level: r.level }));
-  console.log('referee: sign-ins checked, finishes recorded');
+  // a finished or called-off tournament (supabase/054): its rules, entrants and standings
+  tourneyDone = (r) => db.query('select public.record_tournament($1::jsonb)', [JSON.stringify(r)]);
+  console.log('referee: sign-ins checked, finishes recorded' + (ADMIN.size ? `, ${ADMIN.size} admin wallet(s) for tournaments` : ', no admin wallets (tournaments cannot be made)'));
 } else console.log('referee: no DATABASE_URL: phase-1 rooms (the page word is used, nothing recorded)');
 // Ranked paused while this file exists (Cody, 2026-10-02): touch it to pause, delete it to reopen; no restart needed.
 const PAUSE_FILE = process.env.RANKED_PAUSE_FILE || '/etc/santa/ranked-paused';
-const ref = createReferee({ identify, finish, ranked, rankedSpecials, rankedPaused: () => existsSync(PAUSE_FILE), weeklyOn: () => weeklyOnList, houseBots });
+const ref = createReferee({ identify, finish, ranked, rankedSpecials, rankedPaused: () => existsSync(PAUSE_FILE), weeklyOn: () => weeklyOnList, houseBots, tourneyDone });
 const perAddress = new Map();
 const server = http.createServer((req, res) => {
   if (req.url === '/health') {

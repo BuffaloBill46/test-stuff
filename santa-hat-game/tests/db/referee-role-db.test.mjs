@@ -24,7 +24,7 @@ assert.deepEqual(r.counted.map((c) => c.place), [1, 3], 'it records an Auto matc
 // refused: everything else
 const no = async (q, p, why) => { await assert.rejects(() => db.query(q, p), /permission denied/, why); };
 await no('select * from public.logins', [], 'no reading logins');
-await no('select wallet from public.profiles', [], 'no reading wallets');
+await no('select wallet from public.profiles', [], 'no reading wallets (up to 017; 054 lets it read the wallet column to know the tournament admin: tourney-db)');
 await no(`update public.profiles set level = 10 where id = $1`, [ben], 'no writing profiles');
 await no('select * from public.payouts', [], 'no payouts');
 await no('select * from public.item_purchases', [], 'no shop purchases');

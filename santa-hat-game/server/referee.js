@@ -19,8 +19,9 @@ import { weeklyAt } from '../mockups/weekly.js';
 import { settleRanked, RULES } from '../mockups/ranked.js';
 import { cleanAvatar, BY_ID, DEFAULT_AVATAR, SB_SLOTS, GEAR_SLOTS } from '../mockups/catalog.js';
 import { clampLevel } from '../mockups/levels.js';
+import { MAX_ENTRANTS, MIN_ENTRANTS, ROUND_SECONDS, COUNTDOWN_MS, BREAK_MS, JOIN_MS, POT_PER_BODY, makeCode, cleanTourCode, cleanRules, planRound, roundsFor, advancers, potShares } from './tourney.js';
 
-export const MAX_WATCHERS = 4, MAX_ROOMS = 200, BOARD_MS = 3000;
+export const MAX_WATCHERS = 4, MAX_ROOMS = 200, BOARD_MS = 3000, TOUR_WATCHERS = 24; // knocked-out tournament players watch the rest
 const better = (a, b) => a.j < b.j || (a.j === b.j && a.id < b.id); // the page's order: who joined first
 const cleanCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
 const cleanName = (s) => String(s ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 14);
@@ -47,7 +48,9 @@ export function guestLook(a) {
 //   special snowballs count in ranked (Cody's open question; on = as they're sold today).
 export const RANKED_PAUSED = 'Ranked is paused right now. Try Unranked.';
 // rankedPaused() → true while Cody has ranked paused (worker/referee.mjs: the file /etc/santa/ranked-paused exists).
-export function createReferee({ now = () => Date.now(), rand = Math.random, identify = null, finish = null, ranked = null, rankedSpecials = true, rankedPaused = () => false, weeklyOn = () => [], log = console, modeAllowed: allowMode = modeAllowed, houseBots = null } = {}) {
+// tourneyDone(record) → saves a finished or called-off tournament (supabase/054 record_tournament). identify's answer may carry
+// admin: true (the door: the profile's wallet is in ADMIN_WALLETS): only then can a page make, start or call off a tournament.
+export function createReferee({ now = () => Date.now(), rand = Math.random, identify = null, finish = null, ranked = null, rankedSpecials = true, rankedPaused = () => false, weeklyOn = () => [], log = console, modeAllowed: allowMode = modeAllowed, houseBots = null, tourneyDone = null } = {}) {
   // HOUSE BOTS (Cody 2026-10-05: "use these bots for real player games too"): houseBots() → [{ id, name, avatar, level }], the bot
   // accounts (supabase/050). Re-read every 5 minutes (their levels change). Each bot in a room plays as one of them (assignBots):
   // its name and look on every screen, and its places, throws and ranked points recorded to that account at the end.
@@ -62,13 +65,146 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
   const boardWatchers = new Set();
   let boardAt = 0;
 
+  // ---------- TOURNAMENTS (Cody 2026-10-05; the bracket's rules: server/tourney.js; DESIGN_NOTES "TOURNAMENTS"). One at a time,
+  // kept here in memory. States: open (made, entries by code) → countdown (the admin pressed Start: 60 s on every screen, entries
+  // still open) → running (rounds of games in rooms 'X…') → done (standings) | off (called off / too few). Shown 10 minutes after.
+  const tourWatchers = new Map(); // a page's lobby line → who it is ({ pid, n, admin }; pid null = not signed in)
+  let tour = null;
+  const SHOW_RESULTS_MS = 600_000;
+  const tourLive = () => !!tour && (tour.state === 'open' || tour.state === 'countdown' || tour.state === 'running');
+  const gameOf = (room) => (tour && room.tour && room.tour.tid === tour.id ? tour.rounds[room.tour.ri]?.games[room.tour.gi] : null);
+  function createTour(by, rules) {
+    if (tourLive()) return false;
+    tour = { id: makeCode(rand, 6).toLowerCase() + now().toString(36), code: makeCode(rand), rules: cleanRules(rules, allowMode), by: by.pid, byName: by.n,
+      state: 'open', createdAt: now(), startAt: null, startedAt: null, entrants: new Map(), rounds: [], nextAt: null, nextIds: null, total: 0, pot: 0, standings: null, why: '', endAt: null };
+    log.log('referee: tournament made', tour.id, JSON.stringify(tour.rules)); pushTour(); return true;
+  }
+  function startTour() { if (tour?.state !== 'open') return false; tour.state = 'countdown'; tour.startAt = now() + COUNTDOWN_MS; pushTour(); return true; }
+  function cancelTour() { if (!tourLive()) return false; endTour('off', 'Called off by the host.'); return true; }
+  // entering: the code, or (during the countdown) the announcement's own id (tapping it on any screen). Open until the first game.
+  function enterTour(who, m) {
+    if (!tourLive() || tour.state === 'running') return tour?.state === 'running' ? 'That tournament has already started.' : 'There is no tournament to enter right now.';
+    const byCode = cleanTourCode(m.code) === tour.code, byBanner = tour.state === 'countdown' && m.id === tour.id;
+    if (!byCode && !byBanner) return "That code doesn't match the tournament.";
+    if (!tour.entrants.has(who.pid)) {
+      if (tour.entrants.size >= MAX_ENTRANTS) return `The tournament is full (${MAX_ENTRANTS} players).`;
+      tour.entrants.set(who.pid, { pid: who.pid, n: who.n, out: false });
+    }
+    pushTour(); return null;
+  }
+  // leaving: before the start = not entered at all; after = out (a game not started yet plays without them)
+  function leaveTour(pid) {
+    const e = tour?.entrants.get(pid); if (!e) return;
+    if (tour.state === 'open' || tour.state === 'countdown') tour.entrants.delete(pid); else if (tour.state === 'running') e.out = true;
+    pushTour();
+  }
+  // a round: its games as rooms only the bracket's players may sit in; each player's page is told its game (tourYou → next)
+  function beginRound(ids) {
+    if (!ids.length) return endTour('done', 'Nobody was left to play on.');
+    const plan = planRound(ids, rand), ri = tour.rounds.length, round = { final: plan.final, games: [] };
+    plan.groups.forEach((group, gi) => {
+      let code; do code = 'X' + makeCode(rand); while (rooms.has(code));
+      const room = makeRoom(code, { roundTime: ROUND_SECONDS });
+      room.mode = tour.rules.mode; room.sim.S.mode = room.mode; room.style = tour.rules.style;
+      room.tour = { tid: tour.id, ri, gi, allowed: new Set(group), deadline: now() + JOIN_MS, started: false };
+      round.games.push({ code, ids: group, adv: null, finish: null, bodies: 0 });
+    });
+    tour.rounds.push(round); pushTour();
+  }
+  // a tournament game's waiting room: it starts when all its players are in (3 s later) or at its deadline with whoever came
+  // (no-shows are out; bots fill the seats). Nobody came: the game is void.
+  function tourRoomTick(room, t) {
+    const T = room.tour, sim = room.sim, g = gameOf(room);
+    if (!g) { closeRoom(room, 'That tournament is over.', true); return false; }
+    if (T.started || sim.S.phase !== 'lobby') return true;
+    const here = players(room).filter((p) => p.pid && T.allowed.has(p.pid) && !tour.entrants.get(p.pid)?.out);
+    if (here.length && here.length === [...T.allowed].filter((pid) => !tour.entrants.get(pid)?.out).length) T.deadline = Math.min(T.deadline, t + 3000);
+    room.cdEnd = T.deadline;
+    if (t < T.deadline) return true;
+    if (!here.length) { g.adv = []; g.finish = []; for (const pid of g.ids) { const e = tour.entrants.get(pid); if (e) e.out = true; } closeRoom(room, 'Nobody came to this game.', true); roundCheck(); return false; }
+    sim.S.wantBots = 0; sim.introMatch(sim.S.mode); T.started = true; room.cdEnd = null;
+    const came = new Set(here.map((p) => p.pid));
+    for (const pid of g.ids) if (!came.has(pid)) { const e = tour.entrants.get(pid); if (e) e.out = true; } // not there: out
+    g.bodies = sim.S.ents.length; if (T.ri === 0) tour.pot += POT_PER_BODY * g.bodies; // 5 a player/bot in round 1 (Cody)
+    pushTour(); return true;
+  }
+  // a tournament game ended (order: every body in finishing order): who goes through, or the final's standings and the pot
+  function tourGameOver(room, order) {
+    const g = gameOf(room); if (!g || g.adv) return;
+    const fin = order.map((e) => { const c = e.bot ? null : room.conns.get(e.peer), hb = e.bot ? room.hb?.get(e.id) : null;
+      return { id: c?.me.pid || null, present: !!c && !tour.entrants.get(c.me.pid)?.out, n: e.bot ? hb?.n || botName(e.id) : c?.me.n || 'Player', account: e.bot ? hb?.id || null : c?.me.pid || null }; });
+    g.finish = fin.map((x) => ({ n: x.n, pid: x.id }));
+    if (tour.rounds[room.tour.ri].final) {
+      g.adv = [];
+      const shares = potShares(tour.pot, fin);
+      tour.standings = fin.map((x, i) => ({ place: i + 1, name: x.n, profile: x.account, points: shares[x.account] || 0 }));
+      if (ranked) for (const [pid, pts] of Object.entries(shares)) Promise.resolve(ranked.result('tour-' + tour.id, pid, pts)).catch((e) => log.error('referee: tournament points failed', tour.id, e.message));
+      return endTour('done', '');
+    }
+    g.adv = advancers(fin);
+    for (const pid of g.ids) if (!g.adv.includes(pid)) { const e = tour.entrants.get(pid); if (e) e.out = true; }
+    roundCheck();
+  }
+  // every game of the round over: the break (the bracket on every screen), then the next round with who went through
+  function roundCheck() {
+    const round = tour.rounds.at(-1); if (!round || round.games.some((x) => x.adv === null)) return pushTour();
+    if (round.final) return endTour('done', 'Nobody came to the final.');
+    tour.nextIds = round.games.flatMap((x) => x.adv).filter((pid) => !tour.entrants.get(pid)?.out);
+    tour.nextAt = now() + BREAK_MS; pushTour();
+  }
+  function endTour(state, why) {
+    const T = tour; T.state = state; T.why = why || ''; T.endAt = now(); T.nextAt = null;
+    for (const r of [...rooms.values()]) if (r.tour?.tid === T.id && (state === 'off' || !r.tour.started)) closeRoom(r, state === 'off' ? 'The tournament was called off.' : 'The tournament is over.', true);
+    log.log('referee: tournament', T.id, state, why || '', T.standings ? 'winner ' + T.standings[0]?.name : '');
+    const iso = (x) => (x ? new Date(x).toISOString() : null);
+    if (tourneyDone) Promise.resolve(tourneyDone({ id: T.id, code: T.code, rules: T.rules, by: T.by, createdAt: iso(T.createdAt), startedAt: iso(T.startedAt), entrants: T.entrants.size, standings: T.standings || [], why: T.why })).catch((e) => log.error('referee: saving tournament failed', T.id, e.message));
+    pushTour();
+  }
+  function tourTick(t) {
+    if (!tour) return;
+    if (tour.state === 'countdown' && t >= tour.startAt) {
+      if (tour.entrants.size < MIN_ENTRANTS) return endTour('off', `Not enough players joined (it needs ${MIN_ENTRANTS}).`);
+      tour.state = 'running'; tour.startedAt = t; tour.total = roundsFor(tour.entrants.size); beginRound([...tour.entrants.keys()]);
+    } else if (tour.state === 'running' && tour.nextAt && t >= tour.nextAt) { const ids = tour.nextIds || []; tour.nextAt = null; tour.nextIds = null; beginRound(ids); }
+    else if ((tour.state === 'done' || tour.state === 'off') && t - tour.endAt > SHOW_RESULTS_MS) { tour = null; pushTour(); }
+  }
+  // What every page sees (names, the bracket, the countdown) and what this player sees (their code, their next game, their place)
+  function tourSummary() {
+    if (!tour) return null;
+    const t = now(), nameOf = (pid) => tour.entrants.get(pid)?.n || 'Player';
+    return { id: tour.id, state: tour.state, rules: tour.rules, host: tour.byName, n: tour.entrants.size, max: MAX_ENTRANTS,
+      startsIn: tour.state === 'countdown' ? Math.max(0, Math.ceil((tour.startAt - t) / 1000)) : null,
+      names: tour.state === 'open' || tour.state === 'countdown' ? [...tour.entrants.values()].map((e) => e.n) : undefined,
+      total: tour.total || roundsFor(Math.max(1, tour.entrants.size)), nextIn: tour.nextAt ? Math.max(0, Math.ceil((tour.nextAt - t) / 1000)) : null, pot: tour.pot,
+      rounds: tour.rounds.map((r) => ({ final: r.final, games: r.games.map((g) => { const room = rooms.get(g.code), live = room?.tour?.tid === tour.id ? room : null;
+        return { code: g.code, players: g.ids.map((pid) => ({ n: nameOf(pid), st: g.adv === null ? (tour.entrants.get(pid)?.out ? 'out' : 'in') : g.adv.includes(pid) ? 'thru' : 'out' })),
+          finish: g.finish ? g.finish.slice(0, 8).map((x) => x.n) : null, phase: live ? live.sim.S.phase : 'over', time: live ? Math.ceil(live.sim.S.time) : 0,
+          startsIn: live && !live.tour.started ? Math.max(0, Math.ceil((live.tour.deadline - t) / 1000)) : null }; }) })),
+      standings: tour.standings ? tour.standings.map(({ place, name, points }) => ({ place, name, points })) : null, why: tour.why };
+  }
+  function tourYou(ident) {
+    if (!ident?.pid) return { signedIn: false };
+    const e = tour?.entrants.get(ident.pid), you = { signedIn: true, admin: !!ident.admin, entered: !!e, out: !!e?.out };
+    if (tour && (ident.admin || e)) you.code = tour.code;
+    if (e && !e.out && tour.state === 'running') {
+      const g = tour.rounds.at(-1)?.games.find((x) => x.adv === null && x.ids.includes(ident.pid)), room = g && rooms.get(g.code);
+      if (room?.tour && !room.tour.started) you.next = g.code; else if (room?.tour) you.playing = g.code;
+    }
+    const s = tour?.standings?.find((x) => x.profile === ident.pid); if (s) you.place = { place: s.place, points: s.points };
+    return you;
+  }
+  function pushTour(only = null) {
+    const d = tourSummary();
+    for (const [conn, ident] of only ? [[only, tourWatchers.get(only)]] : tourWatchers) conn.send(JSON.stringify({ t: 'tour', d, you: tourYou(ident) }));
+  }
+
   // a weekly room (PW…) keeps the week's mode it was made in while it lives (weekly.js)
-  function makeRoom(code) {
-    const room = { code, conns: new Map(), auto: isPublic(code), mode: code[1] === 'T' && isPublic(code) && allowMode('team') ? 'team' : 'ffa', cdEnd: null, lastSnap: 0, emoteAt: new Map(),
+  function makeRoom(code, { roundTime } = {}) { // roundTime: a tournament game's 90 s
+    const room ={ code, conns: new Map(), auto: isPublic(code), mode: code[1] === 'T' && isPublic(code) && allowMode('team') ? 'team' : 'ffa', cdEnd: null, lastSnap: 0, emoteAt: new Map(),
       ranked: isPublic(code) && code[1] === 'R', style: styleOf(code), variant: isWeekly(code) ? weeklyAt(now(), weeklyOn()) : null, rid: RID + Math.floor(rand() * 2 ** 48).toString(36) + now().toString(36), started: false, lastPhase: 'lobby' };
     room.info = (e) => room.conns.get(e.peer)?.me;
     room.hb = new Map(); // bot entity id → the house bot playing it ({ id, n, a, l }: an account; Cody 2026-10-05)
-    room.sim = createSim(rand, { ...refereeOpts(room.info, (e) => room.hb.get(e.id)), variant: room.variant });
+    room.sim = createSim(rand, { ...refereeOpts(room.info, (e) => room.hb.get(e.id)), variant: room.variant, roundTime });
     room.sim.S.mode = room.mode;
     rooms.set(code, room);
     return room;
@@ -133,8 +269,10 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
       if (r.conns.has(p.id)) return err('that player is already in this room');
       // ranked games: players only through Auto match (a ticket, and the server's pick); watching is fine
       if (r.ranked && !p.w) { if (!r.conns.size) rooms.delete(code); return err('Ranked games are joined with Auto match.'); }
-      const w = !!p.w, ps = [...r.conns.values()].map((c) => c.me);
-      if (w && ps.filter((x) => x.w).length >= MAX_WATCHERS) return err(`That game already has ${MAX_WATCHERS} watchers. Try another.`);
+      // a tournament game: only the players the bracket put in it, before it starts (anyone may watch)
+      if (r.tour && !p.w && (!who || !r.tour.allowed.has(who.pid) || r.tour.started || tour?.entrants.get(who.pid)?.out)) return err(r.tour.started ? 'That tournament game has started. You can watch it.' : 'That tournament game is for its players. You can watch it.');
+      const w = !!p.w, ps = [...r.conns.values()].map((c) => c.me), maxW = r.tour ? TOUR_WATCHERS : MAX_WATCHERS;
+      if (w && ps.filter((x) => x.w).length >= maxW) return err(`That game already has ${maxW} watchers. Try another.`);
       if (!w && seatsLeft(code, p.id) <= 0) { if (!r.conns.size) rooms.delete(code); return err(`Room ${code} is full (${K.MAX_HUMANS} players).`); } // held seats count
       // The joining time is the SERVER's clock (a page can't claim it joined first to take over the room's controls).
       me = who ? { id: p.id, n: cleanName(who.n) || 'Player', j: now(), a: cleanAvatar(who.a), w, l: clampLevel(who.l), pid: who.pid }
@@ -143,7 +281,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
       // a normal-play room: plain snowballs for everyone, whatever they own (the look stays; specials and gear don't count)
       if (r.style === 'normal') me.a = guestLook(me.a);
       // the same account twice in one room (two tabs) would count its finishes twice: one seat per account
-      if (me.pid && [...r.conns.values()].some((c) => c.me.pid === me.pid)) { me = null; if (!r.conns.size) rooms.delete(code); return err('you are already in this room in another tab'); }
+      if (me.pid && [...r.conns.values()].some((c) => c.me.pid === me.pid)) { me = null; if (!r.conns.size && !r.tour) rooms.delete(code); return err('you are already in this room in another tab'); }
       seat(r);
     }
     // Ranked Auto match: the SERVER picks the room (similar rank points first), holds one ticket, and seats the player.
@@ -190,10 +328,35 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
         seat(r);
       } finally { joining = false; }
     }
+    // TOURNAMENTS on the lobby line (the page's games-list connection, open on every page): who this is (tsub, the sign-in
+    // token checked like a join), then the admin's create / start / call off and a player's enter / leave. Answers: the 'tour'
+    // message (pushTour) or { t: 'terr', why }.
+    const ident = { pid: null, n: '', admin: false };
+    const terr = (why) => conn.send(JSON.stringify({ t: 'terr', why }));
+    let identifying = false;
+    async function tsub(m) {
+      if (identifying) return; identifying = true;
+      try {
+        let who = null;
+        if (identify && typeof m.token === 'string' && m.token) { try { who = await identify(m.token); } catch (e) { log.error('referee: sign-in check failed', e.message); } }
+        if (closed) return;
+        Object.assign(ident, who ? { pid: who.pid, n: cleanName(who.n) || 'Player', admin: !!who.admin } : { pid: null, n: '', admin: false });
+        tourWatchers.set(conn, ident); pushTour(conn);
+      } finally { identifying = false; }
+    }
+    function tourAction(m) {
+      if (m.t === 'tcreate') { if (!ident.admin) return terr('Only the admin wallet can make a tournament.'); return createTour(ident, m.rules) || terr('A tournament is already on. Call it off first.'); }
+      if (m.t === 'tstart') { if (!ident.admin) return terr('Only the admin wallet can start it.'); return startTour() || terr('There is no tournament waiting to start.'); }
+      if (m.t === 'tcancel') { if (!ident.admin) return terr('Only the admin wallet can call it off.'); return cancelTour() || terr('There is no tournament on.'); }
+      if (m.t === 'tjoin') { if (!ident.pid) return terr('Sign in (wallet or email) to enter the tournament.'); const why = enterTour(ident, m); return why ? terr(why) : undefined; }
+      if (m.t === 'tleave') { if (ident.pid) leaveTour(ident.pid); return; }
+    }
     return {
       message(text) {
         let m; try { m = JSON.parse(text); } catch { return err('send JSON'); }
         if (!m || typeof m !== 'object') return;
+        if (m.t === 'tsub') return tsub(m);
+        if (['tcreate', 'tstart', 'tcancel', 'tjoin', 'tleave'].includes(m.t)) return tourAction(m);
         if (m.t === 'join') return join(m);
         if (m.t === 'ranked') return findRanked(m);
         if (m.t === 'auto') { // Auto match: the server picks the best public room for the game types the player ticked
@@ -201,7 +364,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
           const code = pickAuto(m.modes, m.styles);
           return code ? join({ ...m, t: 'join', code, pick: { modes: m.modes, styles: m.styles } }) : err('All public rooms are full right now. Try a private room.');
         }
-        if (m.t === 'board') { boardWatchers.add(conn); conn.send(JSON.stringify({ t: 'board', games: board() })); return; }
+        if (m.t === 'board') { boardWatchers.add(conn); if (!tourWatchers.has(conn)) tourWatchers.set(conn, ident); conn.send(JSON.stringify({ t: 'board', games: board() })); if (tour) pushTour(conn); return; }
         if (!room) return err('join a room first');
         if (m.t === 'rep') { if (!me.w) room.sim.setReport(me.id, m.d); return; }
         if (m.t === 'emote') { // 1 per 1.2 s, players only (watchers have no emotes)
@@ -211,25 +374,25 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
         }
         // a friends' room's owner takes the whole group into a public Auto match: seats held there, then everyone is sent over
         if (m.t === 'together') {
-          if (room.auto || owner(room) !== me.id || room.sim.S.phase !== 'lobby') return err('Only the room host can do that, before a match starts.');
+          if (room.auto || room.tour || owner(room) !== me.id || room.sim.S.phase !== 'lobby') return err('Only the room host can do that, before a match starts.');
           const group = players(room), code = pickAuto(m.modes, m.styles, group.length);
           if (!code) return err('No public game has room for your whole group right now. Try again in a moment.');
           const h = holds.get(code) || new Map(); for (const x of group) h.set(x.id, now() + HOLD_MS); holds.set(code, h);
           sendAll(room, { t: 'goto', code }); return;
         }
-        if ((m.t === 'start' || m.t === 'mode') && !room.auto && owner(room) === me.id && room.sim.S.phase === 'lobby') {
+        if ((m.t === 'start' || m.t === 'mode') && !room.auto && !room.tour && owner(room) === me.id && room.sim.S.phase === 'lobby') {
           if (m.t === 'mode' && allowMode(m.mode)) { room.sim.S.mode = m.mode; room.sim.syncRoster(players(room).map((x) => x.id)); }
           if (m.t === 'start') room.sim.introMatch(room.sim.S.mode);
         }
       },
       gone() {
         closed = true;
-        boardWatchers.delete(conn);
+        boardWatchers.delete(conn); tourWatchers.delete(conn);
         if (!room) return;
         // left a ranked room before its match started: the ticket comes back (after the start it's spent)
         if (room.ranked && !room.started && me.pid && !me.w) Promise.resolve(ranked?.release(me.pid, room.rid)).catch((e) => log.error('referee: ticket release failed', e.message));
         room.conns.delete(me.id); room.emoteAt.delete(me.id);
-        if (!room.conns.size) rooms.delete(room.code); else sendAll(room, peersMsg(room));
+        if (!room.conns.size && !room.tour) rooms.delete(room.code); else sendAll(room, peersMsg(room)); // a tournament game stays (the bracket closes it)
         room = null;
       },
     };
@@ -241,7 +404,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
   const SOLO_WAIT_MS = 45_000, SOLO_BOTS = 4;
   // One referee step for every room (the door calls this ~30 times a second), then snapshots on each room's own cadence.
   function tick(dt) {
-    const t = now(); refreshHouse();
+    const t = now(); refreshHouse(); tourTick(t);
     for (const room of rooms.values()) {
       const sim = room.sim, ids = players(room).map((p) => p.id);
       if (room.auto && sim.S.phase === 'lobby' && sim.S.mode !== room.mode) sim.S.mode = room.mode;
@@ -250,7 +413,8 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
       if (room.ranked && sim.S.phase === 'lobby') room.aloneSince = ids.length === 1 ? (room.aloneSince ?? t) : null; // solo ranked clock
       const solo = room.ranked && ids.length === 1 && room.aloneSince != null && t - room.aloneSince >= SOLO_WAIT_MS;
       const enough = room.ranked ? ids.length >= 2 || solo : ids.length > 0; // ranked: 2 real players, or one alone for 45 s vs 4 bots
-      if (room.auto && sim.S.phase === 'lobby' && enough) {
+      if (room.tour) { if (!tourRoomTick(room, t)) continue; } // a tournament game: its own start (the bracket's players)
+      else if (room.auto && sim.S.phase === 'lobby' && enough) {
         const want = solo ? 5000 : autoStartMs(ids.length); // solo ranked has already waited 45 s: a short countdown
         if (room.cdEnd === null || room.cdEnd - t > want) room.cdEnd = t + want;
         if (t >= room.cdEnd) {
@@ -263,17 +427,19 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
         }
       } else room.cdEnd = null;
       sim.step(dt);
-      if (room.auto && (finish || room.ranked) && sim.S.phase === 'end' && sim.S.mid && room.reported !== sim.S.mid) report(room);
+      if ((room.auto || room.tour) && (finish || room.ranked || room.tour) && sim.S.phase === 'end' && sim.S.mid && room.reported !== sim.S.mid) report(room);
+      if (room.tour && room.lastPhase === 'end' && sim.S.phase === 'lobby') { closeRoom(room, 'Back to the tournament.', true); continue; } // results seen: back to the bracket
       if (room.ranked && room.lastPhase === 'end' && sim.S.phase === 'lobby') { closeRoom(room, 'Match over. Press Auto match for the next ranked game.'); continue; }
       room.lastPhase = sim.S.phase;
       if (t - room.lastSnap >= snapMs(ids.length)) {
         room.lastSnap = t;
         const s = sim.snapshot(); s.hid = 'server'; s.hj = 0; s.pub = room.auto ? 1 : 0; s.cd = room.cdEnd ? Math.max(0, (room.cdEnd - t) / 1000) : 0;
+        if (room.tour && tour?.id === room.tour.tid) s.tr = { r: room.tour.ri + 1, of: Math.max(tour.total, room.tour.ri + 1), final: tour.rounds[room.tour.ri]?.final ? 1 : 0 }; // a tournament game: which round
         if (room.ranked) { s.rk = 1; if (sim.S.phase === 'lobby' && !enough) { s.wait = 1; if (room.aloneSince != null) s.solo = Math.max(0, Math.ceil((SOLO_WAIT_MS - (t - room.aloneSince)) / 1000)); } } // ranked; waiting for a 2nd real player (solo: seconds until 4 bots)
         sendAll(room, { t: 'snap', d: s });
       }
     }
-    if (boardWatchers.size && t - boardAt >= BOARD_MS) { boardAt = t; const s = JSON.stringify({ t: 'board', games: board() }); for (const c of boardWatchers) c.send(s); }
+    if ((boardWatchers.size || tourWatchers.size) && t - boardAt >= BOARD_MS) { boardAt = t; const s = JSON.stringify({ t: 'board', games: board() }); for (const c of boardWatchers) c.send(s); if (tour) pushTour(); }
   }
 
   // Auto match (Cody, 2026-10-02: tick FFA, TEAM or both, "get paired to best game"): among the WAITING public rooms of the
@@ -303,6 +469,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
     const order = [...S.ents].sort((a, b) => b.score - a.score || a.id - b.id);
     const places = order.map((e) => (e.bot ? room.hb?.get(e.id)?.id || null : room.conns.get(e.peer)?.me.pid || null)); // house bots count for their accounts
     if (room.ranked && ranked) rankedPoints(room, order);
+    if (room.tour) tourGameOver(room, order); // who goes through (or the final's standings)
     if (!places.some(Boolean) || !finish) return; // nobody signed in: nothing to record
     // each player's match counts (sim.js tally: hits, hat seconds, steals, catches, specials) for the season's daily tasks
     const stats = order.map((e) => (e.bot && !room.hb?.get(e.id) ? null : { ...(e.st || {}) }));
@@ -329,8 +496,8 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
     }
   }
   // The server closes a room (a ranked match is over): everyone is told and taken out; their lines stay open.
-  function closeRoom(room, why) {
-    sendAll(room, { t: 'closed', why });
+  function closeRoom(room, why, tourGame = false) { // tourGame: the page goes back to the tournament page
+    sendAll(room, { t: 'closed', why, ...(tourGame ? { tour: 1 } : {}) });
     for (const c of room.conns.values()) c.kick();
     rooms.delete(room.code);
   }

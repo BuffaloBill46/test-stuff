@@ -58,6 +58,19 @@ per player in the pot (bots included), bots can win, and bots play under player-
 - **Avatar items:** 50% burned, 50% to the treasury.
 - **Lottery:** 90% to winners, 10% burned.
 
+### Decided 2026-10-05 (Cody): TOURNAMENTS (server/tourney.js)
+- **Only the admin wallet creates** them, on the normal site (Ranked page → Tournament), picking the rules (FFA/TEAM if open,
+  Normal play / Special gear). He gets a CODE; anyone signed in (wallet or email) who enters it is in. One at a time.
+- **Start tournament** (admin) = a 60 s countdown announced on EVERY screen; clicking it joins. The tournament sits at the top of
+  the games waiting list. Entries are open until the first game starts. 2+ real players needed, else it's called off.
+- **Waiting page:** your name in the bracket, the countdown, Leave. Leave before the start = not entered; after = out.
+- **Bracket:** more than 8 real players left: games of 4-6, the top 2 REAL players of each go through. 8 or fewer: the final,
+  whose places 1-8 count. Bots only fill seats (every game has at least 4 bodies); bots never go through. Matches 90 s. Not
+  there when your game starts, or gone before it ends = out (a bot plays the seat). 20 s between rounds; knocked-out players watch.
+- **Counts:** levels like an Auto match; no ranked tickets. Ranked points: 5 per player/bot in round 1 into a pot, split among
+  the final's top 8: 30/20/14/11/9/7/5/4 %. Prize: none built in (Cody sends SANTA or an item by hand); final standings recorded.
+- Max 64 entrants. Kept in the match server's memory: a restart during one ends it (don't deploy mid-tournament).
+
 ### Decided 2026-10-05 (Cody)
 - **House bots' hit % ranges 10%-48%:** each house bot has its own fixed accuracy, spread evenly over all of them (sim.js aimOf),
   in their own matches and in real ones. A bot's deliberate miss is a lob into open space. Ordinary practice bots are unchanged.

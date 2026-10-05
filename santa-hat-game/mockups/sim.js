@@ -54,7 +54,7 @@ export function constrain(p) {
 // gear. Read ONCE when a match starts (or when they join one): a Present Box is turned into its gear then, with this sim's
 // rand, and the result (e.gear) travels in snapshots, so a new host keeps it instead of re-rolling.
 // variant: a weekly mode id (weekly.js VARIANTS: 'hothat', 'gazebo', 'blizzard'), fixed for this sim's life (one room); none = plain rules.
-export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = () => levelInfo(1).start, specialsOf = () => [], levelOf = () => 1, gearOf = () => [], variant = null } = {}) {
+export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = () => levelInfo(1).start, specialsOf = () => [], levelOf = () => 1, gearOf = () => [], variant = null, roundTime = K.ROUND_TIME } = {}) { // roundTime: a room's own match length (tournaments: 90 s)
   // the level's count, times a held bonus (Santa Bag, Backpack; rounded up). e.fx must be set first (load() sets it before this).
   const startCount = (e) => (e.bot ? 4 : heldWith(Math.min(20, Math.max(1, Math.floor(Number(startOf(e))) || levelInfo(1).start)), e.fx));
   // Put on a player's gear for this match: what they wear that their level allows, Present Box resolved now. Extra hits full.
@@ -176,7 +176,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     S.ents.forEach((e) => { e.score = 0; e.st = { hits: 0, hatSec: 0, steals: 0, catches: 0, specials: 0, thrown: 0 }; wearGear(e); }); // gear (and a Present Box's pick) is set for the whole match here
     resetRound();
   }
-  const go = () => { S.phase = 'play'; S.time = K.ROUND_TIME; ev('round', 1); };
+  const go = () => { S.phase = 'play'; S.time = roundTime; ev('round', 1); };
   // Straight to round 1 (the rules tests use this).
   function startMatch(mode) { prepMatch(mode); go(); }
   // How the page starts a match: the load screen (INTRO_TIME), then the countdown (COUNT_TIME), then round 1.
@@ -319,7 +319,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
 
   function step(dt) {
     if (S.phase === 'play') { S.time -= dt; if (S.time <= 0) endRound(); }
-    else if (S.phase === 'break') { S.time -= dt; if (S.time <= 0) { S.round++; S.phase = 'play'; S.time = K.ROUND_TIME; resetRound(); ev('round', S.round); } }
+    else if (S.phase === 'break') { S.time -= dt; if (S.time <= 0) { S.round++; S.phase = 'play'; S.time = roundTime; resetRound(); ev('round', S.round); } }
     else if (S.phase === 'end') { S.time -= dt; if (S.time <= 0) { S.phase = 'lobby'; S.time = 0; resetRound(); balance(true); } }
     if (S.phase === 'intro' || S.phase === 'count') { // everyone stands on their spawn spot until the countdown ends
       S.time -= dt;
