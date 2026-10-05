@@ -15,7 +15,7 @@ import { createCoach } from './coach.js';
 import { createCallouts } from './callouts.js';
 import { VARIANTS, VARIANT_IDS } from './weekly.js';
 import { initJackpotBar } from './jackpotbar.js';
-import { initShareWins } from './sharecard.js';
+import { initShareWins, matchShareButton } from './sharecard.js';
 import { TICKET_MAX } from './ranked.js';
 import { levelInfo, clampLevel } from './levels.js';
 import { SERVER, call, token as signInToken } from './gameserver.js';
@@ -227,6 +227,12 @@ async function enterRoom(code, quick, opts = {}) {
 // warm-up. A guest who placed top 3 in a public match is told what signing in would have kept.
 let weeklyNow = null; // this week's mode id when one is switched on (set from the game server's 'weekly' answer), else null
 let againWanted = false, togetherNote = ''; // togetherNote: the last answer to Auto match together, shown in the warm-up card
+// "Share my score" after a match I played (Cody 2026-10-04): my place, score and aim on a picture card (sharecard.js)
+function myShare(v, sorted) {
+  const i = sorted.findIndex((e) => e.peer === me.id); if (i < 0 || me.w) return '';
+  const e = sorted[i], a = currentView?.aim?.get(e.id) || e.aim || (e.st ? { thrown: e.st.thrown || 0, hits: e.st.hits || 0 } : null);
+  return '<p class="sharescore">' + matchShareButton({ place: i + 1, players: sorted.length, score: e.score, ...(a ? { thrown: a.thrown, hits: a.hits } : {}) }) + '</p>';
+}
 function endActions(v, sorted) {
   const secs = Math.ceil(v.time), place = sorted.findIndex((e) => e.peer === me.id) + 1;
   const nudge = !profile && !me.w && !practice && autoStart && !v.rk && place >= 1 && place <= 3
@@ -678,7 +684,7 @@ function renderChrome() {
       ${(callouts.last || []).length ? `<ul class="highs">${callouts.last.map((h) => `<li><i>${h.label}</i><b>${esc(h.who)}</b><span>${h.text}</span></li>`).join('')}</ul>` : ''}
       ${v.rk && rankNews ? `<div class="verdict">Rank points ${rankNews.change >= 0 ? '+' : '−'}${Math.abs(rankNews.change)}${Number.isFinite(rankNews.points) ? ` · now ${rankNews.points}` : ''}</div>` : ''}
       <ol class="final">${sorted.map((e) => `<li><span>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}</span><b>${e.score}</b>${aimLine(e)}</li>`).join('')}</ol>
-      ${endActions(v, sorted)}`;
+      ${myShare(v, sorted)}${endActions(v, sorted)}`;
   }
   if (card !== ui.lastCard) {
     ui.lastCard = card; const p = $('#panel'); p.hidden = !card; p.innerHTML = card; p.classList.toggle('intro', v.phase === 'intro');

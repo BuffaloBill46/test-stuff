@@ -13,7 +13,7 @@ them. Last updated: 2026-10-04.
 5. [x] **End of match: snowballs thrown, hit, and hit %** on the results card.
 6. [x] **Player Progress + Ranked board: thrown / hit / % / SANTA spent / SANTA won.** (Flag for Cody: spent/won on the PUBLIC
    ranked board shows everyone's money; Progress is private. Building it as asked; easy to hide later.)
-7. [ ] **Share buttons:** big wins, getting a costume, and the score after a match.
+7. [x] **Share buttons:** big wins, getting a costume, and the score after a match.
 8. [ ] **Money dashboard** on the admin screen, under its own button.
 9. [ ] **Money flow chart** (SOL and SANTA): where every payment goes.
 10. [ ] **"How to get SANTA"** (Cody 2026-10-04): a link in the sign-in/profile sheet and at the bottom of pages, opening a pop-up

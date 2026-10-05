@@ -14,6 +14,7 @@ import { initRunPick, priceLabel } from './runpick.js';
 import { showResult } from './gamepool.js';
 import { play as sfx } from './sfx.js';
 import { celebrate, tierOf } from './celebrate.js';
+import { bigShare } from './sharecard.js'; // "Share this win" on a big single win (Cody 2026-10-04)
 
 const $ = (s, el = document) => el.querySelector(s);
 const money = (v) => '$' + (Math.floor(v * 100 + 1e-6) / 100).toFixed(2);
@@ -123,11 +124,13 @@ function landed(r, p) {
   if (r.jackpot) { // 8 gifts in a row: THE POOL JACKPOT, the biggest celebration, with the real dollar amount
     card.classList.add('jackpot'); stamp(`POOL JACKPOT ${money(r.pay)}`); hold = celebrate(card, 5, { amount: r.pay, money, fast });
     res.innerHTML = `<span><b>${k} gifts in a row! POOL JACKPOT: ${money(r.pay)}</b> <span class="dim">(${+(r.pct * 100).toFixed(2)}% of the ${money(r.jackpotPool)} Game pool × your ${cents(r.bet)} turn)</span>${after(r.pay)}</span>`;
+    res.insertAdjacentHTML('beforeend', bigShare('stocking', r.pay, r.bet, true));
   } else if (k >= 3) { // a real win: celebrate (bigger for 5+ gifts)
     // the tier follows the money (3 gifts 3× nice, 10×+ big, 25×+ huge); the jackpot look is the pool jackpot's alone
     card.classList.add('won'); hold = celebrate(card, tierOf({ ahead: true, mult: r.mult }), { amount: r.pay, money, fast });
     stamp(`${mult(r.mult)} WIN`);
     res.innerHTML = `<span><b>${k} gifts! ${mult(r.mult)} win:</b> ${money(r.pay)}${after(r.pay)}</span>`;
+    res.insertAdjacentHTML('beforeend', bigShare('stocking', r.pay, r.bet));
   } else if (k === 2) { // a light touch: no stamp, the tier-1 chime and sparkles (1.5× is ahead)
     res.innerHTML = `<span><b>2 gifts: ${mult(r.mult)} back</b> ${money(r.pay)}${after(r.pay)}</span>`; celebrate(card, tierOf({ ahead: r.ahead, mult: r.mult }), { amount: r.pay, money, fast });
   }

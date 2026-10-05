@@ -18,6 +18,7 @@ import { refreshWallet } from './walletline.js';
 import { weekStart } from './gameclock.js';
 import { KINDS, SIZES } from './credits.js';
 import { initRunPick, priceLabel } from './runpick.js';
+import { bigShare } from './sharecard.js'; // "Share this win" on a big single win (Cody 2026-10-04)
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -193,14 +194,14 @@ async function showPull(p, i, n) {
   if (r.jackpot) {
     card.classList.add('jackpot'); stamp('JACKPOT!'); hold = celebrate(card, 5, { amount: r.pay, money, fast });
     res.innerHTML = `<b>POOL JACKPOT!</b> ${money(r.pay)}`;
-    addWinner('slots', r.pay, M.bet, 'pool jackpot');
+    addWinner('slots', r.pay, M.bet, 'pool jackpot'); res.insertAdjacentHTML('beforeend', bigShare('big', r.pay, M.bet, true));
   } else if (r.ahead) { // only celebrate when the pull pays more than it cost
     const top = r.wins.some((w) => w.top), big = r.pay >= 10 * M.bet;
     // the tier word says NICE / BIG / HUGE WIN, so the stamp keeps to the amount
     card.classList.add('won'); stamp(top ? '100×!' : 'WIN ' + money(r.pay)); hold = celebrate(card, tierOf({ ahead: true, mult: r.pay / M.bet }), { amount: r.pay, money, fast });
     res.innerHTML = `<b>${top ? '5 Santa Hats!' : big ? 'Big win!' : 'Win!'}</b> ${money(r.pay)}` +
       ` <span class="dim">(${lines} line${lines === 1 ? '' : 's'}${hatsTxt ? ' + ' + hatsTxt : ''})</span>`;
-    addWinner('slots', r.pay, M.bet, top ? '5 Santa Hats' : lines > 1 ? lines + ' lines' : '');
+    addWinner('slots', r.pay, M.bet, top ? '5 Santa Hats' : lines > 1 ? lines + ' lines' : ''); res.insertAdjacentHTML('beforeend', bigShare('big', r.pay, M.bet));
   } else if (r.pay > 0) {
     res.innerHTML = `<span class="dim">Returned ${money(r.pay)}${hatsTxt ? ' (' + hatsTxt + ')' : ''}. Less than the $1 pull.</span>`;
   } else res.textContent = 'No win this time.';
