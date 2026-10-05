@@ -27,7 +27,7 @@ const lastTry = new Map();
 export async function runPayouts({ db, chain, limit = 20, table = 'payouts', now = Date.now, tries = lastTry }) {
   const T = { payouts: 'public.payouts', pool_transfers: 'public.pool_transfers', lottery_payouts: 'public.lottery_payouts', reward_sweeps: 'public.reward_sweeps' }[table];
   if (!T) throw new Error('unknown table ' + table);
-  const report = { sent: 0, pending: 0, resigned: 0, failed: 0 };
+  const report = { sent: 0, pending: 0, resigned: 0, failed: 0 }, notYet = []; // notYet: payouts the chain said "not yet" to this pass
   // Recover anything a previous run left half-done.
   for (const p of await db.query(`select * from ${T} where status = 'sending' order by id`)) {
     if (!p.tx) { await signAndSend(p); continue; }
@@ -36,10 +36,10 @@ export async function runPayouts({ db, chain, limit = 20, table = 'payouts', now
     else if (st === 'expired' || st === 'failed') { report.resigned++; await signAndSend(p); } // failed on-chain can never succeed later either
     else report.pending++;
   }
-  // New payouts ('held' ones wait for Cody and are never touched here).
+  // New payouts ('held' ones wait for Cody and are never touched here). Ones the chain said "not yet" to (wait) this pass are skipped.
   for (let i = 0; i < limit; i++) {
     const [p] = await db.query(`update ${T} set status = 'sending', tx = null, blockhash = null
-      where id = (select id from ${T} where status = 'queued' order by id limit 1 for update skip locked) returning *`);
+      where id = (select id from ${T} where status = 'queued' and not (id = any($1::bigint[])) order by id limit 1 for update skip locked) returning *`, [notYet]);
     if (!p) break;
     await signAndSend(p);
   }
@@ -52,6 +52,9 @@ export async function runPayouts({ db, chain, limit = 20, table = 'payouts', now
       tries.set(key, now()); report.retried = (report.retried || 0) + 1;
     }
     const s = await chain.sign(p);
+    // NOT YET (fast Arcade payments, 2026-10-05): the run's payment is confirmed but not finalized, so its winnings wait. Back to
+    // 'queued' untouched (nothing signed, no attempt counted); the next pass asks again.
+    if (s?.wait) { await db.query(`update ${T} set status = 'queued' where id = $1 and status = 'sending'`, [p.id]); (report.waiting = (report.waiting || 0) + 1); notYet.push(p.id); return; }
     // the adapter refused to sign this one (solanachain.js rent-drain guard): park it for Cody, never block the others
     // (each table's own "waits for Cody" status: winnings 'held' (admin release), lottery prizes 'manual' (paid by hand), anything
     // else 'failed' (an alert); reward sweeps never hold)

@@ -70,6 +70,12 @@ const chain = {
     if (j.error) console.error('getTransaction refused', signature.slice(0, 12), j.error.code, String(j.error.message).slice(0, 160));
     return j.result ?? null; // null until finalized
   },
+  // Arcade payments (fast, 2026-10-05): the same read at CONFIRMED; the payout worker waits for finalized before paying winnings
+  async getTransactionFast(signature) {
+    const j = await rpc('getTransaction', [signature, { encoding: 'jsonParsed', commitment: 'confirmed', maxSupportedTransactionVersion: 1 }]);
+    if (j.error) console.error('getTransaction (confirmed) refused', signature.slice(0, 12), j.error.code, String(j.error.message).slice(0, 160));
+    return j.result ?? null;
+  },
 };
 // The newest FINALIZED block (the lottery mixes its hash into each draw, taken after sales closed).
 async function latestBlock() {

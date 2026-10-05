@@ -128,7 +128,10 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     return { id: q.id, kind, n, bet, usd, santaRaw, ...(sol || {}), price: price.usd, expiresAt: new Date(q.created_at).getTime() + QUOTE_SECONDS * 1000,
       mint, pool: poolWallets?.[KINDS[kind].game] || null, fee: { bps: fee.bps, max: fee.max }, burnBps: GAME_BURN_BPS,
       // only a payment FROM this wallet is accepted (verify.js): the page refuses to sign with any other, so nobody pays for nothing
-      payer, cluster };
+      payer, cluster,
+      // FAST (Cody 2026-10-05: "the arcade games take a long time to process the payment"): the page waits for CONFIRMED (~1-2 s),
+      // not finalized (~13 s), and buy() accepts it then; the payout worker sends the run's winnings only once it's finalized
+      fast: true };
   }
 
   async function buy(profile, quoteId, signature) {
@@ -138,7 +141,8 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     if (!q) return { error: 'unknown quote' };
     if (!poolWallets?.[KINDS[q.kind].game]) return { error: 'payments are not open yet' }; // no pool wallet set: nobody can pay in
     if (q.used_by) return { error: 'quote already used' };
-    const [tx, fee, wallet] = await Promise.all([chain.getTransaction(signature), liveFee(), walletOf(profile)]);
+    // a CONFIRMED payment is enough to start the run (winnings wait for finalized: worker/worker.mjs paymentFinal)
+    const [tx, fee, wallet] = await Promise.all([(chain.getTransactionFast || chain.getTransaction)(signature), liveFee(), walletOf(profile)]);
     if (!wallet) return { error: 'buying needs a linked wallet' };
     const v = verifyPayment(tx, { mint, player: wallet, pool: poolWallets[KINDS[q.kind].game], quoteRaw: +q.santa_raw,
       quoteAt: new Date(q.created_at).getTime(), quoteSeconds: QUOTE_SECONDS, cushion: CUSHION, burnBps: GAME_BURN_BPS, fee, sol: solExpect(q) });

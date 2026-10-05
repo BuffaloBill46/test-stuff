@@ -92,7 +92,7 @@ export async function santaPay(quote) {
     let s = null;
     try { [s] = (await rpc.getSignatureStatuses([signature]).send()).value; } catch { /* asking failed, not the payment: ask again */ }
     if (s?.err) throw new Error(`the payment failed on the network; no ${method === 'sol' ? 'SOL or ' : ''}SANTA was taken`);
-    if (s?.confirmationStatus === 'finalized') break;
+    if (s?.confirmationStatus === 'finalized' || (quote.fast && s?.confirmationStatus === 'confirmed')) break; // Arcade: confirmed is enough (games.js fast)
     await new Promise((r) => setTimeout(r, 2000));
   }
   return signature;

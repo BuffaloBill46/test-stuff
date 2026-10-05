@@ -24,6 +24,7 @@ import postgres from 'postgres';
 import * as kit from '@solana/kit';
 import * as T22 from '@solana-program/token-2022';
 import { runPayouts } from '../server/payouts.js';
+import { makePaymentGate } from '../server/paymentgate.js';
 import { makeSolanaChain, makeSweepChain } from '../server/solanachain.js';
 import { queueRewardClaims, chainBalances } from '../server/rewards.js';
 import { liveFee } from '../mockups/market.js';
@@ -64,7 +65,13 @@ const tables = ['payouts', 'pool_transfers', 'lottery_payouts', 'reward_sweeps']
 const SANTA_MINTS = new Set([mint, '3c7mmVSyEH8jfZXgxvpLsETtko1Y16DyRJ5XYB4snhGt', 'Jx95so9XYhtSJJoqup7Xb3T9Ptr9ZuUTXSgPcu6uttg']), isSanta = (m) => SANTA_MINTS.has(m);
 const sweepChain = makeSweepChain({ kit, T22, rpcUrl, treasury: treasuryAddr, isSanta, label: (row) => `Santa Hat reward_sweeps #${row.id}`,
   keyFor: async (row) => keys[row.game] || missing(row.game + ' pool') });
-const chains = { ...Object.fromEntries(tables.slice(0, 3).map((t) => [t, adapter(t)])), reward_sweeps: sweepChain };
+// FAST ARCADE PAYMENTS (Cody 2026-10-05: "the arcade games take a long time to process the payment"): the game server starts a
+// run once its payment is CONFIRMED (~1-2 s) instead of FINALIZED (~13 s), so its WINNINGS wait here until that payment is
+// finalized: no money ever goes out on a payment that could still be dropped. A payment that failed, or still isn't final after
+// 10 minutes, holds the winnings for Cody (admin screen) instead of paying them.
+const statusRpc = kit.createSolanaRpc(rpcUrl);
+const gatedPayouts = makePaymentGate({ db, statuses: async (sig) => (await statusRpc.getSignatureStatuses([sig], { searchTransactionHistory: true }).send()).value[0] }).gate(adapter('payouts'));
+const chains = { ...Object.fromEntries(tables.slice(0, 3).map((t) => [t, adapter(t)])), payouts: gatedPayouts, reward_sweeps: sweepChain };
 const pools = { spin: env('SPIN_POOL_WALLET'), slots: env('SLOTS_POOL_WALLET'), lottery: env('LOTTERY_POOL_WALLET') }, balances = chainBalances(kit.createSolanaRpc(rpcUrl));
 async function pass() {
   // Cody's reward claims become sweeps first (024 not applied yet: skipped quietly, like a missing money table below)
