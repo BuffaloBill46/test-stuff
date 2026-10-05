@@ -164,7 +164,23 @@ between two devices has never been tested from here. Cody and friends testing on
 **Naming (Cody, 2026-10-04): the Games tab is now the ARCADE** (nav bar, page heading "Santa Hat Arcade", guide). Code keeps its
 internal names (#tab-games, data-tab="games", the #games link) so links and tests don't break. Docs say Arcade from here.
 
-### 2026-10-05 (NEWEST): #12 JUPITER + #14 RANKED BY LEVEL (servers 009ca32; both sites published)
+### 2026-10-05 (NEWEST): READY FOR GO. Waiting only on Cody's "GO" (LAUNCH_CHECKLIST "READY FOR GO": the exact steps)
+- Wallets funded (Game pool 345,379.17 SANTA ≈ $139 + 0.245 SOL; lottery 0.0295 SOL; treasury 0.05 SOL); keys backed up to Cody's
+  PC (C:\santa-mainnet-keys, verified); `node go-mainnet.mjs` says READY. The two Game pool deposits to record are listed there.
+- Cody's pool rules (code defaults, slots.js POOL_RULES): start $125, games play down to $30 (covers(): his backing up to $125
+  covers every fixed prize), ONE top-off request back to $125 under $30, skim $25 over $1,025; NO automatic top-off (his call).
+- Payouts never give up (retry every 2 min); stuck winnings: player pop-up "send a ticket" (payoutwatch.js) + Telegram "WE OWE
+  <wallet> x SANTA"; URGENT/LOW SOL warnings (lottery level 0.02); the $30 floor (games.js MIN_POOL_USD); books alert only when it
+  lasts two checks; Solana version-1 transactions read; the Game pool shown in SANTA too (poolsanta.js).
+- At GO the test site's game line is paused (Caddy /etc/caddy/test-api.caddy → 503, go-mainnet step 4b): it must never reach the
+  real-money server. A separate test database would bring it back.
+- Final QA (2026-10-05): 67 unit/DB tests + full sim pass; 43 browser tests pass (2 only flaky under load, pass alone); live on the
+  test server: 600 paid plays (0 errors, all paid out) and 22/22 Store purchases. GitHub CI green.
+- Launch watch: scheduled task santa-launch-watch every 15 min (worker/watch.mjs one-line check); window ends 2026-10-08: extend
+  to 2 days after GO.
+- The database login password was rotated 2026-10-05 (printed by a loose grep; LESSONS).
+
+### 2026-10-05: #12 JUPITER + #14 RANKED BY LEVEL (servers 009ca32; both sites published)
 - #12: pay.js viaJupiter: api.jup.ag first, lite-api.jup.ag as the backup (429 → short wait → other; down → other at once);
   market.js liveSolPrice the same. No key: a few asks per few seconds per connection; a paid key would lift it. tests/jupiter.
 - #14: ranked.js stake = 2 × saved level (bot 5); referee passes me.l (database). Max change 96 (DB allows 100).
