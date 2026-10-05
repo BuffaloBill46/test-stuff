@@ -164,7 +164,16 @@ between two devices has never been tested from here. Cody and friends testing on
 **Naming (Cody, 2026-10-04): the Games tab is now the ARCADE** (nav bar, page heading "Santa Hat Arcade", guide). Code keeps its
 internal names (#tab-games, data-tab="games", the #games link) so links and tests don't break. Docs say Arcade from here.
 
-### 2026-10-04 (NEWEST): X LINK + SUPPORT (046 live; servers bd7d0e8)
+### 2026-10-04 (NEWEST): TODO #9, #10, #10b DONE (site published, build after 20ce85b)
+- Money flow chart: docs/money-flow.png (source docs/money-flow.html; render it with a small Playwright script, see git c6701cb).
+- Bottom of every page (mockups/sitefoot.js; game page under every tab, and the guide): How to get SANTA, @Santahatgame, Support,
+  v1.0 (+ build id), (c) 2026 Santa Hat Legends. Raise VERSION in sitefoot.js for a real release.
+- "How to get SANTA" pop-up (footer, sign-in sheet, or santahatgames.com/#get-santa): wallet, SOL, swap (real address + Copy +
+  Jupiter link), sign in. Pay-with-SOL line and the live coin tax show on mainnet only (from the server's 'market').
+  #support opens the Support form (the guide's Support uses it). Test: getsanta-test.
+- Next on TODO: #11 staging site (needs Cody's DNS record), #12 Jupiter address fix, #14 ranked points by level.
+
+### 2026-10-04: X LINK + SUPPORT (046 live; servers bd7d0e8)
 - Sign-in sheet bottom: @Santahatgame (x.com/Santahatgame) with a Support button beside it (supportui.js). Anyone, signed in
   or not, demo site too, sends what happened + optional contact; server/support.js keeps it (support_messages, private) and
   Cody's Telegram alerts bot sends it at once; 5/hour per connection or player. Admin screen: Support messages (open first,
