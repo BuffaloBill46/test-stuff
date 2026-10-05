@@ -47,7 +47,14 @@ export function guestLook(a) {
 //   special snowballs count in ranked (Cody's open question; on = as they're sold today).
 export const RANKED_PAUSED = 'Ranked is paused right now. Try Unranked.';
 // rankedPaused() → true while Cody has ranked paused (worker/referee.mjs: the file /etc/santa/ranked-paused exists).
-export function createReferee({ now = () => Date.now(), rand = Math.random, identify = null, finish = null, ranked = null, rankedSpecials = true, rankedPaused = () => false, weeklyOn = () => [], log = console, modeAllowed: allowMode = modeAllowed } = {}) { // allowMode: team play paused (refcore TEAM_PAUSED) unless a test says otherwise
+export function createReferee({ now = () => Date.now(), rand = Math.random, identify = null, finish = null, ranked = null, rankedSpecials = true, rankedPaused = () => false, weeklyOn = () => [], log = console, modeAllowed: allowMode = modeAllowed, houseBots = null } = {}) {
+  // HOUSE BOTS (Cody 2026-10-05: "use these bots for real player games too"): houseBots() → [{ id, name, avatar, level }], the bot
+  // accounts (supabase/050). Re-read every 5 minutes (their levels change). Each bot in a room plays as one of them (assignBots):
+  // its name and look on every screen, and its places, throws and ranked points recorded to that account at the end.
+  let hbList = [], hbAt = -Infinity, hbAsking = false;
+  const refreshHouse = () => { if (!houseBots || hbAsking || now() - hbAt < 300_000) return; hbAsking = true;
+    Promise.resolve(houseBots()).then((l) => { if (Array.isArray(l)) hbList = l.filter((b) => b && b.id && b.name); hbAt = now(); })
+      .catch((e) => { hbAt = now() - 240_000; log.error('referee: house bots', e.message); }).finally(() => { hbAsking = false; }); }; // allowMode: team play paused (refcore TEAM_PAUSED) unless a test says otherwise
   const rooms = new Map(); // code → room
   let rankedSeq = 0;
   // A restart: tickets still held for rooms of an earlier run come back (those rooms are gone).
@@ -60,7 +67,8 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
     const room = { code, conns: new Map(), auto: isPublic(code), mode: code[1] === 'T' && isPublic(code) && allowMode('team') ? 'team' : 'ffa', cdEnd: null, lastSnap: 0, emoteAt: new Map(),
       ranked: isPublic(code) && code[1] === 'R', style: styleOf(code), variant: isWeekly(code) ? weeklyAt(now(), weeklyOn()) : null, rid: RID + Math.floor(rand() * 2 ** 48).toString(36) + now().toString(36), started: false, lastPhase: 'lobby' };
     room.info = (e) => room.conns.get(e.peer)?.me;
-    room.sim = createSim(rand, { ...refereeOpts(room.info), variant: room.variant });
+    room.hb = new Map(); // bot entity id → the house bot playing it ({ id, n, a, l }: an account; Cody 2026-10-05)
+    room.sim = createSim(rand, { ...refereeOpts(room.info, (e) => room.hb.get(e.id)), variant: room.variant });
     room.sim.S.mode = room.mode;
     rooms.set(code, room);
     return room;
@@ -76,7 +84,24 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
   const seatsLeft = (code, except = null) => K.MAX_HUMANS - (rooms.get(code) ? players(rooms.get(code)).length : 0) - heldFor(code, except);
   const owner = (room) => players(room)[0]?.id || null;
   const sendAll = (room, msg, skip) => { const s = JSON.stringify(msg); for (const [id, c] of room.conns) if (id !== skip) c.send(s); };
-  const peersMsg = (room) => ({ t: 'peers', code: room.code, own: owner(room), ps: [...room.conns.values()].map(({ me }) => ({ id: me.id, n: me.n, j: me.j, a: me.a, w: me.w, l: me.l, pid: me.pid })) });
+  const peersMsg = (room) => ({ t: 'peers', code: room.code, own: owner(room), ps: [...room.conns.values()].map(({ me }) => ({ id: me.id, n: me.n, j: me.j, a: me.a, w: me.w, l: me.l, pid: me.pid })),
+    hb: [...(room.hb || new Map())].map(([id, b]) => [id, b.n, b.a, b.l]) });
+  // every bot body in the room plays as a house bot: a free one (in no room first, else not in this room), kept for the whole match
+  function assignBots(room) {
+    if (!hbList.length) return false;
+    const bots = room.sim.S.ents.filter((e) => e.bot), live = new Set(bots.map((e) => e.id)); let changed = false;
+    for (const id of [...room.hb.keys()]) if (!live.has(id)) { room.hb.delete(id); changed = true; }
+    const busy = new Set(), here = new Set([...room.hb.values()].map((b) => b.id));
+    for (const r of rooms.values()) for (const b of r.hb?.values() || []) busy.add(b.id);
+    for (const e of bots) {
+      if (room.hb.has(e.id)) { e.hb = true; continue; }
+      const free = hbList.filter((b) => !busy.has(b.id)), pool = free.length ? free : hbList.filter((b) => !here.has(b.id));
+      if (!pool.length) continue;
+      const b = pool[Math.floor(rand() * pool.length)], p = { id: b.id, n: b.name, a: b.avatar, l: b.level || 1 };
+      room.hb.set(e.id, p); busy.add(b.id); here.add(b.id); e.hb = true; changed = true;
+    }
+    return changed;
+  }
 
   // A new connection. Returns the handlers the door calls: message(text) and gone().
   function connect(conn) {
@@ -216,11 +241,12 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
   const SOLO_WAIT_MS = 45_000, SOLO_BOTS = 4;
   // One referee step for every room (the door calls this ~30 times a second), then snapshots on each room's own cadence.
   function tick(dt) {
-    const t = now();
+    const t = now(); refreshHouse();
     for (const room of rooms.values()) {
       const sim = room.sim, ids = players(room).map((p) => p.id);
       if (room.auto && sim.S.phase === 'lobby' && sim.S.mode !== room.mode) sim.S.mode = room.mode;
       sim.syncRoster(ids);
+      if (assignBots(room)) sendAll(room, peersMsg(room)); // house bots: who each bot is, to every screen
       if (room.ranked && sim.S.phase === 'lobby') room.aloneSince = ids.length === 1 ? (room.aloneSince ?? t) : null; // solo ranked clock
       const solo = room.ranked && ids.length === 1 && room.aloneSince != null && t - room.aloneSince >= SOLO_WAIT_MS;
       const enough = room.ranked ? ids.length >= 2 || solo : ids.length > 0; // ranked: 2 real players, or one alone for 45 s vs 4 bots
@@ -275,11 +301,11 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
   function report(room) {
     const S = room.sim.S, mid = S.mid; room.reported = mid;
     const order = [...S.ents].sort((a, b) => b.score - a.score || a.id - b.id);
-    const places = order.map((e) => (e.bot ? null : room.conns.get(e.peer)?.me.pid || null));
+    const places = order.map((e) => (e.bot ? room.hb?.get(e.id)?.id || null : room.conns.get(e.peer)?.me.pid || null)); // house bots count for their accounts
     if (room.ranked && ranked) rankedPoints(room, order);
     if (!places.some(Boolean) || !finish) return; // nobody signed in: nothing to record
     // each player's match counts (sim.js tally: hits, hat seconds, steals, catches, specials) for the season's daily tasks
-    const stats = order.map((e) => (e.bot ? null : { ...(e.st || {}) }));
+    const stats = order.map((e) => (e.bot && !room.hb?.get(e.id) ? null : { ...(e.st || {}) }));
     Promise.resolve(finish({ id: mid, auto: true, places, stats })).then((r) => {
       for (const c of r?.counted || []) {
         const pid = places[c.place - 1], conn = [...room.conns.values()].find((x) => x.me.pid === pid);
@@ -292,7 +318,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
   // Someone who left during the match isn't in it any more but started it: not placing, so quitting a loss doesn't dodge it.
   function rankedPoints(room, order) {
     const mid = room.sim.S.mid, seen = new Set();
-    const ps = order.map((e) => { const pid = e.bot ? null : room.conns.get(e.peer)?.me.pid || null; if (pid) seen.add(pid); return { id: pid || 'x' + e.id, bot: !pid, score: e.score, level: pid ? room.conns.get(e.peer)?.me.l : 1 }; }); // me.l: the saved level (database)
+    const ps = order.map((e) => { const pid = e.bot ? null : room.conns.get(e.peer)?.me.pid || null; if (pid) seen.add(pid); const hb = e.bot ? room.hb?.get(e.id) : null; return { id: pid || hb?.id || 'x' + e.id, bot: !pid, house: !!hb, score: e.score, level: pid ? room.conns.get(e.peer)?.me.l : 1 }; }); // a house bot puts in 5 like any bot, but its points count // me.l: the saved level (database)
     const { points } = settleRanked(ps);
     for (const pid of room.startedWith || []) if (!seen.has(pid)) points[pid] = RULES.notPlacing;
     for (const [pid, change] of Object.entries(points)) {
@@ -314,7 +340,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
     // Same fields as the page's publishSummary() (online.js), which the lobby list reads.
     return [...rooms.values()].filter((r) => r.auto).map((r) => {
       const S = r.sim.S, top = [...S.ents].sort((a, b) => b.score - a.score)[0], ps = [...r.conns.values()].map((c) => c.me);
-      const nameOf = (e) => (e.bot ? botName(e.id) : r.conns.get(e.peer)?.me.n || 'Player');
+      const nameOf = (e) => (e.bot ? r.hb?.get(e.id)?.n || botName(e.id) : r.conns.get(e.peer)?.me.n || 'Player');
       return { code: r.code, mode: S.mode, variant: r.variant, style: r.style, ranked: r.ranked ? 1 : 0, phase: S.phase, round: S.round, time: Math.ceil(S.time),
         humans: ps.filter((p) => !p.w).length, watchers: ps.filter((p) => p.w).length, free: Math.max(0, seatsLeft(r.code)),
         starts: S.phase === 'lobby' && r.cdEnd ? Math.max(0, Math.ceil((r.cdEnd - now()) / 1000)) : null, // seconds to the start (waiting games)

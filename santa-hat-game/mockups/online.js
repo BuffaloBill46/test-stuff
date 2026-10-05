@@ -140,7 +140,9 @@ function decode(s) {
 
 const inRoom = () => !!room || practice;
 // (on the referee server my own name is the one it checked, like everyone else's: a signed-in player's saved name)
-const nameOf = (e) => (e.bot ? botName(e.id) : (e.peer === me.id && room?.kind !== 'server' ? me.n : names.get(e.peer) || (e.peer === me.id ? me.n : '')) || 'Player');
+// HOUSE BOTS (Cody 2026-10-05): the match server says which house bot account each bot plays as: its name and look on screen
+let hbMap = new Map();
+const nameOf = (e) => (e.bot ? hbMap.get(e.id)?.n || botName(e.id) : (e.peer === me.id && room?.kind !== 'server' ? me.n : names.get(e.peer) || (e.peer === me.id ? me.n : '')) || 'Player');
 
 // ---------- referee hand-off
 function becomeHost() {
@@ -207,6 +209,8 @@ async function enterRoom(code, quick, opts = {}) {
   room.on('rep', (id, r) => { if (isHost && sim) sim.setReport(id, r); });
   room.on('emote', (e) => { if (e && typeof e.p === 'string') showEmote(e.p, Number(e.e)); });
   room.on('peers', (ps) => ps.forEach((p) => names.set(p.id, cleanName(p.n) || 'Player')));
+  const setHb = (list) => { hbMap = new Map((list || []).map(([id, n, a, l]) => [id, { n: cleanName(n) || 'Player', a, l: Number(l) || 1 }])); };
+  setHb(room.housebots?.()); room.on('housebots', setHb); // the list may have come with the first player list, before this listener
   // Referee server: it recorded my Auto match finish itself (the page reports nothing there); show my new level.
   room.on('counted', (d) => { if (profile && d && Number.isInteger(d.level)) { profile.level = d.level; profile.xp = d.xp; me.l = d.level; renderProgress(profile); } });
   room.on('rank', (d) => { if (d && Number.isFinite(d.change)) { rankNews = d; if (profile && Number.isFinite(d.points)) profile.rank_points = d.points; } });
@@ -455,7 +459,7 @@ function sendEmote(i) {
 // each player's browser says (the same trust as today's unranked matches; server/levels.js).
 // The lookups come from refcore.js, the same ones the server referee uses: level, starting snowballs, the special snowballs a
 // player brings (what's in their slots that their level opens; bots none), and gear (below).
-const REF = refereeOpts((e) => (e.peer === me.id ? me : room?.peers().find((q) => q.id === e.peer)));
+const REF = refereeOpts((e) => (e.peer === me.id ? me : room?.peers().find((q) => q.id === e.peer)), (e) => hbMap.get(e.id));
 const { levelOf, startOf, specialsOf } = REF;
 const mySpecials = () => specialsIn(me.a, me.l || 1, levelInfo(me.l || 1).sb);
 // The special gear a player brings (gear.js gearIn: the gear slots their level opens, worn by level rules, no stacking). The

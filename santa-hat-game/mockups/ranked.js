@@ -27,7 +27,8 @@ export function settleRanked(players, R = RULES) {
     i += tied.length;
   }
   const points = {};
-  for (const p of players) if (!p.bot) points[p.id] = won.has(p.id) ? won.get(p.id) : R.notPlacing;
+  // real players, and HOUSE bots (accounts that play as bots: their stake is a bot's 5, but they win and lose points; Cody 2026-10-05)
+  for (const p of players) if (!p.bot || p.house) points[p.id] = won.has(p.id) ? won.get(p.id) : R.notPlacing;
   return { pot, prizes, points, placed: [...won.keys()] };
 }
 export const applyPoints = (current, change) => Math.max(0, current + change);

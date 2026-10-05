@@ -85,7 +85,8 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
   }
   // Per-player match counts for the daily tasks (seasons.js; Cody 2026-10-03): only during real play, like points. The match
   // server sends them with an Auto match's finish; they never leave the server in snapshots.
-  function tally(e, key, n = 1) { if (!scoring() || !e || e.bot) return; (e.st ||= { hits: 0, hatSec: 0, steals: 0, catches: 0, specials: 0, thrown: 0 })[key] = ((e.st[key] || 0) + n); }
+  // e.hb: a HOUSE bot (an account: its throws/hits count, Cody 2026-10-05)
+  function tally(e, key, n = 1) { if (!scoring() || !e || (e.bot && !e.hb)) return; (e.st ||= { hits: 0, hatSec: 0, steals: 0, catches: 0, specials: 0, thrown: 0 })[key] = ((e.st[key] || 0) + n); }
   function addScore(e, p) {
     if (!scoring() || !e) return;
     e.score += p; if (S.mode === 'team') S.team[e.team] += p;

@@ -23,7 +23,7 @@ const addressOf = (req) => { const direct = req.socket.remoteAddress || ''; retu
 
 const SB_URL = process.env.SUPABASE_URL || 'https://olganobdypnxfpmsxibe.supabase.co';
 const SB_KEY = process.env.SUPABASE_KEY || 'sb_publishable_eLn_YYzLDOTuUAOTZLeyKQ_PLGT8B6N'; // publishable: meant to be public
-let identify = null, finish = null, ranked = null;
+let identify = null, finish = null, ranked = null, houseBots = null;
 // WEEKLY MODES Cody has switched on (supabase/034; the admin screen), read once a minute. Unreadable (no database, 034 not yet
 // applied, a network hiccup): kept as last read, and [] at the start = every weekly mode OFF (never on by accident).
 let weeklyOnList = [], readWeekly = null;
@@ -53,11 +53,13 @@ if (process.env.DATABASE_URL) {
     result: (mid, pid, change) => one('select public.record_ranked_result($1, $2, $3)', [mid, pid, change]),
     cleanup: (prefix) => one('select public.release_room_holds($1)', [prefix]),
   };
+  // the house bots (supabase/050; Cody 2026-10-05): who the bots in matches play as
+  houseBots = async () => (await db.query('select * from public.house_bots()')).map((r) => ({ id: r.id, name: r.name, avatar: r.avatar, level: r.level }));
   console.log('referee: sign-ins checked, finishes recorded');
 } else console.log('referee: no DATABASE_URL: phase-1 rooms (the page word is used, nothing recorded)');
 // Ranked paused while this file exists (Cody, 2026-10-02): touch it to pause, delete it to reopen; no restart needed.
 const PAUSE_FILE = process.env.RANKED_PAUSE_FILE || '/etc/santa/ranked-paused';
-const ref = createReferee({ identify, finish, ranked, rankedSpecials, rankedPaused: () => existsSync(PAUSE_FILE), weeklyOn: () => weeklyOnList });
+const ref = createReferee({ identify, finish, ranked, rankedSpecials, rankedPaused: () => existsSync(PAUSE_FILE), weeklyOn: () => weeklyOnList, houseBots });
 const perAddress = new Map();
 const server = http.createServer((req, res) => {
   if (req.url === '/health') {

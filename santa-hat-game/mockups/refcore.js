@@ -47,8 +47,10 @@ export function botAvatar(id) {
 
 // infoOf(e) → { a: look, l: level } of a human entity (what that player announced; the server referee may check it first).
 // Returns the createSim options: snowball rules, starting snowballs (level), special snowballs, level, gear.
-export function refereeOpts(infoOf) {
-  const avatarOf = (e) => (e.bot ? botAvatar(e.id) : cleanAvatar(infoOf(e)?.a));
+// personaOf(e) → the HOUSE BOT a bot entity is playing as ({ n, a, l }: name, look, level; server/referee.js assigns them, Cody
+// 2026-10-05), or nothing: then the old look from its id. Only the look changes: a bot always PLAYS as level 1 with no gear.
+export function refereeOpts(infoOf, personaOf = () => null) {
+  const avatarOf = (e) => (e.bot ? (personaOf(e)?.a ? cleanAvatar(personaOf(e).a) : botAvatar(e.id)) : cleanAvatar(infoOf(e)?.a));
   const levelOf = (e) => (e.bot ? 1 : clampLevel(infoOf(e)?.l));
   return {
     avatarOf,
