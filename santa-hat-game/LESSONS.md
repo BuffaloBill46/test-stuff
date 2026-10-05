@@ -568,3 +568,7 @@ password set on the Droplet, never displayed; old one refused). Read env files w
 **Read every Solana transaction format (2026-10-05).** Phantom now sends some transfers as "version 1". The server asked for
 version 0 at most, so Solana refused those and the server read the refusal as "not finalized yet", forever and silently. Found on
 Cody's real deposits before recording them. getTransaction asks for version 1 and logs any refusal (tests/txversion).
+
+**The page must READ the real numbers on load in server mode (GO day, 2026-10-05).** The Game pool readouts only updated after the
+player's own play, so on the live site they showed the browser's demo pool ($125) instead of the real $139. Every server-mode test had
+played first, so none caught it; only opening the LIVE site before playing did. games.js syncServerPool reads it on load + every 30 s.

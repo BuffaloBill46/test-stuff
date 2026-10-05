@@ -266,6 +266,21 @@ export async function initGames(opts = {}) {
   window.__slots = { state, view, test, get shownPool() { return shownPool; }, get busy() { return busy; }, get fast() { return fast; } };
 }
 
+// THE REAL GAME POOL ON THE PAGE (found at GO, 2026-10-05): in server mode the readouts only moved after this player's own play,
+// so until then they showed the browser's demo pool (the $125 start), not the real one. Now the page reads the shared Game pool's
+// books from the server ('pools') at the live price when it loads, and every 30 s while the Arcade is open. Not saved to the demo.
+let lastPrice = null;
+async function syncServerPool(price = lastPrice) {
+  if (!SERVER || !(price?.usd > 0)) return;
+  lastPrice = price;
+  const r = await call('pools').catch(() => null), spin = r?.pools?.find((x) => x.game === 'spin');
+  const usd = (Number(spin?.santaRaw) / 1e6) * price.usd;
+  if (!spin || !Number.isFinite(usd)) return;
+  poolState().pool = usd; refreshDrop(); refreshStocking();
+  if (!busy) { shownPool = usd; render(); }
+}
+if (typeof window !== 'undefined') setInterval(() => { const g = document.querySelector('#tab-games'); if (SERVER && g && !g.hidden && !document.hidden) syncServerPool(); }, 30_000);
+
 // Live SANTA price and the token's live tax (read-only lookups). Refreshed every minute while the page is open.
 async function showMarket() {
   const el = $('#liveMarket');
@@ -275,7 +290,7 @@ async function showMarket() {
   // 403), which left two errors in every visitor's console (live-player test, 2026-10-02); the 3% badge says it anyway.
   const [p, f] = await Promise.allSettled([m?.usd > 0 ? { usd: m.usd } : livePrice(), m?.fee ? m.fee : SERVER ? liveFee() : Promise.reject(new Error('demo: no tax lookup'))]);
   const bits = [];
-  if (p.status === 'fulfilled') { setPrice(p.value); setPoolPrice(p.value); bits.push(`1 SANTA = <b>$${p.value.usd.toPrecision(3)}</b> · $1 ≈ <b>${fmtSanta(santaFor(1, p.value))} SANTA</b>`); }
+  if (p.status === 'fulfilled') { setPrice(p.value); setPoolPrice(p.value); syncServerPool(p.value); bits.push(`1 SANTA = <b>$${p.value.usd.toPrecision(3)}</b> · $1 ≈ <b>${fmtSanta(santaFor(1, p.value))} SANTA</b>`); }
   if (f.status === 'fulfilled') {
     const pct = f.value.bps / 100;
     bits.push(`token tax <b>${pct}%</b> (read live from the token)`);
