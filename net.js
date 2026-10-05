@@ -3,7 +3,7 @@
 // Message plan (Supabase counts every delivery): the host sends snapshots on the room channel;
 // each player sends their moves on their own channel, which only the host listens to.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm';
-import { humanToken, resetHumanCheck } from './human.js?v=f4ba83e65c';
+import { humanToken, resetHumanCheck } from './human.js?v=6b1810f1b3';
 
 const SB_URL = 'https://olganobdypnxfpmsxibe.supabase.co';
 const SB_KEY = 'sb_publishable_eLn_YYzLDOTuUAOTZLeyKQ_PLGT8B6N'; // publishable key: meant to be public
@@ -113,7 +113,7 @@ async function localRoom(code, me) {
 function refereeRoom(url, code, me, token, ranked = false, auto = null) {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(url), L = listeners();
-    let peers = [], own = null, joined = false, left = false, at = code;
+    let peers = [], own = null, joined = false, left = false, at = code, hbLast = [];
     const send = (m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
     const t = setTimeout(() => { if (!joined) { left = true; ws.close(); reject(new Error('timed out')); } }, 12000);
     ws.onopen = () => send({ t: ranked ? 'ranked' : auto ? 'auto' : 'join', code, ...(auto ? { modes: auto.modes, styles: auto.styles } : {}), ...(token ? { token } : {}), me: { id: me.id, n: me.n, j: me.j, a: me.a, w: !!me.w, l: me.l || 1, pid: me.pid || null } });
@@ -122,6 +122,7 @@ function refereeRoom(url, code, me, token, ranked = false, auto = null) {
       if (m.t === 'peers') {
         peers = (m.ps || []).map((p) => ({ id: p.id, n: String(p.n ?? '').slice(0, 14), j: Number(p.j) || 0, a: p.a, w: !!p.w, l: Number(p.l) || 1, pid: p.pid || null }));
         own = m.own || null; if (typeof m.code === 'string') at = m.code; L.fire('peers', peers);
+        if (Array.isArray(m.hb)) { hbLast = m.hb; L.fire('housebots', m.hb); } // which house bot each bot is (server/referee.js assignBots)
         if (!joined) { joined = true; clearTimeout(t); resolve(api); }
       } else if (m.t === 'snap') L.fire('snap', m.d);
       else if (m.t === 'emote') L.fire('emote', m.d);
@@ -135,7 +136,7 @@ function refereeRoom(url, code, me, token, ranked = false, auto = null) {
     ws.onclose = () => { if (!joined) { clearTimeout(t); if (!left) reject(new Error('closed')); } else if (!left) L.fire('gone'); };
     const api = {
       kind: 'server',
-      peers: () => peers, on: L.on,
+      peers: () => peers, housebots: () => hbLast, on: L.on,
       owner: () => own, code: () => at, // the room the server put us in (ranked: its pick) // the room's controls (mode, Start) belong to the earliest player still in it, by the server's clock
       start: () => send({ t: 'start' }), mode: (mode) => send({ t: 'mode', mode }),
       together: (modes, styles) => send({ t: 'together', modes, styles }), // the host takes the friends' room into a public Auto match

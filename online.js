@@ -1,33 +1,33 @@
 // Santa Hat Legends (the Snowball Square game): lobby, rooms, referee hand-off, smoothing, HUD.
-import './buildcheck.js?v=f4ba83e65c'; // first: the page and this code come from the same publish (buildcheck.js)
-import './errorreport.js?v=f4ba83e65c'; // next: errors players hit are reported to the game server (errorreport.js, to-do #3)
-import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo, Sparks, gearTick, GEAR_TINT, disposeTree } from './kit.js?v=f4ba83e65c';
-import { buildPlaza, makeHat, shadowBlob } from './plaza.js?v=f4ba83e65c';
-import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF, PTS } from './sim.js?v=f4ba83e65c';
-import { openRoom, accounts, findWallet, gamesBoard } from './net.js?v=f4ba83e65c';
-import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js?v=f4ba83e65c';
-import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js?v=f4ba83e65c';
-import { initSeason, refreshSeason } from './seasonui.js?v=f4ba83e65c';
-import { initMoneyStrips, refreshBurned } from './moneystrip.js?v=f4ba83e65c';
-import { initWalletLines, refreshWallet } from './walletline.js?v=f4ba83e65c';
-import { initPayoutWatch } from './payoutwatch.js?v=f4ba83e65c'; // winnings that couldn't go out: a pop-up asking for a ticket, only then (Cody 2026-10-05)
-import { setSolPay, setCoinFee } from './sitefoot.js?v=f4ba83e65c'; // version, ©, X, Support and "How to get SANTA" at the bottom (Cody 2026-10-04)
-import './supportui.js?v=f4ba83e65c'; // the Support button by the X link, bottom of the sign-in sheet (Cody 2026-10-04)
-import { createCoach } from './coach.js?v=f4ba83e65c';
-import { createCallouts } from './callouts.js?v=f4ba83e65c';
-import { VARIANTS, VARIANT_IDS } from './weekly.js?v=f4ba83e65c';
-import { initJackpotBar } from './jackpotbar.js?v=f4ba83e65c';
-import { initShareWins, matchShareButton } from './sharecard.js?v=f4ba83e65c';
-import { TICKET_MAX } from './ranked.js?v=f4ba83e65c';
-import { levelInfo, clampLevel } from './levels.js?v=f4ba83e65c';
-import { SERVER, call, token as signInToken } from './gameserver.js?v=f4ba83e65c';
-import { SPECIALS, cantThrow } from './specials.js?v=f4ba83e65c';
-import { gearIn, effectsOf, heldWith, gearOfMask, statOf, RETIRED } from './gear.js?v=f4ba83e65c';
-import { initLottery } from './lotteryui.js?v=f4ba83e65c';
-import { play as sfx, initSoundButtons } from './sfx.js?v=f4ba83e65c';
-import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js?v=f4ba83e65c';
-import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js?v=f4ba83e65c';
-import { snapMs, autoStartMs, isPublic, isWeekly, PUBLIC_ROOMS, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js?v=f4ba83e65c';
+import './buildcheck.js?v=6b1810f1b3'; // first: the page and this code come from the same publish (buildcheck.js)
+import './errorreport.js?v=6b1810f1b3'; // next: errors players hit are reported to the game server (errorreport.js, to-do #3)
+import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo, Sparks, gearTick, GEAR_TINT, disposeTree } from './kit.js?v=6b1810f1b3';
+import { buildPlaza, makeHat, shadowBlob } from './plaza.js?v=6b1810f1b3';
+import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF, PTS } from './sim.js?v=6b1810f1b3';
+import { openRoom, accounts, findWallet, gamesBoard } from './net.js?v=6b1810f1b3';
+import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js?v=6b1810f1b3';
+import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js?v=6b1810f1b3';
+import { initSeason, refreshSeason } from './seasonui.js?v=6b1810f1b3';
+import { initMoneyStrips, refreshBurned } from './moneystrip.js?v=6b1810f1b3';
+import { initWalletLines, refreshWallet } from './walletline.js?v=6b1810f1b3';
+import { initPayoutWatch } from './payoutwatch.js?v=6b1810f1b3'; // winnings that couldn't go out: a pop-up asking for a ticket, only then (Cody 2026-10-05)
+import { setSolPay, setCoinFee } from './sitefoot.js?v=6b1810f1b3'; // version, ©, X, Support and "How to get SANTA" at the bottom (Cody 2026-10-04)
+import './supportui.js?v=6b1810f1b3'; // the Support button by the X link, bottom of the sign-in sheet (Cody 2026-10-04)
+import { createCoach } from './coach.js?v=6b1810f1b3';
+import { createCallouts } from './callouts.js?v=6b1810f1b3';
+import { VARIANTS, VARIANT_IDS } from './weekly.js?v=6b1810f1b3';
+import { initJackpotBar } from './jackpotbar.js?v=6b1810f1b3';
+import { initShareWins, matchShareButton } from './sharecard.js?v=6b1810f1b3';
+import { TICKET_MAX } from './ranked.js?v=6b1810f1b3';
+import { levelInfo, clampLevel } from './levels.js?v=6b1810f1b3';
+import { SERVER, call, token as signInToken } from './gameserver.js?v=6b1810f1b3';
+import { SPECIALS, cantThrow } from './specials.js?v=6b1810f1b3';
+import { gearIn, effectsOf, heldWith, gearOfMask, statOf, RETIRED } from './gear.js?v=6b1810f1b3';
+import { initLottery } from './lotteryui.js?v=6b1810f1b3';
+import { play as sfx, initSoundButtons } from './sfx.js?v=6b1810f1b3';
+import { THEMES, themeOf, savedTheme, saveTheme } from './themes.js?v=6b1810f1b3';
+import { BALL_COLOR, TR, SOLID, STAR, tracer, dropStreak } from './ballfx.js?v=6b1810f1b3';
+import { snapMs, autoStartMs, isPublic, isWeekly, PUBLIC_ROOMS, styleOf, botAvatar, botName, refereeOpts, modeAllowed, TEAM_PAUSED } from './refcore.js?v=6b1810f1b3';
 
 const V3 = THREE.Vector3;
 const $ = (s) => document.querySelector(s);
@@ -140,7 +140,9 @@ function decode(s) {
 
 const inRoom = () => !!room || practice;
 // (on the referee server my own name is the one it checked, like everyone else's: a signed-in player's saved name)
-const nameOf = (e) => (e.bot ? botName(e.id) : (e.peer === me.id && room?.kind !== 'server' ? me.n : names.get(e.peer) || (e.peer === me.id ? me.n : '')) || 'Player');
+// HOUSE BOTS (Cody 2026-10-05): the match server says which house bot account each bot plays as: its name and look on screen
+let hbMap = new Map();
+const nameOf = (e) => (e.bot ? hbMap.get(e.id)?.n || botName(e.id) : (e.peer === me.id && room?.kind !== 'server' ? me.n : names.get(e.peer) || (e.peer === me.id ? me.n : '')) || 'Player');
 
 // ---------- referee hand-off
 function becomeHost() {
@@ -207,6 +209,8 @@ async function enterRoom(code, quick, opts = {}) {
   room.on('rep', (id, r) => { if (isHost && sim) sim.setReport(id, r); });
   room.on('emote', (e) => { if (e && typeof e.p === 'string') showEmote(e.p, Number(e.e)); });
   room.on('peers', (ps) => ps.forEach((p) => names.set(p.id, cleanName(p.n) || 'Player')));
+  const setHb = (list) => { hbMap = new Map((list || []).map(([id, n, a, l]) => [id, { n: cleanName(n) || 'Player', a, l: Number(l) || 1 }])); };
+  setHb(room.housebots?.()); room.on('housebots', setHb); // the list may have come with the first player list, before this listener
   // Referee server: it recorded my Auto match finish itself (the page reports nothing there); show my new level.
   room.on('counted', (d) => { if (profile && d && Number.isInteger(d.level)) { profile.level = d.level; profile.xp = d.xp; me.l = d.level; renderProgress(profile); } });
   room.on('rank', (d) => { if (d && Number.isFinite(d.change)) { rankNews = d; if (profile && Number.isFinite(d.points)) profile.rank_points = d.points; } });
@@ -455,7 +459,7 @@ function sendEmote(i) {
 // each player's browser says (the same trust as today's unranked matches; server/levels.js).
 // The lookups come from refcore.js, the same ones the server referee uses: level, starting snowballs, the special snowballs a
 // player brings (what's in their slots that their level opens; bots none), and gear (below).
-const REF = refereeOpts((e) => (e.peer === me.id ? me : room?.peers().find((q) => q.id === e.peer)));
+const REF = refereeOpts((e) => (e.peer === me.id ? me : room?.peers().find((q) => q.id === e.peer)), (e) => hbMap.get(e.id));
 const { levelOf, startOf, specialsOf } = REF;
 const mySpecials = () => specialsIn(me.a, me.l || 1, levelInfo(me.l || 1).sb);
 // The special gear a player brings (gear.js gearIn: the gear slots their level opens, worn by level rules, no stacking). The
@@ -896,7 +900,7 @@ if (SERVER) call('market').then((m) => {
   const notes = document.querySelectorAll('.testnote');
   if (m?.cluster === 'devnet') notes.forEach((n) => { n.innerHTML = '<b>Test network</b> Purchases and prizes use test SANTA on Solana devnet: the real steps, with no real value.'; });
   else if (m?.cluster) notes.forEach((n) => { n.hidden = true; });
-  if (m?.cluster === 'mainnet') { import('./paywith.js?v=f4ba83e65c').then((p) => p.showPayWith()); setSolPay(true); setCoinFee(m.fee); } // pay with SANTA or SOL (Cody 2026-10-04)
+  if (m?.cluster === 'mainnet') { import('./paywith.js?v=6b1810f1b3').then((p) => p.showPayWith()); setSolPay(true); setCoinFee(m.fee); } // pay with SANTA or SOL (Cody 2026-10-04)
 }).catch(() => {});
 // The ranked lobby's ticket line (game server 'tickets'): free ones left today, bought ones, when the free ones refill.
 async function showTickets(ranked) {
@@ -1021,7 +1025,7 @@ const app = {
     watchWaiting(tab === 'play'); // the Play page's waiting games, live only while it shows
     if (tab === 'store' || tab === 'games') refreshBurned(); // the money strip's burned-so-far (kept a minute)
     if (tab === 'games') refreshWallet(true); // my wallet under the games
-    if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js?v=f4ba83e65c')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
+    if (tab === 'games' || gamesMod) (gamesMod ||= import('./games.js?v=6b1810f1b3')).then((g) => g.showGames(tab === 'games', { name: () => me.n || 'You' }));
   },
 };
 let gamesMod = null; // Games tab code loads the first time it's opened

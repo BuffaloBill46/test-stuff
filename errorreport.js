@@ -2,7 +2,7 @@
 // server/clienterrors.js), which groups repeats into one row with a count and tells Cody's Telegram about NEW kinds only. Only the
 // game's own errors (not browser extensions' or another site's), each kind once per visit, at most 5 a visit; nothing about the
 // player beyond the tab, the site's build and a short browser name. Sending never shows anything or breaks anything.
-import { call } from './gameserver.js?v=f4ba83e65c';
+import { call } from './gameserver.js?v=6b1810f1b3';
 
 const MAX = 5, sent = new Set();
 const NOISE = /ResizeObserver loop|^Script error\.?$|Non-Error promise rejection captured|Load failed$|cancelled/i;

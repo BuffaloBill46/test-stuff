@@ -198,20 +198,20 @@
   </footer>
 </main>
 <script type="module">
-  import './sitefoot.js?v=f4ba83e65c'; // version, ©, X, Support and "How to get SANTA" at the bottom (Cody 2026-10-04)
-  import { ITEMS, COSTUMES, SEASONS } from './catalog.js?v=f4ba83e65c';
-  import { SPECIALS } from './specials.js?v=f4ba83e65c';
-  import { TEAM_PAUSED } from './refcore.js?v=f4ba83e65c';
-  import { GEAR, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=f4ba83e65c';
-  import { LEVELS, MAX_LEVEL, WINS_PER_LEVEL, MAX_BOUGHT_LEVEL, buyPrice } from './levels.js?v=f4ba83e65c';
-  import { RULES, TICKET_MAX, settleRanked } from './ranked.js?v=f4ba83e65c';
-  import { LOTTERIES, LIVE_LOTTERIES, SALES_CLOSE_MS } from './lottery.js?v=f4ba83e65c';
-  import { SYMBOLS, MACHINES, stats, JACKPOT_PCT, POOL_RULES } from './slots.js?v=f4ba83e65c';
-  import * as DROP from './plinko.js?v=f4ba83e65c';
-  import * as STOCK from './stocking.js?v=f4ba83e65c';
-  import { K, PTS } from './sim.js?v=f4ba83e65c';
-  import * as SEASON from './seasons.js?v=f4ba83e65c';
-  import { VARIANTS } from './weekly.js?v=f4ba83e65c';
+  import './sitefoot.js?v=6b1810f1b3'; // version, ©, X, Support and "How to get SANTA" at the bottom (Cody 2026-10-04)
+  import { ITEMS, COSTUMES, SEASONS } from './catalog.js?v=6b1810f1b3';
+  import { SPECIALS } from './specials.js?v=6b1810f1b3';
+  import { TEAM_PAUSED } from './refcore.js?v=6b1810f1b3';
+  import { GEAR, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=6b1810f1b3';
+  import { LEVELS, MAX_LEVEL, WINS_PER_LEVEL, MAX_BOUGHT_LEVEL, buyPrice } from './levels.js?v=6b1810f1b3';
+  import { RULES, TICKET_MAX, settleRanked } from './ranked.js?v=6b1810f1b3';
+  import { LOTTERIES, LIVE_LOTTERIES, SALES_CLOSE_MS } from './lottery.js?v=6b1810f1b3';
+  import { SYMBOLS, MACHINES, stats, JACKPOT_PCT, POOL_RULES } from './slots.js?v=6b1810f1b3';
+  import * as DROP from './plinko.js?v=6b1810f1b3';
+  import * as STOCK from './stocking.js?v=6b1810f1b3';
+  import { K, PTS } from './sim.js?v=6b1810f1b3';
+  import * as SEASON from './seasons.js?v=6b1810f1b3';
+  import { VARIANTS } from './weekly.js?v=6b1810f1b3';
   // team play paused (refcore.js TEAM_PAUSED, Cody 2026-10-03): the guide says so, and goes back by itself when it reopens
   if (TEAM_PAUSED) document.querySelector('#teamLine').textContent = 'Team play (Nice vs Naughty) is paused for now.';
   const $ = (s) => document.querySelector(s);
@@ -282,6 +282,7 @@
     `3 or fewer players: 1st takes the whole pot. 4 or more: 1st ${RULES.split4[0] * 100}%, 2nd ${RULES.split4[1] * 100}%, 3rd ${RULES.split4[2] * 100}%. Not placing costs <b>${-RULES.notPlacing}</b> points.`,
     `Every match has at least <b>2 bots</b> unless 8 real players fill it. Bots play to win and can take paid places. The leaderboard (Ranks) is your total points.`,
     `No other real player in <b>45 seconds</b>? Your ranked match starts anyway, against <b>4 bots</b>.`,
+    `Some players on the leaderboard are <b>house bots</b>: the bots you meet in matches. They play real matches and earn their levels and points the same way as everyone.`,
   ].map((t) => `<li>${t}</li>`).join('');
   // worked examples, straight from ranked.js (players finish in the order listed; 'bot' = a bot, which adds 5): the pot is 2 per
   // level, 5 per bot (to-do #14). Every match has at least 4 players and 2 bots (sim.js MIN_BODIES, MIN_BOTS), so the examples carry their bots.

@@ -1,12 +1,12 @@
 // The escrow admin screen (admin.html): pool status, Stop / Resume, settings. Every action is a message Cody's wallet signs
 // (adminmsg.js); the server checks it (server/admin.js). Open with ?server=<the games Edge Function address>.
-import { adminMessage } from './adminmsg.js?v=f4ba83e65c';
-import { VARIANTS } from './weekly.js?v=f4ba83e65c';
-import { LOTTERIES } from './lottery.js?v=f4ba83e65c';
-import { POOL_RULES } from './slots.js?v=f4ba83e65c';
-import { DEFAULT_SETTINGS, check, itemsWith } from './settings.js?v=f4ba83e65c';
-import { ITEMS, SLOTS } from './catalog.js?v=f4ba83e65c';
-import { SYMBOLS } from './slots.js?v=f4ba83e65c';
+import { adminMessage } from './adminmsg.js?v=6b1810f1b3';
+import { VARIANTS } from './weekly.js?v=6b1810f1b3';
+import { LOTTERIES } from './lottery.js?v=6b1810f1b3';
+import { POOL_RULES } from './slots.js?v=6b1810f1b3';
+import { DEFAULT_SETTINGS, check, itemsWith } from './settings.js?v=6b1810f1b3';
+import { ITEMS, SLOTS } from './catalog.js?v=6b1810f1b3';
+import { SYMBOLS } from './slots.js?v=6b1810f1b3';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; };

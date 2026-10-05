@@ -1,8 +1,8 @@
 // The referee's per-player lookups and timings, shared by the page's referee (online.js) and the server referee
 // (server/referee.mjs), so the two can never run different rules. Pure logic: no page, no network.
-import { SLOTS, BY_ID, cleanAvatar, ballRules, specialsIn } from './catalog.js?v=f4ba83e65c';
-import { levelInfo, clampLevel } from './levels.js?v=f4ba83e65c';
-import { gearIn } from './gear.js?v=f4ba83e65c';
+import { SLOTS, BY_ID, cleanAvatar, ballRules, specialsIn } from './catalog.js?v=6b1810f1b3';
+import { levelInfo, clampLevel } from './levels.js?v=6b1810f1b3';
+import { gearIn } from './gear.js?v=6b1810f1b3';
 
 // Free-plan budget is 100 messages/second and every receiver counts, so fuller rooms send snapshots less often.
 export const snapMs = (humans) => (humans <= 4 ? 125 : humans <= 6 ? 170 : 220);
@@ -47,8 +47,10 @@ export function botAvatar(id) {
 
 // infoOf(e) → { a: look, l: level } of a human entity (what that player announced; the server referee may check it first).
 // Returns the createSim options: snowball rules, starting snowballs (level), special snowballs, level, gear.
-export function refereeOpts(infoOf) {
-  const avatarOf = (e) => (e.bot ? botAvatar(e.id) : cleanAvatar(infoOf(e)?.a));
+// personaOf(e) → the HOUSE BOT a bot entity is playing as ({ n, a, l }: name, look, level; server/referee.js assigns them, Cody
+// 2026-10-05), or nothing: then the old look from its id. Only the look changes: a bot always PLAYS as level 1 with no gear.
+export function refereeOpts(infoOf, personaOf = () => null) {
+  const avatarOf = (e) => (e.bot ? (personaOf(e)?.a ? cleanAvatar(personaOf(e).a) : botAvatar(e.id)) : cleanAvatar(infoOf(e)?.a));
   const levelOf = (e) => (e.bot ? 1 : clampLevel(infoOf(e)?.l));
   return {
     avatarOf,
