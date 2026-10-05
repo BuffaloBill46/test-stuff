@@ -7,7 +7,7 @@ import { accounts } from './net.js';
 const params = new URLSearchParams(location.search);
 // LAUNCHED (Cody's GO, mainnet): the public site itself plays through the game server, no ?server= needed, and the demo is gone.
 // Only on the real site's own addresses: a test page (localhost) keeps the demo unless it passes ?server= itself.
-const LAUNCHED = false;
+const LAUNCHED = true; // Cody's GO, 2026-10-05: the public site plays for real (mainnet)
 const PUBLIC_SITE = /(^|\.)santahatgames\.com$|^buffalobill46\.github\.io$/.test(location.hostname);
 // THE TEST SITE (Cody 2026-10-05, to-do #11): test.santahatgames.com always plays through the TEST game server (devnet, test
 // SANTA, no real value), reached at its own /api (Caddy on the Droplet; deploy-test.sh publishes it). Changes go there first.
