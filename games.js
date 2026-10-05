@@ -1,24 +1,24 @@
 // Games tab: wires the Slots page (readouts, Pull, full screen, paytable, winners list) to the rules (slots.js) and the
 // 3D Big Hat machine (slots3d.js). DEMO ONLY: play money and a demo pool kept in this browser. No SANTA moves.
-import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount, poolJackpot } from './slots.js?v=e593816909';
-import { JP as DROP_JP } from './plinko.js?v=e593816909';
-import { JP as STOCK_JP } from './stocking.js?v=e593816909';
-import { createMachine, symbolImages } from './slots3d.js?v=e593816909';
-import { poolState, savePool, resetPool, showResult } from './gamepool.js?v=e593816909';
-import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js?v=e593816909';
-import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js?v=e593816909';
-import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js?v=e593816909';
-import { runSummary } from './runui.js?v=e593816909';
-import { livePrice, liveFee, santaFor, fmtSanta } from './market.js?v=e593816909';
-import { FEE } from './slots.js?v=e593816909';
-import { play as sfx } from './sfx.js?v=e593816909';
-import { celebrate, tierOf } from './celebrate.js?v=e593816909';
-import { SERVER, call, settingsReady } from './gameserver.js?v=e593816909';
-import { refreshWallet } from './walletline.js?v=e593816909';
-import { weekStart } from './gameclock.js?v=e593816909';
-import { KINDS, SIZES } from './credits.js?v=e593816909';
-import { initRunPick, priceLabel } from './runpick.js?v=e593816909';
-import { bigShare } from './sharecard.js?v=e593816909'; // "Share this win" on a big single win (Cody 2026-10-04)
+import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount, poolJackpot } from './slots.js?v=ea7a433a7d';
+import { JP as DROP_JP } from './plinko.js?v=ea7a433a7d';
+import { JP as STOCK_JP } from './stocking.js?v=ea7a433a7d';
+import { createMachine, symbolImages } from './slots3d.js?v=ea7a433a7d';
+import { poolState, savePool, resetPool, showResult } from './gamepool.js?v=ea7a433a7d';
+import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js?v=ea7a433a7d';
+import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js?v=ea7a433a7d';
+import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js?v=ea7a433a7d';
+import { runSummary } from './runui.js?v=ea7a433a7d';
+import { livePrice, liveFee, santaFor, fmtSanta } from './market.js?v=ea7a433a7d';
+import { FEE } from './slots.js?v=ea7a433a7d';
+import { play as sfx } from './sfx.js?v=ea7a433a7d';
+import { celebrate, tierOf } from './celebrate.js?v=ea7a433a7d';
+import { SERVER, call, settingsReady } from './gameserver.js?v=ea7a433a7d';
+import { refreshWallet } from './walletline.js?v=ea7a433a7d';
+import { weekStart } from './gameclock.js?v=ea7a433a7d';
+import { KINDS, SIZES } from './credits.js?v=ea7a433a7d';
+import { initRunPick, priceLabel } from './runpick.js?v=ea7a433a7d';
+import { bigShare } from './sharecard.js?v=ea7a433a7d'; // "Share this win" on a big single win (Cody 2026-10-04)
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
