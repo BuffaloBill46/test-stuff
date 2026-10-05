@@ -129,6 +129,8 @@ function decode(s) {
     balls: (Array.isArray(s.B) ? s.B : []).map((b) => ({ id: n(b[0]), x: n(b[1]), y: n(b[2]), z: n(b[3]), vx: n(b[4]), vy: n(b[5]), vz: n(b[6]), owner: n(b[7]), kind: KIND_OF[n(b[9])] || '', r: n(b[10], 1) || 1 })),
     drops: (Array.isArray(s.D) ? s.D : []).map((p) => ({ x: n(p[0]), z: n(p[1]), t: n(p[2]), owner: n(p[3]), kind: DROP_OF[n(p[4])] || 'rain' })),
     ev: Array.isArray(s.V) ? s.V : [], res: Array.isArray(s.R) ? { team: s.R[0], top: s.R[1], mvp: s.R[2] } : null,
+    // at the end: each real player's snowballs thrown and hits (sim.js T), for the results card's hit % (Cody 2026-10-04)
+    aim: new Map((Array.isArray(s.T) ? s.T : []).map((t) => [n(t[0]), { thrown: n(t[1]), hits: n(t[2]) }])),
     cd: n(s.cd), pub: !!s.pub, mid: typeof s.mid === 'string' ? s.mid : '',
     rk: !!s.rk, wait: !!s.wait, // ranked (referee server); waiting for a 2nd real player
   };
@@ -490,6 +492,13 @@ function gearNames(a, lvl, e) {
   return GEAR_SLOTS.slice(0, levelInfo(lvl).gear).map((s) => BY_ID.get(c[s])).filter((it) => it?.gear && kinds.includes(it.gear))
     .map((it) => it.name + (it.gear === 'present' && pick ? ' (' + gearItemName(pick) + ')' : ''));
 }
+// the results card: snowballs thrown, hits and hit % (Cody 2026-10-04); from the referee's end snapshot (sim.js T), or my own
+// counts in a match this page runs; bots don't keep them
+function aimLine(e) {
+  const a = currentView?.aim?.get(e.id) || e.aim || (e.st && !e.bot ? { thrown: e.st.thrown || 0, hits: e.st.hits || 0 } : null);
+  if (!a) return '';
+  return `<small class="aim">${a.thrown} thrown · ${a.hits} hit · ${a.thrown ? Math.min(100, Math.round((100 * a.hits) / a.thrown)) : 0}%</small>`;
+}
 function lineupRow(e, v) {
   const team = v.mode === 'team' ? ` <u class="t${e.team}">${TEAM_NAME[e.team]}</u>` : '';
   if (e.bot) return `<li class="bot"><span class="who">${esc(nameOf(e))} <i>elf bot</i>${team}</span></li>`;
@@ -668,7 +677,7 @@ function renderChrome() {
       ${mvp ? `<div class="verdict">MVP: ${esc(nameOf(mvp))} with ${mvp.score}</div>` : ''}
       ${(callouts.last || []).length ? `<ul class="highs">${callouts.last.map((h) => `<li><i>${h.label}</i><b>${esc(h.who)}</b><span>${h.text}</span></li>`).join('')}</ul>` : ''}
       ${v.rk && rankNews ? `<div class="verdict">Rank points ${rankNews.change >= 0 ? '+' : '−'}${Math.abs(rankNews.change)}${Number.isFinite(rankNews.points) ? ` · now ${rankNews.points}` : ''}</div>` : ''}
-      <ol class="final">${sorted.map((e) => `<li><span>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}</span><b>${e.score}</b></li>`).join('')}</ol>
+      <ol class="final">${sorted.map((e) => `<li><span>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}</span><b>${e.score}</b>${aimLine(e)}</li>`).join('')}</ol>
       ${endActions(v, sorted)}`;
   }
   if (card !== ui.lastCard) {

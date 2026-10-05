@@ -10,7 +10,7 @@ them. Last updated: 2026-10-04.
 2. [x] **Tests run automatically on every change** (GitHub Actions: the unit and database tests on every push).
 3. [x] **Hear about errors players hit** — the page reports its errors to the game server; a list on the admin screen.
 4. [x] **Mini games: "Play at your own risk"** at the top of the Arcade page.
-5. [ ] **End of match: snowballs thrown, hit, and hit %** on the results card.
+5. [x] **End of match: snowballs thrown, hit, and hit %** on the results card.
 6. [ ] **Player Progress + Ranked board: thrown / hit / % / SANTA spent / SANTA won.** (Flag for Cody: spent/won on the PUBLIC
    ranked board shows everyone's money; Progress is private. Building it as asked; easy to hide later.)
 7. [ ] **Share buttons:** big wins, getting a costume, and the score after a match.
@@ -23,6 +23,11 @@ them. Last updated: 2026-10-04.
     **Needs Cody:** one DNS record at your domain registrar (Claude will say exactly what to type).
 12. [ ] **Jupiter fix** — SOL payments use Jupiter's new address with the old one as a backup, and retry when busy (the free
     address is being retired; found 2026-10-04).
+
+13. [ ] **"Max paid to level 5"** under the Buy level button in Player Progress (Cody 2026-10-04).
+14. [ ] **Ranked points by level** (Cody 2026-10-04): each player in a ranked match puts 2 × their level into the pot (level 1 =
+    2 points … level 10 = 20) instead of 10 each; not placing still costs 5. Higher levels are worth more to beat, lower less.
+    A bot puts in 5 points (Cody 2026-10-04).
 
 ## Waiting on Cody
 - [ ] **Legal review** of the paid games and lottery before real money (a lawyer who knows crypto gaming).
