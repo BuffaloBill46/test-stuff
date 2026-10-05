@@ -22,8 +22,15 @@ for (const u of ['https://santahatgames.com/', 'https://test.santahatgames.com/'
 const logs = sh(`journalctl -u santa-games -u santa-worker -u santa-referee --since "-20 min" --no-pager -o cat`);
 const bad = logs.split('\n').filter((l) => /error|exception|refused|failed|timed? ?out|ECONN|unhandled/i.test(l) && !/Telegram send failed network/.test(l) && !/payouts {"sent":/.test(l)); // the worker's own summary line (it says "failed":0) is not an error
 if (bad.length) { const kinds = [...new Set(bad.map((l) => l.replace(/[0-9a-f-]{8,}|\d+/gi, '#').slice(0, 140)))]; say(`${bad.length} error lines in 20 min, e.g.: ${kinds.slice(0, 3).join(' || ')}`); }
+// A restart is news only when it wasn't a deploy (2026-10-05: the watch stalled 4 hours asking to read the git history to tell
+// them apart). A deploy = new code checked out in /opt/santa/repo up to 3 minutes before; a crash = systemd counting restarts.
 const restarts = (sh(`journalctl -u santa-games -u santa-worker -u santa-referee --since "-20 min" --no-pager -o cat | grep -c "Started "`) || '0');
-if (+restarts > 0) say(`${restarts} service (re)starts in 20 min`);
+const crashes = ['santa-games', 'santa-worker', 'santa-referee'].reduce((n, u) => n + (+(sh(`systemctl show -p NRestarts --value ${u}`) || 0)), 0);
+const codeAt = +(sh(`stat -c %Y /opt/santa/repo/.git/HEAD`) || 0) * 1000; // when the last checkout happened
+const startsAt = ['santa-games', 'santa-worker', 'santa-referee'].map((u) => Date.parse(sh(`systemctl show -p ActiveEnterTimestamp --value ${u}`) || '') || 0);
+const byDeploy = startsAt.every((t) => !t || Date.now() - t > 20 * 60_000 || (t >= codeAt && t - codeAt < 3 * 60_000));
+if (crashes > 0) say(`${crashes} service crash-restarts (systemd NRestarts)`);
+else if (+restarts > 0 && !byDeploy) say(`${restarts} service (re)starts in 20 min, not after a deploy`);
 
 // 3. the money side, from the database (counts and amounts only)
 const url = readFileSync('/etc/santa/games.env', 'utf8').split('\n').find((l) => l.startsWith('DATABASE_URL='))?.slice(13);
