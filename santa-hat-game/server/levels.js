@@ -23,7 +23,9 @@ export function createLevels({ db, now = () => Date.now() }) {
   async function progress(profile) {
     const r = (await db.query('select level, xp from public.profiles where id = $1', [profile]))[0];
     if (!r) return { error: 'no profile yet' };
-    return { ...progressLine(r), gives: levelInfo(r.level) };
+    // career totals (049): snowballs thrown / hit, SANTA spent / won; none on a database without 049 yet
+    const c = (await db.query('select thrown, hits, spent_raw, won_raw from public.career_stats($1)', [[profile]]).catch(() => []))[0];
+    return { ...progressLine(r), gives: levelInfo(r.level), ...(c ? { career: { thrown: +c.thrown, hits: +c.hits, spentRaw: +c.spent_raw, wonRaw: +c.won_raw } } : {}) };
   }
   // match: { id, auto: true, places: [profile id or null (a bot or a guest), ...] in finishing order }. Sent by the HOST,
   // who must be one of the places (a player in that match).
@@ -34,9 +36,13 @@ export function createLevels({ db, now = () => Date.now() }) {
     const places = Array.isArray(match.places) ? match.places.slice(0, 8) : [];
     if (!byReferee && !places.some((p) => p === host)) return { error: 'only a player in the match can report it' };
     // Every account's finish counts toward its match stats (games played, top-3 %: the load screen; supabase/013), once per match.
+    // with each one, its snowballs thrown and hits (049): only the match SERVER's own counts (a page's report records 0)
+    const ms = byReferee && Array.isArray(match.stats) ? match.stats : [], n = (v) => Math.max(0, Math.min(5000, Math.floor(+v) || 0));
     for (let i = 0; i < places.length; i++) {
-      const p = places[i];
-      if (p && UUID.test(String(p))) await db.query('select public.record_match_result($1, $2, $3, $4)', [String(match.id), p, i + 1, places.length]);
+      const p = places[i]; if (!(p && UUID.test(String(p)))) continue;
+      const args = [String(match.id), p, i + 1, places.length];
+      await db.query('select public.record_match_result($1, $2, $3, $4, $5, $6)', [...args, n(ms[i]?.thrown), n(ms[i]?.hits)])
+        .catch(() => db.query('select public.record_match_result($1, $2, $3, $4)', args)); // a database without 049 yet
     }
     const counted = [];
     for (let i = 0; i < Math.min(3, places.length); i++) {

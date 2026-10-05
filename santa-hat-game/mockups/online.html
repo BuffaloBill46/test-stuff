@@ -647,6 +647,9 @@ p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; fo
 .shopitem button { padding: 8px 10px; min-height: 40px; font-size: 13px; }
 .shopbtns { display: grid; gap: 6px; } .shopbtns .go { font-size: 16px; padding: 6px 12px 10px; } .shopbtns .ok { font: 700 11px/1 var(--digits); color: #7fe0a0; text-transform: uppercase; text-align: center; }
 .shopnote { grid-column: 1 / -1; margin: 0; min-height: 0; font-size: 13px; color: var(--lamp); } .shopnote:empty { display: none; }
+/* "Max paid to level 5" under Buy level (Cody 2026-10-04); career lines on the Ranked board (to-do #6) */
+.pgmax { margin: 4px 0 0; font-size: 13px; color: var(--dim); text-align: center; }
+.lb small.career { display: block; font-size: 12px; color: var(--dim); }
 .pgnote { margin: 4px 0 0; font-size: 13px; color: var(--lamp); min-height: 0; } .pgnote:empty { display: none; }
 .avrule { grid-column: 1 / -1; margin: 2px 0 0; font-size: 13px; line-height: 1.45; color: #d6ddf0; }
 /* The Avatar screen's Special Snowballs and Special Gear tabs: one row per item (icon, name, what it does, price/status) */
@@ -994,7 +997,9 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
         <div><i>Season</i><b id="pgSeason">—</b></div>
         <div><i>Rank points</i><b id="pgPts">—</b></div>
         <div><i>Ranked tickets</i><b id="pgTix">—</b></div>
-        <button class="sec" id="pgBuy">Buy level 2 · $1.00</button><p class="pgnote" id="pgNote" aria-live="polite"></p>
+        <div><i>Snowballs</i><b id="pgAim">—</b></div>
+        <div><i>SANTA</i><b id="pgMoney">—</b></div>
+        <button class="sec" id="pgBuy">Buy level 2 · $1.00</button><p class="pgmax" id="pgMax">Max paid to level 5</p><p class="pgnote" id="pgNote" aria-live="polite"></p>
         <p class="pgor" id="pgOr">or win 5 matches top 3 or better <b id="pgOrN">0 / 5</b></p>
       </div>
     </section>

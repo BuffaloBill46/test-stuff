@@ -116,6 +116,19 @@ export async function refreshTickets(profile) {
   return r;
 }
 
+// CAREER STATS (Cody 2026-10-04 to-do #6; supabase/049 career_stats): snowballs thrown / hit / hit %, SANTA spent / won.
+// careerOf(ids) is set by initTabs (the accounts' public lookup, so it works on the demo site too).
+let careerOf = null;
+const short1 = (raw) => { const n = (raw || 0) / 1e6; return n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K' : String(Math.round(n)); };
+export const aimText = (c) => (c ? `${c.thrown} thrown · ${c.hits} hit · ${c.thrown ? Math.min(100, Math.round((100 * c.hits) / c.thrown)) : 0}%` : '—');
+export const santaText = (c) => (c ? `${short1(c.spentRaw)} spent · ${short1(c.wonRaw)} won` : '—');
+async function fillCareer(el, profile) {
+  const aim = el.querySelector('#pgAim'), money = el.querySelector('#pgMoney'); if (!aim || !money) return;
+  if (!profile?.id || !careerOf) { aim.textContent = money.textContent = profile ? '—' : 'Sign in'; return; }
+  const c = (await careerOf([profile.id]).catch(() => ({})))[profile.id] || null;
+  aim.textContent = aimText(c); money.textContent = santaText(c);
+}
+
 // The Player Progress box on the Play page (Cody, 2026-10-01). Guests see level 1; a signed-in player sees their own.
 export function renderProgress(profile) {
   const el = document.querySelector('#progress'); if (!el) return;
@@ -126,9 +139,10 @@ export function renderProgress(profile) {
   el.querySelector('#pgGives').innerHTML = [['Starting snowballs', g.start], ['Special ball slots', g.sb], ['Gear slots', g.gear]]
     .map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
   el.querySelector('#pgPts').textContent = profile ? String(profile.rank_points ?? 0) : '—';
-  refreshTickets(profile);
+  refreshTickets(profile); fillCareer(el, profile);
   const buy = el.querySelector('#pgBuy');
   buy.hidden = price === null; // levels above 5 are earned, not bought
+  const cap = el.querySelector('#pgMax'); if (cap) cap.hidden = price === null; // "Max paid to level 5" under the button (Cody 2026-10-04)
   if (price !== null) { buy.textContent = `Buy level ${pl.level + 1} · $${price.toFixed(2)}`; buy.disabled = false; }
   // the free way to the same level, with the count so far (Auto match top-3 finishes; guests: sign in to count them)
   const or = el.querySelector('#pgOr'); or.hidden = price === null;
@@ -149,6 +163,7 @@ function withGear(a, slot, id) {
 const STAT_NAMES = { hits: 'extra hits', held: 'snowballs held', refill: 'refill speed', speed: 'move speed', size: 'size' };
 const statName = (kind) => (kind === 'present' ? 'a random gear' : STAT_NAMES[statOf(kind)] || '');
 export function initTabs(app) {
+  careerOf = (ids) => app.accounts.career ? app.accounts.career(ids) : Promise.resolve({});
   const state = { tab: 'home', slot: 'shirt', sbSlot: 'sb1', gSlot: 'g1', draft: null, owned: new Set(), board: null };
   // The Avatar editor's tabs: the look slots, then Special Snowballs and Special Gear. Special Gear REPLACES Backpacks (Cody,
   // 2026-10-01: "it should also replace the backpack section"); a backpack already worn stays on (the pack slot is still saved).
@@ -502,7 +517,7 @@ export function initTabs(app) {
       const rows = await app.accounts.leaderboard(since);
       lb.innerHTML = rows.length
         ? `<table class="lb"><thead><tr><th>#</th><th>Player</th><th>Level</th><th style="text-align:right">${since ? (which === 'today' ? 'Points today' : 'Points this week') : 'Points'}</th></tr></thead><tbody>${
-            rows.map((r, i) => `<tr class="${p && r.wallet === p.wallet ? 'me' : ''}"><td class="n">${i + 1}</td><td>${esc(r.name)}<small>${esc(short(r.wallet))}</small></td><td>${r.level}</td><td class="p">${r.rank_points}</td></tr>`).join('')}</tbody></table>`
+            rows.map((r, i) => `<tr class="${p && r.wallet === p.wallet ? 'me' : ''}"><td class="n">${i + 1}</td><td>${esc(r.name)}<small>${esc(short(r.wallet))}</small>${r.career ? `<small class="career">${aimText(r.career)}</small><small class="career">SANTA ${santaText(r.career)}</small>` : ''}</td><td>${r.level}</td><td class="p">${r.rank_points}</td></tr>`).join('')}</tbody></table>`
         : since ? `<p class="dim">No ranked matches ${which === 'today' ? 'today' : 'this week'} yet. Play ranked to be first on this board.</p>` : '<p class="dim">No players yet. Sign in to be first on the board.</p>';
     } catch (e) { lb.innerHTML = `<p class="dim">Couldn't load the leaderboard right now. ${esc(e.message)}</p>`; }
   }
