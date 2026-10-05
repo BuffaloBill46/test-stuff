@@ -137,8 +137,8 @@ const short1 = (raw) => { const n = (raw || 0) / 1e6; return n >= 1e6 ? (n / 1e6
 export const aimText = (c) => (c ? `${c.thrown} thrown · ${c.hits} hit · ${c.thrown ? Math.min(100, Math.round((100 * c.hits) / c.thrown)) : 0}%` : '—');
 export const santaText = (c) => (c ? `${short1(c.spentRaw)} spent · ${short1(c.wonRaw)} won` : '—');
 // the Ranked board's two career lines, label first and in the readable font (Cody 2026-10-05: "on my phone it's hard to tell SANTA 0 used 0 won")
-const careerLines = (c) => `<small class="career">Throws <b>${c.thrown}</b> · Hits <b>${c.hits}</b> · <b>${c.thrown ? Math.min(100, Math.round((100 * c.hits) / c.thrown)) : 0}%</b></small>`
-  + `<small class="career">SANTA spent <b>${short1(c.spentRaw)}</b> · won <b>${short1(c.wonRaw)}</b></small>`;
+const careerLines = (c) => `<small class="career"><span>Throws <b>${c.thrown}</b></span> · <span>Hits <b>${c.hits}</b> (<b>${c.thrown ? Math.min(100, Math.round((100 * c.hits) / c.thrown)) : 0}%</b>)</span></small>`
+  + `<small class="career"><span>SANTA spent <b>${short1(c.spentRaw)}</b></span> · <span>won <b>${short1(c.wonRaw)}</b></span></small>`;
 async function fillCareer(el, profile) {
   const aim = el.querySelector('#pgAim'), money = el.querySelector('#pgMoney'); if (!aim || !money) return;
   if (!profile?.id || !careerOf) { aim.textContent = money.textContent = profile ? '—' : 'Sign in'; return; }
