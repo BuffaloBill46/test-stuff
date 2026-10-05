@@ -27,6 +27,7 @@ import { BURN_BPS as LOTTERY_BURN_BPS } from '../../mockups/lottery.js';
 import { newSeed } from '../../mockups/fair.js';
 import { K, PTS } from '../../mockups/sim.js';
 import { seasonAt } from '../../mockups/seasons.js';
+import { dayStart } from '../../mockups/gameclock.js';
 
 const N = +(process.argv[2] || 50), BUYERS = Math.min(+(process.argv[3] || 30), Math.ceil(N * 3 / 5)), ROUNDS = +(process.argv[4] || 3);
 const t0 = Date.now(), fails = [], check = (ok, msg) => { if (!ok) fails.push(msg); console.log((ok ? '  ✓ ' : '  ✗ ') + msg); };
@@ -53,8 +54,10 @@ console.log(`${N} accounts: ${players.filter((p) => p.wallet).length} wallet, ${
 
 // ---------- PART 1: real matches on the real match server
 console.log(`\nPART 1: ${N} signed-in players, ${ROUNDS} rounds of public Auto matches on the real match server`);
-let clock = Date.UTC(2026, 9, 4, 6, 0, 0); // a fixed morning (game day well away from the 9 PM reset)
-const levels = createLevels({ db }), finishes = [];
+// 9 hours into the CURRENT game day (6 AM Indiana time): well away from the 9 PM reset, and the same game day the database calls
+// today (039 season_apply refuses any other day). It was a fixed date until it stopped being 'today' (found 2026-10-04 at 9 PM).
+let clock = dayStart(Date.now()) + 9 * 3600e3;
+const levels = createLevels({ db, now: () => clock }), finishes = []; // the sim's clock: the season day matches PART 1's readback (found when the 9 PM reset passed, 2026-10-04)
 const ref = createReferee({ now: () => clock,
   identify: async (tok) => { const p = players.find((x) => x.token === tok); if (!p) return null; const r = await one('select level, avatar, name, rank_points from public.profiles where id = $1', [p.id]); return { pid: p.id, l: r.level, a: r.avatar, n: r.name, rp: r.rank_points }; },
   finish: async (m) => { finishes.push(m); return levels.finishByReferee(m); }, log: { log() {}, error: (...a) => console.error('referee:', ...a) } });

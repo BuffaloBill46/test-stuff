@@ -18,7 +18,8 @@ import { seasonAt, dayKey, tasksFor, STATS } from '../mockups/seasons.js';
 const MATCH_ID = /^[A-Za-z0-9_-]{8,80}$/;
 const UUID = /^[0-9a-f-]{36}$/;
 
-export function createLevels({ db }) {
+// now: the clock (tests pass their own, so the season day a match is recorded on matches the one it is read back on)
+export function createLevels({ db, now = () => Date.now() }) {
   async function progress(profile) {
     const r = (await db.query('select level, xp from public.profiles where id = $1', [profile]))[0];
     if (!r) return { error: 'no profile yet' };
@@ -52,8 +53,8 @@ export function createLevels({ db }) {
   // opens the day's door when every task is met and grants what it earned. Only the match server's own counts (match.stats),
   // never a page's. A failure here is logged and never costs anyone their level.
   async function seasonProgress(match, places) {
-    const s = seasonAt(); if (!s) return [];
-    const day = dayKey(), tasks = tasksFor(day).map((t) => ({ id: t.id, stat: t.stat, need: t.need })), out = [];
+    const s = seasonAt(now()); if (!s) return [];
+    const day = dayKey(now()), tasks = tasksFor(day).map((t) => ({ id: t.id, stat: t.stat, need: t.need })), out = [];
     const stats = Array.isArray(match.stats) ? match.stats : [];
     for (let i = 0; i < places.length; i++) {
       const p = places[i]; if (!p || !UUID.test(String(p))) continue;
