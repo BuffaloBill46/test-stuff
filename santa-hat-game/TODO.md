@@ -27,8 +27,6 @@ them. Last updated: 2026-10-04.
 - [ ] **Fund the game wallets** (amounts and addresses in LAUNCH_CHECKLIST.md).
 - [ ] **GO**, then the 10¢ SANTA dry run and one ~$1 SOL purchase from your Phantom.
 - [ ] **DNS record** for the staging site (item 11).
-- [ ] **Check: do sign-in emails reach real players?** The older list says email sign-in only reaches Supabase team members until
-  an email service (e.g. Resend, free) is connected in Supabase. If that is still so, players can't sign in by email at launch.
 
 ## Later (ideas, not started; Cody decides)
 - Per-wallet daily limit on the mini games (e.g. $50/day at first).
@@ -46,7 +44,7 @@ them. Last updated: 2026-10-04.
 ## Done (2026-10-04)
 - [x] Pay with SOL (exact price), live, tested on a copy of mainnet · [x] 10 ticks a level · [x] Season pass 100% treasury
 - [x] Match points 10 / 25 · [x] Support tickets (Pending / Resolved / ×) + @Santahatgame · [x] Final launch QA
-- [x] Alert false alarm fixed · [x] Guide, Store text, docs brought up to date · [x] X logo, banner, posts, Frost King still
+- [x] Sign-in emails reach everyone (Resend, from signin@santahatgames.com; done 2026-10-02, checked in HANDOFF) · [x] Alert false alarm fixed · [x] Guide, Store text, docs brought up to date · [x] X logo, banner, posts, Frost King still
 
 ---
 
