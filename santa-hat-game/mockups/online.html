@@ -774,6 +774,13 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 .linkbox .code { font: 700 28px/1 var(--digits); color: var(--lamp); letter-spacing: 2px; user-select: all; -webkit-user-select: all; }
 .linkbox .row { align-items: center; }
 .linkbox .link { flex: 1; min-width: 0; }
+/* adding an email on a phone (Cody 2026-10-05): each box full width with its button under it, so the email and code are readable */
+.linkbox .row:has(#linkEmail), .linkbox #linkCodeRow { flex-wrap: wrap; }
+.linkbox #linkEmail, .linkbox #linkEmailCode { flex: 1 1 100%; min-width: 0; font-size: 18px; }
+.linkbox #linkEmailBtn, .linkbox #linkCodeBtn { flex: 1 1 100%; }
+.linkbox .linknote { color: var(--lamp); font-weight: 700; }
+.linkbox .linknote:empty { display: none; }
+.linkbox .otherdev summary { cursor: pointer; color: var(--dim); }
 #acct .row { margin-bottom: 10px; }
 .lobby { width: min(560px, calc(100% - 32px)) !important; }
 .lobby .modes button { font-family: var(--digits); letter-spacing: 1px; }

@@ -274,7 +274,17 @@ export function initTabs(app) {
           <li class="${has('email') ? 'on' : ''}"><b>Email</b><span>${has('email') ? 'Linked' : 'Not linked'}</span></li>
           <li class="${has('wallet') ? 'on' : ''}"><b>Wallet</b><span>${has('wallet') ? esc(short(p.wallet)) : 'Not linked · needed to buy'}</span></li>
         </ul>
-        ${linkBox ? `<div class="linkbox">
+        ${linkBox && linkBox.want === 'email' ? `<div class="linkbox">
+            <p><b>Add your email:</b> type it, tap <b>Email me a code</b>, then type the 8-digit code from the email here. You never
+              leave this page.</p>
+            <div class="row"><input id="linkEmail" type="text" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-label="Email to add"><button class="go" id="linkEmailBtn">Email me a code</button></div>
+            <p class="linknote" id="linkNote" role="status"></p>
+            <div class="row" id="linkCodeRow" hidden><input id="linkEmailCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="8-digit code" aria-label="Code from the email"><button class="go" id="linkCodeBtn">Add email</button></div>
+            <details class="otherdev"><summary>Reading your email on another device?</summary>
+              <p>Open this link there and sign in with that email. Works for 15 minutes.</p>
+              <div class="code">${esc(code)}</div>
+              <div class="row"><span class="link">${esc(url)}</span><button class="sec" id="copyLink">Copy link</button></div></details>
+          </div>` : linkBox ? `<div class="linkbox">
             <p>${linkBox.want === 'wallet'
               ? 'Open this link wherever your wallet is (Phantom\'s browser on a phone, or a browser with the Phantom extension), then connect the wallet. Works for 15 minutes.'
               : 'Sign in with the email you want to add. Use this browser, or open this link on the device where you read that email. Works for 15 minutes.'}</p>
@@ -304,13 +314,27 @@ export function initTabs(app) {
       $('#linkEmailBtn')?.addEventListener('click', async () => {
         const email = $('#linkEmail').value.trim();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { acctMsg('That email doesn\'t look right.'); return; }
-        store.set('sq_link', linkBox.code);
+        store.set('sq_link', linkBox.code); $('#linkEmailBtn').disabled = true; acctMsg('Sending…');
         try {
           const now = await app.accounts.signInEmail(email);
           if (now) { linkBox = null; await afterAuth(); }
-          else acctMsg(`Sent. Open the link in the email to ${email} in this browser to finish linking.`);
+          else { acctMsg(`Sent to ${email}. Type the 8-digit code from the email below.`); $('#linkNote').textContent = `Sent to ${email}. Check your email, then type the 8-digit code here:`; $('#linkCodeRow').hidden = false; $('#linkEmailCode').focus(); }
         } catch (e) { store.del('sq_link'); acctMsg(`Couldn't send the email: ${e.message}`); }
+        finally { const b = $('#linkEmailBtn'); if (b) b.disabled = false; }
       });
+      // ADD AN EMAIL WITH ITS CODE (Cody 2026-10-05: "very difficult to do on phone. I don't see where to enter the code"): the code from
+      // the email, typed here, signs that email in and afterAuth() redeems the pending link code, so the email joins THIS account (the
+      // same as tapping the email's button in this browser, which a phone's wallet browser can't do: the email opens elsewhere)
+      const addWithCode = async () => {
+        const email = $('#linkEmail').value.trim(), code = $('#linkEmailCode').value.replace(/\D/g, '');
+        if (!/^\d{6,10}$/.test(code)) { acctMsg('Type the code from the email (8 digits).'); return; }
+        if (!store.get('sq_link') && linkBox) store.set('sq_link', linkBox.code);
+        $('#linkCodeBtn').disabled = true; acctMsg('Adding your email…');
+        try { await app.accounts.verifyEmailCode(email, code); linkBox = null; await afterAuth(); }
+        catch (e) { acctMsg(e.message); const b = $('#linkCodeBtn'); if (b) b.disabled = false; }
+      };
+      $('#linkCodeBtn')?.addEventListener('click', addWithCode);
+      $('#linkEmailCode')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addWithCode(); } });
       $('#signOut').addEventListener('click', async () => {
         await app.accounts.signOut(); app.profile = null; state.owned = new Set(); linkBox = null; renderProgress(null);
         app.setIdentity(store.get('sq_name') || app.me.n, cleanAvatar(safeJSON(store.get('sq_avatar'))));

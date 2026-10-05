@@ -1007,6 +1007,7 @@ function setPreview(a) {
 }
 setPreview(me.a);
 const acct = accounts({ local: LOCAL, rules: { SLOTS, SB_SLOTS, GEAR_SLOTS, statOf, BY_ID, usable, DEFAULT_AVATAR } });
+if (LOCAL) window.__acct = acct; // tests only (this computer's stand-in accounts; never on the live site)
 const app = {
   me, accounts: acct,
   hasWallet: () => LOCAL || !!findWallet(),
