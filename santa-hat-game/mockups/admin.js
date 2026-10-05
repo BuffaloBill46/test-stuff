@@ -62,7 +62,7 @@ async function act(action, game, settings = {}) {
   if (action === 'claim-rewards') { msg(`Claim #${r.claim} sent to the payout worker. It finds the reward tokens and sends them to the treasury within a minute.`, 'ok'); setTimeout(() => act('rewards-status', 'all'), 20000); return; }
   if (action === 'rewards-status') { rewardsList(r); return msg(r.sweeps.length ? 'Reward claims loaded.' : 'No reward sweeps yet.', 'ok'); }
   if (action === 'support-list') { supportList(r); const open = r.messages.filter((m) => m.status === 'open').length; return msg(open ? `${open} open support message(s).` : 'No open support messages.', 'ok'); }
-  if (action === 'support-handled') { msg(`Support #${r.id} marked handled.`, 'ok'); return act('support-list', 'support'); }
+  if (action === 'support-handled') { msg(`Ticket #${r.id} marked resolved: the player now sees it (and your note) under their Support button.`, 'ok'); return act('support-list', 'support'); }
   if (action === 'shop-owed') { shopList(r); return msg(r.owed.length ? `${r.owed.length} shop refund(s) to send.` : 'No shop refunds owed.', 'ok'); }
   if (action === 'shop-refund-paid') { msg(`Recorded: refund paid (${(r.arrived / 1e6).toLocaleString()} SANTA arrived). It's in the public log.`, 'ok'); return act('shop-owed', 'shop'); }
   if (action === 'lottery-owed') { owedList(r); return msg(r.owed.length ? `${r.owed.length} lottery payment(s) to send.` : 'No lottery winners waiting.', 'ok'); }
@@ -90,10 +90,10 @@ $('#botCheck').addEventListener('click', () => act('bot-signals', 'all'));
 function supportList(r) {
   const open = r.messages.filter((m) => m.status === 'open').length, short = (w) => (w ? w.slice(0, 4) + '…' + w.slice(-4) : '');
   $('#supportBox').classList.toggle('alert', open > 0);
-  $('#supportList').innerHTML = r.messages.length ? `<table><tr><th>#</th><th>When</th><th>From</th><th>Reach them</th><th>On</th><th>Message</th><th></th></tr>${r.messages.map((m) => `<tr${m.status === 'open' ? '' : ' class="dim"'}>
+  $('#supportList').innerHTML = r.messages.length ? `<table><tr><th>Ticket</th><th>When</th><th>From</th><th>Reach them</th><th>On</th><th>Message</th><th></th></tr>${r.messages.map((m) => `<tr${m.status === 'open' ? '' : ' class="dim"'}>
     <td>${m.id}</td><td>${esc(new Date(m.at).toLocaleString())}</td><td>${m.name ? esc(m.name) + (m.wallet ? ' <code>' + esc(short(m.wallet)) + '</code>' : '') : 'guest'}</td>
     <td>${esc(m.contact || '—')}</td><td>${esc(m.page || '')}</td><td style="white-space:pre-wrap;max-width:420px">${esc(m.message)}</td>
-    <td>${m.status === 'open' ? `<button type="button" data-supporthandled="${m.id}">Mark handled</button>` : 'handled' + (m.note ? ': ' + esc(m.note) : '')}</td></tr>`).join('')}</table>` : 'No support messages yet.';
+    <td>${m.status === 'open' ? `<button type="button" data-supporthandled="${m.id}">Mark resolved</button>` : 'resolved' + (m.note ? ': ' + esc(m.note) : '')}</td></tr>`).join('')}</table>` : 'No support messages yet.';
 }
 function shopList(r) {
   $('#shopBox').classList.toggle('alert', r.owed.length > 0);
@@ -102,7 +102,7 @@ function shopList(r) {
 $('#shopLoad').addEventListener('click', () => act('shop-owed', 'shop'));
 $('#supportLoad').addEventListener('click', () => act('support-list', 'support'));
 $('#supportList').addEventListener('click', (e) => { const b = e.target.closest('[data-supporthandled]'); if (!b) return;
-  const note = prompt(`Mark support #${b.dataset.supporthandled} handled. A note to keep with it (optional):`, ''); if (note === null) return;
+  const note = prompt(`Mark ticket #${b.dataset.supporthandled} resolved. A short note the PLAYER will see under their ticket (optional, e.g. "payout re-sent"):`, ''); if (note === null) return;
   act('support-handled', 'support', { id: +b.dataset.supporthandled, note }); });
 // Claim rewards (024): the claims and what each sent (known reward tokens by name; others by their mint)
 const REWARD_NAMES = { HTmQz7My6MehV7bjhJ6jde8nDND1yvsz68d24LP7YgUQ: 'GP', Xsv9hRk1z5ystj9MhnA7Lq4vjSsLwzL2nxrwmwtD3re: 'GLDX' };

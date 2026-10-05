@@ -87,6 +87,14 @@ export function makeHandler(deps) {
       try { const out = await deps.support.submit({ profile, address: addressOf(req), message: body.message, contact: body.contact, page: body.page }); return reply(origin, out?.error ? 400 : 200, out); }
       catch (e) { console.error('support error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
     }
+    if (body?.action === 'support-status' && deps.support) { // public: MY support tickets (the codes my browser holds; signed in, all mine): pending / resolved
+      try { return reply(origin, 200, await deps.support.status({ profile, tickets: body.tickets })); }
+      catch (e) { console.error('support-status error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
+    }
+    if (body?.action === 'support-clear' && deps.support) { // public: clear one of MY RESOLVED tickets from my list (its ×)
+      try { const out = await deps.support.clear({ profile, tickets: body.tickets, id: body.id }); return reply(origin, out?.error ? 400 : 200, out); }
+      catch (e) { console.error('support-clear error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
+    }
     if (!profile) return reply(origin, 401, { error: 'sign in first' });
     if (deps.limiter) { const l = await deps.limiter.player(profile); if (!l.ok) return slowDown(origin, l); }
     const s = deps.server;

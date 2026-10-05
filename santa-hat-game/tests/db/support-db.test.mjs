@@ -13,7 +13,7 @@ import { createAdmin, adminMessage, b58encode } from '../../server/admin.js';
 
 const FILES = readdirSync(new URL('../../supabase/', import.meta.url)).filter((f) => /^0\d\d_.*\.sql$/.test(f) && f !== '031_games_role.sql').sort();
 const db = await makeDb(FILES);
-for (let i = 0; i < 2; i++) await db.pg.exec((await import('node:fs')).readFileSync(new URL('../../supabase/046_support.sql', import.meta.url), 'utf8')); // safe twice
+for (const m of ['046_support.sql', '047_support_tickets.sql']) for (let i = 0; i < 2; i++) await db.pg.exec((await import('node:fs')).readFileSync(new URL('../../supabase/' + m, import.meta.url), 'utf8')); // safe twice
 const sent = [], telegram = { send: async (t) => { sent.push(t); } };
 const support = createSupport({ db, telegram });
 const WALLET = 'SuPPoRTwa11et'.padEnd(44, '1').replace(/[0OIl]/g, '9');
@@ -26,7 +26,7 @@ const post = async (body, token) => { const r = await handle(new Request('http:/
 // 1. a guest (not signed in: can't sign in is the commonest problem) and a signed-in player
 const g = await post({ action: 'support', message: "I can't sign in with my email, the code never comes", contact: 'guest@example.com', page: 'home' });
 assert.ok(g.status === 200 && g.ok && g.id > 0, 'a guest can send a message: ' + JSON.stringify(g));
-assert.ok(/SUPPORT #\d+ from a guest \(not signed in\)/.test(sent[0]) && /Reach them: guest@example\.com/.test(sent[0]) && /On: home/.test(sent[0]) && /code never comes/.test(sent[0]), 'Telegram got it at once: ' + sent[0]);
+assert.ok(/SUPPORT ticket #\d+ from a guest \(not signed in\)/.test(sent[0]) && /Reach them: guest@example\.com/.test(sent[0]) && /On: home/.test(sent[0]) && /code never comes/.test(sent[0]), 'Telegram got it at once: ' + sent[0]);
 ip = '203.0.113.8';
 const a = await post({ action: 'support', message: 'My Big Hat win never arrived', page: 'games' }, 'ann-token');
 assert.ok(a.ok, 'a signed-in player can send one');
@@ -64,6 +64,31 @@ const [hr] = await db.query('select status, handled_by, note from public.support
 assert.ok(hr.status === 'handled' && hr.handled_by === cody.address && hr.note === 'resent the payout', 'kept: handled, by which admin wallet, the note');
 l = await admin.run(await signed(cody, { action: 'support-list', game: 'support' }));
 assert.equal(l.messages.find((m) => m.id === a.id).status, 'handled', 'the list shows it handled, after the open ones');
+
+// 3b. TICKETS the player follows (Cody 2026-10-04; 047): a guest with the code their browser kept sees Pending, then Resolved with
+//     Cody's note; a wrong code, or someone else's ticket, shows nothing; signed in, Ann sees all of hers with no codes at all.
+//     A RESOLVED ticket can be cleared from the player's list (its ×); a pending one can't, nor anyone else's.
+{ const st = async (body, token) => (await post({ action: 'support-status', ...body }, token));
+  assert.ok(/^[A-Za-z0-9_-]{24}$/.test(g.key || ''), 'the sender gets a secret ticket code: ' + g.key);
+  let r = await st({ tickets: [{ id: g.id, key: g.key }] });
+  assert.ok(r.ok && r.tickets.length === 1 && r.tickets[0].id === g.id && r.tickets[0].status === 'pending' && r.tickets[0].note === null && /sign in/.test(r.tickets[0].about), 'a guest follows their ticket: pending ' + JSON.stringify(r));
+  assert.equal((await st({ tickets: [{ id: g.id, key: 'x'.repeat(24) }] })).tickets.length, 0, 'a wrong code: nothing');
+  assert.equal((await st({ tickets: [{ id: a.id, key: g.key }] })).tickets.length, 0, "someone else's ticket with my code: nothing");
+  assert.equal((await st({ tickets: [{ id: g.id, key: g.key }] }, 'ann-token')).tickets.filter((t) => t.id === g.id).length, 1, "signed in, my browser's guest ticket still shows");
+  const annT = (await st({}, 'ann-token')).tickets;
+  assert.ok(annT.length >= 5 && annT.every((t) => t.id !== g.id) && annT.some((t) => t.id === a.id && t.status === 'resolved' && t.note === 'resent the payout'), "signed in, Ann sees all of hers (no codes), the handled one Resolved with Cody's note");
+  const clear = (body, token) => post({ action: 'support-clear', ...body }, token);
+  assert.match((await clear({ id: g.id, tickets: [{ id: g.id, key: g.key }] })).error, /only your own resolved/, 'a PENDING ticket has no × and cannot be cleared');
+  await admin.run(await signed(cody, { action: 'support-handled', game: 'support', settings: { id: g.id, note: 'Email codes fixed, try again' } }));
+  r = await st({ tickets: [{ id: g.id, key: g.key }] });
+  assert.ok(r.tickets[0].status === 'resolved' && r.tickets[0].note === 'Email codes fixed, try again' && r.tickets[0].resolvedAt > 0, 'once Cody resolves it, the guest sees Resolved and his note');
+  assert.match((await clear({ id: g.id, tickets: [{ id: g.id, key: 'y'.repeat(24) }] })).error, /only your own/, "someone else can't clear it");
+  assert.match((await clear({ id: g.id }, 'ann-token')).error, /only your own/, "nor another signed-in player");
+  assert.ok((await clear({ id: g.id, tickets: [{ id: g.id, key: g.key }] })).ok, 'the guest clears their resolved ticket (×)');
+  assert.equal((await st({ tickets: [{ id: g.id, key: g.key }] })).tickets.length, 0, 'gone from their list');
+  assert.ok((await clear({ id: a.id }, 'ann-token')).ok && (await st({}, 'ann-token')).tickets.every((t) => t.id !== a.id), 'signed in: cleared on every device (kept on the server)');
+  assert.ok((await admin.run(await signed(cody, { action: 'support-list', game: 'support' }))).messages.some((m) => m.id === g.id), 'Cody still has the cleared ones');
+  assert.ok((await st({ tickets: 'nonsense' })).ok && (await st({ tickets: Array(50).fill({ id: 1, key: 'k' }) })).ok, 'odd input is just ignored'); }
 
 // 4. the website (signed in or not) can't read or write the messages
 for (const role of ['anon', 'authenticated']) {

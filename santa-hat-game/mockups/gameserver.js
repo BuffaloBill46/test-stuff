@@ -20,7 +20,7 @@ export async function token() {
 }
 // The actions anyone may call without signing in: must match the server's public ones (server/http.js; tests/public-actions.test.mjs).
 // (It once listed only three, so guests' lottery cards and draw re-checks never asked the server.)
-export const PUBLIC_ACTIONS = ['pools', 'settings', 'stats', 'lottery-tickets', 'lottery', 'winners', 'market', 'burned', 'weekly', 'support'];
+export const PUBLIC_ACTIONS = ['pools', 'settings', 'stats', 'lottery-tickets', 'lottery', 'winners', 'market', 'burned', 'weekly', 'support', 'support-status', 'support-clear'];
 // What a player reads when a payment didn't happen (button audit 2026-10-02: a failed wallet-library download showed
 // "Failed to fetch dynamically imported module: https://cdn…"). Says "nothing was charged" only where that's certain: the
 // player cancelled, or the wallet step never loaded (wallet.js never throws once a payment is sent, except for a payment the
@@ -47,11 +47,11 @@ export function forPlayer(err, closeDialog) {
 // server either way: the test link's ?server=, else the live one.
 const LIVE_GAMES = 'https://api.santahatgames.com';
 // read-only actions that always reach the live game server (my tickets, my season: the match server records them there)
-const READ_LIVE = ['tickets', 'season', 'burned', 'wallet', 'winners', 'weekly', 'support']; // support: messages reach Cody from the demo too
+const READ_LIVE = ['tickets', 'season', 'burned', 'wallet', 'winners', 'weekly', 'support', 'support-status', 'support-clear']; // support: messages reach Cody from the demo too
 export async function call(action, body = {}) {
   // public answers need no sign-in: don't wait for the sign-in lookup (a slow one held back every public line on the page)
   // (support goes without a sign-in too, but says who wrote when someone is signed in)
-  const t = PUBLIC_ACTIONS.includes(action) && action !== 'support' ? null : await token();
+  const t = PUBLIC_ACTIONS.includes(action) && !action.startsWith('support') ? null : await token();
   if (!t && !PUBLIC_ACTIONS.includes(action)) return { error: 'sign in first' };
   const r = await fetch(READ_LIVE.includes(action) ? SERVER || LIVE_GAMES : SERVER, { method: 'POST', headers: { 'content-type': 'application/json', ...(t ? { authorization: 'Bearer ' + t } : {}) }, body: JSON.stringify({ action, ...body }) });
   try { return await r.json(); } catch { return { error: `the game server answered ${r.status}` }; }
