@@ -1,3 +1,4 @@
+-- APPLIED live 2026-10-05 (through the Supabase connector).
 -- 054: TOURNAMENTS (Cody 2026-10-05; server/tourney.js, server/referee.js; DESIGN_NOTES "TOURNAMENTS").
 -- 1. A tournament's ranked points come as one result per player (match id 'tour-<id>'): the pot (5 per player/bot in round 1)
 --    split over the final's top 8 can give 1st more than a match's ±100 (64 entrants: ~130). Tournament results may be 0..1000;
