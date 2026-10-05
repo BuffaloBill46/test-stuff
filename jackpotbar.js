@@ -2,7 +2,7 @@
 // top menu: who won, how much, on which game, with a button to that game. From the public winners list ('winners', cached 10 s
 // on the server), asked once a minute. Shows jackpots from the last hour this browser hasn't seen yet (remembered in
 // localStorage 'santa.jpSeen'); closing it marks it seen. Never during a match.
-import { call } from './gameserver.js?v=d0d553f857';
+import { call } from './gameserver.js?v=aaeb88d212';
 
 const KEY = 'santa.jpSeen', FRESH_MS = 3600e3, EVERY_MS = 60_000;
 const GAME = { slots: ['Big Hat', 'slots'], drop10: ['Snowball Drop', 'drop'], drop100: ['Snowball Drop', 'drop'], stock10: ['Stocking Stuffer', 'stocking'], stock100: ['Stocking Stuffer', 'stocking'] };

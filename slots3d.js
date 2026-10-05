@@ -1,9 +1,9 @@
 // Santa Hat Slots: the Big Hat machine in 3D. The cabinet IS a Santa hat: red faceted cone body, white fur brim for a
 // base, and the drooping tip ends in the pom-pom, which is the pull lever. A 5×5 window of flat square reels sits on
 // its front; the ten symbols are low-poly models from the same kit as the plaza.
-import { THREE, C, part, build, toon, lights, glow, hatGeo, pineGeo, snowmanGeo, reindeerGeo, giftGeo, Burst } from './kit.js?v=d0d553f857';
-import { SYMBOLS, SYM, MACHINES } from './slots.js?v=d0d553f857';
-import { play as sfx } from './sfx.js?v=d0d553f857';
+import { THREE, C, part, build, toon, lights, glow, hatGeo, pineGeo, snowmanGeo, reindeerGeo, giftGeo, Burst } from './kit.js?v=aaeb88d212';
+import { SYMBOLS, SYM, MACHINES } from './slots.js?v=aaeb88d212';
+import { play as sfx } from './sfx.js?v=aaeb88d212';
 
 const G = THREE, V3 = THREE.Vector3;
 const CELL = 128;
