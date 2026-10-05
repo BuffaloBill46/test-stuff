@@ -9,6 +9,7 @@ import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } 
 import { initSeason, refreshSeason } from './seasonui.js';
 import { initMoneyStrips, refreshBurned } from './moneystrip.js';
 import { initWalletLines, refreshWallet } from './walletline.js';
+import './supportui.js'; // the Support button by the X link, bottom of the sign-in sheet (Cody 2026-10-04)
 import { createCoach } from './coach.js';
 import { createCallouts } from './callouts.js';
 import { VARIANTS, VARIANT_IDS } from './weekly.js';

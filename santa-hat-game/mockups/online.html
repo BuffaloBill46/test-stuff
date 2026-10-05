@@ -731,6 +731,16 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 .way p { margin: 0 0 10px; color: #d6ddf0; }
 .way .row input { text-transform: none; font-family: var(--body); letter-spacing: 0; }
 #acctMsg { color: var(--lamp); margin: 6px 0 0; }
+/* the sheet's footer: the X account and Support side by side (supportui.js) */
+.acctfoot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #2c3766; }
+.acctfoot .xlink { display: inline-flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none; font-weight: 700; }
+.acctfoot .xlink svg { width: 18px; height: 18px; fill: currentColor; }
+.acctfoot .xlink:hover span, .acctfoot .xlink:focus-visible span { text-decoration: underline; }
+.supportform { display: grid; gap: 6px; margin-top: 10px; }
+.supportform label { font-weight: 700; } .supportform label small { font-weight: 400; color: var(--dim); }
+.supportform textarea, .supportform input { width: 100%; box-sizing: border-box; font: inherit; text-transform: none; letter-spacing: 0; color: var(--text); background: var(--ink); border: 2px solid #2c3766; padding: 8px; resize: vertical; }
+.supportform .row { display: flex; gap: 8px; margin: 4px 0 0; }
+#supportNote { margin: 0; color: var(--lamp); } #supportNote.bad { color: var(--hat-lit); }
 .logins { list-style: none; margin: 4px 0 12px; padding: 0; display: grid; gap: 6px; }
 .logins li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 10px; background: var(--plaque-hi); border: 2px solid var(--ink); border-radius: 3px; }
 .logins li span { color: var(--dim); font-size: 14px; text-align: right; }
@@ -1308,6 +1318,19 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
   <div id="acctIn" hidden></div>
   <div id="humanCheck" class="human" hidden></div>
   <p id="acctMsg" role="status"></p>
+  <!-- the bottom of the sign-in sheet, signed in or out (Cody 2026-10-04): the game's X account, and Support right next to it -->
+  <div class="acctfoot">
+    <a class="xlink" href="https://x.com/Santahatgame" target="_blank" rel="noopener" aria-label="Santa Hat Legends on X"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 2H22l-6.8 7.8L23.2 22h-6.3l-4.9-6.4L6.4 22H3.3l7.3-8.3L2.8 2h6.4l4.4 5.9L18.9 2Zm-1.1 18.1h1.7L7.7 3.8H5.9l11.9 16.3Z"/></svg><span>@Santahatgame</span></a>
+    <button type="button" class="sec" id="supportBtn" aria-expanded="false" aria-controls="supportForm">Support</button>
+  </div>
+  <form id="supportForm" class="supportform" hidden>
+    <label for="supportMsg">What happened?</label>
+    <textarea id="supportMsg" maxlength="1000" rows="4" placeholder="Tell us what went wrong and what you were doing."></textarea>
+    <label for="supportContact">How can we reach you? <small>optional: email or X handle</small></label>
+    <input id="supportContact" type="text" maxlength="120" autocomplete="email" placeholder="you@example.com or @you">
+    <div class="row"><button type="submit" class="go" id="supportSend">Send</button><button type="button" class="sec" id="supportCancel">Cancel</button></div>
+    <p id="supportNote" role="status"></p>
+  </form>
 </section>
 <section id="home" class="plaque sheet lobby" hidden>
   <button class="close" id="homeClose" aria-label="Close">×</button>

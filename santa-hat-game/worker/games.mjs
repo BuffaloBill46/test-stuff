@@ -27,6 +27,7 @@ import { createShop } from '../server/shop.js';
 import { makeRelay } from '../server/relay.js';
 import { createSeasons } from '../server/seasons.js';
 import { createAlerts, makeTelegram } from '../server/alerts.js';
+import { createSupport } from '../server/support.js';
 import { livePrice, liveFee, keptFee, liveSolPrice } from '../mockups/market.js';
 import { existsSync } from 'fs';
 
@@ -92,7 +93,9 @@ async function refereeHealth() {
   const r = await fetch(env('REFEREE_HEALTH_URL', 'https://play.santahatgames.com/health'), { signal: AbortSignal.timeout(8000) });
   if (!r.ok) throw new Error('health answered ' + r.status);
 }
-const alerts = createAlerts({ db, telegram: makeTelegram({ token: env('TELEGRAM_BOT_TOKEN'), chatId: env('TELEGRAM_CHAT_ID') || null, db }), walletRaw, refereeHealth });
+const telegram = makeTelegram({ token: env('TELEGRAM_BOT_TOKEN'), chatId: env('TELEGRAM_CHAT_ID') || null, db }); // Cody's alerts bot
+const alerts = createAlerts({ db, telegram, walletRaw, refereeHealth });
+const support = createSupport({ db, telegram, salt: env('SUPPORT_SALT', 'santa-support') }); // support messages: kept + sent to Cody's bot (server/support.js)
 
 // Sign-ins: Supabase checks the player's token (public key + their token, as worker/referee.mjs does), then their profile.
 const SB_URL = env('SUPABASE_URL', 'https://olganobdypnxfpmsxibe.supabase.co');
@@ -114,7 +117,8 @@ const handle = makeHandler({
     rankedPaused: () => existsSync(env('RANKED_PAUSE_FILE') || '/etc/santa/ranked-paused'), // no ticket sales while ranked is paused
     liveSol: solPrice }),
   lottery: createLottery({ db, chain: { ...chain, latestBlock }, livePrice: price, liveFee: feeOfMint, wallet: env('LOTTERY_WALLET') || null, ...mintOpt, cluster, liveSol: solPrice }),
-  admin: createAdmin({ db, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), onWeekly: () => server.weeklyChanged(), chain,
+  support,
+  admin: createAdmin({ db, support, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), onWeekly: () => server.weeklyChanged(), chain,
     poolWallets: { ...poolWallets, lottery: env('LOTTERY_WALLET') || null, treasury: env('TREASURY_WALLET') || null }, ...mintOpt }),
   relay: makeRelay((method, params) => rpc(method, params, 15000)), // the page's backup Solana reads (read-only, signed in)
   profileFor,

@@ -10,6 +10,8 @@
 //   lottery-paid (game 'lottery': Cody paid a winner by hand; checked on the chain: left the lottery wallet, arrived at the winner),
 //   lottery-owed (game 'lottery', READ only, private: who to pay by hand, full wallets and amounts).
 //   shop-owed (game 'shop', READ only, private: purchases that were paid but couldn't be granted, owed back in full; 016),
+//   support-list (game 'support', READ only, private: players' support messages, open first; 046, server/support.js),
+//   support-handled (game 'support': Cody marks one handled, with an optional note; his wallet is recorded on it),
 //   shop-refund-paid (game 'shop': Cody refunded one by hand from the treasury; checked on the chain like lottery-paid).
 // Changes take the pool's row lock, so they wait for any play being settled: never mid-pull. Every change is logged publicly.
 // NOT here (needs the pool key; FOR_MAIN_CLAUDE.md): the emergency withdrawal transfer itself.
@@ -18,7 +20,7 @@ import { check as checkSettings, DEFAULT_SETTINGS } from '../mockups/settings.js
 import { MINT } from '../mockups/market.js';
 import { botSignals, BOT_RULES } from './bots.js';
 
-export const ACTIONS = ['pause', 'resume', 'weekly-mode', 'set-rules', 'set-settings', 'record-deposit', 'release-payout', 'bot-signals', 'lottery-mode', 'lottery-paid', 'lottery-owed', 'shop-owed', 'shop-refund-paid', 'claim-rewards', 'rewards-status']; // set-settings: prices, odds, prizes, store (game 'all')
+export const ACTIONS = ['pause', 'resume', 'weekly-mode', 'set-rules', 'set-settings', 'record-deposit', 'release-payout', 'bot-signals', 'lottery-mode', 'lottery-paid', 'lottery-owed', 'shop-owed', 'shop-refund-paid', 'claim-rewards', 'rewards-status', 'support-list', 'support-handled']; // set-settings: prices, odds, prizes, store (game 'all')
 export const FRESH_SECONDS = 300;
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 export function b58decode(s) {
@@ -73,14 +75,14 @@ export function depositOf(tx, mint, wallet) {
 // chain.getTransaction / poolWallets / mint: only needed for record-deposit (the same ones the game server uses).
 // (The type note stops Deno's checker reading `chain = null` as "chain may only ever be null" when the Edge Function passes one.)
 /** @param {{ db: any, adminWallets: string[], now?: () => number, onSettings?: () => void, chain?: { getTransaction: (s: string) => Promise<any> } | null, poolWallets?: Record<string, string | null>, mint?: string }} opts */
-export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettings = () => {}, onWeekly = () => {}, chain = null, poolWallets = {}, mint = MINT }) {
+export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettings = () => {}, onWeekly = () => {}, chain = null, poolWallets = {}, mint = MINT, support = null }) { // support: server/support.js (the support list)
   async function run({ wallet, message, signature }) {
     const m = parse(message || '');
     if (!m || message !== adminMessage(m)) return { error: 'not an admin message' };
     if (!adminWallets.includes(wallet)) return { error: 'not an admin wallet' };
     if (!(await signatureOk(wallet, message, signature || ''))) return { error: 'signature doesn\'t match the wallet' };
     if (!(Math.abs(now() - Date.parse(m.at)) <= FRESH_SECONDS * 1000)) return { error: 'message too old (sign a fresh one)' };
-    const gameOk = ['set-settings', 'bot-signals', 'claim-rewards', 'rewards-status'].includes(m.action) ? m.game === 'all' : m.action.startsWith('lottery-') ? m.game === 'lottery' : m.action.startsWith('shop-') ? m.game === 'shop' : m.action === 'weekly-mode' ? m.game === 'weekly' : ['spin', 'slots'].includes(m.game);
+    const gameOk = ['set-settings', 'bot-signals', 'claim-rewards', 'rewards-status'].includes(m.action) ? m.game === 'all' : m.action.startsWith('lottery-') ? m.game === 'lottery' : m.action.startsWith('shop-') ? m.game === 'shop' : m.action.startsWith('support-') ? m.game === 'support' : m.action === 'weekly-mode' ? m.game === 'weekly' : ['spin', 'slots'].includes(m.game);
     if (!ACTIONS.includes(m.action) || !gameOk) return { error: 'unknown action or game' };
     if (!/^[0-9a-f]{16,64}$/.test(m.nonce)) return { error: 'bad one-time number' };
     if (m.action === 'set-rules') { const bad = checkRules(m.game, m.settings); if (bad.length) return { error: bad.join('; ') }; }
@@ -101,6 +103,8 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
     if (m.action === 'lottery-paid') return lotteryPaid(m, wallet, message, signature);
     if (m.action === 'lottery-owed') return lotteryOwed();
     if (m.action === 'shop-owed') return shopOwed();
+    if (m.action === 'support-list') return support ? support.list() : { error: 'support is not set up on this server' };
+    if (m.action === 'support-handled') return support ? support.handle(m.settings?.id, wallet, m.settings?.note) : { error: 'support is not set up on this server' };
     if (m.action === 'shop-refund-paid') return shopRefundPaid(m, wallet, message, signature);
     if (m.action === 'claim-rewards') return claimRewards(m, wallet, message, signature);
     if (m.action === 'rewards-status') return rewardsStatus();

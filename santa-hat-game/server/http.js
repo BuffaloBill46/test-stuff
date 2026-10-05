@@ -83,6 +83,10 @@ export function makeHandler(deps) {
     }
     const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
     const profile = token ? await deps.profileFor(token).catch(() => null) : null;
+    if (body?.action === 'support' && deps.support) { // public: a support message (server/support.js); signed in or not, so who wrote is attached when known
+      try { const out = await deps.support.submit({ profile, address: addressOf(req), message: body.message, contact: body.contact, page: body.page }); return reply(origin, out?.error ? 400 : 200, out); }
+      catch (e) { console.error('support error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
+    }
     if (!profile) return reply(origin, 401, { error: 'sign in first' });
     if (deps.limiter) { const l = await deps.limiter.player(profile); if (!l.ok) return slowDown(origin, l); }
     const s = deps.server;
