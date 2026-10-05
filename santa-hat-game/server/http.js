@@ -87,6 +87,10 @@ export function makeHandler(deps) {
       try { const out = await deps.support.submit({ profile, address: addressOf(req), message: body.message, contact: body.contact, page: body.page }); return reply(origin, out?.error ? 400 : 200, out); }
       catch (e) { console.error('support error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
     }
+    if (body?.action === 'client-error') { // public: an error a player's page hit (server/clienterrors.js); never an error back to the page
+      if (!deps.clientErrors) return reply(origin, 200, { ok: true });
+      try { return reply(origin, 200, await deps.clientErrors.report({ address: addressOf(req), ...body })); } catch (e) { console.error('client-error error', e); return reply(origin, 200, { ok: true }); }
+    }
     if (body?.action === 'support-status') { // public: MY support tickets (the codes my browser holds; signed in, all mine): pending / resolved
       if (!deps.support) return reply(origin, 200, { ok: true, tickets: [] }); // a server without support has no tickets (not an error: the sheet asks on every open)
       try { return reply(origin, 200, await deps.support.status({ profile, tickets: body.tickets })); }

@@ -70,6 +70,11 @@ h3 { font: 700 18px/1.2 var(--body); color: var(--frost); margin: 16px 0 4px; } 
       transaction here: it's checked on the chain before it's recorded.</p>
     <div class="row"><button type="button" id="shopLoad">Show refunds owed</button></div>
     <div id="shopOwed" class="dim">Not loaded yet.</div></section>
+  <section class="plaque" id="errorsBox"><h2>Errors players hit</h2>
+    <p class="dim">Unexpected errors on players' pages, reported automatically. The same error from many players is one line with a
+      count. A NEW kind also goes to your Telegram. Tell Claude about one, and mark it fixed once it is; if it comes back, it reopens.</p>
+    <div class="row"><button type="button" id="errorsLoad">Show errors</button></div>
+    <div id="errorsList" class="dim">Not loaded yet.</div></section>
   <section class="plaque" id="supportBox"><h2>Support messages</h2>
     <p class="dim">What players sent with the Support button (at the bottom of the sign-in sheet, next to the X link). Each one also
       went straight to your Telegram bot. Open ones first. Mark one resolved once you've dealt with it (signed with your admin

@@ -1,5 +1,6 @@
 // Santa Hat Legends (the Snowball Square game): lobby, rooms, referee hand-off, smoothing, HUD.
 import './buildcheck.js'; // first: the page and this code come from the same publish (buildcheck.js)
+import './errorreport.js'; // next: errors players hit are reported to the game server (errorreport.js, to-do #3)
 import { THREE, C, animate, Snow, Burst, toon, part, build, glow, toScreen, TOON, hatGeo, Sparks, gearTick, GEAR_TINT, disposeTree } from './kit.js';
 import { buildPlaza, makeHat, shadowBlob } from './plaza.js';
 import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF, PTS } from './sim.js';

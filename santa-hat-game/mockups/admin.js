@@ -61,6 +61,8 @@ async function act(action, game, settings = {}) {
   if (r.error) return msg('Refused: ' + r.error, 'bad');
   if (action === 'claim-rewards') { msg(`Claim #${r.claim} sent to the payout worker. It finds the reward tokens and sends them to the treasury within a minute.`, 'ok'); setTimeout(() => act('rewards-status', 'all'), 20000); return; }
   if (action === 'rewards-status') { rewardsList(r); return msg(r.sweeps.length ? 'Reward claims loaded.' : 'No reward sweeps yet.', 'ok'); }
+  if (action === 'errors-list') { errorsList(r); const open = r.errors.filter((x) => x.status === 'open').length; return msg(open ? `${open} open error(s) players hit.` : 'No open errors.', 'ok'); }
+  if (action === 'errors-fixed') { msg('Marked fixed. If it happens again it reopens (and Telegram says so).', 'ok'); return act('errors-list', 'errors'); }
   if (action === 'support-list') { supportList(r); const open = r.messages.filter((m) => m.status === 'open').length; return msg(open ? `${open} open support message(s).` : 'No open support messages.', 'ok'); }
   if (action === 'support-handled') { msg(`Ticket #${r.id} marked resolved: the player now sees it (and your note) under their Support button.`, 'ok'); return act('support-list', 'support'); }
   if (action === 'shop-owed') { shopList(r); return msg(r.owed.length ? `${r.owed.length} shop refund(s) to send.` : 'No shop refunds owed.', 'ok'); }
@@ -86,6 +88,14 @@ function bots(r) {
 $('#botCheck').addEventListener('click', () => act('bot-signals', 'all'));
 // The lottery's manual payouts: who, their FULL wallet (to send to), what for, and how much to send; paste the transaction to record it.
 // Shop refunds owed (016): who, how much, why; paste the refund transaction to record it.
+// errors players hit (server/clienterrors.js): open first; how often, where, which browser
+function errorsList(r) {
+  const open = r.errors.filter((x) => x.status === 'open').length; $('#errorsBox').classList.toggle('alert', open > 0);
+  $('#errorsList').innerHTML = r.errors.length ? `<table><tr><th>Times</th><th>Last</th><th>Error</th><th>Where</th><th>On</th><th>Browser</th><th></th></tr>${r.errors.map((x) => `<tr${x.status === 'open' ? '' : ' class="dim"'}>
+    <td>${x.count}</td><td>${esc(new Date(x.lastSeen).toLocaleString())}</td><td>${esc(x.message)}${x.stack ? `<details><summary>details</summary><pre style="white-space:pre-wrap;max-width:460px">${esc(x.stack)}</pre></details>` : ''}</td>
+    <td><code>${esc(x.source || '')}</code></td><td>${esc(x.page || '')}</td><td>${esc(x.ua || '')}</td>
+    <td>${x.status === 'open' ? `<button type="button" data-errfixed="${esc(x.id)}">Mark fixed</button>` : 'fixed'}</td></tr>`).join('')}</table>` : 'No errors reported. 🎉';
+}
 // support messages (server/support.js): open first; who wrote (or a guest), how to reach them, where they were, what they said
 function supportList(r) {
   const open = r.messages.filter((m) => m.status === 'open').length, short = (w) => (w ? w.slice(0, 4) + '…' + w.slice(-4) : '');
@@ -101,6 +111,8 @@ function shopList(r) {
 }
 $('#shopLoad').addEventListener('click', () => act('shop-owed', 'shop'));
 $('#supportLoad').addEventListener('click', () => act('support-list', 'support'));
+$('#errorsLoad').addEventListener('click', () => act('errors-list', 'errors'));
+$('#errorsList').addEventListener('click', (e) => { const b = e.target.closest('[data-errfixed]'); if (b) act('errors-fixed', 'errors', { id: b.dataset.errfixed }); });
 $('#supportList').addEventListener('click', (e) => { const b = e.target.closest('[data-supporthandled]'); if (!b) return;
   const note = prompt(`Mark ticket #${b.dataset.supporthandled} resolved. A short note the PLAYER will see under their ticket (optional, e.g. "payout re-sent"):`, ''); if (note === null) return;
   act('support-handled', 'support', { id: +b.dataset.supporthandled, note }); });
