@@ -10,7 +10,7 @@
 // The game's own stamp (.flash: "3× WIN", "POOL JACKPOT $95.21") is unchanged; this adds the tier word, the count-up, the effects
 // and the sound. A lower tier landing while a higher one still plays (Snowball Drop's balls land close together) never
 // interrupts it: celebrating(card) tells a game whether to hold its stamp back. Reduced motion: no shake, no particles.
-import { play as sfx } from './sfx.js?v=0e9b2ea718';
+import { play as sfx } from './sfx.js?v=2002bb8cce';
 
 export const TIERS = [
   null,

@@ -2,7 +2,7 @@
 // otherwise the Games tab runs the in-browser demo (house.js). Same steps, same order: the server does the work.
 // Buying needs a wallet to sign the payment: `window.santaPay(quote)` must return the finalized transaction signature.
 // That wallet step can't be built or tested in this workspace (FOR_MAIN_CLAUDE.md); until it exists, buying says so.
-import { accounts } from './net.js?v=0e9b2ea718';
+import { accounts } from './net.js?v=2002bb8cce';
 
 const params = new URLSearchParams(location.search);
 // LAUNCHED (Cody's GO, mainnet): the public site itself plays through the game server, no ?server= needed, and the demo is gone.
@@ -15,7 +15,7 @@ export const STAGING = location.hostname === 'test.santahatgames.com';
 export const SERVER = params.get('server') || (STAGING ? 'https://test.santahatgames.com/api' : LAUNCHED && PUBLIC_SITE ? 'https://api.santahatgames.com' : null);
 const testToken = params.get('token'); // tests only, and only against a local server
 // The wallet step (window.santaPay): loaded only in server mode, so the demo never fetches the Solana libraries.
-export const walletReady = SERVER ? import('./wallet.js?v=0e9b2ea718').catch((e) => { console.warn('wallet step unavailable:', e); }) : Promise.resolve();
+export const walletReady = SERVER ? import('./wallet.js?v=2002bb8cce').catch((e) => { console.warn('wallet step unavailable:', e); }) : Promise.resolve();
 
 export async function token() {
   if (testToken && /^http:\/\/localhost[:/]/.test(SERVER || '')) return testToken;
@@ -64,6 +64,6 @@ export async function call(action, body = {}) {
 // still loading, so a name defined further down isn't there yet; the error was swallowed by the catch below and the page
 // quietly kept the built-in settings (settings-mode-test caught it, 2026-10-04).
 export const settingsReady = SERVER ? (async () => {
-  try { const r = await call('settings'); if (r?.settings) { const { applyToGame } = await import('./settings.js?v=0e9b2ea718'); applyToGame(r.settings); return r; } } catch (e) { console.error('published settings not loaded:', e); }
+  try { const r = await call('settings'); if (r?.settings) { const { applyToGame } = await import('./settings.js?v=2002bb8cce'); applyToGame(r.settings); return r; } } catch (e) { console.error('published settings not loaded:', e); }
   return null;
 })() : Promise.resolve(null);
