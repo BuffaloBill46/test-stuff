@@ -551,3 +551,7 @@ while Jupiter keeps quoting real mainnet, so after ~$1,000 of test buys every sw
 accounts each swap touched back to mainnet (Surfpool surfnet_resetAccount) after every transaction. Accounts made with
 surfnet_setTokenAccount lack Token-2022 extensions (a SANTA transfer INTO one fails "invalid account state"): create token
 accounts with the real ATA instruction, and get SANTA with a real swap.
+
+**Reset only what the market owns on a mainnet copy (2026-10-04).** Resetting every writable account a swap touched also wiped
+the PLAYER's token account for Jupiter's in-between token, so the copy charged its ~0.002 SOL deposit again on every swap (looked
+like players paying rent each time). Skip accounts our own wallets own; then the deposit is paid once, as on mainnet.

@@ -43,6 +43,9 @@ process.on('unhandledRejection', (e) => { console.log('Error: ' + hide(e?.messag
 const ata = async (o) => (await T22.findAssociatedTokenPda({ owner: o, tokenProgram: T22.TOKEN_2022_PROGRAM_ADDRESS, mint: MINT }))[0];
 const santaOf = async (o) => { try { return BigInt((await raw('getTokenAccountBalance', [await ata(o)])).value.amount); } catch { return 0n; } };
 const solOf = async (o) => BigInt((await raw('getBalance', [o])).value);
+// SOL held as Solana's refundable deposits in every token account this wallet owns (SPL Token and Token-2022)
+const tokenDeposits = async (o) => { let t = 0n; for (const programId of ['TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'])
+  for (const a of (await raw('getTokenAccountsByOwner', [o, { programId }, { encoding: 'jsonParsed' }])).value) t += BigInt(a.account.lamports); return t; };
 const supply = async () => BigInt((await raw('getTokenSupply', [MINT])).value.amount);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 if (!(await raw('getGenesisHash', []).catch(() => null) === '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d')) { console.log('Surfpool (a copy of MAINNET) is not running on ' + FORK); process.exit(2); }
@@ -60,7 +63,14 @@ const inTurn = (fn) => { const run = turn.then(fn, fn); turn = run.catch(() => {
 const OURS = new Set();
 async function resync(sig) {
   const tx = await raw('getTransaction', [sig, { encoding: 'jsonParsed', commitment: 'confirmed', maxSupportedTransactionVersion: 0 }]).catch(() => null);
-  for (const k of tx?.transaction?.message?.accountKeys || []) if (k.writable && !OURS.has(k.pubkey)) await raw('surfnet_resetAccount', [k.pubkey]).catch(() => {});
+  for (const k of tx?.transaction?.message?.accountKeys || []) {
+    if (!k.writable || OURS.has(k.pubkey)) continue;
+    // never a token account one of OUR wallets owns (e.g. the player's account for a swap's in-between token, which Jupiter
+    // opens once and real mainnet keeps): resetting it made the copy charge its deposit again on every swap (QA 2026-10-04)
+    const info = (await raw('getAccountInfo', [k.pubkey, { encoding: 'jsonParsed' }]).catch(() => null))?.value?.data?.parsed?.info;
+    if (info?.owner && OURS.has(info.owner)) continue;
+    await raw('surfnet_resetAccount', [k.pubkey]).catch(() => {});
+  }
 }
 async function sendSigned(signers, instructions, lookupTables = []) { return inTurn(async () => {
   const msg = await purchaseMessage(kit, rpc, signers[0].address, { instructions, lookupTables });
@@ -224,8 +234,10 @@ const treasuryGot = await solOf(W.treasury.address) - BigInt(Math.round(FAKE_SOL
 check(treasuryGot === treasuryWant, `treasury: received ${treasuryGot} lamports of SOL = exactly the SOL share of ${storeSol.length} Store purchases paid in SOL (${treasuryWant})`);
 for (const pl of SOLP) {
   const mine = [...bought.filter((b) => b.who === pl.n && b.ok), ...runs.filter((r) => r.who === pl.n && !r.error)], priced = mine.reduce((a, b) => a + BigInt(b.solLamports || 0), 0n);
-  const spent = solBefore[pl.n] - await solOf(W[pl.n].address), extra = Number(spent - priced) / 1e9;
-  check(mine.every((b) => b.solLamports > 0) && extra >= 0 && extra < 0.004 + mine.length * 0.00003, `${pl.n} paid exactly the prices in SOL: spent ${(Number(spent) / 1e9).toFixed(6)} SOL for ${mine.length} purchases priced ${(Number(priced) / 1e9).toFixed(6)} (+${extra.toFixed(6)}: network fees, its SANTA account once)`);
+  // what it spent beyond the prices: network fees, plus Solana's refundable deposits for the token accounts it now owns (its
+  // SANTA account; maybe one for a swap's in-between token), each opened once
+  const deposits = await tokenDeposits(W[pl.n].address), spent = solBefore[pl.n] - await solOf(W[pl.n].address), extra = Number(spent - priced - deposits) / 1e9;
+  check(mine.every((b) => b.solLamports > 0) && extra >= 0 && extra < mine.length * 0.00003, `${pl.n} paid exactly the prices in SOL: spent ${(Number(spent) / 1e9).toFixed(6)} SOL for ${mine.length} purchases priced ${(Number(priced) / 1e9).toFixed(6)}, + ${(Number(deposits) / 1e9).toFixed(6)} in refundable account deposits (opened once), + ${extra.toFixed(6)} network fees`);
 }
 const burnedNow = startSupply - await supply();
 const [{ gb }] = await db.query(`select (coalesce((select sum(burned_raw) from public.payments), 0) + coalesce((select sum(burned_raw) from public.lottery_buys), 0))::text as gb`);

@@ -168,7 +168,9 @@ between two devices has never been tested from here. Cody and friends testing on
 - Telegram "wallet has MORE" alerts were payments on their way, not missing money; reconcile now allows open quotes' amount.
 - SOL QA on a private copy of mainnet: Surfpool 1.6.0 in C:\santa-tools\surfpool (Cody OK'd the download). Start it with the
   Helius URL from the key file as SURFPOOL_DATASOURCE_RPC_URL (never echo it), `surfpool start --ci --no-deploy -q 0`; then
-  tests/browser/fork-sol-qa.mjs [runs per game]. Shakedown: 45/45 purchases, payouts, all money checks exact.
+  tests/browser/fork-sol-qa.mjs [runs per game]. Full run: 45/45 purchases, 3,300 plays (1,000 of each game in SOL), 33/33 payouts,
+  every money check exact. A first SOL buyer pays Solana's refundable account deposits ONCE (~0.0042 SOL, ~50c: their SANTA
+  account + sometimes one for a swap's in-between token), then exactly the price every time (Cody asked; confirmed).
 - Security: SOL payments refuse SANTA moved in by a wallet that signed (verify.js S1b).
 - HELIUS KEY: printed once into a local test log by a Surfpool error (deleted; never committed/sent). Cody 2026-10-04: no
   rotation needed ("if you deleted it, it's fine"). The test now cuts addresses out of every error.
