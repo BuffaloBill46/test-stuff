@@ -18,7 +18,7 @@
 // skim at $1,025, top-off request below $30, emergency stop). A drop only starts if the pool, counting Cody's backing up to the
 // top-off amount (slots.js covers), can cover the biggest FIXED prize;
 // the jackpot is a share of the pool, so it can always be paid.
-import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot, POOL_RULES, topOff, covers } from './slots.js?v=f9a8ed5da1';
+import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot, POOL_RULES, topOff, covers } from './slots.js?v=167023048e';
 
 export const BOARD = 3; // results carry it, so "Check this result" re-runs the board the drop was played on
 export const ROWS = 16;

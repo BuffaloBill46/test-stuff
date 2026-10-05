@@ -20,7 +20,7 @@
 // POOL: Stocking Stuffer plays from the shared Game pool (slots.js POOL_RULES). A turn only starts if the pool
 // covers the biggest FIXED prize (50×: $50 on a $1 turn), counting Cody's backing up to the top-off amount ($125: slots.js covers), so turns are never refused
 // for lack of pool. The jackpot is a share of the pool, so it can always be paid.
-import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot, POOL_RULES, topOff, covers } from './slots.js?v=f9a8ed5da1';
+import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot, POOL_RULES, topOff, covers } from './slots.js?v=167023048e';
 
 export const BOARD = 2; // results carry it, so "Check this result" re-runs the layout the turn was played on
 export const STOCKINGS = 20, ROW = 10, MAX_OPEN = 8;
