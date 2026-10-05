@@ -19,7 +19,8 @@
 // Speed limit (server/ratelimit.js): every request counts against its internet connection, every signed-in request against its
 // player too; over the limit → 429 "slow down, try again in N seconds".
 // the game's websites: its own address (Cody, 2026-10-02) and the old github.io one (it forwards there once the domain is live)
-export const ALLOWED_ORIGINS = ['https://santahatgames.com', 'https://www.santahatgames.com', 'https://buffalobill46.github.io', 'http://localhost'];
+export const ALLOWED_ORIGINS = ['https://santahatgames.com', 'https://www.santahatgames.com', 'https://buffalobill46.github.io', 'http://localhost',
+  'https://test.santahatgames.com']; // the test site (to-do #11, deploy-test.sh)
 const allowed = (o) => ALLOWED_ORIGINS.includes(o) || /^http:\/\/localhost:\d+$/.test(o); // localhost = a player's own computer (tests)
 
 // deps: { server (games.js), profileFor(token) → profile id or null, limiter (ratelimit.js; null = none, tests only),

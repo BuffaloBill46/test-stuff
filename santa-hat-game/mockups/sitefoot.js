@@ -24,6 +24,8 @@ const CSS = `
 .sitefoot svg { width: 17px; height: 17px; fill: currentColor; flex: none; }
 .sitefoot .getsanta { color: var(--lamp, #ffbe5c); }
 .sitefoot .legal { margin-left: auto; font: 700 11px/1.6 var(--digits, monospace); letter-spacing: .5px; color: var(--frost, #b9cdf2); }
+.testribbon { position: fixed; z-index: 9999; left: 0; right: 0; top: 0; pointer-events: none; text-align: center; padding: 1px 8px 2px;
+  font: 700 10px/1.3 var(--digits, monospace); letter-spacing: 1px; color: #0c0f1a; background: repeating-linear-gradient(135deg, #ffbe5c 0 14px, #f5d08a 14px 28px); }
 @media (max-width: 640px) { .sitefoot .legal { margin-left: 0; width: 100%; } }
 #getSantaDlg { width: min(640px, calc(100vw - 24px)); max-height: calc(100vh - 32px); overflow: auto; padding: 16px 18px 18px; color: var(--text, #eef2fb);
   background: #1b2344; border: 2px solid var(--ink, #0c0f1a); font: 400 17px/1.5 var(--body, sans-serif); }
@@ -128,6 +130,9 @@ export function initSiteFoot() {
     const t = e.target.closest?.('[data-get-santa]'); if (!t) return;
     e.preventDefault(); openGetSanta();
   });
+  // the test site says so on every screen (to-do #11): nobody mistakes it for the real game
+  if (location.hostname === 'test.santahatgames.com') { const r = document.createElement('div'); r.className = 'testribbon'; r.setAttribute('role', 'note');
+    r.textContent = 'TEST SITE · test SANTA, no real value'; document.body.append(r); }
   if (START === '#get-santa') openGetSanta();
   if (START === '#support') setTimeout(support, 300);
 }

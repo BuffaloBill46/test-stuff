@@ -9,7 +9,10 @@ const params = new URLSearchParams(location.search);
 // Only on the real site's own addresses: a test page (localhost) keeps the demo unless it passes ?server= itself.
 const LAUNCHED = false;
 const PUBLIC_SITE = /(^|\.)santahatgames\.com$|^buffalobill46\.github\.io$/.test(location.hostname);
-export const SERVER = params.get('server') || (LAUNCHED && PUBLIC_SITE ? 'https://api.santahatgames.com' : null);
+// THE TEST SITE (Cody 2026-10-05, to-do #11): test.santahatgames.com always plays through the TEST game server (devnet, test
+// SANTA, no real value), reached at its own /api (Caddy on the Droplet; deploy-test.sh publishes it). Changes go there first.
+export const STAGING = location.hostname === 'test.santahatgames.com';
+export const SERVER = params.get('server') || (STAGING ? 'https://test.santahatgames.com/api' : LAUNCHED && PUBLIC_SITE ? 'https://api.santahatgames.com' : null);
 const testToken = params.get('token'); // tests only, and only against a local server
 // The wallet step (window.santaPay): loaded only in server mode, so the demo never fetches the Solana libraries.
 export const walletReady = SERVER ? import('./wallet.js').catch((e) => { console.warn('wallet step unavailable:', e); }) : Promise.resolve();
