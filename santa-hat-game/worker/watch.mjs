@@ -20,7 +20,7 @@ for (const u of ['https://santahatgames.com/', 'https://test.santahatgames.com/'
 
 // 2. the last 20 minutes of server logs: errors and restarts (counts, plus the first few distinct lines)
 const logs = sh(`journalctl -u santa-games -u santa-worker -u santa-referee --since "-20 min" --no-pager -o cat`);
-const bad = logs.split('\n').filter((l) => /error|exception|refused|failed|timed? ?out|ECONN|unhandled/i.test(l) && !/Telegram send failed network/.test(l));
+const bad = logs.split('\n').filter((l) => /error|exception|refused|failed|timed? ?out|ECONN|unhandled/i.test(l) && !/Telegram send failed network/.test(l) && !/payouts {"sent":/.test(l)); // the worker's own summary line (it says "failed":0) is not an error
 if (bad.length) { const kinds = [...new Set(bad.map((l) => l.replace(/[0-9a-f-]{8,}|\d+/gi, '#').slice(0, 140)))]; say(`${bad.length} error lines in 20 min, e.g.: ${kinds.slice(0, 3).join(' || ')}`); }
 const restarts = (sh(`journalctl -u santa-games -u santa-worker -u santa-referee --since "-20 min" --no-pager -o cat | grep -c "Started "`) || '0');
 if (+restarts > 0) say(`${restarts} service (re)starts in 20 min`);

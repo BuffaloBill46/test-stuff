@@ -20,6 +20,11 @@ const POOL = (g) => (g === 'spin' ? 'Game' : g === 'slots' ? 'old Slots' : g);
 // SANTA account (~0.002 SOL each); below this it's warned, long before it runs out.
 export const LOW_SOL = 0.1;
 export function createAlerts({ db, telegram, walletRaw, refereeHealth, solRaw = null, solWallets = {}, livePrice = null, games = ['spin', 'slots'], now = () => Date.now() }) {
+  // BOOKS vs WALLET only when it lasts (2026-10-05, the live QA): a payout counts as sent once Solana CONFIRMS it, but the books
+  // check reads the wallet FINALIZED (~15-30 s later), so a check in that gap right after a win sees the wallet "too full" and
+  // used to alarm for nothing. Now a mismatch must be there at two checks in a row (5 minutes apart) before Cody hears of it; a
+  // real one never fixes itself, so it is only 5 minutes later. Kept in memory: a restart just means one more check first.
+  const seenDrift = new Map();
   async function findings() {
     const out = [], add = (key, text) => out.push({ key, text });
     // Good news too (Cody's list, 2026-10-03): every POOL JACKPOT won in the last 3 hours, once each (3 h < REPEAT_HOURS, so it
@@ -59,7 +64,9 @@ export function createAlerts({ db, telegram, walletRaw, refereeHealth, solRaw = 
       // and pay as soon as SANTA arrives; this tells Cody to add it now)
       const owed = payouts.reduce((a, p) => a + Number(p.amount_raw), 0) + transfers.filter((x) => x.kind !== 'top-off' && x.kind !== 'deposit').reduce((a, x) => a + Number(x.amount_raw), 0);
       if (owed > Number(wallet)) add(`short:${game}`, `URGENT: the ${POOL(game)} pool wallet holds ${santa(Number(wallet))} SANTA but ${santa(owed)} SANTA of winnings are waiting to be sent. Deposit SANTA to the pool wallet now: the waiting winnings go out the moment it arrives.`);
-      if (!r.ok) add(`drift:${game}:${r.drift}`, `BOOKS DON'T MATCH the ${POOL(game)} pool wallet: the wallet has ${santa(Math.abs(r.drift))} SANTA ${r.drift > 0 ? 'MORE' : 'LESS'} than the books say. (More: a deposit not recorded yet? Less: look now.)`);
+      const lasted = !r.ok && seenDrift.has(game) && Math.sign(seenDrift.get(game)) === Math.sign(r.drift);
+      if (r.ok) seenDrift.delete(game); else seenDrift.set(game, r.drift);
+      if (lasted) add(`drift:${game}:${r.drift}`, `BOOKS DON'T MATCH the ${POOL(game)} pool wallet: the wallet has ${santa(Math.abs(r.drift))} SANTA ${r.drift > 0 ? 'MORE' : 'LESS'} than the books say. (More: a deposit not recorded yet? Less: look now.)`);
     }
     // the $30 floor (server/games.js MIN_POOL_USD, Cody 2026-10-05): new Arcade runs are refused until the pool is refilled
     if (livePrice) { try { const usd = (await livePrice()).usd, holds = await poolHoldsRaw(db.query, 'spin');

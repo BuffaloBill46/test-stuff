@@ -30,7 +30,10 @@ const heldRaw = +(await db.query('select amount_raw from public.payouts where id
 const bookSpin = +(await db.query("select santa_raw from public.pools where game = 'spin'"))[0].santa_raw; // the run's entry already arrived in the books
 const expectSpin = bookSpin + heldRaw - 300000000 + 25000, walletRaw = async (g) => (g === 'spin' ? expectSpin + 7000000 : 500000000 + 1000 + slotsOwedExtra);
 const alerts = createAlerts({ db, telegram, walletRaw, refereeHealth: async () => { if (!refereeUp) throw new Error('connection refused'); }, now: () => t });
-let r = await alerts.run();
+// books vs wallet must LAST two checks (2026-10-05: a payout confirmed but not yet finalized looked like drift): one check is quiet
+const r0 = await alerts.run();
+assert.ok(!sent.some((x) => /BOOKS DON'T MATCH/.test(x)), 'a mismatch seen at one check only: no alarm yet (it may be a payout still finalizing)');
+let r = await alerts.run(); // the next check: still there, so it is real
 const has = (re) => sent.some((x) => re.test(x));
 assert.ok(has(/HELD for you: payout #/), 'held payout'); assert.ok(has(/FAILED 5 times: pool_transfers/), 'failed send');
 assert.ok(has(/waiting over 10 minutes: is the payout worker running/), 'stuck queue'); assert.ok(has(/TOP-OFF of 300 SANTA/), 'top-off waiting');
@@ -40,13 +43,13 @@ assert.ok(!has(/BOOKS DON'T MATCH the old Slots/), 'the old Slots pool matches (
 // A payment ON ITS WAY (2026-10-04, false alarms during the 1,000-play QA): an open quote from the last few minutes (its SANTA not
 // yet recorded) covers a wallet that is ahead of the books; the same difference with no open quote is an alarm (above: 7 SANTA).
 { const [{ id: oq }] = await db.query(`insert into public.quotes (profile_id, kind, n, bet, usd, santa_raw, price_usd) values ($1, 'drop', 10, 1, 10, 9000000, 0.001) returning id`, [uid]);
-  const runOnce = async () => { const out = []; await createAlerts({ db, telegram: { send: async (x) => { out.push(x); } }, walletRaw: async (g) => (g === 'spin' ? expectSpin + 7500000 : 500000000 + 1000), refereeHealth: async () => {}, now: () => t }).run(); return out; }; // 7.5 SANTA: a new amount (the same alarm isn't repeated for 6 h)
+  const runOnce = async () => { const out = []; const a = createAlerts({ db, telegram: { send: async (x) => { out.push(x); } }, walletRaw: async (g) => (g === 'spin' ? expectSpin + 7500000 : 500000000 + 1000), refereeHealth: async () => {}, now: () => t }); await a.run(); await a.run(); return out; }; // two checks in a row // 7.5 SANTA: a new amount (the same alarm isn't repeated for 6 h)
   assert.ok(!(await runOnce()).some((x) => /BOOKS DON'T MATCH the Game pool/.test(x)), '7.5 SANTA ahead, a 9 SANTA quote still open: a payment on its way, no alarm');
   await db.query(`update public.quotes set created_at = now() - interval '6 minutes' where id = $1`, [oq]);
   assert.ok((await runOnce()).some((x) => /BOOKS DON'T MATCH the Game pool wallet: the wallet has [0-9.]+ SANTA MORE/.test(x)), 'the quote is over 5 minutes old: no longer in flight, alarm');
   await db.query('delete from public.quotes where id = $1', [oq]); }
 assert.ok(sent.every((x) => x.startsWith('🎅 Santa Hat: ')));
-const first = sent.length; assert.equal(r.sent, first);
+const first = sent.length; assert.equal(r0.sent + r.sent, first);
 // 5 minutes later: nothing new is sent (still the same problems)
 t += 5 * 60e3; r = await alerts.run(); assert.equal(r.sent, 0, 'not repeated every 5 minutes');
 // the match server comes back: no more alert about it; a new problem (a failed payout) is sent at once
