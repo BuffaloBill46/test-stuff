@@ -1,0 +1,110 @@
+<!doctype html>
+<!-- MONEY FLOW CHART (Cody, 2026-10-04 to-do #9: "make a money flow chart with both SOL and SANTA"). Where every payment goes and
+     how money comes back. The numbers are the game's own rules (shoprules.js, credits.js, lottery.js, slots.js POOL_RULES,
+     pay.js for SOL). Rendered to docs/money-flow.png by tests/browser/promo-brand-style rendering (see HANDOFF). -->
+<html><head><meta charset="utf-8"><title>Money flow</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@800&family=Alegreya+Sans:wght@500;700;800&family=Silkscreen:wght@700&display=swap">
+<style>
+  html, body { margin: 0; background: #121830; }
+  svg { display: block; }
+  .t { font-family: 'Alegreya Sans', sans-serif; fill: #eef2fb; }
+  .h { font-family: 'Grenze Gotisch', serif; font-weight: 800; fill: #f5f1e8; }
+  .k { font-family: 'Silkscreen', monospace; font-weight: 700; letter-spacing: 1px; }
+  .dim { fill: #9aa6c7; }
+  .node { fill: #1b2344; stroke: #0c0f1a; stroke-width: 4; }
+  .hl { fill: none; stroke: #2c3766; stroke-width: 2; }
+  .halo { paint-order: stroke; stroke: #121830; stroke-width: 7px; stroke-linejoin: round; } /* labels stay readable over the lines */
+</style></head><body>
+<svg width="1600" height="1080" viewBox="0 0 1600 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#ffbe5c"/></marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#5fb8f0"/></marker>
+    <marker id="w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#5fd38a"/></marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#ff7a66"/></marker>
+  </defs>
+  <rect width="1600" height="1080" fill="#121830"/>
+  <!-- title -->
+  <text x="60" y="78" class="h" font-size="52">Where every payment goes</text>
+  <text x="62" y="112" class="t dim" font-size="22">Santa Hat Legends · paid in SANTA (gold) or SOL (blue) · one wallet approval either way</text>
+
+  <!-- column labels -->
+  <text x="70" y="168" class="k dim" font-size="15">THE PLAYER</text>
+  <text x="700" y="168" class="k dim" font-size="15">WHAT THEY PAY FOR</text>
+  <text x="1190" y="168" class="k dim" font-size="15">WHERE IT GOES</text>
+
+  <!-- the player's wallet: SANTA and SOL -->
+  <g><rect x="60" y="230" width="250" height="110" class="node"/><rect x="60" y="230" width="250" height="10" fill="#ffbe5c"/>
+    <text x="80" y="280" class="h" font-size="34">Pays in SANTA</text><text x="80" y="312" class="t dim" font-size="18">from their own wallet</text></g>
+  <g><rect x="60" y="640" width="250" height="110" class="node"/><rect x="60" y="640" width="250" height="10" fill="#5fb8f0"/>
+    <text x="80" y="690" class="h" font-size="34">Pays in SOL</text><text x="80" y="722" class="t dim" font-size="18">exactly the price, no more</text></g>
+
+  <!-- the SOL swap -->
+  <g><rect x="380" y="585" width="240" height="130" class="node"/><rect x="380" y="585" width="240" height="10" fill="#5fb8f0"/>
+    <text x="398" y="630" class="h" font-size="28">Jupiter swap</text>
+    <text x="398" y="660" class="t" font-size="18">SOL → SANTA, inside</text><text x="398" y="684" class="t" font-size="18">the same payment</text>
+    <text x="398" y="706" class="t dim" font-size="15">swap fees come off what arrives</text></g>
+
+  <!-- what they pay for -->
+  <g><rect x="700" y="200" width="290" height="120" class="node"/><text x="720" y="245" class="h" font-size="30">Arcade run</text>
+    <text x="720" y="276" class="t dim" font-size="18">Big Hat · Snowball Drop</text><text x="720" y="300" class="t dim" font-size="18">Stocking Stuffer</text></g>
+  <g><rect x="700" y="380" width="290" height="100" class="node"/><text x="720" y="425" class="h" font-size="30">Lottery ticket</text>
+    <text x="720" y="456" class="t dim" font-size="18">Weekly draws, Christmas</text></g>
+  <g><rect x="700" y="540" width="290" height="120" class="node"/><text x="720" y="585" class="h" font-size="30">Store item</text>
+    <text x="720" y="616" class="t dim" font-size="18">gear, specials, looks,</text><text x="720" y="640" class="t dim" font-size="18">levels, ranked tickets</text></g>
+  <g><rect x="700" y="720" width="290" height="100" class="node"/><text x="720" y="765" class="h" font-size="30">Season pass $2</text>
+    <text x="720" y="796" class="t dim" font-size="18">the season's costume</text></g>
+
+  <!-- where it goes -->
+  <g><rect x="1190" y="190" width="330" height="100" class="node"/><rect x="1190" y="190" width="330" height="10" fill="#ff7a66"/>
+    <text x="1210" y="240" class="h" font-size="32">Burned forever</text><text x="1210" y="272" class="t dim" font-size="18">SANTA removed from supply</text></g>
+  <g><rect x="1190" y="350" width="330" height="110" class="node"/><rect x="1190" y="350" width="330" height="10" fill="#ffbe5c"/>
+    <text x="1210" y="400" class="h" font-size="32">Game pool</text><text x="1210" y="432" class="t dim" font-size="18">pays every Arcade win</text></g>
+  <g><rect x="1190" y="520" width="330" height="110" class="node"/><rect x="1190" y="520" width="330" height="10" fill="#ffbe5c"/>
+    <text x="1210" y="570" class="h" font-size="32">Lottery pot</text><text x="1210" y="602" class="t dim" font-size="18">the draw's prize money</text></g>
+  <g><rect x="1190" y="690" width="330" height="110" class="node"/><rect x="1190" y="690" width="330" height="10" fill="#9aa6c7"/>
+    <text x="1210" y="740" class="h" font-size="32">Treasury</text><text x="1210" y="772" class="t dim" font-size="18">the game's own wallet</text></g>
+
+  <!-- SANTA from the player to each purchase (gold) -->
+  <g stroke="#ffbe5c" stroke-width="4" fill="none" marker-end="url(#g)">
+    <path d="M310 270 C 500 270, 520 260, 696 260"/><path d="M310 285 C 520 300, 520 430, 696 430"/>
+    <path d="M310 300 C 500 330, 540 590, 696 590"/><path d="M310 315 C 480 360, 560 760, 696 768"/></g>
+  <!-- SOL: into the swap, or straight on as SOL (blue) -->
+  <g stroke="#5fb8f0" stroke-width="4" fill="none">
+    <path d="M310 680 L 376 665" marker-end="url(#b)"/>
+    <path d="M620 610 C 660 560, 650 290, 696 286" marker-end="url(#b)"/><path d="M620 625 C 660 590, 660 456, 696 452" marker-end="url(#b)"/>
+    <path d="M620 650 L 696 622" marker-end="url(#b)"/>
+    <path d="M310 735 C 520 800, 600 800, 696 790" stroke-dasharray="10 7" marker-end="url(#b)"/></g>
+  <text x="380" y="838" class="t halo" font-size="16" fill="#5fb8f0">SOL itself, no swap</text>
+
+  <!-- purchases to destinations, with the split -->
+  <g stroke-width="4" fill="none">
+    <path d="M990 240 C 1080 240, 1100 235, 1186 235" stroke="#ff7a66" marker-end="url(#r)"/>
+    <path d="M990 290 C 1080 300, 1100 400, 1186 400" stroke="#ffbe5c" marker-end="url(#g)"/>
+    <path d="M990 410 C 1090 380, 1090 260, 1186 255" stroke="#ff7a66" marker-end="url(#r)"/>
+    <path d="M990 450 C 1080 480, 1100 570, 1186 570" stroke="#ffbe5c" marker-end="url(#g)"/>
+    <path d="M990 570 C 1100 520, 1100 290, 1186 272" stroke="#ff7a66" marker-end="url(#r)"/>
+    <path d="M990 630 C 1080 660, 1100 735, 1186 735" stroke="#9aa6c7" marker-end="url(#g)"/>
+    <path d="M990 770 C 1080 770, 1100 760, 1186 760" stroke="#9aa6c7" marker-end="url(#g)"/></g>
+  <g class="k halo" font-size="15">
+    <text x="1012" y="226" fill="#ff7a66">10% BURN</text><text x="1012" y="322" fill="#ffbe5c">90% POOL</text>
+    <text x="1012" y="398" fill="#ff7a66">10% BURN</text><text x="1012" y="486" fill="#ffbe5c">90% POT</text>
+    <text x="1012" y="560" fill="#ff7a66">50% BURN</text><text x="1012" y="664" fill="#c9d3ea">50% TREASURY</text>
+    <text x="1012" y="756" fill="#c9d3ea">100% TREASURY</text></g>
+  <text x="1012" y="682" class="t halo" font-size="14" fill="#5fb8f0">(paid in SOL: as SOL)</text>
+  <text x="1012" y="790" class="t halo" font-size="14" fill="#5fb8f0">(paid in SOL: as SOL)</text>
+
+  <!-- the pool and the treasury keep each other topped up -->
+  <g stroke-width="3" fill="none">
+    <path d="M1540 420 C 1590 470, 1590 690, 1540 735" stroke="#9aa6c7" marker-end="url(#g)"/>
+    <path d="M1525 745 C 1570 690, 1570 480, 1525 440" stroke="#5fd38a" stroke-dasharray="8 6" marker-end="url(#w)"/></g>
+  <text x="1440" y="842" class="t" font-size="15" fill="#c9d3ea" text-anchor="end">pool over $1,025 → $25 skim to the treasury</text>
+  <text x="1440" y="864" class="t" font-size="15" fill="#5fd38a" text-anchor="end">pool under $200 → the treasury tops it up to $500</text>
+
+  <!-- money back to players -->
+  <rect x="60" y="900" width="1460" height="130" class="node"/>
+  <text x="84" y="942" class="h" font-size="28">Back to the players: always in SANTA, straight to their wallet</text>
+  <text x="84" y="976" class="t" font-size="19">Arcade wins are paid from the Game pool at the end of each run. Lottery prizes go to the top 3 tickets (60 / 25 / 15%).</text>
+  <text x="84" y="1006" class="t dim" font-size="17">SANTA's own 3% token tax comes off every SANTA transfer (payments in, winnings out). Paying with SOL costs exactly the price; the swap's fees come off what reaches the pool or the burn.</text>
+</svg>
+<script>document.fonts.ready.then(() => { window.ready = true; });</script>
+</body></html>
