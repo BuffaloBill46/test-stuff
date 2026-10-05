@@ -80,7 +80,11 @@ export function keptFee(lookup, { fresh = 60_000, stale = 600_000, now = () => D
 // treasury's share in SOL from it (server/shop.js). READ-ONLY. The server keeps it a minute (keptFee works for any lookup).
 export const WSOL_MINT = 'So11111111111111111111111111111111111111112';
 export async function liveSolPrice() {
-  const usd = +(await getJSON(`https://lite-api.jup.ag/price/v3?ids=${WSOL_MINT}`))?.[WSOL_MINT]?.usdPrice;
+  // the new address first, the old one if it's busy or down (to-do #12; pay.js viaJupiter says why)
+  let usd = 0;
+  for (const base of ['https://api.jup.ag', 'https://lite-api.jup.ag']) {
+    try { usd = +(await getJSON(`${base}/price/v3?ids=${WSOL_MINT}`))?.[WSOL_MINT]?.usdPrice; if (usd > 0) break; } catch { /* next */ }
+  }
   if (!(usd > 0)) throw new Error('no SOL price found');
   return { usd, at: Date.now() };
 }

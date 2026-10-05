@@ -2,7 +2,7 @@
 // the pool (no in-between wallet; DESIGN_NOTES → SANTA's 3% tax). Proven on the real Token-2022 program in
 // tests/solana/pay.test.mjs. The Solana toolkit is passed in (`lib`), so the page can load it from a CDN and the tests from npm.
 // What's NOT here (no wallet in the build workspace): the wallet popup that signs and sends it. See FOR_MAIN_CLAUDE.md.
-import { splitPayment, solShares, SOL_FLOOR } from './market.js?v=9fcd4d2d68';
+import { splitPayment, solShares, SOL_FLOOR } from './market.js?v=69bdf83362';
 
 // lib: { TOKEN_2022_PROGRAM_ADDRESS, findAssociatedTokenPda, getBurnCheckedInstruction, getTransferCheckedWithFeeInstruction }
 // quote: the server's { santaRaw, mint, pool, fee, burnBps }. player: the wallet's transaction signer ({ address, ... }).
@@ -32,7 +32,20 @@ export async function purchaseInstructions(lib, quote, player, decimals = 6) {
 // house absorbs them, ~8-10% today), never out of the player's pocket. If the route is so poor that what would arrive falls
 // under SOL_FLOOR (85%) of what the quote's SANTA gives, the page refuses BEFORE the wallet opens (the server would refuse
 // it): "pay with SANTA". Checked against the real mainnet routes without spending anything: tests/solana/sol-pay-sim.mjs.
-export const WSOL = 'So11111111111111111111111111111111111111112', JUP = 'https://lite-api.jup.ag/swap/v1';
+export const WSOL = 'So11111111111111111111111111111111111111112';
+// JUPITER'S ADDRESSES (to-do #12, 2026-10-05): api.jup.ag is the new one (the old lite-api.jup.ag is being retired); without a key
+// it allows a few asks per few seconds per player's connection (one payment asks twice). So: the new address first; when it's
+// busy (429) or doesn't answer, a short wait and the old address. Both answer the same way and allow the site to ask them
+// (checked live 2026-10-05). When lite-api goes away, only the wait-and-retry is left; a paid key would lift the limit.
+export const JUPS = ['https://api.jup.ag/swap/v1', 'https://lite-api.jup.ag/swap/v1'], JUP = JUPS[0];
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+export async function viaJupiter(ask, bases = JUPS, wait = 800) {
+  let last;
+  for (let i = 0; i < bases.length; i++) {
+    try { return await ask(bases[i]); } catch (e) { last = e; if (i < bases.length - 1) await pause(/429/.test(e?.message) ? wait : 0); }
+  }
+  throw last;
+}
 const SYSTEM = '11111111111111111111111111111111', COMPUTE = 'ComputeBudget111111111111111111111111111111';
 export const SOL_SLIPPAGE_BPS = 50, SOL_CU_LIMIT = 300_000; // measured on mainnet: ~66k for a swap + pay (sol-pay-sim)
 export const SOL_TOO_COSTLY = 'Paying with SOL costs too much in swap fees right now. Pay with SANTA, or try again in a minute. Nothing was charged.';
@@ -61,10 +74,10 @@ export async function solPurchaseInstructions(lib, quote, player, decimals = 6) 
   const plan = solPlan(quote), out = [cuLimitIx(SOL_CU_LIMIT)];
   let lookupTables = [], santa = 0;
   if (plan.swap > 0) {
-    const jq = await lib.get(`${JUP}/quote?inputMint=${WSOL}&outputMint=${quote.mint}&amount=${plan.swap}&slippageBps=${SOL_SLIPPAGE_BPS}&maxAccounts=40`);
+    const jq = await viaJupiter((J) => lib.get(`${J}/quote?inputMint=${WSOL}&outputMint=${quote.mint}&amount=${plan.swap}&slippageBps=${SOL_SLIPPAGE_BPS}&maxAccounts=40`), lib.jups);
     santa = Math.floor(+jq?.otherAmountThreshold || 0); // what the swap guarantees (after slippage and SANTA's own tax)
     if (!(santa >= plan.minSanta)) throw new Error(SOL_TOO_COSTLY);
-    const sw = await lib.post(`${JUP}/swap-instructions`, { quoteResponse: jq, userPublicKey: player.address, wrapAndUnwrapSol: true });
+    const sw = await viaJupiter((J) => lib.post(`${J}/swap-instructions`, { quoteResponse: jq, userPublicKey: player.address, wrapAndUnwrapSol: true }), lib.jups);
     if (sw.error) throw new Error('the swap could not be prepared: ' + sw.error);
     out.push(...(sw.setupInstructions || []).map(fromJup), fromJup(sw.swapInstruction), ...(sw.cleanupInstruction ? [fromJup(sw.cleanupInstruction)] : []));
     lookupTables = sw.addressLookupTableAddresses || [];
