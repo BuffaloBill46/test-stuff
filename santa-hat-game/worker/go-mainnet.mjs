@@ -55,6 +55,12 @@ if (!/__/.test(g.SOLANA_RPC_URL || '__')) {
   }
 } else ok(false, 'the Helius mainnet URL is in place');
 
+// THE TEST SITE (to-do #11, 2026-10-05): before the switch it plays through this same game server on test money; after it, this
+// server is REAL money and the test site must never reach it (it would be a second real-money site with a TEST banner). Its line
+// to the game server is one Caddy file, swapped for a 503 at step 4b.
+console.log('test site');
+ok(existsSync('/etc/caddy/test-api.caddy') && readFileSync('/etc/caddy/Caddyfile', 'utf8').includes('import /etc/caddy/test-api.caddy'), 'the test site\'s game-server line can be paused (/etc/caddy/test-api.caddy)');
+
 console.log('database');
 const sql = postgres(parseEnv(`${ETC}/games.env`).DATABASE_URL, { prepare: false, max: 1, ...JSONB });
 const [c] = await sql`select (select count(*) from public.payouts where status not in ('sent')) unsent, (select count(*) from public.lottery_draws where status = 'open') open_draws,
@@ -88,6 +94,10 @@ await sql.end();
 console.log('4. mainnet settings');
 for (const f of ['games', 'worker']) { copyFileSync(`${ETC}/${f}.env`, `${ETC}/${f}.env.devnet`); copyFileSync(`${ETC}/${f}.env.mainnet`, `${ETC}/${f}.env`); }
 console.log('  ✓ swapped (devnet copies kept as *.env.devnet)');
+console.log('4b. pausing the test site\'s game server line (it must never reach the real-money server)');
+copyFileSync('/etc/caddy/test-api.caddy', '/etc/caddy/test-api.caddy.devnet');
+writeFileSync('/etc/caddy/test-api.caddy', '# paused at the mainnet switch (go-mainnet.mjs): the only game server is the real-money one now.\n# The devnet line is kept in test-api.caddy.devnet for when the test site gets its own database.\nheader Content-Type application/json\nrespond `{"error":"the test site is paused while the real game is live"}` 503\n');
+sh('systemctl reload caddy');
 console.log('5. starting');
 sh('systemctl start santa-games santa-worker santa-alerts.timer');
 await new Promise((r) => setTimeout(r, 6000));
@@ -95,5 +105,7 @@ ok(sh('systemctl is-active santa-games santa-worker santa-referee').split('\n').
 console.log(sh(`cd ${REPO}/worker && runuser -u santa -- bash -c 'set -a; . ${ETC}/worker.env; set +a; node open-accounts.mjs --send' 2>&1`));
 const m = await (await fetch('http://127.0.0.1:8082/', { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://santahatgames.com' }, body: JSON.stringify({ action: 'market' }) })).json();
 ok(m.cluster === 'mainnet', `the game server says ${m.cluster}`);
+const t = await fetch('https://test.santahatgames.com/api', { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://test.santahatgames.com' }, body: '{"action":"market"}' }).then((r) => r.status).catch(() => 0);
+ok(t === 503, `the test site no longer reaches the game server (it answers ${t})`);
 console.log(problems.length ? `\nSWITCHED WITH ${problems.length} PROBLEM(S): look above.` : '\nSWITCHED. Next: Cody records his deposit on the admin screen, then the 10¢ dry run.');
 process.exit(0);
