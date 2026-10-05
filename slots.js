@@ -25,15 +25,17 @@ export const BURN = 0.10;                      // Games tab: 10% burned, 90% to 
 export const IN_PER_DOLLAR = (1 - BURN * (1 - FEE)) * (1 - FEE); // 87.59¢ of each $1 lands in the pool
 // The Game pool (escrow) rules, all ADJUSTABLE: the real server loads these from Cody's admin settings (the 'spin' pool row),
 // and every game reads them on every play, so a change applies right away. Cody, 2026-10-02 (one shared pool):
-//   start        starting pool: $500
+//   start        starting pool: $125 (Cody 2026-10-05: "I'm only starting it with $100-$125"; was $500)
 //   skimAt/skim  when the pool reaches $1,025, $25 goes to the treasury (helps cover the tax on winnings)
-//   topOffBelow  if the pool drops below $200 (before or after a play), the treasury tops it back up to topOffTo ($500).
-//                $200 is above every game's biggest FIXED prize (Big Hat's $100 top line, Stocking Stuffer's 50× = $50 on $1,
-//                Snowball Drop's 25× = $25 on $1), so no play is ever refused for lack of pool. The pool jackpots are a share
-//                of the pool, so they can always be paid.
+//   topOffBelow  if the pool drops below $30 (before or after a play), ONE top-off back to topOffTo ($125) is booked for Cody's
+//                deposit (Cody 2026-10-05: "let the games play and if they go under $30 it pauses. That simple."; was $200 → $500).
+//                Every game's biggest FIXED prize (Big Hat's $100 top line, Snowball Drop's 100× board = $100 on $1, Stocking
+//                Stuffer's 50× = $50) is at most topOffTo, so no play is refused: covers() counts Cody's backing up to topOffTo.
+//                A win bigger than the pool holds is owed (never short-changed) until his deposit; new runs pause under $30
+//                (server/games.js MIN_POOL_USD). The pool jackpots are a share of the pool, so they can always be paid.
 //   paused       Cody's emergency stop: no plays AND no top-offs (so funds can be withdrawn without the treasury refilling).
 // (Was, before 2026-10-02: Slots pool $500 start, skim at $1,775, top-off below $150; Drop pool $300, $1,025, below $100.)
-export const POOL_RULES = { start: 500, skimAt: 1025, skim: 25, topOffBelow: 200, topOffTo: 500, paused: false };
+export const POOL_RULES = { start: 125, skimAt: 1025, skim: 25, topOffBelow: 30, topOffTo: 125, paused: false };
 // THE POOL JACKPOTS (Cody, 2026-10-02): one per game, each a share of the Game pool at the moment of the play, scaled by the
 // play's size: pay = pct × pool × (bet ÷ $1). A $1 play wins 25% of the pool, a 10¢ play 2.5%. Big Hat is $1-only and keeps its
 // own rule (pct × pool, as before). Never more than the pool holds, so the pool can never go below zero.
@@ -160,7 +162,7 @@ export function pull(state, machineId, rand = Math.random, forcedStops) {
   if ({ ...POOL_RULES, ...(state.rules || {}) }.paused) return { paused: true, stopped: true }; // emergency stop
   // Top off BEFORE the pull too: the pool may have been lowered outside play (e.g. an emergency withdrawal).
   const before = topOff(state);
-  if (state.pool < MAX_FIXED(m)) return { paused: true, topOff: before };
+  if (covers(state) < MAX_FIXED(m)) return { paused: true, topOff: before };
   if (!state.prepaid) state.pool += m.bet * IN_PER_DOLLAR; // with runs the entry already reached the pool at purchase
   // Pool jackpot: its own draw. When it hits, the whole grid shows Santa Hats and only the jackpot is paid.
   const jackpot = forcedStops === 'JACKPOT' || (!forcedStops && rand() < m.poolJackpotOdds);
@@ -176,8 +178,8 @@ export function pull(state, machineId, rand = Math.random, forcedStops) {
   const grid = gridFor(m, stops), wins = evaluate(m, grid);
   const hats = grid.flat().filter((x) => x === SYM.hat).length, hatPay = hats * (m.hatBonus || 0) * m.bet;
   let pay = wins.reduce((s, w) => s + w.pay, 0) + hatPay;
-  const capped = pay > state.pool;
-  pay = Math.min(pay, state.pool); // can never pay more than the pool holds
+  const capped = pay > covers(state);
+  pay = Math.min(pay, covers(state)); // never more than the pool + Cody's backing (covers); below zero is owed, and topped off after
   state.pool -= pay;
   return skim(state, { topOffBefore: before, stops, grid, wins, hats, hatPay, pay, jackpot: false, capped, received: pay * (1 - FEE), ahead: pay > m.bet + 1e-9 });
 }
@@ -187,8 +189,7 @@ export function pull(state, machineId, rand = Math.random, forcedStops) {
 export function canPull(state, machineId) {
   const R = { ...POOL_RULES, ...(state.rules || {}) };
   if (R.paused) return { ok: false, stopped: true };
-  const pool = state.pool < R.topOffBelow ? R.topOffTo : state.pool;
-  return { ok: pool >= MAX_FIXED(typeof machineId === 'object' ? machineId : MACHINES[machineId]) };
+  return { ok: covers(state, R) >= MAX_FIXED(typeof machineId === 'object' ? machineId : MACHINES[machineId]) };
 }
 
 // After each pull: skim to the treasury at the top, top off from the treasury at the bottom.
@@ -200,6 +201,11 @@ function skim(state, result) {
   if (add) result.topOff = add; // everything the treasury added around this pull
   return result;
 }
+// WHAT THE POOL CAN COVER (Cody 2026-10-05: "Just let the games play and if they go under $30 it pauses. That simple."): Cody
+// stands behind the pool up to topOffTo (his starting amount), so a prize up to that is always offered; if a big win takes the pool
+// below topOffBelow (even below zero), ONE top-off back to topOffTo is booked for his deposit, new runs pause under $30 (server/games.js
+// MIN_POOL_USD) and the winner is owed, never short-changed (payouts retry until the deposit lands; the player is asked for a ticket).
+export const covers = (state, R = { ...POOL_RULES, ...(state.rules || {}) }) => Math.max(state.pool, R.topOffTo);
 // If the pool is below topOffBelow, the treasury tops it up to topOffTo. Returns the amount added (0 if none).
 // Every game's top-off (Snowball Drop and Stocking Stuffer pass their merged rules; it was a copy in spin.js until the retired
 // Santa Hat Spin was removed, 2026-10-04).

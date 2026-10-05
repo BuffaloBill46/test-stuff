@@ -14,10 +14,11 @@
 // 1 in 5,000 × 25% × the pool in dollars (about 1% at a $200 pool, 2.5% at $500, 5.1% at $1,025): see paybackAt().
 // BOARD 2 (2026-10-02, 100× centre) and BOARD 1 (2026-09-30 to 2026-10-02, 8 rows, 9 bins, true 50/50 bounces) stay below for
 // re-checking drops played on them.
-// POOL (Cody, 2026-10-02): Snowball Drop plays from the shared Game pool (slots.js POOL_RULES: starts $500, $25
-// skim at $1,025, top-off below $200, emergency stop). A drop only starts if the pool can cover the biggest FIXED prize (25×);
+// POOL (Cody, 2026-10-02; numbers 2026-10-05): Snowball Drop plays from the shared Game pool (slots.js POOL_RULES: starts $125, $25
+// skim at $1,025, top-off request below $30, emergency stop). A drop only starts if the pool, counting Cody's backing up to the
+// top-off amount (slots.js covers), can cover the biggest FIXED prize;
 // the jackpot is a share of the pool, so it can always be paid.
-import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot, POOL_RULES, topOff } from './slots.js?v=ea7a433a7d';
+import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot, POOL_RULES, topOff, covers } from './slots.js?v=896c3a7b98';
 
 export const BOARD = 3; // results carry it, so "Check this result" re-runs the board the drop was played on
 export const ROWS = 16;
@@ -86,7 +87,7 @@ export function play(state, bet, rand = Math.random, forced, pct = JP.pct) {
   if (!BETS.includes(bet)) throw new Error('unknown bet ' + bet);
   if (R.paused) return { paused: true, stopped: true };
   const before = topOff(state, R);
-  if (state.pool < MAX_MULT * bet) return { paused: true, topOff: before };
+  if (covers(state, R) < MAX_MULT * bet) return { paused: true, topOff: before };
   if (!state.prepaid) state.pool += bet * IN_PER_DOLLAR; // with runs the entry already reached the pool at purchase
   const d = forced ? forcedDrop(bet, forced) : drop(bet, rand);
   let r;
@@ -105,5 +106,5 @@ function forcedDrop(bet, path) { const bin = path.reduce((a, b) => a + b, 0); re
 export function canPlay(state, bet) {
   const R = { ...POOL_RULES, ...(state.rules || {}) };
   if (R.paused) return { ok: false, stopped: true };
-  return { ok: (state.pool < R.topOffBelow ? R.topOffTo : state.pool) >= MAX_MULT * bet };
+  return { ok: covers(state, R) >= MAX_MULT * bet };
 }

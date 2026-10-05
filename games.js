@@ -1,24 +1,25 @@
 // Games tab: wires the Slots page (readouts, Pull, full screen, paytable, winners list) to the rules (slots.js) and the
 // 3D Big Hat machine (slots3d.js). DEMO ONLY: play money and a demo pool kept in this browser. No SANTA moves.
-import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount, poolJackpot } from './slots.js?v=ea7a433a7d';
-import { JP as DROP_JP } from './plinko.js?v=ea7a433a7d';
-import { JP as STOCK_JP } from './stocking.js?v=ea7a433a7d';
-import { createMachine, symbolImages } from './slots3d.js?v=ea7a433a7d';
-import { poolState, savePool, resetPool, showResult } from './gamepool.js?v=ea7a433a7d';
-import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js?v=ea7a433a7d';
-import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js?v=ea7a433a7d';
-import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js?v=ea7a433a7d';
-import { runSummary } from './runui.js?v=ea7a433a7d';
-import { livePrice, liveFee, santaFor, fmtSanta } from './market.js?v=ea7a433a7d';
-import { FEE } from './slots.js?v=ea7a433a7d';
-import { play as sfx } from './sfx.js?v=ea7a433a7d';
-import { celebrate, tierOf } from './celebrate.js?v=ea7a433a7d';
-import { SERVER, call, settingsReady } from './gameserver.js?v=ea7a433a7d';
-import { refreshWallet } from './walletline.js?v=ea7a433a7d';
-import { weekStart } from './gameclock.js?v=ea7a433a7d';
-import { KINDS, SIZES } from './credits.js?v=ea7a433a7d';
-import { initRunPick, priceLabel } from './runpick.js?v=ea7a433a7d';
-import { bigShare } from './sharecard.js?v=ea7a433a7d'; // "Share this win" on a big single win (Cody 2026-10-04)
+import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount, poolJackpot } from './slots.js?v=896c3a7b98';
+import { JP as DROP_JP } from './plinko.js?v=896c3a7b98';
+import { JP as STOCK_JP } from './stocking.js?v=896c3a7b98';
+import { createMachine, symbolImages } from './slots3d.js?v=896c3a7b98';
+import { poolState, savePool, resetPool, showResult } from './gamepool.js?v=896c3a7b98';
+import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js?v=896c3a7b98';
+import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js?v=896c3a7b98';
+import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js?v=896c3a7b98';
+import { runSummary } from './runui.js?v=896c3a7b98';
+import { livePrice, liveFee, santaFor, fmtSanta } from './market.js?v=896c3a7b98';
+import { initPoolSanta, setPoolPrice } from './poolsanta.js?v=896c3a7b98'; // the Game pool in SANTA too, under each $ total (Cody 2026-10-05)
+import { FEE } from './slots.js?v=896c3a7b98';
+import { play as sfx } from './sfx.js?v=896c3a7b98';
+import { celebrate, tierOf } from './celebrate.js?v=896c3a7b98';
+import { SERVER, call, settingsReady } from './gameserver.js?v=896c3a7b98';
+import { refreshWallet } from './walletline.js?v=896c3a7b98';
+import { weekStart } from './gameclock.js?v=896c3a7b98';
+import { KINDS, SIZES } from './credits.js?v=896c3a7b98';
+import { initRunPick, priceLabel } from './runpick.js?v=896c3a7b98';
+import { bigShare } from './sharecard.js?v=896c3a7b98'; // "Share this win" on a big single win (Cody 2026-10-04)
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -219,6 +220,7 @@ function toggleFull() {
 }
 
 export async function initGames(opts = {}) {
+  initPoolSanta();
   if (inited) return; inited = true;
   // the winners list's tabs: Latest / Biggest this week
   document.querySelectorAll('[data-wins]').forEach((b) => b.addEventListener('click', () => { winTab = b.dataset.wins; document.querySelectorAll('[data-wins]').forEach((x) => x.setAttribute('aria-selected', String(x === b))); renderWinners(); }));
@@ -273,7 +275,7 @@ async function showMarket() {
   // 403), which left two errors in every visitor's console (live-player test, 2026-10-02); the 3% badge says it anyway.
   const [p, f] = await Promise.allSettled([m?.usd > 0 ? { usd: m.usd } : livePrice(), m?.fee ? m.fee : SERVER ? liveFee() : Promise.reject(new Error('demo: no tax lookup'))]);
   const bits = [];
-  if (p.status === 'fulfilled') { setPrice(p.value); bits.push(`1 SANTA = <b>$${p.value.usd.toPrecision(3)}</b> · $1 ≈ <b>${fmtSanta(santaFor(1, p.value))} SANTA</b>`); }
+  if (p.status === 'fulfilled') { setPrice(p.value); setPoolPrice(p.value); bits.push(`1 SANTA = <b>$${p.value.usd.toPrecision(3)}</b> · $1 ≈ <b>${fmtSanta(santaFor(1, p.value))} SANTA</b>`); }
   if (f.status === 'fulfilled') {
     const pct = f.value.bps / 100;
     bits.push(`token tax <b>${pct}%</b> (read live from the token)`);
