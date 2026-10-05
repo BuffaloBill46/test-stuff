@@ -559,3 +559,8 @@ like players paying rent each time). Skip accounts our own wallets own; then the
 **A page on our site cannot read Solana directly (2026-10-04).** Solana's public node answers 403 to a browser on
 santahatgames.com, so anything the PAGE asks Solana for (the coin's tax, balances) fails quietly there, even though it worked in
 the local test. Get it from the game server (its 'market' answer, or the read-only relay) and check it on the LIVE site.
+
+**Never grep a secrets file for a word; print only named keys (2026-10-05).** `grep -i POOL games.env` to show wallet
+addresses also matched DATABASE_URL (its host is a "pooler") and printed the database password. It was rotated at once (new random
+password set on the Droplet, never displayed; old one refused). Read env files with an exact list of key names, e.g.
+`grep -E "^(SPIN_POOL_WALLET|TREASURY_WALLET)="`, and treat any secret that reached output as exposed: rotate it.
