@@ -281,6 +281,7 @@
     `Every player adds <b>${RULES.perLevel} points per level</b> to the pot (level 1 adds ${RULES.perLevel}, level 10 adds ${RULES.perLevel * 10}); each bot adds <b>${RULES.perBot}</b>. So beating higher levels wins you more, and beating lower levels less.`,
     `3 or fewer players: 1st takes the whole pot. 4 or more: 1st ${RULES.split4[0] * 100}%, 2nd ${RULES.split4[1] * 100}%, 3rd ${RULES.split4[2] * 100}%. Not placing costs <b>${-RULES.notPlacing}</b> points.`,
     `Every match has at least <b>2 bots</b> unless 8 real players fill it. Bots play to win and can take paid places. The leaderboard (Ranks) is your total points.`,
+    `No other real player in <b>45 seconds</b>? Your ranked match starts anyway, against <b>4 bots</b>.`,
   ].map((t) => `<li>${t}</li>`).join('');
   // worked examples, straight from ranked.js (players finish in the order listed; 'bot' = a bot, which adds 5): the pot is 2 per
   // level, 5 per bot (to-do #14). Every match has at least 4 players and 2 bots (sim.js MIN_BODIES, MIN_BOTS), so the examples carry their bots.

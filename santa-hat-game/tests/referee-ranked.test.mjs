@@ -47,6 +47,7 @@ assert.match(code, /^PRG\d+$/, 'no style sent (an older page): a special-gear ro
 assert.deepEqual([a.last('peers').ps[0].n, a.last('peers').ps[0].l], ['Ann', 3], 'her saved name and level, not what the page claimed');
 tick(30); let s = a.last('snap').d;
 assert.deepEqual([PHASES[s.ph], s.rk, s.wait, s.cd], ['lobby', 1, 1, 0], 'alone: waiting, no countdown, even after 30 s');
+assert.ok(s.solo > 0 && s.solo <= 16, `alone: the page is told how long until it's her vs 4 bots (${s.solo}s left of 45)`);
 // joining by its code: refused for players, fine for watchers
 const sneak = conn(); sneak.say({ t: 'join', code, token: 'cat', me: me('snea0001') }); await settle(); assert.match(sneak.last('err').why, /Auto match/);
 const watch = conn(); watch.say({ t: 'join', code, me: { ...me('watc0001'), w: true } }); await settle(); assert.ok(watch.last('peers'), 'watching a ranked game is fine');
@@ -100,6 +101,17 @@ assert.equal(roomOf('anne0009').conns.get('anne0009').me.a.sb1, 'sb_none', 'norm
 conn2().say({ t: 'ranked', token: 'cat', styles: ['normal', 'gear'], me: me('catt0009') }); await settle();
 assert.equal(roomOf('catt0009'), roomOf('anne0009'), 'both ticked: either style, closest rank points first (Ann 0 vs Ben 500; Cat 20)');
 const l2 = conn2(); l2.say({ t: 'board' }); assert.deepEqual(l2.got.at(-1).games.map((x) => x.style).sort(), ['gear', 'normal'], "the games list shows each ranked room's style");
+// --- SOLO RANKED (Cody 2026-10-05: "let them play against 4 bots if nobody real joins"): alone 45 s, the match starts, her vs 4 bots
+{ const refS = createReferee({ now: () => t, identify: async (tok) => people[tok] || null, ranked });
+  const cs = { got: [], send: (x) => cs.got.push(JSON.parse(x)), last: (k) => cs.got.filter((m) => m.t === k).at(-1) }; cs.h = refS.connect(cs);
+  const held = tickets.get(P(2));
+  cs.h.message(JSON.stringify({ t: 'ranked', token: 'ben', me: me('bensolo1') })); await settle();
+  const step = (secs) => { for (let i = 0; i < secs * 30; i++) { t += 1000 / 30; refS.tick(1 / 30); } };
+  step(40); assert.equal(PHASES[cs.last('snap').d.ph], 'lobby', 'alone 40 s: still waiting for a real player');
+  step(30); const room = [...refS.rooms.values()][0], ents = room.sim.S.ents;
+  assert.ok(['intro', 'count', 'play'].includes(PHASES[cs.last('snap').d.ph]), 'alone past 45 s: the match starts anyway (' + PHASES[cs.last('snap').d.ph] + ')');
+  assert.deepEqual([ents.filter((e) => !e.bot).length, ents.filter((e) => e.bot).length], [1, 4], 'him vs exactly 4 bots');
+  assert.ok(room.started && tickets.get(P(2)) < held + 1, 'his ticket is spent at the start, as in any ranked match'); }
 // --- Cody's pause (2026-10-02): while paused, searches are refused and no ticket is held; unpaused, ranked works again
 let paused = true;
 const ref3 = createReferee({ now: () => t, identify: async (tok) => people[tok] || null, ranked, rankedPaused: () => paused });

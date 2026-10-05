@@ -134,7 +134,7 @@ function decode(s) {
     // at the end: each real player's snowballs thrown and hits (sim.js T), for the results card's hit % (Cody 2026-10-04)
     aim: new Map((Array.isArray(s.T) ? s.T : []).map((t) => [n(t[0]), { thrown: n(t[1]), hits: n(t[2]) }])),
     cd: n(s.cd), pub: !!s.pub, mid: typeof s.mid === 'string' ? s.mid : '',
-    rk: !!s.rk, wait: !!s.wait, // ranked (referee server); waiting for a 2nd real player
+    rk: !!s.rk, wait: !!s.wait, solo: Number.isFinite(s.solo) ? s.solo : null, // ranked (referee server); waiting for a 2nd real player; solo: seconds until 4 bots
   };
 }
 
@@ -660,8 +660,8 @@ function renderChrome() {
   let card = '';
   if (v.phase === 'lobby' && (v.pub || autoStart)) {
     const roster = humans.map((e) => `<li>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}${v.mode === 'team' ? ` <u class="t${e.team}">${TEAM_NAME[e.team]}</u>` : ''}</li>`).join('');
-    card = `<div class="eyebrow">${v.rk ? 'Ranked' : 'Auto match'} · ${v.variant ? esc(VARIANTS[v.variant].name) : v.mode === 'team' ? 'TEAM' : 'FFA'}${styleOf(roomCode) === 'normal' ? ' · Normal play' : ' · Special gear'}${me.w ? ' · watching' : ''}</div><h2>${v.wait ? 'Looking for another real player…' : v.cd ? `Starting in ${Math.ceil(v.cd)}` : 'Finding players…'}</h2>${v.variant ? `<p class="vrule">${esc(VARIANTS[v.variant].short)}</p>` : ''}
-      <ul class="roster">${roster}</ul><p class="dim">${v.rk ? 'Ranked needs 2 real players. Leave before it starts and your ticket comes back. ' : 'More players can still join. '}Bots fill any empty spots when it starts.</p>`;
+    card = `<div class="eyebrow">${v.rk ? 'Ranked' : 'Auto match'} · ${v.variant ? esc(VARIANTS[v.variant].name) : v.mode === 'team' ? 'TEAM' : 'FFA'}${styleOf(roomCode) === 'normal' ? ' · Normal play' : ' · Special gear'}${me.w ? ' · watching' : ''}</div><h2>${v.wait ? (v.solo !== null ? `Looking for another real player… ${v.solo}s` : 'Looking for another real player…') : v.cd ? `Starting in ${Math.ceil(v.cd)}` : 'Finding players…'}</h2>${v.variant ? `<p class="vrule">${esc(VARIANTS[v.variant].short)}</p>` : ''}
+      <ul class="roster">${roster}</ul><p class="dim">${v.rk ? (v.wait && v.solo !== null ? `Nobody yet? In ${v.solo} seconds you play 4 bots instead. ` : 'Ranked plays with real players, or 4 bots if nobody joins. ') + 'Leave before it starts and your ticket comes back. ' : 'More players can still join. '}Bots fill any empty spots when it starts.</p>`;
   } else if (v.phase === 'lobby') {
     const share = practice ? '' : `<p class="share">Friends join with code <b>${esc(roomCode)}</b> or this link:<br><span class="link">${esc(location.origin + location.pathname + '?room=' + roomCode + REF_KEEP)}</span></p>`;
     const roster = humans.map((e) => `<li>${esc(nameOf(e))}${e.peer === me.id ? ' <em>you</em>' : ''}${v.mode === 'team' ? ` <u class="t${e.team}">${TEAM_NAME[e.team]}</u>` : ''}</li>`).join('');

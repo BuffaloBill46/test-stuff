@@ -210,6 +210,10 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
     };
   }
 
+  // SOLO RANKED (Cody 2026-10-05: "let them be able to play against 4 bots if nobody real tries to join"): a ranked room with one
+  // real player starts after SOLO_WAIT_MS anyway, against SOLO_BOTS bots (bots add 5 points each to the pot, as always). A second
+  // real player joining during the wait makes it a normal ranked match.
+  const SOLO_WAIT_MS = 45_000, SOLO_BOTS = 4;
   // One referee step for every room (the door calls this ~30 times a second), then snapshots on each room's own cadence.
   function tick(dt) {
     const t = now();
@@ -217,11 +221,14 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
       const sim = room.sim, ids = players(room).map((p) => p.id);
       if (room.auto && sim.S.phase === 'lobby' && sim.S.mode !== room.mode) sim.S.mode = room.mode;
       sim.syncRoster(ids);
-      const enough = room.ranked ? ids.length >= 2 : ids.length > 0; // ranked: at least 2 real players (decided)
+      if (room.ranked && sim.S.phase === 'lobby') room.aloneSince = ids.length === 1 ? (room.aloneSince ?? t) : null; // solo ranked clock
+      const solo = room.ranked && ids.length === 1 && room.aloneSince != null && t - room.aloneSince >= SOLO_WAIT_MS;
+      const enough = room.ranked ? ids.length >= 2 || solo : ids.length > 0; // ranked: 2 real players, or one alone for 45 s vs 4 bots
       if (room.auto && sim.S.phase === 'lobby' && enough) {
-        const want = autoStartMs(ids.length);
+        const want = solo ? 5000 : autoStartMs(ids.length); // solo ranked has already waited 45 s: a short countdown
         if (room.cdEnd === null || room.cdEnd - t > want) room.cdEnd = t + want;
         if (t >= room.cdEnd) {
+          sim.S.wantBots = solo ? SOLO_BOTS : 0; // solo ranked: 4 bots (Cody)
           sim.introMatch(sim.S.mode); room.cdEnd = null;
           if (room.ranked) { // tickets spent now; who started is remembered (leaving mid-match still counts as not placing)
             room.started = true; room.startedWith = new Set(players(room).map((x) => x.pid).filter(Boolean));
@@ -236,7 +243,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
       if (t - room.lastSnap >= snapMs(ids.length)) {
         room.lastSnap = t;
         const s = sim.snapshot(); s.hid = 'server'; s.hj = 0; s.pub = room.auto ? 1 : 0; s.cd = room.cdEnd ? Math.max(0, (room.cdEnd - t) / 1000) : 0;
-        if (room.ranked) { s.rk = 1; if (sim.S.phase === 'lobby' && !enough) s.wait = 1; } // ranked; waiting for a 2nd real player
+        if (room.ranked) { s.rk = 1; if (sim.S.phase === 'lobby' && !enough) { s.wait = 1; if (room.aloneSince != null) s.solo = Math.max(0, Math.ceil((SOLO_WAIT_MS - (t - room.aloneSince)) / 1000)); } } // ranked; waiting for a 2nd real player (solo: seconds until 4 bots)
         sendAll(room, { t: 'snap', d: s });
       }
     }
