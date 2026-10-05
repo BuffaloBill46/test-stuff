@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="061ef3d1d2">
+<html lang="en" data-build="4d68b93fc8">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -740,6 +740,15 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 .supportform label { font-weight: 700; } .supportform label small { font-weight: 400; color: var(--dim); }
 .supportform textarea, .supportform input { width: 100%; box-sizing: border-box; font: inherit; text-transform: none; letter-spacing: 0; color: var(--text); background: var(--ink); border: 2px solid #2c3766; padding: 8px; resize: vertical; }
 .supportform .row { display: flex; gap: 8px; margin: 4px 0 0; }
+/* my support tickets under the Support button: number, Pending / Resolved, what it was about, Cody's note */
+.tickets { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.tickets li { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; padding: 6px 8px; background: var(--ink); border-left: 3px solid var(--lamp); }
+.tickets li.resolved { border-left-color: #5fd38a; }
+.tickets .st { justify-self: end; font: 700 12px/1.6 var(--digits); color: var(--lamp); text-transform: uppercase; }
+.tickets li.resolved .st { color: #5fd38a; }
+.tickets .tclear { margin-left: 8px; width: 26px; height: 26px; padding: 0; border: 2px solid #2c3766; background: transparent; color: var(--text); font: 700 16px/1 var(--body); cursor: pointer; vertical-align: middle; }
+.tickets .tclear:hover, .tickets .tclear:focus-visible { border-color: var(--frost); }
+.tickets small { grid-column: 1 / -1; color: var(--dim); } .tickets em { grid-column: 1 / -1; font-style: normal; color: var(--text); }
 #supportNote { margin: 0; color: var(--lamp); } #supportNote.bad { color: var(--hat-lit); }
 .logins { list-style: none; margin: 4px 0 12px; padding: 0; display: grid; gap: 6px; }
 .logins li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 10px; background: var(--plaque-hi); border: 2px solid var(--ink); border-radius: 3px; }
@@ -1323,6 +1332,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
     <a class="xlink" href="https://x.com/Santahatgame" target="_blank" rel="noopener" aria-label="Santa Hat Legends on X"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 2H22l-6.8 7.8L23.2 22h-6.3l-4.9-6.4L6.4 22H3.3l7.3-8.3L2.8 2h6.4l4.4 5.9L18.9 2Zm-1.1 18.1h1.7L7.7 3.8H5.9l11.9 16.3Z"/></svg><span>@Santahatgame</span></a>
     <button type="button" class="sec" id="supportBtn" aria-expanded="false" aria-controls="supportForm">Support</button>
   </div>
+  <ul id="supportTickets" class="tickets" aria-label="Your support tickets" hidden></ul>
   <form id="supportForm" class="supportform" hidden>
     <label for="supportMsg">What happened?</label>
     <textarea id="supportMsg" maxlength="1000" rows="4" placeholder="Tell us what went wrong and what you were doing."></textarea>
@@ -1365,6 +1375,6 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 <div id="emotes" hidden></div>
 <div id="joy" hidden></div>
 <div id="zoom" hidden><button id="zoomIn" aria-label="Zoom in">+</button><button id="zoomOut" aria-label="Zoom out">−</button></div>
-<script type="module" src="./online.js?v=061ef3d1d2"></script>
+<script type="module" src="./online.js?v=4d68b93fc8"></script>
 </body>
 </html>
