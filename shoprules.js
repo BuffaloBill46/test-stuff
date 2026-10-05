@@ -4,7 +4,7 @@
 //   Store items: their price in the catalog (or as published from the admin screen: settings.js itemsWith).
 //   Levels: $1 each to levels 2–4, $5 for level 5; higher levels are earned (levels.js buyPrice).
 //   Extra ranked tickets: 1 for 10¢, 5 for 45¢, 10 for 90¢ (10% off the packs); at most 10 extra a day (006 buy_tickets).
-import { RETIRED } from './gear.js?v=555bd3a989';
+import { RETIRED } from './gear.js?v=6058150d08';
 export const SHOP_BURN_BPS = 5000;
 // The season pass: 100% to the treasury, nothing burned (Cody, 2026-10-04). Every other Store purchase: 50% burned, 50% treasury.
 export const burnBpsFor = (kind) => (kind === 'pass' ? 0 : SHOP_BURN_BPS);

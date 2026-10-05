@@ -6,8 +6,8 @@
 // Safety: the quote names the ONE wallet the server will accept a payment from (`payer`, the account's linked wallet) and
 // the network (`cluster`). We refuse to ask for a signature from any other wallet or on any other network, so a player can
 // never pay for plays the server would then refuse.
-import { purchaseInstructions, solPurchaseInstructions, purchaseMessage } from './pay.js?v=555bd3a989';
-import { payWith } from './paywith.js?v=555bd3a989';
+import { purchaseInstructions, solPurchaseInstructions, purchaseMessage } from './pay.js?v=6058150d08';
+import { payWith } from './paywith.js?v=6058150d08';
 
 const KIT = 'https://cdn.jsdelivr.net/npm/@solana/kit@8.4.0/+esm';
 const T22 = 'https://cdn.jsdelivr.net/npm/@solana-program/token-2022@0.19.0/+esm';
@@ -18,7 +18,7 @@ const T22 = 'https://cdn.jsdelivr.net/npm/@solana-program/token-2022@0.19.0/+esm
 export const RPC = { mainnet: ['https://solana-rpc.publicnode.com'], devnet: ['https://api.devnet.solana.com'] };
 const plain = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'bigint' ? Number(x) : x)));
 const viaGameServer = async ({ payload }) => {
-  const { call } = await import('./gameserver.js?v=555bd3a989');
+  const { call } = await import('./gameserver.js?v=6058150d08');
   const r = await call('rpc', { method: payload.method, params: plain(payload.params) });
   if (!r?.jsonrpc) throw new Error(r?.error || 'the game server could not read Solana');
   return { ...r, id: payload.id };
