@@ -165,8 +165,10 @@ between two devices has never been tested from here. Cody and friends testing on
 - Sign-in sheet bottom: @Santahatgame (x.com/Santahatgame) with a Support button beside it (supportui.js). Anyone, signed in
   or not, demo site too, sends what happened + optional contact; server/support.js keeps it (support_messages, private) and
   Cody's Telegram alerts bot sends it at once; 5/hour per connection or player. Admin screen: Support messages (open first,
-  Mark handled + note, admin-wallet-signed). Live test: support #1 sent (a labeled test; mark it handled). Replies: by the
-  contact the player gave (no in-game reply yet).
+  Mark resolved + a note THE PLAYER SEES, admin-wallet-signed). Tickets (047, servers 48cfff3): each message is ticket #N;
+  under Support the player sees theirs: Pending, then Resolved + Cody's note; resolved ones have an x to clear (none on
+  pending). Guests follow theirs by a secret code their browser keeps (fingerprint only in the DB); signed in, on any device.
+  Live test: support #1 (a labeled test, sent before tickets; mark it resolved).
 
 ### 2026-10-04: FINAL LAUNCH QA + MATCH POINTS + ALERT FIX (servers live; see LAUNCH_CHECKLIST "Final launch QA")
 - Match points (Cody): knock the hat off 10, catch the flying hat 25 (were 25, 50). sim.js PTS; pop-ups read it. Live.
