@@ -31,7 +31,10 @@ for (const [name, e] of [['games', g], ['worker', w]]) {
 }
 ok(g.LOTTERY_WALLET === MAIN.wallets.lotteryPool && w.LOTTERY_POOL_WALLET === MAIN.wallets.lotteryPool, 'the new lottery wallet');
 ok(w.KEYS_DIR === `${ETC}/keys-mainnet`, 'the worker signs with the mainnet keys');
-ok(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(g.ADMIN_WALLETS || '') && g.ADMIN_WALLETS !== '3jRok1Ah1i4T2NsxsTLC7DWN5uQp6NMSJQCc52dGyNPA', 'admin = one real wallet address (not the devnet stand-in)');
+// admins (Cody 2026-10-04: "Keep both wallets as admin so you can see 1 too for edits"): his Phantom must be one of them; every
+// entry a real address
+const admins = String(g.ADMIN_WALLETS || '').split(',').map((s) => s.trim()).filter(Boolean);
+ok(admins.length >= 1 && admins.every((a) => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a)) && admins.includes('DpgDK31RNyA96qYoFgigjxxLScKBG3BAwdPeDfTCB7uN'), `admins: Cody's Phantom${admins.length > 1 ? ` + ${admins.length - 1} more (his call, 2026-10-04)` : ''}`);
 
 console.log('keys');
 const signers = {};
