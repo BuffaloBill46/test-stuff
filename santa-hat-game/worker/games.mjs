@@ -27,6 +27,8 @@ import { createShop } from '../server/shop.js';
 import { makeRelay } from '../server/relay.js';
 import { createSeasons } from '../server/seasons.js';
 import { createAlerts, makeTelegram } from '../server/alerts.js';
+import { createTraffic } from '../server/traffic.js';
+import { createHash } from 'node:crypto';
 import { createSupport } from '../server/support.js';
 import { createClientErrors } from '../server/clienterrors.js';
 import { createMoney } from '../server/money.js';
@@ -109,6 +111,8 @@ async function refereeHealth() {
 const telegram = makeTelegram({ token: env('TELEGRAM_BOT_TOKEN'), chatId: env('TELEGRAM_CHAT_ID') || null, db }); // Cody's alerts bot
 // the SOL (lamports) a wallet holds: the wallets that pay winners need it for fees (alerts LOW_SOL)
 async function solRaw(address) { const j = await rpc('getBalance', [address, { commitment: 'confirmed' }], 15000); if (!j.result) throw new Error('no balance'); return j.result.value; }
+// the traffic counter (server/traffic.js): its one-way visitor codes use a secret made from this server's own settings (never stored)
+const traffic = createTraffic({ db, secret: createHash('sha256').update('santa-traffic|' + env('DATABASE_URL')).digest('hex') });
 const alerts = createAlerts({ db, telegram, walletRaw, refereeHealth, livePrice: price, solRaw, solWallets: { 'Game pool': poolWallets.spin, Lottery: { address: env('LOTTERY_WALLET') || null, low: 0.02 } } }); // the Lottery pays a few prizes a month (Cody)
 const clientErrors = createClientErrors({ db, telegram }); // errors players hit (server/clienterrors.js)
 const support = createSupport({ db, telegram, salt: env('SUPPORT_SALT', 'santa-support') }); // support messages: kept + sent to Cody's bot (server/support.js)
@@ -133,8 +137,8 @@ const handle = makeHandler({
     rankedPaused: () => existsSync(env('RANKED_PAUSE_FILE') || '/etc/santa/ranked-paused'), // no ticket sales while ranked is paused
     liveSol: solPrice }),
   lottery: createLottery({ db, chain: { ...chain, latestBlock }, livePrice: price, liveFee: feeOfMint, wallet: env('LOTTERY_WALLET') || null, ...mintOpt, cluster, liveSol: solPrice }),
-  support, clientErrors,
-  admin: createAdmin({ db, support, clientErrors, money: createMoney({ db, livePrice: price }), adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), onWeekly: () => server.weeklyChanged(), chain,
+  support, clientErrors, traffic, // traffic: the visit counter (public "visit")
+  admin: createAdmin({ db, support, clientErrors, money: createMoney({ db, livePrice: price }), traffic, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), onWeekly: () => server.weeklyChanged(), chain,
     poolWallets: { ...poolWallets, lottery: env('LOTTERY_WALLET') || null, treasury: env('TREASURY_WALLET') || null }, ...mintOpt }),
   relay: makeRelay((method, params) => rpc(method, params, 15000)), // the page's backup Solana reads (read-only, signed in)
   profileFor,

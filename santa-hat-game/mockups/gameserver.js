@@ -23,7 +23,7 @@ export async function token() {
 }
 // The actions anyone may call without signing in: must match the server's public ones (server/http.js; tests/public-actions.test.mjs).
 // (It once listed only three, so guests' lottery cards and draw re-checks never asked the server.)
-export const PUBLIC_ACTIONS = ['pools', 'settings', 'stats', 'lottery-tickets', 'lottery', 'winners', 'market', 'burned', 'weekly', 'support', 'support-status', 'support-clear', 'client-error'];
+export const PUBLIC_ACTIONS = ['pools', 'settings', 'stats', 'lottery-tickets', 'lottery', 'winners', 'market', 'burned', 'weekly', 'support', 'support-status', 'support-clear', 'client-error', 'visit'];
 // What a player reads when a payment didn't happen (button audit 2026-10-02: a failed wallet-library download showed
 // "Failed to fetch dynamically imported module: https://cdn…"). Says "nothing was charged" only where that's certain: the
 // player cancelled, or the wallet step never loaded (wallet.js never throws once a payment is sent, except for a payment the

@@ -88,6 +88,10 @@ export function makeHandler(deps) {
       try { const out = await deps.support.submit({ profile, address: addressOf(req), message: body.message, contact: body.contact, page: body.page }); return reply(origin, out?.error ? 400 : 200, out); }
       catch (e) { console.error('support error', e); return reply(origin, 500, { error: 'something went wrong on our side; please try again' }); }
     }
+    if (body?.action === 'visit') { // public: a page was opened (the traffic counter, server/traffic.js); never an error back
+      if (deps.traffic) { try { await deps.traffic.record({ address: addressOf(req), ua: req.headers.get('user-agent') || '', source: body.source, page: body.page }); } catch (e) { console.error('visit error', e.message); } }
+      return reply(origin, 200, { ok: true });
+    }
     if (body?.action === 'client-error') { // public: an error a player's page hit (server/clienterrors.js); never an error back to the page
       if (!deps.clientErrors) return reply(origin, 200, { ok: true });
       try { return reply(origin, 200, await deps.clientErrors.report({ address: addressOf(req), ...body })); } catch (e) { console.error('client-error error', e); return reply(origin, 200, { ok: true }); }
