@@ -115,7 +115,25 @@ if the Droplet ever died, the pool's money would be stuck without a copy of its 
 - Mainnet settings staged on the Droplet, Cody's Phantom in them; no placeholders left.
 - The full test suite, a live 1,000-plays-per-game QA, every Store item bought live, and the SOL path on a copy of mainnet.
 
-## At GO (Claude, ~15 minutes, step by step)
+## READY FOR GO (2026-10-05, while Cody napped): the exact steps
+State: wallets funded (Game pool 345,379.17 SANTA ≈ $139 + 0.245 SOL; lottery 0.0295 SOL; treasury 0.05 SOL), keys backed up on
+Cody's PC, `node go-mainnet.mjs` (check only) says **READY**. Pool rules are Cody's 2026-10-05 ones (code defaults): start $125, games
+play down to $30, ONE top-off request back to $125 under $30, skim $25 above $1,025; payouts never give up.
+1. Cody says **GO**.
+2. Droplet: `cd /opt/santa/repo/santa-hat-game/worker && node go-mainnet.mjs` → READY, then `node go-mainnet.mjs --go`: stops game
+   server + worker + alerts, backs up the database, clears test money, swaps to mainnet settings, **pauses the test site's game line
+   (503)**, starts everything, opens the wallets' SANTA accounts, checks the server says mainnet and the test site answers 503.
+3. Record the Game pool's two deposits (admin 'record-deposit', game 'spin'; signed with an admin wallet):
+   - `2rnXwjonUddpdmcf79WkxtM781x6VHMJXdGJvxBEMx2NBLNHtX8iZG4huqh3dRjZSfwNnRz5n8V1om6ZcMdhPjUH` (344,350 SANTA)
+   - `3tysAKA2FCXmVGhhwJdVCKkhdbSTbsGie3tvXyQ9ERKNvTycVLPQ3enD4ry9vZU4493RGZConcvHza56rF1AmsRY` (1,029.17 SANTA)
+   Then books = 345,379.17 SANTA = the wallet (checked 2026-10-05: the two deposits add up to the wallet exactly).
+4. `mockups/gameserver.js` LAUNCHED = true; commit; `bash deploy-pages.sh` (the main site plays for real; no more demo).
+5. Check: `node watch.mjs` OK; books = wallet; the site shows the live SANTA price, real Store/Arcade, the SOL switch.
+6. Cody: one 10¢ SANTA play from his Phantom, and one ~$1 purchase paid with SOL.
+7. Extend the 15-minute watch (scheduled task santa-launch-watch) to 2 days after GO; tell Cody to keep the app open.
+8. Announce (marketing/x-launch-posts.txt).
+
+## At GO (Claude, ~15 minutes, step by step) — the original plan (2026-10-04)
 1. Back up the database.
 2. Run the switch-over script.
 3. Point the game server and payout worker at mainnet with the new wallets.
