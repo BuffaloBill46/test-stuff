@@ -55,6 +55,10 @@ let d = (await db.query('select * from public.lottery_draws where id = $1', [dra
 assert.equal(+d.pot_raw, potWant, 'the pot is exactly what arrived'); assert.equal(d.tickets, 11);
 assert.deepEqual((await db.query('select first_no, n from public.lottery_buys where draw_id = $1 order by first_no', [drawId])).map((r) => [r.first_no, r.n]), [[1, 5], [6, 3], [9, 1], [10, 2]], 'tickets numbered in sale order');
 assert.equal((await db.query('select secret from public.lottery_public where id = $1', [drawId]))[0].secret, null, 'secret hidden until the draw');
+// "Yours" from the server (launch day 2026-10-05: a phone's own count mixed in test-network tickets): each player sees only their own
+{ const mineA = (await lot.mine(A.id)).mine.filter((m) => m.lottery === 'weekly-10'), mineD = (await lot.mine(D.id)).mine.filter((m) => m.lottery === 'weekly-10');
+  assert.deepEqual([mineA.map((m) => m.tickets), mineD.map((m) => m.tickets)], [[5], [2]], "the server counts each player's own tickets in the open draw (Ann 5, Dee 2)");
+  assert.ok(mineA[0].commit === d.commit && mineA[0].drawsAt === new Date(d.draws_at).getTime(), 'for that exact draw (its time and fingerprint)'); }
 await db.query('set role authenticated');
 await assert.rejects(() => db.query('select secret from public.lottery_draws'), undefined, 'the website can\'t read the draws table');
 await assert.rejects(() => db.query('select * from public.lottery_buys'), undefined, 'nor full wallets of buyers');

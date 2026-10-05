@@ -115,6 +115,7 @@ export function makeHandler(deps) {
         case 'rpc': if (!deps.relay) return reply(origin, 400, { error: 'unknown action' }); out = await deps.relay(String(body.method), body.params); break; // the wallet step's backup Solana reads (server/relay.js) // my linked wallet's SANTA (under each game's play buttons)
         // levels (server/levels.js): a player's own progress; the host reporting a finished Auto match
         case 'progress': if (!deps.levels) return reply(origin, 400, { error: 'unknown action' }); out = await deps.levels.progress(profile); break;
+        case 'lottery-mine': out = deps.lottery?.mine ? await deps.lottery.mine(profile) : { ok: true, mine: [] }; break; // my tickets per open draw
         case 'lottery-quote': if (!deps.lottery) return reply(origin, 400, { error: 'unknown action' }); out = await deps.lottery.quote(profile, String(body.lottery), Number(body.n)); break;
         case 'lottery-buy': if (!deps.lottery) return reply(origin, 400, { error: 'unknown action' }); out = await deps.lottery.buy(profile, String(body.quote), String(body.signature)); break;
         // the shop (server/shop.js): Store items, a level, extra ranked tickets

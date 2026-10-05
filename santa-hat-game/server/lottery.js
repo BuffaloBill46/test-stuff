@@ -116,6 +116,13 @@ export function createLottery({ db, chain, livePrice, liveFee, wallet, mint = MI
   }
 
   // Public: a DRAWN draw's ticket list (wallets shortened) and its revealed inputs, so anyone can re-run it (mockups/lottery.js).
+  // MY TICKETS in each OPEN draw, from the database (launch day, Cody 2026-10-05: his phone counted 5 test-network tickets in the
+  // real Christmas draw, because the page kept the count itself). The page shows this for a signed-in player ("Yours").
+  async function mine(profile) {
+    const rows = await db.query(`select d.kind, d.draws_at, d.commit, coalesce(sum(b.n), 0)::int as n from public.lottery_draws d
+      join public.lottery_buys b on b.draw_id = d.id and b.profile_id = $1 where d.status = 'open' group by d.id order by d.draws_at`, [profile]);
+    return { ok: true, mine: rows.map((r) => ({ lottery: r.kind, drawsAt: new Date(r.draws_at).getTime(), commit: r.commit, tickets: r.n })) };
+  }
   async function tickets(drawId) {
     if (!/^[0-9]{1,18}$/.test(String(drawId))) return { error: 'which draw?' };
     const d = await row('select * from public.lottery_public where id = $1', [drawId]);
@@ -124,5 +131,5 @@ export function createLottery({ db, chain, livePrice, liveFee, wallet, mint = MI
     return { id: +d.id, lottery: d.kind, secret: d.secret, commit: d.commit, blockhash: d.blockhash, tickets: list.map((b) => [b.first_no, b.n, b.wallet_short]) };
   }
 
-  return { quote, buy, runDraws, draws, drawFor, tickets };
+  return { quote, buy, runDraws, draws, drawFor, tickets, mine };
 }
