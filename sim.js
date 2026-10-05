@@ -1,9 +1,9 @@
 // Snowball Square match referee. Runs only on the host's browser; everyone else renders its snapshots.
 // Pure game logic, no rendering, so it can be tested headless.
-import { levelInfo } from './levels.js?v=2d2d4b29af';
-import { VARIANTS, VARIANT_IDS } from './weekly.js?v=2d2d4b29af';
-import { SPECIALS, SPECIAL_KINDS, DROP_HIT_RADIUS, cantThrow, costOf } from './specials.js?v=2d2d4b29af';
-import { effectsOf, gearAllowed, resolvePresent, heldWith, gearMask, gearOfMask } from './gear.js?v=2d2d4b29af';
+import { levelInfo } from './levels.js?v=0e9b2ea718';
+import { VARIANTS, VARIANT_IDS } from './weekly.js?v=0e9b2ea718';
+import { SPECIALS, SPECIAL_KINDS, DROP_HIT_RADIUS, cantThrow, costOf } from './specials.js?v=0e9b2ea718';
+import { effectsOf, gearAllowed, resolvePresent, heldWith, gearMask, gearOfMask } from './gear.js?v=0e9b2ea718';
 // Ball kinds in snapshots (B[9]): 0 normal, 1 ice, 2 split (before it splits), 3 giant, 4 fire, 5 a split piece.
 const BALL_KIND = { '': 0, ice: 1, split: 2, giant: 3, fire: 4, piece: 5 }, DROP_KIND = { sky: 1, rain: 2 };
 export const KIND_OF = ['', 'ice', 'split', 'giant', 'fire', 'piece'], DROP_OF = ['', 'sky', 'rain']; // the page reads snapshots with these
@@ -20,7 +20,15 @@ export const K = {
   STUN: 0.9, // seconds a normal snowball hit knocks you down (special snowballs multiply it: catalog.js → rules.stun)
 };
 export const PTS = { hatSec: 10, header: 25, knock: 10, hit: 5 }; // knock the hat off 10, catch the flying hat 25 (Cody 2026-10-04; were 25 and 50)
-export const PILES = [[-8, -5], [8, -6], [-7, 8], [8, 7]];
+// HOUSE BOTS' AIM (Cody 2026-10-05: "bots hit % ... range from 10% - 48%"): each house bot has its own accuracy, spread evenly
+// from 10% to 48% over all of them in a fixed order (their account ids sorted), so the same bot is always as good a shot.
+// AIM_BASE: the hit rate of a bot aiming normally in a house match (measured); a bot throws wide often enough to land near its own.
+export const AIM_MIN = 0.10, AIM_MAX = 0.48, AIM_BASE = 0.6;
+export function aimOf(id, allIds) {
+  const ids = [...new Set(allIds)].sort(), i = ids.indexOf(id);
+  return i < 0 ? 0 : ids.length < 2 ? AIM_MAX : AIM_MIN + ((AIM_MAX - AIM_MIN) * i) / (ids.length - 1);
+}
+export const PILES =[[-8, -5], [8, -6], [-7, 8], [8, 7]];
 // intro: the match load screen (every player, their stats and loadout; also gives every phone time to load in); count: 5…1.
 // Nobody moves, throws or grabs the hat in either (Cody, 2026-10-01). Added at the end so the older numbers keep their meaning.
 export const PHASES = ['lobby', 'play', 'break', 'end', 'intro', 'count'];
@@ -261,7 +269,25 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
 
   const nearestPile = (e) => PILES.reduce((b, p) => (hyp(p[0] - e.x, p[1] - e.z) < hyp(b[0] - e.x, b[1] - e.z) ? p : b));
   const nearest = (e, list) => list.reduce((b, o) => (!b || d2(o, e) < d2(b, e) ? o : b), null);
-  const lead = (t, from, noise) => { const tt = d2(t, from) / K.BALL_SPEED, n = noise * K.BOT_EASE; return [t.x + t.vx * tt * 0.8 + (rand() - 0.5) * n, t.z + t.vz * tt * 0.8 + (rand() - 0.5) * n]; };
+  // from.shot: a house bot's own accuracy (aimOf below). A bot aiming normally lands about AIM_BASE of its throws, so it throws wide
+  // (a high lob into open space, below) on the rest of the way down to its accuracy.
+  const lead = (t, from, noise) => {
+    const tt = d2(t, from) / K.BALL_SPEED, n = noise * K.BOT_EASE;
+    let x = t.x + t.vx * tt * 0.8 + (rand() - 0.5) * n, z = t.z + t.vz * tt * 0.8 + (rand() - 0.5) * n;
+    if (from.shot > 0 && rand() > from.shot / AIM_BASE) {
+      // the most open of 12 directions (60° or more off the target): farthest from everyone along its first 3 m (in a crowd a
+      // snowball starts right beside the next player), then a high lob that way
+      const a0 = Math.atan2(x - from.x, z - from.z), j = rand() * 0.5; let best = a0 + Math.PI, room = -1;
+      for (let k = 0; k < 12; k++) {
+        const a = a0 + j + (k * Math.PI) / 6; if (Math.abs(Math.atan2(Math.sin(a - a0), Math.cos(a - a0))) < 1.05) continue;
+        const ux = Math.sin(a), uz = Math.cos(a); let m = 9;
+        for (const o of S.ents) { if (o === from) continue; const px = o.x - from.x, pz = o.z - from.z, s = clamp(px * ux + pz * uz, 0, 3); m = Math.min(m, hyp(px - ux * s, pz - uz * s)); }
+        if (m > room) { room = m; best = a; }
+      }
+      const r = 28 + rand() * 6; x = from.x + Math.sin(best) * r; z = from.z + Math.cos(best) * r;
+    }
+    return [x, z];
+  };
 
   function ai(e) {
     const mine = wearing(e), h = mine || (S.hats.length > 1 ? nearest(e, S.hats.map((x) => ({ x: x.st === 'air' ? x.lx ?? S.landing.x : x.x, z: x.st === 'air' ? x.lz ?? S.landing.z : x.z, hat: x }))).hat : S.hat);

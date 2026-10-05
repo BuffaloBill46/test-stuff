@@ -1,25 +1,25 @@
 // Games tab: wires the Slots page (readouts, Pull, full screen, paytable, winners list) to the rules (slots.js) and the
 // 3D Big Hat machine (slots3d.js). DEMO ONLY: play money and a demo pool kept in this browser. No SANTA moves.
-import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount, poolJackpot } from './slots.js?v=2d2d4b29af';
-import { JP as DROP_JP } from './plinko.js?v=2d2d4b29af';
-import { JP as STOCK_JP } from './stocking.js?v=2d2d4b29af';
-import { createMachine, symbolImages } from './slots3d.js?v=2d2d4b29af';
-import { poolState, savePool, resetPool, showResult } from './gamepool.js?v=2d2d4b29af';
-import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js?v=2d2d4b29af';
-import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js?v=2d2d4b29af';
-import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js?v=2d2d4b29af';
-import { runSummary } from './runui.js?v=2d2d4b29af';
-import { livePrice, liveFee, santaFor, fmtSanta } from './market.js?v=2d2d4b29af';
-import { initPoolSanta, setPoolPrice } from './poolsanta.js?v=2d2d4b29af'; // the Game pool in SANTA too, under each $ total (Cody 2026-10-05)
-import { FEE } from './slots.js?v=2d2d4b29af';
-import { play as sfx } from './sfx.js?v=2d2d4b29af';
-import { celebrate, tierOf } from './celebrate.js?v=2d2d4b29af';
-import { SERVER, call, settingsReady } from './gameserver.js?v=2d2d4b29af';
-import { refreshWallet } from './walletline.js?v=2d2d4b29af';
-import { weekStart } from './gameclock.js?v=2d2d4b29af';
-import { KINDS, SIZES } from './credits.js?v=2d2d4b29af';
-import { initRunPick, priceLabel } from './runpick.js?v=2d2d4b29af';
-import { bigShare } from './sharecard.js?v=2d2d4b29af'; // "Share this win" on a big single win (Cody 2026-10-04)
+import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount, poolJackpot } from './slots.js?v=0e9b2ea718';
+import { JP as DROP_JP } from './plinko.js?v=0e9b2ea718';
+import { JP as STOCK_JP } from './stocking.js?v=0e9b2ea718';
+import { createMachine, symbolImages } from './slots3d.js?v=0e9b2ea718';
+import { poolState, savePool, resetPool, showResult } from './gamepool.js?v=0e9b2ea718';
+import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js?v=0e9b2ea718';
+import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js?v=0e9b2ea718';
+import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js?v=0e9b2ea718';
+import { runSummary } from './runui.js?v=0e9b2ea718';
+import { livePrice, liveFee, santaFor, fmtSanta } from './market.js?v=0e9b2ea718';
+import { initPoolSanta, setPoolPrice } from './poolsanta.js?v=0e9b2ea718'; // the Game pool in SANTA too, under each $ total (Cody 2026-10-05)
+import { FEE } from './slots.js?v=0e9b2ea718';
+import { play as sfx } from './sfx.js?v=0e9b2ea718';
+import { celebrate, tierOf } from './celebrate.js?v=0e9b2ea718';
+import { SERVER, call, settingsReady } from './gameserver.js?v=0e9b2ea718';
+import { refreshWallet } from './walletline.js?v=0e9b2ea718';
+import { weekStart } from './gameclock.js?v=0e9b2ea718';
+import { KINDS, SIZES } from './credits.js?v=0e9b2ea718';
+import { initRunPick, priceLabel } from './runpick.js?v=0e9b2ea718';
+import { bigShare } from './sharecard.js?v=0e9b2ea718'; // "Share this win" on a big single win (Cody 2026-10-04)
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };

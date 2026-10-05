@@ -2,7 +2,7 @@
 // short form (what happened, and optionally how to reach you); the message goes to the game server ('support', server/support.js),
 // which keeps it and sends it to Cody's Telegram bot at once; he marks it handled on the admin screen. Works signed in or not
 // (players who can't sign in need it most), on the demo site too (it always reaches the live game server).
-import { call } from './gameserver.js?v=2d2d4b29af';
+import { call } from './gameserver.js?v=0e9b2ea718';
 
 const $ = (s) => document.querySelector(s);
 // MY TICKETS (Cody 2026-10-04: "put the ticket number under the support button with pending or resolved"): each message sent
