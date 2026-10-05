@@ -61,6 +61,7 @@ async function act(action, game, settings = {}) {
   if (r.error) return msg('Refused: ' + r.error, 'bad');
   if (action === 'claim-rewards') { msg(`Claim #${r.claim} sent to the payout worker. It finds the reward tokens and sends them to the treasury within a minute.`, 'ok'); setTimeout(() => act('rewards-status', 'all'), 20000); return; }
   if (action === 'rewards-status') { rewardsList(r); return msg(r.sweeps.length ? 'Reward claims loaded.' : 'No reward sweeps yet.', 'ok'); }
+  if (action === 'money-summary') { moneyView(r); return msg('Money dashboard loaded.', 'ok'); }
   if (action === 'errors-list') { errorsList(r); const open = r.errors.filter((x) => x.status === 'open').length; return msg(open ? `${open} open error(s) players hit.` : 'No open errors.', 'ok'); }
   if (action === 'errors-fixed') { msg('Marked fixed. If it happens again it reopens (and Telegram says so).', 'ok'); return act('errors-list', 'errors'); }
   if (action === 'support-list') { supportList(r); const open = r.messages.filter((m) => m.status === 'open').length; return msg(open ? `${open} open support message(s).` : 'No open support messages.', 'ok'); }
@@ -88,6 +89,21 @@ function bots(r) {
 $('#botCheck').addEventListener('click', () => act('bot-signals', 'all'));
 // The lottery's manual payouts: who, their FULL wallet (to send to), what for, and how much to send; paste the transaction to record it.
 // Shop refunds owed (016): who, how much, why; paste the refund transaction to record it.
+// the money dashboard (server/money.js): rows of what happened, columns today / 7 days / all time; SANTA and ≈ dollars
+function moneyView(r) {
+  const k = (raw) => { const n = (raw || 0) / 1e6; return n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K' : n.toFixed(0); };
+  const usd = (raw) => (r.price ? ' <small class="dim">≈ $' + ((raw || 0) / 1e6 * r.price).toLocaleString(undefined, { maximumFractionDigits: 2 }) + '</small>' : '');
+  const S = (raw) => k(raw) + usd(raw), P = [r.today, r.week, r.all];
+  const rows = [
+    ['Arcade runs bought', (p) => p.arcade.runs], ['Arcade: SANTA paid in', (p) => S(p.arcade.paid)], ['Arcade: burned (10%)', (p) => S(p.arcade.burned)],
+    ['Arcade: reached the Game pool', (p) => S(p.arcade.arrived)], ['Arcade: winnings paid out', (p) => S(p.arcade.sent)],
+    ['Arcade: real payback', (p) => (p.arcade.payback == null ? '—' : (p.arcade.payback * 100).toFixed(1) + '%')],
+    ['Store purchases', (p) => `${p.store.n} <small class="dim">(${p.store.items} items · ${p.store.levels} levels · ${p.store.tickets} tickets · ${p.store.passes} passes)</small>`],
+    ['Store: paid (SANTA value)', (p) => S(p.store.paid)], ['Store: list price', (p) => '$' + p.store.usd.toFixed(2)],
+    ['Lottery ticket purchases', (p) => p.lottery.n], ['Lottery: SANTA paid in', (p) => S(p.lottery.paid)], ['Lottery: prizes paid out', (p) => S(p.lottery.prizes)]];
+  $('#moneyView').innerHTML = `<table><tr><th></th><th>Today</th><th>7 days</th><th>All time</th></tr>${rows.map(([label, f]) => `<tr><td>${label}</td>${P.map((p) => `<td>${f(p)}</td>`).join('')}</tr>`).join('')}</table>
+    <p><b>Right now:</b> Game pool books ${S(r.now.poolRaw)} · treasury net ${S(r.now.treasuryNetRaw)} · Store refunds owed ${r.now.refundsOwed}${r.now.refundsOwed ? ' (' + S(r.now.refundsOwedRaw) + ')' : ''}${r.price ? ` · SANTA $${r.price}` : ''}</p>`;
+}
 // errors players hit (server/clienterrors.js): open first; how often, where, which browser
 function errorsList(r) {
   const open = r.errors.filter((x) => x.status === 'open').length; $('#errorsBox').classList.toggle('alert', open > 0);
@@ -112,6 +128,7 @@ function shopList(r) {
 $('#shopLoad').addEventListener('click', () => act('shop-owed', 'shop'));
 $('#supportLoad').addEventListener('click', () => act('support-list', 'support'));
 $('#errorsLoad').addEventListener('click', () => act('errors-list', 'errors'));
+$('#moneyLoad').addEventListener('click', () => act('money-summary', 'money'));
 $('#errorsList').addEventListener('click', (e) => { const b = e.target.closest('[data-errfixed]'); if (b) act('errors-fixed', 'errors', { id: b.dataset.errfixed }); });
 $('#supportList').addEventListener('click', (e) => { const b = e.target.closest('[data-supporthandled]'); if (!b) return;
   const note = prompt(`Mark ticket #${b.dataset.supporthandled} resolved. A short note the PLAYER will see under their ticket (optional, e.g. "payout re-sent"):`, ''); if (note === null) return;

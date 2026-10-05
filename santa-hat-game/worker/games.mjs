@@ -29,6 +29,7 @@ import { createSeasons } from '../server/seasons.js';
 import { createAlerts, makeTelegram } from '../server/alerts.js';
 import { createSupport } from '../server/support.js';
 import { createClientErrors } from '../server/clienterrors.js';
+import { createMoney } from '../server/money.js';
 import { livePrice, liveFee, keptFee, liveSolPrice } from '../mockups/market.js';
 import { existsSync } from 'fs';
 
@@ -120,7 +121,7 @@ const handle = makeHandler({
     liveSol: solPrice }),
   lottery: createLottery({ db, chain: { ...chain, latestBlock }, livePrice: price, liveFee: feeOfMint, wallet: env('LOTTERY_WALLET') || null, ...mintOpt, cluster, liveSol: solPrice }),
   support, clientErrors,
-  admin: createAdmin({ db, support, clientErrors, adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), onWeekly: () => server.weeklyChanged(), chain,
+  admin: createAdmin({ db, support, clientErrors, money: createMoney({ db, livePrice: price }), adminWallets: env('ADMIN_WALLETS').split(',').map((s) => s.trim()).filter(Boolean), onSettings: () => server.settingsChanged(), onWeekly: () => server.weeklyChanged(), chain,
     poolWallets: { ...poolWallets, lottery: env('LOTTERY_WALLET') || null, treasury: env('TREASURY_WALLET') || null }, ...mintOpt }),
   relay: makeRelay((method, params) => rpc(method, params, 15000)), // the page's backup Solana reads (read-only, signed in)
   profileFor,

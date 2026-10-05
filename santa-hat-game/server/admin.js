@@ -20,7 +20,7 @@ import { check as checkSettings, DEFAULT_SETTINGS } from '../mockups/settings.js
 import { MINT } from '../mockups/market.js';
 import { botSignals, BOT_RULES } from './bots.js';
 
-export const ACTIONS = ['pause', 'resume', 'weekly-mode', 'set-rules', 'set-settings', 'record-deposit', 'release-payout', 'bot-signals', 'lottery-mode', 'lottery-paid', 'lottery-owed', 'shop-owed', 'shop-refund-paid', 'claim-rewards', 'rewards-status', 'support-list', 'support-handled', 'errors-list', 'errors-fixed']; // set-settings: prices, odds, prizes, store (game 'all')
+export const ACTIONS = ['pause', 'resume', 'weekly-mode', 'set-rules', 'set-settings', 'record-deposit', 'release-payout', 'bot-signals', 'lottery-mode', 'lottery-paid', 'lottery-owed', 'shop-owed', 'shop-refund-paid', 'claim-rewards', 'rewards-status', 'support-list', 'support-handled', 'errors-list', 'errors-fixed', 'money-summary']; // set-settings: prices, odds, prizes, store (game 'all')
 export const FRESH_SECONDS = 300;
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 export function b58decode(s) {
@@ -75,14 +75,14 @@ export function depositOf(tx, mint, wallet) {
 // chain.getTransaction / poolWallets / mint: only needed for record-deposit (the same ones the game server uses).
 // (The type note stops Deno's checker reading `chain = null` as "chain may only ever be null" when the Edge Function passes one.)
 /** @param {{ db: any, adminWallets: string[], now?: () => number, onSettings?: () => void, chain?: { getTransaction: (s: string) => Promise<any> } | null, poolWallets?: Record<string, string | null>, mint?: string }} opts */
-export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettings = () => {}, onWeekly = () => {}, chain = null, poolWallets = {}, mint = MINT, support = null, clientErrors = null }) { // support: server/support.js (the support list)
+export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettings = () => {}, onWeekly = () => {}, chain = null, poolWallets = {}, mint = MINT, support = null, clientErrors = null, money = null }) { // support: server/support.js (the support list)
   async function run({ wallet, message, signature }) {
     const m = parse(message || '');
     if (!m || message !== adminMessage(m)) return { error: 'not an admin message' };
     if (!adminWallets.includes(wallet)) return { error: 'not an admin wallet' };
     if (!(await signatureOk(wallet, message, signature || ''))) return { error: 'signature doesn\'t match the wallet' };
     if (!(Math.abs(now() - Date.parse(m.at)) <= FRESH_SECONDS * 1000)) return { error: 'message too old (sign a fresh one)' };
-    const gameOk = ['set-settings', 'bot-signals', 'claim-rewards', 'rewards-status'].includes(m.action) ? m.game === 'all' : m.action.startsWith('lottery-') ? m.game === 'lottery' : m.action.startsWith('shop-') ? m.game === 'shop' : m.action.startsWith('support-') ? m.game === 'support' : m.action.startsWith('errors-') ? m.game === 'errors' : m.action === 'weekly-mode' ? m.game === 'weekly' : ['spin', 'slots'].includes(m.game);
+    const gameOk = ['set-settings', 'bot-signals', 'claim-rewards', 'rewards-status'].includes(m.action) ? m.game === 'all' : m.action.startsWith('lottery-') ? m.game === 'lottery' : m.action.startsWith('shop-') ? m.game === 'shop' : m.action.startsWith('support-') ? m.game === 'support' : m.action.startsWith('errors-') ? m.game === 'errors' : m.action.startsWith('money-') ? m.game === 'money' : m.action === 'weekly-mode' ? m.game === 'weekly' : ['spin', 'slots'].includes(m.game);
     if (!ACTIONS.includes(m.action) || !gameOk) return { error: 'unknown action or game' };
     if (!/^[0-9a-f]{16,64}$/.test(m.nonce)) return { error: 'bad one-time number' };
     if (m.action === 'set-rules') { const bad = checkRules(m.game, m.settings); if (bad.length) return { error: bad.join('; ') }; }
@@ -103,6 +103,7 @@ export function createAdmin({ db, adminWallets, now = () => Date.now(), onSettin
     if (m.action === 'lottery-paid') return lotteryPaid(m, wallet, message, signature);
     if (m.action === 'lottery-owed') return lotteryOwed();
     if (m.action === 'shop-owed') return shopOwed();
+    if (m.action === 'money-summary') return money ? money.summary() : { error: 'the money dashboard is not set up on this server' };
     if (m.action === 'errors-list') return clientErrors ? clientErrors.list() : { error: 'error reports are not set up on this server' };
     if (m.action === 'errors-fixed') return clientErrors ? clientErrors.fixed(m.settings?.id) : { error: 'error reports are not set up on this server' };
     if (m.action === 'support-list') return support ? support.list() : { error: 'support is not set up on this server' };
