@@ -164,3 +164,6 @@ export function showStocking(on) {
 }
 export function refreshStocking() { if (inited) render(); }
 export function resetStocking() { history.length = 0; refreshStocking(); }
+// Your last turns from the server (games.js syncTurns: newest first, gifts found each), so a refresh keeps them and a turn the server
+// recovered (a payment the page never reported) shows too (Cody 2026-10-05)
+export function setStockingHistory(list) { if (!opening) { history.length = 0; history.push(...list.slice(0, MAX_HISTORY)); refreshStocking(); } }

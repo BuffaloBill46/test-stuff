@@ -28,7 +28,8 @@ import { makeRelay } from '../server/relay.js';
 import { createSeasons } from '../server/seasons.js';
 import { createAlerts, makeTelegram } from '../server/alerts.js';
 import { createTraffic } from '../server/traffic.js';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
+import { KINDS } from '../mockups/credits.js';
 import { createSupport } from '../server/support.js';
 import { createClientErrors } from '../server/clienterrors.js';
 import { createMoney } from '../server/money.js';
@@ -109,6 +110,23 @@ async function refereeHealth() {
   if (!r.ok) throw new Error('health answered ' + r.status);
 }
 const telegram = makeTelegram({ token: env('TELEGRAM_BOT_TOKEN'), chatId: env('TELEGRAM_CHAT_ID') || null, db }); // Cody's alerts bot
+// UNREPORTED PAYMENTS (Cody 2026-10-05; server/games.js recoverUnreported): once a minute, a paid quote whose page never reported
+// the payment (it froze, was refreshed or closed) is found on Solana, played out and paid like any play; Cody is told on Telegram.
+// signaturesOf: the player's wallet's successful transactions from a minute before the quote to two minutes after it.
+const recoverTries = new Map();
+async function signaturesOf(wallet, at) {
+  const j = await rpc('getSignaturesForAddress', [wallet, { limit: 25, commitment: 'confirmed' }], 15000);
+  if (!Array.isArray(j.result)) throw new Error('no signatures from the network');
+  return j.result.filter((x) => !x.err && x.blockTime && x.blockTime * 1000 >= at - 60_000 && x.blockTime * 1000 <= at + 120_000).map((x) => x.signature);
+}
+setInterval(async () => {
+  try {
+    for (const f of await server.recoverUnreported({ signaturesOf, seed: () => randomBytes(16).toString('hex'), tries: recoverTries })) {
+      console.log('games: recovered an unreported payment', f.kind, 'run', f.run, 'won', f.won);
+      telegram?.send(`🎅 Santa Hat: a player paid but their page never reported it (it froze or was closed). The server found the payment and played it for them: ${KINDS[f.kind]?.name || f.kind} ${f.usd.toFixed(2)} (${f.plays} play${f.plays === 1 ? '' : 's'}, run ${f.run}), won ${f.won.toFixed(2)}${f.won ? ', being sent to them now' : ''}. Wallet ${f.wallet.slice(0, 4)}…${f.wallet.slice(-4)}. It shows in their "Your last turns".`).catch((e) => console.error('games: recovery telegram failed', e.message));
+    }
+  } catch (e) { console.error('games: unreported-payment check failed:', e.message); }
+}, 60_000);
 // the SOL (lamports) a wallet holds: the wallets that pay winners need it for fees (alerts LOW_SOL)
 async function solRaw(address) { const j = await rpc('getBalance', [address, { commitment: 'confirmed' }], 15000); if (!j.result) throw new Error('no balance'); return j.result.value; }
 // the traffic counter (server/traffic.js): its one-way visitor codes use a secret made from this server's own settings (never stored)

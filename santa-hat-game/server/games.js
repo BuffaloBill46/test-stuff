@@ -343,6 +343,46 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
         and (po.attempts >= 2 or po.status = 'failed' or po.created_at < now() - make_interval(mins => $2)) order by po.id`, [profile, WAIT_MINUTES]);
     return { ok: true, waiting: rows.map((x) => ({ id: +x.id, usd: +x.amount_usd, kind: x.kind, at: new Date(x.created_at).getTime() })) };
   }
+  // YOUR LAST TURNS (the list under each game; Cody 2026-10-05): read from the server, so a refresh keeps them and a play the
+  // server recovered (recoverUnreported) shows there too. Newest first: gifts found (Stocking Stuffer), the multiplier, a jackpot.
+  async function recent(profile, kind) {
+    if (!isKind(kind)) return { error: 'unknown game' };
+    const rows = await db.query(`select result from public.plays where profile_id = $1 and kind = $2 and state = 'settled'
+      order by settled_at desc nulls last, id desc limit 16`, [profile, kind]);
+    return { ok: true, turns: rows.map(({ result: r }) => ({ found: Number.isFinite(r?.found) ? r.found : null, mult: Number.isFinite(r?.mult) ? r.mult : null, jackpot: !!r?.jackpot })) };
+  }
+
+  // UNREPORTED PAYMENTS (Cody 2026-10-05: his page froze, he refreshed, then approved the old screen's payment: it reached the
+  // pool but no page was left to report it, so no play existed). A quote nobody bought with, 3 minutes to 2 hours old: the
+  // player's wallet's transactions around it (signaturesOf) are tried through buy() itself, so the payment must pass every
+  // check a page's would (the right pool, amount, burn, from the player, inside the quote's minute). One that does: its plays are
+  // settled (seed: the server's random number, since no page is there to give one) and the winnings paid as usual.
+  // tries: quote id → checks done; each quote is looked at 3 times (about 3, 10 and 30 minutes old), then left alone.
+  const RECOVER_AT_MIN = [3, 10, 30];
+  async function recoverUnreported({ signaturesOf, seed, tries = new Map(), limit = 20 }) {
+    const qs = await db.query(`select q.id, q.profile_id, q.kind, q.created_at, extract(epoch from now() - q.created_at) / 60 as age, p.wallet
+      from public.quotes q join public.profiles p on p.id = q.profile_id
+      where q.used_by is null and q.created_at < now() - interval '3 minutes' and q.created_at > now() - interval '2 hours' and p.wallet is not null
+      order by q.created_at limit $1`, [limit]);
+    const found = [];
+    for (const q of qs) {
+      if (!isKind(q.kind)) continue;
+      const done = tries.get(q.id) || 0; if (done >= RECOVER_AT_MIN.length || Number(q.age) < RECOVER_AT_MIN[done]) continue;
+      tries.set(q.id, done + 1);
+      let sigs = []; try { sigs = await signaturesOf(q.wallet, new Date(q.created_at).getTime()); } catch { tries.set(q.id, done); continue; } // the network: next time
+      for (const sig of sigs) {
+        if (await row('select 1 from public.runs where signature = $1', [sig])) continue; // already a play's payment
+        const b = await buy(q.profile_id, q.id, sig);
+        if (b.error) continue; // not this one (another payment, or not a game payment at all)
+        let won = 0;
+        for (const pl of b.plays || []) { const s = await settle(q.profile_id, pl.ticket, seed()); won += Number(s?.r?.pay) || 0; }
+        found.push({ quote: q.id, wallet: q.wallet, kind: q.kind, run: b.run, plays: (b.plays || []).length, usd: (Number(b.n) || 0) * (Number(b.bet) || 0), won, signature: sig });
+        break;
+      }
+    }
+    for (const id of tries.keys()) if (!qs.some((q) => q.id === id)) tries.delete(id); // past 2 hours or bought: forgotten
+    return found;
+  }
   async function wallet(profile) {
     const w = (await row('select wallet from public.profiles where id = $1', [profile]))?.wallet;
     if (!w) return { wallet: null };
@@ -383,5 +423,5 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     burnKept = { at: Date.now(), v: { gamesRaw: games, lotteryRaw: lottery, storeRaw: store, totalRaw: games + lottery + store } };
     return burnKept.v;
   }
-  return { quote, buy, settle, tidy, winners, weekWinners, pools, settings, market, burned, wallet, waiting, weekly, weeklyChanged, settingsChanged };
+  return { quote, buy, settle, tidy, winners, weekWinners, pools, settings, market, burned, wallet, waiting, recent, recoverUnreported, weekly, weeklyChanged, settingsChanged };
 }

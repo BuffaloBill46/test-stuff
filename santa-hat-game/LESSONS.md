@@ -594,3 +594,14 @@ seen those as bots); housebots-db checks it.
 (Santa Costume) stayed in the draft when he changed tab, and since the costume covers the shirt and pants, every shirt and pants
 he then tried looked the same: "I can't preview anything". Now changing tab takes off anything not wearable (any slot) back to
 the saved look. tests/browser/avatar-tryon-test.mjs fails on the old code exactly as he saw it.
+
+**Don't judge a timing-tight test while something heavy runs beside it (2026-10-05).** friends-test failed 2 of 3 on the
+tournament build and passed 3 of 3 on the old code, which looked like a regression; but every failing run had the full test
+suite running in the background on the same machine. Run quietly, the new build passed 5 of 5. Compare like with like.
+
+**A payment the page never reports is still the player's play (2026-10-05).** Cody's page froze; he refreshed, then approved
+the OLD screen's wallet popup: the SANTA reached the pool, but the page that would report it was gone, so no play existed (the
+page's own "finish it next visit" only works if the page got the signature). The game server now looks for these itself
+(server/games.js recoverUnreported, once a minute: an unused quote's wallet, its transactions around the quote, each tried
+through buy() so every payment check applies), plays them out, pays as usual and tells Cody. "Your last turns" now come from
+the server (my-turns), so a recovered play shows there and a refresh no longer empties them. Test: db/recover-db.

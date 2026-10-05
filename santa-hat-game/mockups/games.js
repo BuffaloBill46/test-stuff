@@ -5,8 +5,8 @@ import { JP as DROP_JP } from './plinko.js';
 import { JP as STOCK_JP } from './stocking.js';
 import { createMachine, symbolImages } from './slots3d.js';
 import { poolState, savePool, resetPool, showResult } from './gamepool.js';
-import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js';
-import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js';
+import { initDrop, showDrop, refreshDrop, resetDrop, setDropHistory } from './dropui.js';
+import { initStocking, showStocking, refreshStocking, resetStocking, setStockingHistory } from './stockingui.js';
 import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js';
 import { runSummary } from './runui.js';
 import { livePrice, liveFee, santaFor, fmtSanta } from './market.js';
@@ -260,7 +260,7 @@ export async function initGames(opts = {}) {
   initCredits({ wallet, pools: { slots: state, spin: poolState() }, onChange: () => { shownPool = shared().pool; store.set(state); render(); savePool(); refreshDrop(); refreshStocking(); refreshWallet(); } }); // refreshWallet: my wallet under the games (at most every 8 s)
   refreshCredits();
   // A payment from an earlier visit the server never received (closed tab, dropped network): hand it over and play it now.
-  if (SERVER) resumePaid().then((r) => { if (r) { console.info('finished a paid run from an earlier visit', r.run); refreshCredits(); } }).catch(() => {});
+  if (SERVER) resumePaid().then((r) => { if (r) { console.info('finished a paid run from an earlier visit', r.run); refreshCredits(); syncTurns(); } }).catch(() => {});
   showMarket();
   loadWinners();
   window.__slots = { state, view, test, get shownPool() { return shownPool; }, get busy() { return busy; }, get fast() { return fast; } };
@@ -310,4 +310,14 @@ function labelsFromSettings() {
 export async function showGames(on, opts) {
   if (on) await initGames(opts);
   view?.setActive(on); showDrop(on); showStocking(on);
+  if (on) syncTurns();
+}
+// "Your last turns" under Stocking Stuffer and Snowball Drop, read from the server each time the Arcade opens (Cody 2026-10-05):
+// a refresh no longer empties them, and a play the server recovered for you (a payment your page never reported) is there.
+// Signed out (or no server): the lists stay as this visit made them.
+async function syncTurns() {
+  if (!SERVER) return;
+  const [s, d] = await Promise.all(['stocking', 'drop'].map((kind) => call('my-turns', { kind }).catch(() => null)));
+  if (Array.isArray(s?.turns)) setStockingHistory(s.turns.map((t) => t.found ?? 0));
+  if (Array.isArray(d?.turns)) setDropHistory(d.turns.map((t) => (t.jackpot ? 'JP' : t.mult ?? 0)));
 }

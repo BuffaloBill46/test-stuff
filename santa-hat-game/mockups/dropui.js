@@ -124,3 +124,5 @@ export function showDrop(on) {
 }
 export function refreshDrop() { if (inited) render(); }
 export function resetDrop() { history.length = 0; refreshDrop(); }
+// Your last drops from the server (games.js syncTurns: newest first, 'JP' or the multiplier), as setStockingHistory
+export function setDropHistory(list) { if (!opening && !flying) { history.length = 0; history.push(...list.slice(0, MAX_HISTORY)); refreshDrop(); } }

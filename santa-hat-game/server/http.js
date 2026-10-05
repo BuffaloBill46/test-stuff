@@ -115,6 +115,7 @@ export function makeHandler(deps) {
         case 'buy': out = await s.buy(profile, String(body.quote), String(body.signature)); break;
         case 'settle': out = await s.settle(profile, String(body.ticket), String(body.seed)); break;
         case 'wallet': out = await s.wallet(profile); break;
+        case 'my-turns': out = s.recent ? await s.recent(profile, String(body.kind)) : { ok: true, turns: [] }; break; // "Your last turns" under a game (server/games.js recent)
         case 'my-payouts': out = s.waiting ? await s.waiting(profile) : { ok: true, waiting: [] }; break; // a server without it: nothing waiting // my winnings not sent yet (the page's "send a ticket" pop-up)
         case 'rpc': if (!deps.relay) return reply(origin, 400, { error: 'unknown action' }); out = await deps.relay(String(body.method), body.params); break; // the wallet step's backup Solana reads (server/relay.js) // my linked wallet's SANTA (under each game's play buttons)
         // levels (server/levels.js): a player's own progress; the host reporting a finished Auto match
