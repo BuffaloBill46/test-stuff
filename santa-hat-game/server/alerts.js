@@ -65,10 +65,12 @@ export function createAlerts({ db, telegram, walletRaw, refereeHealth, solRaw = 
     if (livePrice) { try { const usd = (await livePrice()).usd, holds = await poolHoldsRaw(db.query, 'spin');
       if (holds !== null && usd > 0 && (holds / 1e6) * usd < MIN_POOL_USD) add('floor:spin', `ARCADE PAUSED: the Game pool holds only $${((holds / 1e6) * usd).toFixed(2)} of SANTA (under $${MIN_POOL_USD}), so no new runs are taken. Winnings already won still pay. Deposit SANTA to the Game pool wallet (and record it on the admin screen): the Arcade reopens by itself above $${MIN_POOL_USD}.`);
     } catch { /* no price right now: next time */ } }
-    if (solRaw) for (const [label, address] of Object.entries(solWallets)) {
+    // a wallet is an address, or { address, low } with its own warning level (the Lottery pays a few prizes a month: 0.02 SOL)
+    if (solRaw) for (const [label, w] of Object.entries(solWallets)) {
+      const address = typeof w === 'string' ? w : w?.address, low = (typeof w === 'object' && w?.low) || LOW_SOL;
       if (!address) continue;
       let lamports; try { lamports = await solRaw(address); } catch { continue; } // the chain didn't answer: next time
-      if (Number(lamports) / 1e9 < LOW_SOL) add(`lowsol:${label}`, `LOW SOL: the ${label} wallet has ${(Number(lamports) / 1e9).toFixed(4)} SOL (warning below ${LOW_SOL}). It pays network fees and opens new winners' SANTA accounts; send it about 0.3 SOL soon (${address}).`);
+      if (Number(lamports) / 1e9 < low) add(`lowsol:${label}`, `LOW SOL: the ${label} wallet has ${(Number(lamports) / 1e9).toFixed(4)} SOL (warning below ${low}). It pays network fees and opens new winners' SANTA accounts; send it about 0.3 SOL soon (${address}).`);
     }
     const rows = await db.query(`select r.profile_id, pr.name, pr.wallet, q.created_at as quote_at, r.paid_at from public.runs r
       join public.payments pa on pa.signature = r.signature join public.quotes q on q.id = pa.quote_id join public.profiles pr on pr.id = r.profile_id

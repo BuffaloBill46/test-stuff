@@ -18,7 +18,7 @@ const hooks = {};
 const db = await makeRealDb(server, { hooks });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PRICE = 0.00085, DEC = 1e6;
-const START = Math.round(50 / PRICE * DEC); // $50 Spin pool
+const START = Math.round(150 / PRICE * DEC); // $150 Spin pool: under the $200 top-off line, over the $30 floor (games.js MIN_POOL_USD)
 await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', $1, '{}'), ('slots', $2, '{}')`, [START, Math.round(500 / PRICE * DEC)]);
 const games = createGameServer({ retired: [], db, chain: { getTransaction: async () => null }, livePrice: async () => ({ usd: PRICE }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: {} });
 const pool = async () => +(await db.query(`select santa_raw from public.pools where game = 'spin'`))[0].santa_raw;

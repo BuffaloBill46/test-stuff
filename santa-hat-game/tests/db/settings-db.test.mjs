@@ -9,7 +9,7 @@ import { check } from '../../mockups/house.js';
 import { newSeed } from '../../mockups/fair.js';
 
 const db = await makeDb(), PRICE = 0.00085;
-await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', $1, '{}'), ('slots', $2, '{}')`, [Math.round(50 / PRICE * 1e6), Math.round(500 / PRICE * 1e6)]);
+await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', $1, '{"topOffTo": 250}'), ('slots', $2, '{}')`, [Math.round(50 / PRICE * 1e6), Math.round(500 / PRICE * 1e6)]);
 const me = await db.player('PLAYERwa11et111111111111111111111111111111');
 const server = createGameServer({ retired: [], db, chain: {}, livePrice: async () => ({ usd: PRICE }), liveFee: async () => ({ bps: 300, max: 1e15 }), poolWallets: {} });
 const key = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign', 'verify']), cody = b58encode(new Uint8Array(await crypto.subtle.exportKey('raw', key.publicKey)));
@@ -26,7 +26,8 @@ assert.equal((await server.settings()).version, 0);
 // (Santa Hat Spin, this test's old example, was removed 2026-10-04: Big Hat shows the same versioning.)
 // A Big Hat run is bought on version 0...
 const early = { ticket: (await directRun(db, me, 'big', 1, 1, 0)).tickets[0] };
-// ...then Cody changes the Big Hat jackpot odds and doubles the pull price to $2.
+// ...then Cody changes the Big Hat jackpot odds and doubles the pull price to $2 (its $200 top prize needs more than the $125
+// default backing: this pool is backed to $250, see the insert above).
 const s1 = S(); s1.big.jackpotOdds = 10000; s1.prices.big = 2;
 const sameResult = (c, r) => (r.jackpot ? !!c.outcome.jackpot : JSON.stringify(c.outcome.stops) === JSON.stringify(r.stops));
 const saved = await admin.run(await sign(s1)); assert.ok(saved.ok, saved.error);

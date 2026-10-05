@@ -156,9 +156,9 @@ function KINDSOK(m) { return m.KINDS.stocking?.game === 'spin' && m.KINDS.big?.g
   assert.equal(refused, 0, 'no turn or drop is ever refused');
   assert.ok(jackpots > 0, 'jackpots were hit');
   console.log(`shared Game pool, half stockings: ${stockings.toLocaleString()} turns; 0 refused; ${jackpots} pool jackpots; ${tops} top-offs; lowest $${low.toFixed(2)}`);
-  // the rule itself: $1 needs $50 (50×) in the pool after any top-off; 10¢ needs $5
-  assert.equal(canPlay({ pool: 49, rules: { topOffBelow: 0 } }, 1).ok, false); assert.equal(canPlay({ pool: 50, rules: { topOffBelow: 0 } }, 1).ok, true);
-  assert.equal(canPlay({ pool: 49 }, 1).ok, true, 'below $200 a top-off to $500 comes first');
+  // the rule itself: $1 needs $50 (50×) covered (the pool, counting Cody's backing up to topOffTo: slots.js covers); 10¢ needs $5
+  assert.equal(canPlay({ pool: 49, rules: { topOffBelow: 0, topOffTo: 0 } }, 1).ok, false); assert.equal(canPlay({ pool: 50, rules: { topOffBelow: 0, topOffTo: 0 } }, 1).ok, true);
+  assert.equal(canPlay({ pool: 49 }, 1).ok, true, "Cody's rules: his $125 backing covers it (Cody 2026-10-05: let the games play)");
   assert.equal(canPlay({ pool: 400, rules: { paused: true } }, 0.1).ok, false, 'the emergency stop stops it too'); }
 
 // 9. TAP TO OPEN (Cody, 2026-10-02), with 9 gifts: wherever the player taps, the turn is the same. For thousands of turns and

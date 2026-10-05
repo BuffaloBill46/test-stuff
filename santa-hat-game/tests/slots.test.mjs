@@ -89,7 +89,7 @@ if (paused) fail(`${paused} pulls refused: with the top-off the game must never 
 if (!jackpots) fail('no pool jackpot in 4 million pulls: the jackpot check above checked nothing');
 // ONE GAME POOL (Cody, 2026-10-02): Slots plays by the shared pool's rules, the same object as the Drop/Stocking pool's
 { // one shared pool: Snowball Drop and Stocking Stuffer import these same POOL_RULES (spin.js's alias went with the retired Spin)
-  const want = { start: 500, skimAt: 1025, skim: 25, topOffBelow: 200, topOffTo: 500, paused: false };
+  const want = { start: 125, skimAt: 1025, skim: 25, topOffBelow: 30, topOffTo: 125, paused: false }; // Cody 2026-10-05 (was 500 / 200 → 500)
   if (JSON.stringify(POOL_RULES) !== JSON.stringify(want)) fail(`the Game pool rules must be Cody's: ${JSON.stringify(want)}`); }
 ends.sort((a, b) => a - b); jackAmts.sort((a, b) => a - b);
 console.log(`Slots pool, 200 runs × 20,000 pulls from $${START_POOL}: median end $${ends[100].toFixed(0)}, lowest after any pull $${lowest.toFixed(0)}; ${skims} skims of $${SKIM}; ${topOffs} top-offs; treasury net about $${(treasuryNet / 200).toFixed(0)} per 20,000 pulls; ${jackpots} pool jackpots (median $${(jackAmts[jackAmts.length >> 1] || 0).toFixed(2)}); ${paused} paused pulls; ${capped} capped wins`);

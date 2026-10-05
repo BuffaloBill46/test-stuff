@@ -10,6 +10,7 @@ import { initStocking, showStocking, refreshStocking, resetStocking } from './st
 import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js';
 import { runSummary } from './runui.js';
 import { livePrice, liveFee, santaFor, fmtSanta } from './market.js';
+import { initPoolSanta, setPoolPrice } from './poolsanta.js'; // the Game pool in SANTA too, under each $ total (Cody 2026-10-05)
 import { FEE } from './slots.js';
 import { play as sfx } from './sfx.js';
 import { celebrate, tierOf } from './celebrate.js';
@@ -219,6 +220,7 @@ function toggleFull() {
 }
 
 export async function initGames(opts = {}) {
+  initPoolSanta();
   if (inited) return; inited = true;
   // the winners list's tabs: Latest / Biggest this week
   document.querySelectorAll('[data-wins]').forEach((b) => b.addEventListener('click', () => { winTab = b.dataset.wins; document.querySelectorAll('[data-wins]').forEach((x) => x.setAttribute('aria-selected', String(x === b))); renderWinners(); }));
@@ -273,7 +275,7 @@ async function showMarket() {
   // 403), which left two errors in every visitor's console (live-player test, 2026-10-02); the 3% badge says it anyway.
   const [p, f] = await Promise.allSettled([m?.usd > 0 ? { usd: m.usd } : livePrice(), m?.fee ? m.fee : SERVER ? liveFee() : Promise.reject(new Error('demo: no tax lookup'))]);
   const bits = [];
-  if (p.status === 'fulfilled') { setPrice(p.value); bits.push(`1 SANTA = <b>$${p.value.usd.toPrecision(3)}</b> · $1 ≈ <b>${fmtSanta(santaFor(1, p.value))} SANTA</b>`); }
+  if (p.status === 'fulfilled') { setPrice(p.value); setPoolPrice(p.value); bits.push(`1 SANTA = <b>$${p.value.usd.toPrecision(3)}</b> · $1 ≈ <b>${fmtSanta(santaFor(1, p.value))} SANTA</b>`); }
   if (f.status === 'fulfilled') {
     const pct = f.value.bps / 100;
     bits.push(`token tax <b>${pct}%</b> (read live from the token)`);

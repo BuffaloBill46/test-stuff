@@ -192,7 +192,7 @@ for (const bet of [0.1, 1]) {
   const price = PRICE, usd = (raw) => raw / 1e6 * price;
   await db.query(`update public.pools set rules = $1 where game = 'spin'`, [JSON.stringify({ skimAt: usd(await pool('spin')) - 1, skim: 2 })]); // next play skims
   let x = await buyRun(me, PLAYER, 'drop', 1, 0.1); let [s] = await settleAll(me, x); assert.ok(s.r.skim, 'a skim happened');
-  await db.query(`update public.pools set santa_raw = $1, rules = $2 where game = 'spin'`, [Math.round(6 / price * 1e6), JSON.stringify({ topOffBelow: 8, topOffTo: 20 })]); // below the top-off line
+  await db.query(`update public.pools set santa_raw = $1, rules = $2 where game = 'spin'`, [Math.round(150 / price * 1e6), JSON.stringify({ topOffBelow: 200, topOffTo: 500 })]); // below the top-off line (above the $30 floor, games.js MIN_POOL_USD)
   x = await buyRun(me, PLAYER, 'drop', 1, 0.1);
   const spinAfterForce = await pool('spin');
   [s] = await settleAll(me, x); assert.ok(s.r.topOff, 'a top-off happened');

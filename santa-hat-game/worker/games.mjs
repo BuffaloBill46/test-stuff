@@ -103,7 +103,7 @@ async function refereeHealth() {
 const telegram = makeTelegram({ token: env('TELEGRAM_BOT_TOKEN'), chatId: env('TELEGRAM_CHAT_ID') || null, db }); // Cody's alerts bot
 // the SOL (lamports) a wallet holds: the wallets that pay winners need it for fees (alerts LOW_SOL)
 async function solRaw(address) { const j = await rpc('getBalance', [address, { commitment: 'confirmed' }], 15000); if (!j.result) throw new Error('no balance'); return j.result.value; }
-const alerts = createAlerts({ db, telegram, walletRaw, refereeHealth, livePrice: price, solRaw, solWallets: { 'Game pool': poolWallets.spin, Lottery: env('LOTTERY_WALLET') || null } });
+const alerts = createAlerts({ db, telegram, walletRaw, refereeHealth, livePrice: price, solRaw, solWallets: { 'Game pool': poolWallets.spin, Lottery: { address: env('LOTTERY_WALLET') || null, low: 0.02 } } }); // the Lottery pays a few prizes a month (Cody)
 const clientErrors = createClientErrors({ db, telegram }); // errors players hit (server/clienterrors.js)
 const support = createSupport({ db, telegram, salt: env('SUPPORT_SALT', 'santa-support') }); // support messages: kept + sent to Cody's bot (server/support.js)
 

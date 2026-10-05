@@ -16,8 +16,8 @@ assert.ok(Math.abs(c0.report.big.fixed - stats(MACHINES.big).payback) < 1e-12 &&
 { const old = S(); old.prices = { spin10: 0.1, spin100: 1, ...old.prices }; old.spin = { main: { 0: 20, 1: 12, 2: 5, star: 3 }, bonus: { 3: 9, 4: 2, 5: 1 } };
   const r = check(old); assert.ok(r.ok, 'old settings with the Spin fields still pass: ' + r.problems.join('; '));
   assert.equal(r.report.big.payback, c0.report.big.payback, 'and give the same Big Hat'); assert.equal(build(old).wheel, undefined); }
-// one Game pool (Cody, 2026-10-02): payback is fixed prizes + the pool jackpot, shown at the $500 start, checked at $200 and $1,025
-assert.ok(Math.abs(c0.report.big.payback - (c0.report.big.fixed + 0.25 * 500 / 25000)) < 1e-12 && c0.report.big.at === 500 && c0.report.big.lowPool === 200 && c0.report.big.highPool === 1025, 'Big Hat: fixed + 1/25,000 × 25% × $500');
+// one Game pool (Cody, 2026-10-02): payback is fixed prizes + the pool jackpot, shown at the start ($125 since Cody 2026-10-05), checked at the top-off line ($30) and $1,025
+assert.ok(Math.abs(c0.report.big.payback - (c0.report.big.fixed + 0.25 * 125 / 25000)) < 1e-12 && c0.report.big.at === 125 && c0.report.big.lowPool === 30 && c0.report.big.highPool === 1025, 'Big Hat: fixed + 1/25,000 × 25% × $125');
 console.log(`today: Big Hat pays back ${(c0.report.big.payback * 100).toFixed(1)}% (real win ${(c0.report.big.realWin * 100).toFixed(0)}% of pulls)`);
 
 // Refused: anything that drains a pool, locks a game, or is nonsense.
@@ -35,7 +35,9 @@ assert.match(refused('negative symbols', (s) => { s.big.counts.hat = -1; }), /wh
 let s = S(); s.big.jackpotOdds = 10000; s.big.jackpotPct = 0.14; assert.ok(check(s).ok);
 const m = build(s).machine; assert.equal(m.poolJackpotOdds, 1 / 10000);
 const st = { pool: 1750, prepaid: true }; assert.ok(Math.abs(pull(st, m, Math.random, 'JACKPOT').pay - 1750 * 0.14) < 1e-9, 'jackpot % from the settings');
-s = S(); s.prices = { ...s.prices, big: 2 }; const r2 = check(s); assert.ok(r2.ok && r2.report.big.topPrize === 200, 'a $2 pull doubles the prizes in dollars');
+s = S(); s.prices = { ...s.prices, big: 2 }; const back200 = { spin: { ...POOL_RULES, topOffTo: 200 }, slots: POOL_RULES };
+assert.match(check(s).problems.join(' '), /top-off \(\$125\) must cover Big Hat's top prize \(\$200\)/, "a $2 pull's $200 top prize is more than Cody's $125 backing: refused");
+const r2 = check(s, back200); assert.ok(r2.ok && r2.report.big.topPrize === 200, 'a $2 pull doubles the prizes in dollars (with $200 backing)');
 
 // Store items: change a price, add a new colour; new shapes are refused (they need code).
 s = S(); s.store.items = [{ id: 'shirt_coal', slot: 'shirt', name: 'Coal', price: 0.5 }, { id: 'shirt_mint', slot: 'shirt', name: 'Mint', color: 0x98e0c0, price: 0.3 }, { id: 'pants_plum', slot: 'pants', name: 'Plum', color: 0x5a2a55, level: 7 }];
@@ -78,9 +80,9 @@ console.log('OK: settings: version 0 = today exactly; old settings with the remo
   assert.deepEqual(D.stocking.pays, [...BOARD1_PAYS], 'board 1\'s table kept (old turns re-check on it)');
   const r0 = chk(T()); assert.ok(r0.ok, r0.problems.join('; '));
   assert.ok(Math.abs(r0.report.stocking.fixed - 0.72375) < 1e-5 && r0.report.stocking.top === 50, 'the preview: fixed 72.4%, top fixed 50×');
-  assert.ok(Math.abs(r0.report.stocking.payback - paybackAt(500)) < 1e-15 && Math.abs(r0.report.stocking.low - paybackAt(200)) < 1e-15 && Math.abs(r0.report.stocking.high - paybackAt(1025)) < 1e-15, 'with the jackpot at $500 / $200 / $1,025, worked out from the table');
+  assert.ok(Math.abs(r0.report.stocking.payback - paybackAt(125)) < 1e-15 && Math.abs(r0.report.stocking.low - paybackAt(30)) < 1e-15 && Math.abs(r0.report.stocking.high - paybackAt(1025)) < 1e-15, 'with the jackpot at $125 / $30 / $1,025 (Cody 2026-10-05), worked out from the table');
   no('payback over 98%', (s) => { s.stocking2.pays = [0, 1, 4, 8, 16, 30, 50, 100]; }, /Stocking Stuffer would pay back 1\d\d\.\d% with the jackpot at a \$\d+ Game pool/);
-  no('payback under 50%', (s) => { s.stocking2.pays = [0, 0.3, 1, 2, 5, 10, 20, 40]; }, /Stocking Stuffer would pay back 4\d\.\d% with the jackpot at a \$200 Game pool/);
+  no('payback under 50%', (s) => { s.stocking2.pays = [0, 0.3, 1, 2, 5, 10, 20, 40]; }, /Stocking Stuffer would pay back 4\d\.\d% with the jackpot at a \$30 Game pool/); // the lowest pool it plays at: the $30 top-off line (Cody 2026-10-05)
   no('more gifts paying less', (s) => { s.stocking2.pays = [0, 0.5, 1.5, 3, 2, 15, 25, 50]; }, /never pay less/);
   no('missing a prize', (s) => { s.stocking2.pays = [0, 0.5, 1.5, 3, 7, 15, 25]; }, /needs 8 prizes/);
   no('the old 9-prize shape', (s) => { s.stocking2.pays = [...BOARD1_PAYS]; }, /needs 8 prizes/);
@@ -92,7 +94,7 @@ console.log('OK: settings: version 0 = today exactly; old settings with the remo
   no('a $5,000 skim point', () => {}, /Snowball Drop would pay back 10\d\.\d% with the jackpot at a \$5000 Game pool/, { spin: { ...SPIN_RULES, skimAt: 5000 }, slots: POOL_RULES });
   // Cody's pool-rule jackpot override on the Game pool is what every game plays with, so the guard rails and preview use it too
   { const ov = chk(T(), { spin: { ...SPIN_RULES, jackpotPct: 0.1 }, slots: POOL_RULES }); assert.ok(ov.ok);
-    assert.ok(Math.abs(ov.report.drop.payback - (0.76 + 0.1 * 500 / 5000)) < 1e-12 && Math.abs(ov.report.stocking.payback - paybackAt(500, 0.1)) < 1e-15, 'the override % is what the payback uses');
+    assert.ok(Math.abs(ov.report.drop.payback - (0.76 + 0.1 * 125 / 5000)) < 1e-12 && Math.abs(ov.report.stocking.payback - paybackAt(125, 0.1)) < 1e-15, 'the override % is what the payback uses');
     assert.match(ov.report.drop.jackpot, /^10% of the pool/); }
   // an allowed change does what it says: a bigger 3-gift prize raises the payback by exactly its extra × its chance
   const s = T(); s.stocking2.pays[3] = DEFAULT_PAYS[3] + 1; const r = chk(s); assert.ok(r.ok, r.problems.join('; '));

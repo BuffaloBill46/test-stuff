@@ -20,7 +20,7 @@
 // POOL: Stocking Stuffer plays from the shared Game pool (slots.js POOL_RULES). A turn only starts if the pool
 // covers the biggest FIXED prize (50×: $50 on a $1 turn); the top-off ($200 → $500) always does, so turns are never refused
 // for lack of pool. The jackpot is a share of the pool, so it can always be paid.
-import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot, POOL_RULES, topOff } from './slots.js';
+import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot, POOL_RULES, topOff, covers } from './slots.js';
 
 export const BOARD = 2; // results carry it, so "Check this result" re-runs the layout the turn was played on
 export const STOCKINGS = 20, ROW = 10, MAX_OPEN = 8;
@@ -108,7 +108,7 @@ export function play(state, bet, rand = Math.random, forced, pays = PAYS, pct = 
   if (!BETS.includes(bet)) throw new Error('unknown bet ' + bet);
   if (R.paused) return { paused: true, stopped: true };
   const before = topOff(state, R);
-  if (state.pool < topMult(pays) * bet) return { paused: true, topOff: before };
+  if (covers(state, R) < topMult(pays) * bet) return { paused: true, topOff: before };
   if (!state.prepaid) state.pool += bet * IN_PER_DOLLAR; // with runs the entry already reached the pool at purchase
   const o = forced !== undefined ? forcedTurn(bet, forced, pays) : deal(bet, rand, pays);
   let r;
@@ -134,5 +134,5 @@ function forcedTurn(bet, k, pays) {
 export function canPlay(state, bet, pays = PAYS) {
   const R = { ...POOL_RULES, ...(state.rules || {}) };
   if (R.paused) return { ok: false, stopped: true };
-  return { ok: (state.pool < R.topOffBelow ? R.topOffTo : state.pool) >= topMult(pays) * bet };
+  return { ok: covers(state, R) >= topMult(pays) * bet };
 }

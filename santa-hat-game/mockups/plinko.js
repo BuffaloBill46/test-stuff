@@ -17,7 +17,7 @@
 // POOL (Cody, 2026-10-02): Snowball Drop plays from the shared Game pool (slots.js POOL_RULES: starts $500, $25
 // skim at $1,025, top-off below $200, emergency stop). A drop only starts if the pool can cover the biggest FIXED prize (25×);
 // the jackpot is a share of the pool, so it can always be paid.
-import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot, POOL_RULES, topOff } from './slots.js';
+import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot, POOL_RULES, topOff, covers } from './slots.js';
 
 export const BOARD = 3; // results carry it, so "Check this result" re-runs the board the drop was played on
 export const ROWS = 16;
@@ -86,7 +86,7 @@ export function play(state, bet, rand = Math.random, forced, pct = JP.pct) {
   if (!BETS.includes(bet)) throw new Error('unknown bet ' + bet);
   if (R.paused) return { paused: true, stopped: true };
   const before = topOff(state, R);
-  if (state.pool < MAX_MULT * bet) return { paused: true, topOff: before };
+  if (covers(state, R) < MAX_MULT * bet) return { paused: true, topOff: before };
   if (!state.prepaid) state.pool += bet * IN_PER_DOLLAR; // with runs the entry already reached the pool at purchase
   const d = forced ? forcedDrop(bet, forced) : drop(bet, rand);
   let r;
@@ -105,5 +105,5 @@ function forcedDrop(bet, path) { const bin = path.reduce((a, b) => a + b, 0); re
 export function canPlay(state, bet) {
   const R = { ...POOL_RULES, ...(state.rules || {}) };
   if (R.paused) return { ok: false, stopped: true };
-  return { ok: (state.pool < R.topOffBelow ? R.topOffTo : state.pool) >= MAX_MULT * bet };
+  return { ok: covers(state, R) >= MAX_MULT * bet };
 }

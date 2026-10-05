@@ -21,7 +21,7 @@ assert.ok(owed > 0, 'a winning is waiting to be sent');
 const check = async ({ wallet, sol }) => {
   const out = [];
   await createAlerts({ db, telegram: { send: async (x) => { out.push(x); } }, games: ['spin'], walletRaw: async () => wallet,
-    solRaw: async (a) => { if (sol[a] instanceof Error) throw sol[a]; return sol[a]; }, solWallets: { 'Game pool': 'POOLaddr', Lottery: 'LOTaddr' } }).run();
+    solRaw: async (a) => { if (sol[a] instanceof Error) throw sol[a]; return sol[a]; }, solWallets: { 'Game pool': 'POOLaddr', Lottery: { address: 'LOTaddr', low: 0.02 } } }).run();
   await db.query('delete from public.alerts_sent').catch(() => {}); // each case on its own (alerts are sent once)
   return out;
 };
@@ -33,4 +33,8 @@ out = await check({ wallet: owed + 5_000_000, sol: { POOLaddr: 60_000_000, LOTad
 assert.ok(out.some((x) => /LOW SOL: the Game pool wallet has 0\.0600 SOL/.test(x) && x.includes('POOLaddr')), 'Game pool at 0.06 SOL: LOW SOL, with its address ' + out);
 assert.ok(!out.some((x) => /LOW SOL: the Lottery/.test(x)), "a wallet the chain didn't answer for is skipped, not an alarm");
 assert.equal(LOW_SOL, 0.1);
+out = await check({ wallet: owed + 5_000_000, sol: { POOLaddr: 300_000_000, LOTaddr: 30_000_000 } });
+assert.ok(!out.some((x) => /LOW SOL: the Lottery/.test(x)), 'the Lottery at 0.03 SOL: fine (its own level is 0.02: a few prizes a month)');
+out = await check({ wallet: owed + 5_000_000, sol: { POOLaddr: 300_000_000, LOTaddr: 15_000_000 } });
+assert.ok(out.some((x) => /LOW SOL: the Lottery wallet has 0\.0150 SOL \(warning below 0\.02\)/.test(x)), 'under 0.02: warned ' + out);
 console.log(`OK: early warnings: URGENT when the Game pool holds less SANTA than the winnings waiting; LOW SOL under ${LOW_SOL} SOL (with the address); quiet when fine; no false alarm when the chain doesn't answer`);

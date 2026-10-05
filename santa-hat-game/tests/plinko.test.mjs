@@ -60,9 +60,11 @@ for (const [pool, bet] of [[200, 1], [500, 1], [500, 0.1], [1024, 1], [777.77, 0
 { const st = { pool: 500, prepaid: true }, lose = play(st, 1, Math.random, [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
   assert.deepEqual([lose.bin, lose.mult, lose.pay, lose.ahead, !!lose.jackpot], [1, 0, 0, false, false], 'a forced loss pays nothing');
   const win = play(st, 1, Math.random, Array(16).fill(0)); assert.deepEqual([win.bin, win.mult, win.pay], [0, 25, 25], 'a forced 25× pays $25'); }
-// the cover rule: a drop starts only if the pool covers the biggest FIXED prize (25×); the jackpot is a share, always payable
-assert.equal(canPlay({ pool: 24.99, rules: { topOffBelow: 0 } }, 1).ok, false, 'a $1 drop needs $25 (25×) in the pool');
-assert.equal(canPlay({ pool: 25, rules: { topOffBelow: 0 } }, 1).ok, true);
+// the cover rule: a drop starts only if the pool, counting Cody's backing up to topOffTo (slots.js covers; Cody 2026-10-05: "let the
+// games play"), covers the biggest FIXED prize (25×); the jackpot is a share, always payable
+assert.equal(canPlay({ pool: 24.99, rules: { topOffBelow: 0, topOffTo: 0 } }, 1).ok, false, 'with no backing, a $1 drop needs $25 (25×) in the pool');
+assert.equal(canPlay({ pool: 25, rules: { topOffBelow: 0, topOffTo: 0 } }, 1).ok, true);
+assert.equal(canPlay({ pool: 5 }, 1).ok, true, "Cody's rules: his $125 backing covers it, so the game plays");
 // a long run with real random numbers stays close to the payback at that pool (the pool kept at $500 for the test)
 let paid = 0; const N = 400_000; for (let i = 0; i < N; i++) paid += play({ pool: 500, prepaid: true }, 1).pay;
 assert.ok(Math.abs(paid / N - paybackAt(500)) < 0.03, `400k drops paid back ${(paid / N * 100).toFixed(2)}% (exact at a $500 pool ${(paybackAt(500) * 100).toFixed(2)}%)`);
