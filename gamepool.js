@@ -3,7 +3,7 @@
 // It lived in spinui.js, the page code of the retired Santa Hat Spin, until that game was removed (Cody, 2026-10-04: "delete
 // it; if we want a wheel back we'll make a new one"). The pool's saved name stays 'sh_spin_demo', so nobody's demo pool resets;
 // on the server and in the database the pool's key also stays 'spin' (it was the Spin pool before every game shared it).
-import { POOL_RULES } from './slots.js?v=1cebc9f32d';
+import { POOL_RULES } from './slots.js?v=555bd3a989';
 
 const KEY = 'sh_spin_demo';
 const store = { get() { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } }, set(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {} } };
