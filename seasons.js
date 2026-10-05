@@ -14,8 +14,8 @@
 // Matches count only in public Auto matches run by the match server (practice runs in the player's own browser and could be
 // faked); "Log in" counts when the game server reads a signed-in player's season. This file is the ONE place the rules live: the
 // page shows them, the server and database (supabase/039) apply them, tests/db/seasons-db.test.mjs checks they agree.
-import { dayStart, nextReset } from './gameclock.js?v=f20a4ced1b';
-import { zonedTime, WEEKLY_ZONE } from './lottery.js?v=f20a4ced1b';
+import { dayStart, nextReset } from './gameclock.js?v=d0d553f857';
+import { zonedTime, WEEKLY_ZONE } from './lottery.js?v=d0d553f857';
 
 const at9 = (y, m, d) => zonedTime(y, m, d, 21, WEEKLY_ZONE); // 9 PM Indiana on that date
 

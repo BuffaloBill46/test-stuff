@@ -1,9 +1,9 @@
 // Snowball Square match referee. Runs only on the host's browser; everyone else renders its snapshots.
 // Pure game logic, no rendering, so it can be tested headless.
-import { levelInfo } from './levels.js?v=f20a4ced1b';
-import { VARIANTS, VARIANT_IDS } from './weekly.js?v=f20a4ced1b';
-import { SPECIALS, SPECIAL_KINDS, DROP_HIT_RADIUS, cantThrow, costOf } from './specials.js?v=f20a4ced1b';
-import { effectsOf, gearAllowed, resolvePresent, heldWith, gearMask, gearOfMask } from './gear.js?v=f20a4ced1b';
+import { levelInfo } from './levels.js?v=d0d553f857';
+import { VARIANTS, VARIANT_IDS } from './weekly.js?v=d0d553f857';
+import { SPECIALS, SPECIAL_KINDS, DROP_HIT_RADIUS, cantThrow, costOf } from './specials.js?v=d0d553f857';
+import { effectsOf, gearAllowed, resolvePresent, heldWith, gearMask, gearOfMask } from './gear.js?v=d0d553f857';
 // Ball kinds in snapshots (B[9]): 0 normal, 1 ice, 2 split (before it splits), 3 giant, 4 fire, 5 a split piece.
 const BALL_KIND = { '': 0, ice: 1, split: 2, giant: 3, fire: 4, piece: 5 }, DROP_KIND = { sky: 1, rain: 2 };
 export const KIND_OF = ['', 'ice', 'split', 'giant', 'fire', 'piece'], DROP_OF = ['', 'sky', 'rain']; // the page reads snapshots with these
@@ -82,7 +82,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
   }
   // Per-player match counts for the daily tasks (seasons.js; Cody 2026-10-03): only during real play, like points. The match
   // server sends them with an Auto match's finish; they never leave the server in snapshots.
-  function tally(e, key, n = 1) { if (!scoring() || !e || e.bot) return; (e.st ||= { hits: 0, hatSec: 0, steals: 0, catches: 0, specials: 0 })[key] += n; }
+  function tally(e, key, n = 1) { if (!scoring() || !e || e.bot) return; (e.st ||= { hits: 0, hatSec: 0, steals: 0, catches: 0, specials: 0, thrown: 0 })[key] = ((e.st[key] || 0) + n); }
   function addScore(e, p) {
     if (!scoring() || !e) return;
     e.score += p; if (S.mode === 'team') S.team[e.team] += p;
@@ -157,7 +157,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     S.round = 1; S.team = [0, 0]; S.result = null;
     S.mid = Array.from({ length: 4 }, () => Math.floor(rand() * 2 ** 32).toString(16).padStart(8, '0')).join('');
     balance(true);
-    S.ents.forEach((e) => { e.score = 0; e.st = { hits: 0, hatSec: 0, steals: 0, catches: 0, specials: 0 }; wearGear(e); }); // gear (and a Present Box's pick) is set for the whole match here
+    S.ents.forEach((e) => { e.score = 0; e.st = { hits: 0, hatSec: 0, steals: 0, catches: 0, specials: 0, thrown: 0 }; wearGear(e); }); // gear (and a Present Box's pick) is set for the whole match here
     resetRound();
   }
   const go = () => { S.phase = 'play'; S.time = K.ROUND_TIME; ev('round', 1); };
@@ -209,7 +209,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
       const why = cantThrow(kind, { ammo: e.ammo, max: e.max, level: levelOf(e) }); if (why) return no(why);
     }
     let dx = tx - e.x, dz = tz - e.z; const dist = Math.max(1.5, hyp(dx, dz)); const l = hyp(dx, dz) || 1; dx /= l; dz /= l;
-    if (kind) tally(e, 'specials');
+    tally(e, 'thrown'); if (kind) tally(e, 'specials'); // thrown: the end-of-match card's hit % (Cody 2026-10-04)
     e.ammo -= kind ? costOf(kind, e.max) : 1; e.regen = 0; e.cool = e.bot ? 1.1 + rand() * 1.1 : K.HUMAN_COOL; e.throwT = 1; e.face = Math.atan2(dx, dz);
     if (kind === 'sky' || kind === 'rain') return dropsFrom(e, kind, tx, tz);
     const SP = SPECIALS[kind] || {};
@@ -415,6 +415,9 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
       D: S.drops.map((p) => [r2(p.x), r2(p.z), r2(p.t), p.owner, DROP_KIND[p.kind] || 0]), // falling snowballs (Sky Ball, Rain)
       V: S.ev.slice(-10),
       R: S.result ? [S.result.team ?? -2, S.result.top ?? -2, S.result.mvp] : 0,
+      // at the end only: each real player's snowballs thrown and hits, for the results card's hit % (Cody 2026-10-04)
+      // (a page that took over hosting has them as e.aim, from the snapshot it was handed: the same numbers go back out)
+      T: S.phase === 'end' ? S.ents.filter((e) => !e.bot && (e.st?.thrown != null || e.aim)).map((e) => { const a = e.st?.thrown != null ? e.st : e.aim; return [e.id, a.thrown || 0, a.hits || 0]; }) : undefined,
       c: [S.nextId, S.nextBall, S.evId],
       mid: S.mid,
     };
@@ -443,6 +446,7 @@ export function createSim(rand = Math.random, { rulesOf = () => ({}), startOf = 
     S.nextId = Math.max(num(c[0], 1), ...S.ents.map((e) => e.id + 1)); S.nextBall = num(c[1], 1); S.evId = num(c[2]);
     S.ev = Array.isArray(snap.V) ? snap.V.slice() : [];
     S.result = snap.R ? { team: snap.R[0] === -2 ? undefined : snap.R[0], top: snap.R[1] === -2 ? undefined : snap.R[1], mvp: snap.R[2] } : null;
+    for (const t of Array.isArray(snap.T) ? snap.T : []) { const e = S.ents.find((x) => x.id === num(t[0])); if (e) e.aim = { thrown: num(t[1]), hits: num(t[2]) }; }
     return true;
   }
 
