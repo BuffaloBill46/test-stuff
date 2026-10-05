@@ -161,7 +161,14 @@ between two devices has never been tested from here. Cody and friends testing on
 
 ## Where we are right now
 
-### 2026-10-04 (NEWEST): FINAL LAUNCH QA + MATCH POINTS + ALERT FIX (servers live; see LAUNCH_CHECKLIST "Final launch QA")
+### 2026-10-04 (NEWEST): X LINK + SUPPORT (046 live; servers bd7d0e8)
+- Sign-in sheet bottom: @Santahatgame (x.com/Santahatgame) with a Support button beside it (supportui.js). Anyone, signed in
+  or not, demo site too, sends what happened + optional contact; server/support.js keeps it (support_messages, private) and
+  Cody's Telegram alerts bot sends it at once; 5/hour per connection or player. Admin screen: Support messages (open first,
+  Mark handled + note, admin-wallet-signed). Live test: support #1 sent (a labeled test; mark it handled). Replies: by the
+  contact the player gave (no in-game reply yet).
+
+### 2026-10-04: FINAL LAUNCH QA + MATCH POINTS + ALERT FIX (servers live; see LAUNCH_CHECKLIST "Final launch QA")
 - Match points (Cody): knock the hat off 10, catch the flying hat 25 (were 25, 50). sim.js PTS; pop-ups read it. Live.
 - Live devnet QA: live-games-qa.mjs (5 players, Drop/Stocking/Big Hat 1,000 plays each, 30 real payments, 0 errors, payouts
   all sent, pool books = wallet to the unit); live-store-qa.mjs (3 fresh players: all 17 items, levels, lottery, pass: 24/24).
