@@ -18,6 +18,9 @@ r = settleRanked([P('a', 50), P('b', 50), P('c', 10), P('d', 5)]);
 assert.deepEqual(r.points, { a: 16, b: 16, c: 8, d: -5 }, 'a tie for 1st shares 1st + 2nd (24 + 8 = 32 → 16 each)');
 r = settleRanked([P('a', 50), P('b', 20), P('c', 20), P('d', 20), P('e', 1)]);
 assert.deepEqual(r.points, { a: 30, b: 7, c: 7, d: 6, e: -5 }, 'three tied for 2nd share 2nd + 3rd (10 + 10 = 20 → 7, 7, 6)');
+// a real small match always has bots (at least 4 in every match, sim.js MIN_BODIES; Cody asked 2026-10-05): two level 1s + 2 bots
+r = settleRanked([P('a', 90, false, 1), P('b', 80, false, 1), P('x1', 20, true), P('x2', 10, true)]);
+assert.deepEqual([r.pot, r.points], [14, { a: 10, b: 2 }], '2 level 1s + 2 bots: pot 2+2+5+5 = 14, 1st +10, 2nd +2');
 assert.equal(settleRanked([{ id: 'x', score: 1 }, { id: 'y', score: 0 }]).pot, 4, 'no level known = level 1 (2 points)');
 assert.equal(settleRanked([P('a', 1, false, 99), P('b', 0, false, -3)]).pot, 22, 'levels are clamped to 1..10');
 const max = settleRanked(Array.from({ length: 8 }, (_, i) => P('m' + i, 8 - i, false, 10)));

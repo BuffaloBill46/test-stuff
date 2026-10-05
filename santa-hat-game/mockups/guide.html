@@ -282,11 +282,13 @@
     `3 or fewer players: 1st takes the whole pot. 4 or more: 1st ${RULES.split4[0] * 100}%, 2nd ${RULES.split4[1] * 100}%, 3rd ${RULES.split4[2] * 100}%. Not placing costs <b>${-RULES.notPlacing}</b> points.`,
     `Bots play to win and can take paid places. The leaderboard (Ranks) is your total points.`,
   ].map((t) => `<li>${t}</li>`).join('');
-  // worked examples, straight from ranked.js (players finish in the order listed): the pot is 2 per level, 5 per bot (to-do #14)
-  const EX = [['3 players, all level 1', [1, 1, 1]], ['3 players: a level 1 beats two level 10s', [1, 10, 10]], ['3 players: a level 10 beats two level 1s', [10, 1, 1]],
-    ['4 players, all level 5', [5, 5, 5, 5]], ['8 players, all level 5', [5, 5, 5, 5, 5, 5, 5, 5]], ['8 players, all level 10', [10, 10, 10, 10, 10, 10, 10, 10]]];
+  // worked examples, straight from ranked.js (players finish in the order listed; 'bot' = a bot, which adds 5): the pot is 2 per
+  // level, 5 per bot (to-do #14). Every match has at least 4 (sim.js MIN_BODIES: bots fill in), so the examples carry their bots.
+  const EX = [['2 players at level 1, + 2 bots', [1, 1, 'bot', 'bot']], ['A level 1 beats two level 10s, + 1 bot', [1, 10, 10, 'bot']],
+    ['A level 10 beats two level 1s, + 1 bot', [10, 1, 1, 'bot']], ['4 players, all level 5', [5, 5, 5, 5]],
+    ['8 players, all level 5', [5, 5, 5, 5, 5, 5, 5, 5]], ['8 players, all level 10', [10, 10, 10, 10, 10, 10, 10, 10]]];
   $('#rankedEx').innerHTML = head(['Match', 'Pot', '1st', '2nd', '3rd', 'Others'], ['', 'n', 'n', 'n', 'n', 'n']) + '<tbody>' + EX.map(([label, lv]) => {
-    const r = settleRanked(lv.map((level, i) => ({ id: 'p' + i, bot: false, score: 100 - i, level }))), p = lv.map((_, i) => r.points['p' + i]), s = (v) => (v > 0 ? '+' : '') + v;
+    const r = settleRanked(lv.map((level, i) => ({ id: 'p' + i, bot: level === 'bot', score: 100 - i, level }))), p = lv.map((_, i) => r.points['p' + i]), s = (v) => (v === undefined ? 'bot' : (v > 0 ? '+' : '') + v);
     return row([label, r.pot, s(p[0]), s(p[1]), s(p[2]), lv.length > 3 ? s(p[3]) : '—'], ['', 'n', 'n', 'n', 'n', 'n']); }).join('') + '</tbody>';
 
   // Big Hat
