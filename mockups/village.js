@@ -1,7 +1,7 @@
 // Side-scrolling night village shared by Sleigh Night and Hat Chase.
 // The camera stays put; the world scrolls left past the sleigh.
 import { THREE, C, part, build, toon, toonInstanced, setInstance, cottage, pineGeo, character, reindeerGeo, glow, glowMat,
-  skyTexture, stars, aurora, lights, rng } from './kit.js?v=6272e38358';
+  skyTexture, stars, aurora, lights, rng } from './kit.js?v=26d67242a9';
 
 const G = THREE, V3 = THREE.Vector3;
 const HOUSE_SCALE = 1.25;
