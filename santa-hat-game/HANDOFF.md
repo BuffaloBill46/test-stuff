@@ -164,7 +164,13 @@ between two devices has never been tested from here. Cody and friends testing on
 **Naming (Cody, 2026-10-04): the Games tab is now the ARCADE** (nav bar, page heading "Santa Hat Arcade", guide). Code keeps its
 internal names (#tab-games, data-tab="games", the #games link) so links and tests don't break. Docs say Arcade from here.
 
-### 2026-10-05 (NEWEST): TEST SITE LIVE (to-do #11), https://test.santahatgames.com
+### 2026-10-05 (NEWEST): #12 JUPITER + #14 RANKED BY LEVEL (servers 009ca32; both sites published)
+- #12: pay.js viaJupiter: api.jup.ag first, lite-api.jup.ag as the backup (429 → short wait → other; down → other at once);
+  market.js liveSolPrice the same. No key: a few asks per few seconds per connection; a paid key would lift it. tests/jupiter.
+- #14: ranked.js stake = 2 × saved level (bot 5); referee passes me.l (database). Max change 96 (DB allows 100).
+- To-do list "Now" is done. Next: Cody funds the wallets → GO (LAUNCH_CHECKLIST, incl. the test site's own devnet server).
+
+### 2026-10-05: TEST SITE LIVE (to-do #11), https://test.santahatgames.com
 - DNS: Cody added A record test → 147.182.219.161 at GoDaddy (Claude's DNS edits are blocked by Claude Code's safety rules).
 - Droplet Caddy: test.santahatgames.com serves /var/www/santa-test; /api goes to the game server 127.0.0.1:8082 (devnet now);
   noindex header + robots.txt. Publish: `bash deploy-test.sh` (same checks/build as deploy-pages.sh, swapped in at once).
