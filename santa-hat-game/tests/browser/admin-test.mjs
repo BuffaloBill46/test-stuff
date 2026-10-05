@@ -11,7 +11,7 @@ const { createAdmin, b58encode } = await import('../../server/admin.js');
 const ROOT = new URL('../../mockups', import.meta.url).pathname, fails = [], check = (ok, m) => { if (!ok) fails.push(m); };
 
 const db = await makeDb([...FILES, '010_levels.sql', '011_lottery.sql']); // + levels and the lottery (manual payouts panel)
-await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', 58823529411, '{}'), ('slots', 588235294117, '{}')`);
+await db.query(`insert into public.pools (game, santa_raw, rules) values ('spin', 58823529411, '{"topOffTo": 250}'), ('slots', 588235294117, '{}')`); // backed to $250: the $2 Big Hat below has a $200 top prize (the $125 default refuses it)
 await db.query(`insert into public.pool_transfers (game, kind, amount_raw, status) values ('slots', 'top-off', 411764705882, 'needs_approval')`);
 // A frozen payout (an impossible $5,000 from one $1 pull: a fault, never a real win), so the screen must show it with Release.
 const holly = await db.player('HoLLYwa11et11111111111111111111111111111111', 'Holly');
@@ -77,17 +77,17 @@ check((await rules()).paused === false, 'Resume');
 check((await db.query('select count(*)::int as n from public.pool_log'))[0].n === 4, 'four signed changes in the public log (stop, the jackpot %, back to 25%, resume)');
 // Game settings editor: the preview updates; an unsafe change can't be published; a safe one is signed and saved; a new item.
 await p.waitForFunction(() => /pays back/.test(document.querySelector('#gsPreview').textContent), null, { timeout: 15000 });
-// payback is fixed prizes + the pool jackpot at the Game pool's $500 start, with the $200 and $1,025 ends (Cody, 2026-10-02)
+// payback is fixed prizes + the pool jackpot at the Game pool's $125 start, with the $30 and $1,025 ends (Cody, 2026-10-02; numbers 2026-10-05)
 { const pv0 = (await p.textContent('#gsPreview')).replace(/\s+/g, ' ');
-  check(!/Spin/.test(pv0) && /Big Hat pays back 78\.6% \(fixed prizes 78\.1% \+ the pool jackpot at the \$500 start; 78\.3% at \$200, 79\.1% at \$1,025\)/.test(pv0), 'preview shows today\'s payback with the jackpot: ' + pv0.slice(0, 220));
-  check(/Snowball Drop pays back 78\.5% \(fixed prizes 76\.0% \+ the pool jackpot at the \$500 start; 77\.0% at \$200, 81\.1% at \$1,025\)/.test(pv0) && /top fixed prize 25×/.test(pv0), 'preview shows Snowball Drop\'s payback with its jackpot: ' + (pv0.match(/Snowball Drop pays back[^;]*/) || [''])[0]);
+  check(!/Spin/.test(pv0) && /Big Hat pays back 78\.2% \(fixed prizes 78\.1% \+ the pool jackpot at the \$125 start; 78\.1% at \$30, 79\.1% at \$1,025\)/.test(pv0), 'preview shows today\'s payback with the jackpot: ' + pv0.slice(0, 220));
+  check(/Snowball Drop pays back 76\.6% \(fixed prizes 76\.0% \+ the pool jackpot at the \$125 start; 76\.1% at \$30, 81\.1% at \$1,025\)/.test(pv0) && /top fixed prize 25×/.test(pv0), 'preview shows Snowball Drop\'s payback with its jackpot: ' + (pv0.match(/Snowball Drop pays back[^;]*/) || [''])[0]);
   // Stocking Stuffer's pay table (board 2, 2026-10-02): the preview shows its payback; a top fixed prize the Game pool's top-off can't cover is refused
-  check(/Stocking Stuffer pays back 73\.3% \(fixed prizes 72\.4% \+ the pool jackpot at the \$500 start; 72\.7% at \$200, 74\.2% at \$1,025\)/.test(pv0) && /top fixed prize 50×/.test(pv0), 'preview shows Stocking Stuffer\'s 73.3% (72.4% fixed) and 50×: ' + (pv0.match(/Stocking Stuffer pays back[^;]*/) || [''])[0]);
+  check(/Stocking Stuffer pays back 72\.6% \(fixed prizes 72\.4% \+ the pool jackpot at the \$125 start; 72\.4% at \$30, 74\.2% at \$1,025\)/.test(pv0) && /top fixed prize 50×/.test(pv0), 'preview shows Stocking Stuffer\'s 72.6% (72.4% fixed) and 50×: ' + (pv0.match(/Stocking Stuffer pays back[^;]*/) || [''])[0]);
   check(await p.evaluate(() => document.querySelector('[data-gs="drop.jackpotPct"]')?.value === '0.25' && document.querySelector('[data-gs="stock2.jackpotPct"]')?.value === '0.25' && !document.querySelector('[data-gs="stock.8"]')), 'the editor has both jackpot %s and 8 Stocking prizes (0–7 gifts; 8 = the jackpot)'); }
 await p.fill('[data-gs="stock.7"]', '600'); await p.waitForTimeout(700);
 check(await p.evaluate(() => document.querySelector('#gsSave').disabled) && /must cover Stocking Stuffer's top fixed prize \(\$600\)/.test(await p.textContent('#gsPreview')), 'a 600× Stocking Stuffer top prize (more than the Game pool\'s top-off covers) can\'t be published');
 await p.fill('[data-gs="stock.7"]', '50'); await p.fill('[data-gs="stock.1"]', '0.6'); await p.waitForTimeout(700);
-check(/Stocking Stuffer pays back 75\.9% \(fixed prizes 75\.0%/.test(await p.textContent('#gsPreview')), 'a 0.6× one-gift prize previews 75.9% (75.0% fixed): ' + (await p.textContent('#gsPreview')).match(/Stocking Stuffer[^;]*/)?.[0]);
+check(/Stocking Stuffer pays back 75\.2% \(fixed prizes 75\.0%/.test(await p.textContent('#gsPreview')), 'a 0.6× one-gift prize previews 75.2% (75.0% fixed): ' + (await p.textContent('#gsPreview')).match(/Stocking Stuffer[^;]*/)?.[0]);
 // (Santa Hat Spin's wheel editor was removed with the game, 2026-10-04: an unsafe Big Hat change shows the guard rail instead)
 const hb = await p.inputValue('[data-gs="big.hatBonus"]'); await p.fill('[data-gs="big.hatBonus"]', '0.5'); await p.waitForTimeout(700);
 check(await p.evaluate(() => document.querySelector('#gsSave').disabled) && /Big Hat would pay back/.test(await p.textContent('#gsPreview')), 'a Big Hat paying back too much can\'t be published');
