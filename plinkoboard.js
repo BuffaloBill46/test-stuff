@@ -1,7 +1,7 @@
 // Snowball Drop board (canvas): the hat, the pegs, the presents and their prizes, snowballs hopping along a path the RULES
 // already decided (plinko.js / the fair draw). Used by the Games tab (dropui.js) and the preview page (plinko-page.js).
 // createBoard(canvas) → { launch(path, bin) → Promise (resolves when that snowball lands), setActive(on), hurry(), flying() }
-import { ROWS, BINS, PAYS, WIDTHS, JACKPOT_BIN } from './plinko.js?v=1bfe9c1383';
+import { ROWS, BINS, PAYS, WIDTHS, JACKPOT_BIN } from './plinko.js?v=6272e38358';
 
 // Board 2 (2026-10-02): 16 rows of pegs over 17 presents. Presents are drawn a little narrower the rarer they are (plinko.js
 // WIDTHS: similar sizes, Cody), spread over the same width as the bottom row of pegs.

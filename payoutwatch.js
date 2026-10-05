@@ -3,7 +3,7 @@
 // quietly ('my-payouts', server/games.js waiting: my Arcade winnings unsent after 3 minutes, or whose send failed twice) when it
 // loads and every 3 minutes while it's open. Nothing shows unless one is waiting; then a pop-up says so, once per payout, with a
 // "Send a ticket" button that opens Support already filled in. The winnings keep retrying on the server either way.
-import { call, SERVER } from './gameserver.js?v=1bfe9c1383';
+import { call, SERVER } from './gameserver.js?v=6272e38358';
 
 const CHECK_MS = 180_000, SEEN = 'santa.payoutsSeen';
 const NAMES = { drop: 'Snowball Drop', big: 'Big Hat', stocking: 'Stocking Stuffer', spin: 'Big Hat' };
