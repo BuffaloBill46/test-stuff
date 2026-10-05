@@ -37,7 +37,7 @@ const env = (k, d = '') => process.env[k] || d;
 if (!env('DATABASE_URL')) { console.error('games: DATABASE_URL is not set'); process.exit(2); }
 // One long-lived connection pool; a connection must answer quickly before it carries work (the same rule as the Edge Function:
 // only a harmless "select 1" is ever retried, real work never runs twice).
-const newClient = () => postgres(env('DATABASE_URL'), { prepare: false, max: 4, connect_timeout: 10, ...JSONB });
+const newClient = () => postgres(env('DATABASE_URL'), { prepare: false, max: 8, connect_timeout: 10, ...JSONB } /* 8 (was 4): the 50-player load test, 2026-10-05; the database allows 60 */);
 let sql = newClient(), answeredAt = 0;
 async function ready() {
   if (Date.now() - answeredAt < 30_000) return sql;

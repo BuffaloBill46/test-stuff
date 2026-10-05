@@ -103,18 +103,28 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     if (!isKind(kind)) return { error: 'unknown game' };
     if (retired.includes(kind)) return { error: 'that game has been retired' };
     if (!isRunSize(n)) return { error: `buy 1 to ${MAX_RUN} plays` };
-    const payer = await walletOf(profile);
+    // SPEED (50-player load test, 2026-10-05: ~12 ms a database trip): everything a quote checks, read in ONE trip, in the same order
+    // as before: the linked wallet, quotes this hour, unfinished and stuck plays, and the pool (its books, rules, and what it really
+    // holds: the books minus top-offs not yet deposited, the $30 floor's measure, poolHoldsRaw)
+    const st = await row(`select (select wallet from public.profiles where id = $1) as wallet,
+        (select count(*)::int from public.quotes where profile_id = $1 and created_at > now() - interval '1 hour') as recent,
+        (select count(*)::int from public.plays where profile_id = $1 and state in ('spent', 'open')) as unfinished,
+        (select count(*)::int from public.plays where profile_id = $1 and state in ('spent', 'open') and coalesce(opened_at, spent_at) < now() - interval '60 seconds') as stuck,
+        p.santa_raw, p.rules, p.game,
+        p.santa_raw - coalesce((select sum(t.amount_raw) from public.pool_transfers t where t.game = p.game and t.kind = 'top-off' and t.status <> 'sent'), 0) as holds
+      from (select 1) one left join public.pools p on p.game = $2`, [profile, KINDS[kind].game]);
+    const payer = st?.wallet;
     if (!payer) return { error: 'playing for SANTA needs a linked wallet (winnings are sent to it)' };
-    const recent = (await row(`select count(*)::int as n from public.quotes where profile_id = $1 and created_at > now() - interval '1 hour'`, [profile])).n;
-    if (recent >= QUOTES_PER_HOUR) return { error: 'too many price quotes; try again in a little while' };
+    if (st.recent >= QUOTES_PER_HOUR) return { error: 'too many price quotes; try again in a little while' };
     const cfg = await cfgFor(await settingsVersion());
     if (!sizesFor(kind, cfg).some((x) => near(x, bet))) return { error: 'unknown size' };
-    await tidy(profile);
-    if ((await row(`select count(*)::int as n from public.plays where profile_id = $1 and state in ('spent', 'open')`, [profile])).n) return { busy: true };
-    const price = await livePrice(), p = await row('select * from public.pools where game = $1', [KINDS[kind].game]);
+    if (st.stuck) await tidy(profile); // only when something is actually stuck (then re-count)
+    const unfinished = st.stuck ? (await row(`select count(*)::int as n from public.plays where profile_id = $1 and state in ('spent', 'open')`, [profile])).n : st.unfinished;
+    if (unfinished) return { busy: true };
+    const price = await livePrice(), p = st.game ? st : await row('select * from public.pools where game = $1', [KINDS[kind].game]);
     const can = canTake(kind, poolState(p, price.usd), bet, cfg);
     if (!can.ok) return { refused: true, stopped: !!can.stopped };
-    const holds = await poolHoldsRaw(db.query, KINDS[kind].game);
+    const holds = st.game ? (st.holds === null ? null : Number(st.holds)) : await poolHoldsRaw(db.query, KINDS[kind].game);
     if (holds !== null && (holds / DEC) * price.usd < MIN_POOL_USD) return { refused: true, low: true }; // the $30 floor (above)
     // (A waiting top-off no longer stops new runs. Cody, 2026-10-03: "a game that stops working all the time is bad and I don't
     // have the funds to create a big cushion". The top-off is booked when due; the alert (server/alerts.js "needs a TOP-OFF")
@@ -151,13 +161,19 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
     try { runId = +(await row('select public.buy_run($1, $2, $3, $4, $5, $6) as id', [q.id, signature, v.paid, v.burned, v.arrived, await settingsVersion()])).id; }
     catch (e) { return { error: /duplicate key|already used/.test(e.message) ? 'payment already used' : e.message }; }
     // ONLY NOW, after the payment is confirmed and recorded: a fresh secret per play, its fingerprint locked and returned.
-    const plays = [];
-    for (const pl of await db.query(`select id from public.plays where run_id = $1 order by play_no`, [runId])) {
-      try {
-        const secret = f.newSeed(), commit = await f.fingerprint(secret);
-        await db.query('select public.lock_play($1, $2, $3)', [pl.id, commit, secret]);
-        plays.push({ ticket: String(pl.id), commit });
-      } catch (e) { await refundPlay(db, pl.id, +q.bet, +q.price_usd); }
+    // every play's secret made here and locked in ONE database trip (50-player load test, 2026-10-05: one trip per play was up to
+    // 100 trips of ~12 ms per run); if that fails, play by play as before, and a play that still can't lock is refunded
+    let plays = [];
+    const ids = (await db.query(`select id from public.plays where run_id = $1 order by play_no`, [runId])).map((x) => x.id);
+    const made = await Promise.all(ids.map(async (id) => { const secret = f.newSeed(); return { id, secret, commit: await f.fingerprint(secret) }; }));
+    try {
+      await db.query('select public.lock_play(x.id, x.c, x.s) from unnest($1::bigint[], $2::text[], $3::text[]) as x(id, c, s)', [made.map((m) => m.id), made.map((m) => m.commit), made.map((m) => m.secret)]);
+      plays = made.map((m) => ({ ticket: String(m.id), commit: m.commit }));
+    } catch {
+      for (const m of made) {
+        try { await db.query('select public.lock_play($1, $2, $3)', [m.id, m.commit, m.secret]); plays.push({ ticket: String(m.id), commit: m.commit }); }
+        catch (e) { await refundPlay(db, m.id, +q.bet, +q.price_usd); }
+      }
     }
     const done = plays.length < +q.n ? await finishRun(db, runId, wallet) : null; // a play couldn't start: maybe the run is already done
     return { ok: true, kind: q.kind, run: String(runId), n: +q.n, bet: +q.bet, plays, ...(done ? sentOf(done) : {}) };
@@ -206,27 +222,37 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
   async function settle(profile, ticket, playerSeed) {
     if (!/^[0-9a-f]{8,64}$/.test(playerSeed || '')) return { error: 'bad player number' };
     if (!isTicket(ticket)) return { error: 'no open play with that ticket' };
-    const wallet = await walletOf(profile);
     return db.tx(async (t) => {
       const one = async (q, p) => (await t.query(q, p))[0];
-      const pl = await one(`select * from public.plays where id = $1 and profile_id = $2 and state = 'open' for update`, [ticket, profile]);
+      // the play, its run's locked price and the player's wallet in ONE trip (50-player load test, 2026-10-05)
+      const pl = await one(`select pl.*, q.price_usd as run_price, (select wallet from public.profiles where id = $2) as wallet
+        from public.plays pl left join public.runs r on r.id = pl.run_id left join public.payments pa on pa.signature = r.signature left join public.quotes q on q.id = pa.quote_id
+        where pl.id = $1 and pl.profile_id = $2 and pl.state = 'open' for update of pl`, [ticket, profile]);
       if (!pl) return { error: 'no open play with that ticket' };
+      const wallet = pl.wallet;
       // THE RUN'S LOCKED PRICE (Cody, 2026-10-01: "the Santa price is locked at start of each run and that is what the payout price
       // is converted with"): every play of a run turns dollars into SANTA at the price its quote locked, the price the player paid
       // at, never the live price at the moment the play settles. So a run's winnings, refunds, skims and top-offs all use one
       // price however long the run takes. (Prizes that are a share of the pool, like the Pool jackpot, pay the same SANTA at any
       // price.) It also means a play never fails because the live price feed is down.
-      const price = await quotePrice(t, pl.run_id);
+      const price = +pl.run_price;
       // after the result: if this was the run's last play, its ONE payout is queued (sent automatically, Cody)
       const withRun = async (o) => { const sent = await finishRun(t, pl.run_id, wallet); return sent === null ? o : { ...o, runDone: true, ...sentOf(sent) }; };
       const K = KINDS[pl.kind];
+      // SPEED (50-player load test, 2026-10-05): every play holds the ONE Game pool while it settles, so whatever doesn't need the
+      // pool happens BEFORE it's locked: the play's numbers (its secret + the player's number) and its settings.
+      let rand, cfg, early = null;
+      try {
+        rand = fair.randFrom(await f.numbers(pl.secret, playerSeed, +pl.play_no, NUMS));        // 4. the player's number goes in
+        cfg = await cfgFor(+pl.settings_version);                                                 // the play's own settings
+      } catch (e) { early = e; }
       const p = await one('select * from public.pools where game = $1 for update', [K.game]);    // lock the pool: plays settle one at a time
       let r, state;
       try {
+        if (early) throw early;
         if (!(price > 0)) throw new Error('this run has no locked price');
         state = poolState(p, price);
-        const rand = fair.randFrom(await f.numbers(pl.secret, playerSeed, +pl.play_no, NUMS));  // 4. the player's number goes in
-        const cfg = await cfgFor(+pl.settings_version), bet = +pl.bet;                         // the play's own settings and price
+        const bet = +pl.bet;                                                                     // the play's price
         r = pl.kind === 'drop' ? dropPlay(state, bet, rand, undefined, cfg.drop.jackpotPct) : pl.kind === 'stocking' ? stockPlay(state, bet, rand, undefined, cfg.stocking2.pays, cfg.stocking2.jackpotPct) : pull(state, { ...cfg.machine, bet }, rand);
       } catch (e) { await refundPlay(t, pl.id, +pl.bet, price); return withRun({ failed: true, why: e.message, refunded: +pl.bet }); }
       if (r.paused) { await refundPlay(t, pl.id, +pl.bet, price); return withRun({ refused: true, stopped: !!r.stopped, refunded: +pl.bet }); }
@@ -237,9 +263,13 @@ export function createGameServer({ db, chain, livePrice, liveFee, poolWallets, f
       // a pool jackpot records the Game pool at that moment and its %, so it re-checks (and the payout cap re-works it) exactly
       const jp = r.jackpot ? { jackpot: true, pool: r.jackpotPool, pct: r.pct } : {};
       const result = pl.kind === 'drop' ? { path: r.path, bin: r.bin, mult: r.mult, board: r.board, ...jp } : pl.kind === 'stocking' ? { opened: r.opened, found: r.found, coal: r.coal, mult: r.mult, board: r.board, ...jp } : { stops: r.stops, jackpot: r.jackpot, wins: r.wins.length, hats: r.hats, ...jp };
-      await t.query('select public.settle_play($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',  // skims/top-offs queued as real transfers
-        [pl.id, playerSeed, JSON.stringify(result), Math.round(r.pay * 100) / 100, payRaw, price, poolDelta, treasuryDelta, wallet, 0, skimRaw, topRaw]);
-      return withRun({ r, payRaw, poolDelta, price, poolUsd: state.pool, proof: { kind: pl.kind, bet: +pl.bet, commit: pl.commit, secret: pl.secret, playerSeed, playNo: +pl.play_no, settingsVersion: +pl.settings_version, ...proofExtras(pl.kind, r) } });  // revealed
+      // ...and in the SAME trip: how many of this run's OTHER plays are still unfinished (plays of one run settle one at a time on the
+      // pool lock, so this sees them all). Only the run's last play does the run's payout work (finishRun): one database trip per
+      // play instead of four, while the pool is held (each trip is ~12 ms to the database).
+      const left = +(await t.query(`select public.settle_play($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12),  -- skims/top-offs queued as real transfers
+          (select count(*)::int from public.plays where run_id = $13 and id <> $1 and state in ('spent', 'open')) as left`,
+        [pl.id, playerSeed, JSON.stringify(result), Math.round(r.pay * 100) / 100, payRaw, price, poolDelta, treasuryDelta, wallet, 0, skimRaw, topRaw, pl.run_id]))[0].left;
+      return (left > 0 ? (o) => o : withRun)({ r, payRaw, poolDelta, price, poolUsd: state.pool, proof: { kind: pl.kind, bet: +pl.bet, commit: pl.commit, secret: pl.secret, playerSeed, playNo: +pl.play_no, settingsVersion: +pl.settings_version, ...proofExtras(pl.kind, r) } });  // revealed
     });
   }
   const quotePrice = async (t, runId) => +(await t.query(`select q.price_usd from public.runs r join public.payments pa on pa.signature = r.signature
