@@ -5,11 +5,11 @@ a time, and ticks each off only when it is **built, tested, live and noted**. Ne
 them. Last updated: 2026-10-04.
 
 ## Now (in this order)
-1. [ ] **Publish-list test** — a test that fails if any file a page loads isn't in the publish list. (The publish script already
+1. [x] **Publish-list test** — a test that fails if any file a page loads isn't in the publish list. (The publish script already
    refuses to publish a missing file, checked 2026-10-04; this makes it a test the automatic runs check too.)
-2. [ ] **Tests run automatically on every change** (GitHub Actions: the unit and database tests on every push).
-3. [ ] **Hear about errors players hit** — the page reports its errors to the game server; a list on the admin screen.
-4. [ ] **Mini games: "Play at your own risk"** at the top of the Arcade page.
+2. [x] **Tests run automatically on every change** (GitHub Actions: the unit and database tests on every push).
+3. [x] **Hear about errors players hit** — the page reports its errors to the game server; a list on the admin screen.
+4. [x] **Mini games: "Play at your own risk"** at the top of the Arcade page.
 5. [ ] **End of match: snowballs thrown, hit, and hit %** on the results card.
 6. [ ] **Player Progress + Ranked board: thrown / hit / % / SANTA spent / SANTA won.** (Flag for Cody: spent/won on the PUBLIC
    ranked board shows everyone's money; Progress is private. Building it as asked; easy to hide later.)

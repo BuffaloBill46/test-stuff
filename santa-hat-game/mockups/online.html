@@ -453,6 +453,9 @@ p.taxnote { margin: 12px 0 0; line-height: 1.6; font-size: 16px; color: #e8ecf7;
 p.taxnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; font: 700 11px/1 var(--digits); color: var(--ink); background: var(--lamp); border: 2px solid var(--ink); padding: 5px 7px; text-transform: uppercase; }
 .lottery p.taxnote { flex-basis: 100%; order: 3; margin: 0; }
 /* Test version notice (Cody 2026-10-01: people are testing already; nothing paid is ready). Same tag + sentence as the tax note. */
+/* the Arcade's first line: Play at your own risk (Cody 2026-10-04) */
+.riskbar { margin: 0 0 12px; padding: 8px 14px; background: var(--hat-dark); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); text-align: center; }
+.riskbar b { font: 800 22px/1.1 var(--display); color: var(--brim); letter-spacing: .5px; text-shadow: 2px 2px 0 var(--ink); }
 p.testnote { margin: 12px 0 0; line-height: 1.6; font-size: 16px; color: #fff; max-width: 56ch; text-shadow: 1px 1px 0 var(--ink), 0 0 6px var(--ink); }
 p.testnote b { display: inline-block; margin-right: 8px; vertical-align: 1px; font: 700 11px/1 var(--digits); color: #fff; background: var(--hat); border: 2px solid var(--ink); padding: 5px 7px; text-transform: uppercase; }
 .slotshead { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; margin-bottom: 14px; }
@@ -1114,6 +1117,8 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
   </section>
 
   <section id="tab-games" class="page" role="tabpanel" aria-labelledby="t-games" hidden>
+    <!-- the first thing on the Arcade (Cody, 2026-10-04: "just put Play At Your Own Risk at the top") -->
+    <p class="riskbar" role="note"><b>Play at your own risk</b></p>
     <!-- The money strip (Cody, 2026-10-03; moneystrip.js): where every entry's SANTA goes, with the live pool and jackpots -->
     <section class="moneystrip plaque" aria-label="Where your SANTA goes">
       <div class="ms burn"><b data-share="games.burn">10%</b><span>of every entry <em>burned forever</em></span></div>
