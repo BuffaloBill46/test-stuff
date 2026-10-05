@@ -8,12 +8,12 @@
 // Runs, not stored credits (Cody, 2026-10-01): a run of 1, 5 or 10 plays is played straight away; nothing is left over.
 // DEMO: this runs in the browser. For real money the same steps run on the server and the secret never reaches the page
 // before step 4. `steps` records the order for the tests.
-import { KINDS, buyRun, credit, payRun } from './credits.js?v=6b06fd46df';
-import { pull, MACHINES, poolJackpot } from './slots.js?v=6b06fd46df';
-import { play as dropPlay, outcome as dropOutcome, BOARD as DROP_BOARD, JP as DROP_JP } from './plinko.js?v=6b06fd46df';
-import { play as stockPlay, outcome as stockOutcome, PAYS as STOCK_LIVE, BOARD1_PAYS, BOARD as STOCK_BOARD, JP as STOCK_JP } from './stocking.js?v=6b06fd46df';
-import * as fair from './fair.js?v=6b06fd46df';
-import { randFrom } from './fair.js?v=6b06fd46df';
+import { KINDS, buyRun, credit, payRun } from './credits.js?v=9fcd4d2d68';
+import { pull, MACHINES, poolJackpot } from './slots.js?v=9fcd4d2d68';
+import { play as dropPlay, outcome as dropOutcome, BOARD as DROP_BOARD, JP as DROP_JP } from './plinko.js?v=9fcd4d2d68';
+import { play as stockPlay, outcome as stockOutcome, PAYS as STOCK_LIVE, BOARD1_PAYS, BOARD as STOCK_BOARD, JP as STOCK_JP } from './stocking.js?v=9fcd4d2d68';
+import * as fair from './fair.js?v=9fcd4d2d68';
+import { randFrom } from './fair.js?v=9fcd4d2d68';
 
 export const NUMS = 38; // numbers drawn per play (Slots uses 6: the jackpot draw + 5 reel stops;
                          // Snowball Drop board 2: 17 = the present + one per row of pegs; board 1 used 8; Stocking Stuffer 38 =

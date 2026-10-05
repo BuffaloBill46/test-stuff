@@ -3,8 +3,8 @@
 // the sign-in sheet) opens a pop-up with the steps: a wallet, SOL into it, SOL swapped for SANTA. The pop-up is also reachable
 // as #get-santa (a link anyone can share); #support opens the Support form on the game page (the guide's Support link uses it).
 // Paying with SOL directly is only mentioned once the game says it takes SOL (online.js calls setSolPay on mainnet).
-import { BUILD } from './buildcheck.js?v=6b06fd46df';
-import { MINT } from './market.js?v=6b06fd46df';
+import { BUILD } from './buildcheck.js?v=9fcd4d2d68';
+import { MINT } from './market.js?v=9fcd4d2d68';
 
 export const VERSION = '1.0';          // the release players see; raise it for a real release (the build id changes every publish)
 export const YEAR = 2026;
@@ -88,11 +88,12 @@ function dialog() {
 
 export function openGetSanta() { const d = dialog(); setSolPay(solPay); showFee(); if (d.showModal) { if (!d.open) d.showModal(); } else d.setAttribute('open', ''); }
 
-// the coin's transfer tax, read live (never assumed: the token's team can change it; market.js liveFee)
-async function showFee() {
-  const n = dlg?.querySelector('[data-gs-fee]'); if (!n || n.dataset.done) return;
-  try { const { liveFee } = await import('./market.js?v=6b06fd46df'); const f = await liveFee(); if (f?.bps >= 0) { n.textContent = (f.bps / 100) + '% right now'; n.dataset.done = '1'; } } catch {}
-}
+// the coin's transfer tax: never assumed (the token's team can change it). The game server reads it from Solana (its 'market'
+// answer; a browser on our site can't ask Solana's public node, it answers 403) and online.js passes it on, on mainnet only (on the
+// test network the tax is the test coin's, not real SANTA's). Until then: "set by the coin's team".
+let fee = null;
+export function setCoinFee(f) { fee = f?.bps >= 0 ? f : null; showFee(); }
+function showFee() { const n = dlg?.querySelector('[data-gs-fee]'); if (n && fee) n.textContent = (fee.bps / 100) + '% right now'; }
 
 // the game takes SOL directly (mainnet only): mention it in the pop-up
 let solPay = false;
