@@ -50,7 +50,7 @@ await ctx.route('**/*', async (route) => {
   if (url.includes('cdn.jsdelivr.net/npm/three@')) return route.fulfill({ body: readFileSync(path.resolve('node_modules/three/build', url.split('/build/')[1])), contentType: 'text/javascript' });
   if (/cdn\.jsdelivr\.net\/npm\/|fonts\.googleapis|fonts\.gstatic/.test(url)) { try { return route.fulfill({ body: fetchCurl(url), contentType: url.includes('googleapis') ? 'text/css' : url.includes('gstatic') ? 'font/woff2' : 'text/javascript' }); } catch { return route.abort(); } }
   if (/solana-rpc\.publicnode\.com/.test(url)) return route.abort(); // as on a home network that blocks it: the page must read Solana through the game server
-  if (/lite-api\.jup\.ag|api\.mainnet-beta\.solana\.com/.test(url)) return route.continue(); // the real thing
+  if (/(lite-)?api\.jup\.ag|api\.mainnet-beta\.solana\.com/.test(url)) return route.continue(); // the real thing
   if (url.startsWith('https://local.test/')) { const f = path.join(ROOT, url.replace('https://local.test/', '').split('#')[0].split('?')[0]); if (!existsSync(f)) return route.fulfill({ status: 404, body: 'nf' });
     return route.fulfill({ body: readFileSync(f), contentType: f.endsWith('.js') ? 'text/javascript' : f.endsWith('.png') ? 'image/png' : 'text/html' }); }
   return route.abort();

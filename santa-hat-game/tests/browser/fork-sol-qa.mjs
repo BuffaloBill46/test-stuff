@@ -29,7 +29,7 @@ const { purchaseMessage } = await import('../../mockups/pay.js');
 
 const RUNS = +(process.argv[2] || 10), FORK = 'http://127.0.0.1:8899', PORT = 8796, OUT = './out/forksol/'; mkdirSync(OUT, { recursive: true });
 const ROOT = new URL('../../mockups', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'), fails = [], check = (ok, m) => { m = hide(m); console.log((ok ? '  ✓ ' : '  ✗ ') + m); if (!ok) fails.push(m); };
-const rpc = kit.createSolanaRpc(FORK), JUP = 'https://lite-api.jup.ag/swap/v1', WSOL = 'So11111111111111111111111111111111111111112';
+const rpc = kit.createSolanaRpc(FORK), JUP = 'https://api.jup.ag/swap/v1', WSOL = 'So11111111111111111111111111111111111111112';
 // Errors are passed on with any connection address cut out (2026-10-04: an error from the copy printed the Helius address, which
 // holds Cody's key, into a log; LESSONS). The copy fetches mainnet accounts on demand; if that fetch fails for a moment, ask again.
 const hide = (m) => String(m).replace(/https?:\/\/[^\s"')]+/g, '<a server address>');
@@ -131,7 +131,7 @@ const browser = await chromium.launch({ channel: 'chrome', args: ['--ignore-gpu-
 async function open(n, payWith) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } }), errors = [];
   await ctx.route('**/*', async (route) => { const url = route.request().url();
-    if (url.startsWith(`http://localhost:${PORT}/`) || /lite-api\.jup\.ag/.test(url)) return route.continue();
+    if (url.startsWith(`http://localhost:${PORT}/`) || /(lite-)?api\.jup\.ag/.test(url)) return route.continue();
     if (/solana-rpc\.publicnode\.com/.test(url)) { // the page's Solana reads and sends go to the COPY of mainnet
       const r = await fetch(FORK, { method: 'POST', headers: { 'content-type': 'application/json' }, body: route.request().postData() });
       return route.fulfill({ status: r.status, contentType: 'application/json', body: await r.text(), headers: { 'access-control-allow-origin': '*' } }); }

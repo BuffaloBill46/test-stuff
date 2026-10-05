@@ -22,7 +22,7 @@ them. Last updated: 2026-10-04.
 11. [x] **Staging site** at test.santahatgames.com (test money, changes go there first); santahatgames.com stays the main site.
     Done 2026-10-05: Cody added the DNS record (test → the Droplet); `bash deploy-test.sh` publishes there; it plays through the
     TEST game server (devnet) and shows a TEST SITE strip. At GO the test site needs its own devnet game server (LAUNCH_CHECKLIST).
-12. [ ] **Jupiter fix** — SOL payments use Jupiter's new address with the old one as a backup, and retry when busy (the free
+12. [x] **Jupiter fix** — SOL payments use Jupiter's new address with the old one as a backup, and retry when busy (the free
     address is being retired; found 2026-10-04).
 
 13. [x] **"Max paid to level 5"** under the Buy level button in Player Progress (Cody 2026-10-04).

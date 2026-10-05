@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import * as kit from '@solana/kit';
 import * as T22 from '@solana-program/token-2022';
 import { solPurchaseInstructions, purchaseMessage } from '../../mockups/pay.js';
-import { MINT, livePrice, liveFee, lamportsFor, splitPayment, solShares, SOL_FLOOR } from '../../mockups/market.js';
+import { MINT, livePrice, liveFee, liveSolPrice, lamportsFor, splitPayment, solShares, SOL_FLOOR } from '../../mockups/market.js';
 import { JUPITER } from '../../server/verify.js';
 
 const RPC = process.env.RPC || 'https://api.mainnet-beta.solana.com', rpc = kit.createSolanaRpc(RPC);
@@ -32,7 +32,7 @@ for (const g of sigs.filter((x) => !x.err)) {
 }
 assert.equal(wallets.length, 2, 'found two ordinary wallets holding SOL and SANTA to simulate with');
 const [playerAddr, poolAddr] = wallets, treasury = '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdVnHbSqazR4t'.replace(/[0OIl]/g, '9'); // any address: SOL just arrives
-const [price, fee, solUsd] = [await livePrice(), await liveFee(), (await lib.get('https://lite-api.jup.ag/price/v3?ids=' + 'So11111111111111111111111111111111111111112'))['So11111111111111111111111111111111111111112'].usdPrice];
+const [price, fee, solUsd] = [await livePrice(), await liveFee(), (await liveSolPrice()).usd] // the game's own lookup (new Jupiter address, the old as backup);
 console.log(`SANTA $${price.usd}, SOL $${solUsd.toFixed(2)}, SANTA's tax ${fee.bps / 100}%`);
 
 const lamportsOf = (a) => (a ? +a.lamports : 0), santaOf = (a) => (a?.data?.parsed?.info?.tokenAmount ? +a.data.parsed.info.tokenAmount.amount : 0);
