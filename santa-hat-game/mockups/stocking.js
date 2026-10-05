@@ -18,7 +18,7 @@
 // (the same way). Two shuffles so a different set of stockings opens each turn; the chances above are the same either way.
 // "Check this result" re-runs both shuffles from the revealed secret and shows where every lump of coal was.
 // POOL: Stocking Stuffer plays from the shared Game pool (slots.js POOL_RULES). A turn only starts if the pool
-// covers the biggest FIXED prize (50×: $50 on a $1 turn); the top-off ($200 → $500) always does, so turns are never refused
+// covers the biggest FIXED prize (50×: $50 on a $1 turn), counting Cody's backing up to the top-off amount ($125: slots.js covers), so turns are never refused
 // for lack of pool. The jackpot is a share of the pool, so it can always be paid.
 import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot, POOL_RULES, topOff, covers } from './slots.js';
 

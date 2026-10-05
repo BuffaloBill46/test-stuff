@@ -14,8 +14,9 @@
 // 1 in 5,000 × 25% × the pool in dollars (about 1% at a $200 pool, 2.5% at $500, 5.1% at $1,025): see paybackAt().
 // BOARD 2 (2026-10-02, 100× centre) and BOARD 1 (2026-09-30 to 2026-10-02, 8 rows, 9 bins, true 50/50 bounces) stay below for
 // re-checking drops played on them.
-// POOL (Cody, 2026-10-02): Snowball Drop plays from the shared Game pool (slots.js POOL_RULES: starts $500, $25
-// skim at $1,025, top-off below $200, emergency stop). A drop only starts if the pool can cover the biggest FIXED prize (25×);
+// POOL (Cody, 2026-10-02; numbers 2026-10-05): Snowball Drop plays from the shared Game pool (slots.js POOL_RULES: starts $125, $25
+// skim at $1,025, top-off request below $30, emergency stop). A drop only starts if the pool, counting Cody's backing up to the
+// top-off amount (slots.js covers), can cover the biggest FIXED prize;
 // the jackpot is a share of the pool, so it can always be paid.
 import { FEE, IN_PER_DOLLAR, JACKPOT_PCT, poolJackpot, POOL_RULES, topOff, covers } from './slots.js';
 
