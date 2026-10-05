@@ -64,7 +64,7 @@ const DIALOG = `
   <li><div><b>Sign in here with that wallet.</b> Tap <b>Sign in</b>, then <b>Connect wallet</b>. Every payment shows its exact amount in your wallet
     before you approve it.</div></li>
 </ol>
-<div class="solpay" data-gs-solpay hidden><b>Or skip step 3:</b> the Arcade and the Store also take SOL. Pick <b>SOL</b> under the price; the game swaps it
+<div class="solpay" data-gs-solpay hidden><b>Or skip step 3:</b> the Arcade and the Store also take SOL. Tap your name, then pick <b>SOL</b> under <b>Pay with</b>; the game swaps it
   for you inside the same payment (one approval), and you pay exactly the price.</div>
 <p class="warn">SANTA takes a small tax on every transfer, built into the coin (<span data-gs-fee>set by the coin's team</span>). SANTA is for playing the game, not an investment: only buy what you're happy
   to spend on fun. Nobody from Santa Hat will ever ask for your secret phrase or DM you first.</p>`;

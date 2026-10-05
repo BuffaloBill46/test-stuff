@@ -59,18 +59,22 @@ const p = await ctx.newPage(); p.on('pageerror', (e) => errors.push(e.message));
 // lower case: the suite reads any 'FAILED' in a log as a failed test
 p.on('requestfailed', (r) => { if (!/local.test|localhost/.test(r.url())) console.log(('    (a request did not go through: ' + r.url().slice(0, 90) + ' ' + r.failure()?.errorText + ')').toLowerCase()); });
 const open = async () => { await p.goto('https://local.test/online.html?net=local&server=http://localhost:8797&token=test&t=' + Date.now() + '#store', { timeout: 90000 }) /* a fresh address each time: the same one ending in #store only scrolls, it doesn't reload */; await p.waitForFunction(() => window.__sq, null, { timeout: 90000 }); await p.waitForTimeout(2500); };
-const switches = () => p.evaluate(() => [...document.querySelectorAll('[data-paywith-slot]')].map((e) => ({ hidden: e.hidden, on: e.querySelector('[aria-pressed="true"]')?.textContent })));
+const switches = () => p.evaluate(() => [...document.querySelectorAll('[data-paywith-slot]')].map((e) => ({ hidden: e.hidden, on: e.querySelector('[aria-pressed="true"]')?.textContent, n: e.querySelectorAll('[data-paywith]').length })));
+const notes = () => p.evaluate(() => [...document.querySelectorAll('[data-paywith-note]')].map((e) => ({ hidden: e.hidden, text: e.textContent.replace(/s+/g, ' ').trim() })));
 
-console.log('1. the Pay with switch');
+console.log('1. the Pay with switch (Cody 2026-10-05: in the profile sheet, SANTA or SOL, SANTA by default; a note under each game and in the Store)');
 cluster = 'devnet'; await open();
-check((await switches()).every((s) => s.hidden), 'devnet: no Pay with switch (no swaps there)');
-cluster = 'mainnet'; await open();
-let sw = await switches();
-check(sw.length === 4 && sw.every((s) => !s.hidden && s.on === 'Auto'), `mainnet: the switch on the Store and under each game, Auto (${JSON.stringify(sw)})`);
-await p.click('#tab-store [data-paywith="sol"]'); sw = await switches();
-check(sw.every((s) => s.on === 'SOL'), 'picking SOL on the Store shows SOL everywhere');
+check((await switches()).every((s) => s.hidden) && (await notes()).every((n) => n.hidden), 'devnet: no Pay with switch or note (no swaps there)');
+cluster = 'mainnet'; await p.evaluate(() => localStorage.setItem('santa.payWith', 'auto')); await open(); // an older page's "auto"
+let sw = await switches(), nt = await notes();
+check(sw.length === 1 && !sw[0].hidden && sw[0].n === 2 && sw[0].on === 'SANTA', `mainnet: ONE switch (in the profile sheet), just SANTA | SOL, SANTA (an old "auto" counts as SANTA) ${JSON.stringify(sw)}`);
+check(nt.length === 4 && nt.every((n) => !n.hidden && /Paying with SANTA · change/.test(n.text)), `a note under each game and in the Store: "${nt[0]?.text}"`);
+await p.click('#tab-store [data-paywith-open]'); await p.waitForTimeout(400);
+check(await p.evaluate(() => !document.querySelector('#acct').hidden), '"change" opens the profile sheet with the switch');
+await p.click('#acct [data-paywith="sol"]'); sw = await switches(); nt = await notes();
+check(sw[0].on === 'SOL' && nt.every((n) => /Paying with SOL/.test(n.text)), 'picking SOL there: every note says SOL');
 await open(); sw = await switches();
-check(sw.every((s) => s.on === 'SOL'), 'remembered after a reload');
+check(sw[0].on === 'SOL', 'remembered after a reload');
 await p.screenshot({ path: 'out/sol-pay-switch.png', clip: { x: 0, y: 0, width: 1280, height: 700 } });
 
 console.log('2. the page\'s own wallet step, simulated on mainnet');

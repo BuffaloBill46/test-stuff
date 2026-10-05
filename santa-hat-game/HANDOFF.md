@@ -169,6 +169,10 @@ internal names (#tab-games, data-tab="games", the #games link) so links and test
   (Caddy test-api.caddy; its devnet line in test-api.caddy.devnet). Devnet settings kept as /etc/santa/*.env.devnet.
 - Cody's real-money checks done and audited (books = Solana). RANKED OPEN (2026-10-05): solo after 45 s vs 4 bots; bots 25% easier.
   To pause ranked again: touch /etc/santa/ranked-paused on the Droplet (no restart).
+- HOUSE BOTS LIVE (050 applied): 18 bot accounts, 41 simulated matches played (worker/housebots.mjs 10); every bot in real matches
+  plays as one of them (referee assignBots). More rounds: `node housebots.mjs N` with referee.env. Ranks page + guide say some
+  players are house bots (Cody: unlabeled on the board).
+- Pay with: ONE switch in the profile sheet, SANTA | SOL, SANTA by default (Auto removed); notes under games/Store.
 
 ### 2026-10-05: READY FOR GO. Waiting only on Cody's "GO" (LAUNCH_CHECKLIST "READY FOR GO": the exact steps)
 - Wallets funded (Game pool 345,379.17 SANTA ≈ $139 + 0.245 SOL; lottery 0.0295 SOL; treasury 0.05 SOL); keys backed up to Cody's

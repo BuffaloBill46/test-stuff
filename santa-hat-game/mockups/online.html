@@ -745,6 +745,9 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 #costumeNews h3 { margin: 4px 0 8px; font: 800 26px/1.1 var(--display); color: var(--lamp); }
 #costumeNews .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; }
 /* the sheet's footer: the X account and Support side by side (supportui.js) */
+.paywithnote { margin: 4px 0 0; font-size: 14px; color: var(--dim); } .paywithnote b { color: var(--text); }
+.paywithnote .pwchange { background: none; border: 0; padding: 0; color: var(--lamp); font: inherit; text-decoration: underline; cursor: pointer; }
+.pwprofile { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid #2c3766; }
 .acctfoot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #2c3766; }
 .acctfoot .xlink { display: inline-flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none; font-weight: 700; }
 .getsantaline { margin: 10px 0 0; font-size: 15px; } .getsantaline a { color: var(--lamp); font-weight: 700; }
@@ -1172,7 +1175,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
           <div class="runpick" role="group" aria-label="Or pick how many pulls"><span class="lbl">Or pick</span><span class="stepper"><button type="button" class="sec" data-step="-1" aria-label="One less">▼</button><input type="number" inputmode="numeric" min="1" max="100" step="1" value="20" aria-label="How many pulls, 1 to 100"><button type="button" class="sec" data-step="1" aria-label="One more">▲</button></span><button class="go" data-run="20"><b>Pull 20</b><small>$20</small></button></div>
           <output class="res" aria-live="polite">Pick 1, 5, 10, or any number up to 100 pulls: they play straight away, and anything you win is sent to your wallet at the end.</output>
           <div class="credrow"><span class="cred runstat" id="runBig"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="big" hidden>Check last result</button></div>
-          <p class="walletline" data-wallet aria-live="polite"></p><p class="paywithline" data-paywith-slot hidden></p></div>
+          <p class="walletline" data-wallet aria-live="polite"></p><p class="paywithnote" data-paywith-note hidden></p></div>
         <ul class="facts"></ul>
       </article>
       <!-- the payout table (Cody, 2026-10-03: what each symbol and line earns, no odds; a click opens it) -->
@@ -1196,7 +1199,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
           <div class="runpick" role="group" aria-label="Or pick how many drops"><span class="lbl">Or pick</span><span class="stepper"><button type="button" class="sec" data-step="-1" aria-label="One less">▼</button><input type="number" inputmode="numeric" min="1" max="100" step="1" value="20" aria-label="How many drops, 1 to 100"><button type="button" class="sec" data-step="1" aria-label="One more">▲</button></span><button class="go" data-run="20"><b>Drop 20</b><small>$2</small></button></div>
           <output class="res" aria-live="polite">Pick 10¢ or $1, then 1, 5, 10, or up to 100 snowballs: they drop straight away, and anything you win is sent to your wallet at the end.</output>
           <div class="credrow"><span class="cred runstat" id="runDrop"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="drop" hidden>Check last result</button></div>
-          <p class="walletline" data-wallet aria-live="polite"></p><p class="paywithline" data-paywith-slot hidden></p></div>
+          <p class="walletline" data-wallet aria-live="polite"></p><p class="paywithnote" data-paywith-note hidden></p></div>
         <p class="dropodds" id="dropOdds"></p>
         <details class="paytable stockhow" id="dropHow"><summary>How to play &amp; win</summary><div class="body"></div></details>
         <div class="history"><h4>Your last drops</h4><ol id="dropHistory"></ol></div>
@@ -1221,7 +1224,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
           <div class="runpick" role="group" aria-label="Or pick how many turns"><span class="lbl">Or pick</span><span class="stepper"><button type="button" class="sec" data-step="-1" aria-label="One less">▼</button><input type="number" inputmode="numeric" min="1" max="100" step="1" value="20" aria-label="How many turns, 1 to 100"><button type="button" class="sec" data-step="1" aria-label="One more">▲</button></span><button class="go" data-run="20"><b>Play 20</b><small>$2</small></button></div>
           <output class="res" aria-live="polite">Pick 10¢ or $1, then 1, 5, 10, or up to 100 turns: they play straight away, and anything you win is sent to your wallet at the end.</output>
           <div class="credrow"><span class="cred runstat" id="runStock"></span><button class="sec skip" type="button" hidden>Skip ahead</button><button class="sec" type="button" data-proof="stocking" hidden>Check last result</button></div>
-          <p class="walletline" data-wallet aria-live="polite"></p><p class="paywithline" data-paywith-slot hidden></p></div>
+          <p class="walletline" data-wallet aria-live="polite"></p><p class="paywithnote" data-paywith-note hidden></p></div>
         <p class="dropodds" id="stockOdds"></p>
         <details class="paytable stockhow" id="stockHow"><summary>How to play &amp; win</summary><div class="body"></div></details>
         <div class="history"><h4>Your last turns <span class="dim">(gifts found)</span></h4><ol id="stockHistory"></ol></div>
@@ -1289,7 +1292,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
     <div class="hero"><div class="eyebrow">Store</div><h1>Snowball Supply</h1>
       <p>Prices are in dollars, paid in SANTA or SOL at the live price (SOL is swapped to SANTA in the same payment). <b>Payments open soon</b>; you can try everything on now.</p>
       <p class="testnote"><b>Test version</b> Nothing can be bought yet and the lottery isn't running. Try items on for free; payments open after testing.</p>
-      <p class="paywithline" data-paywith-slot hidden></p></div>
+      <p class="paywithnote" data-paywith-note hidden></p></div>
     <section class="block plaque">
       <h2>Ranked tickets</h2><p class="dim">Up to 10 extra tickets a day (resets at 9 PM Eastern, Indiana time). Buying needs a wallet sign-in.</p>
       <div class="packs">
@@ -1355,6 +1358,8 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
     </div>
   </div>
   <div id="acctIn" hidden></div>
+  <!-- pay with SANTA or SOL: one switch here, reachable from anywhere (Cody 2026-10-05); the games and the Store show a note -->
+  <p class="paywithline pwprofile" data-paywith-slot hidden></p>
   <div id="humanCheck" class="human" hidden></div>
   <p id="acctMsg" role="status"></p>
   <!-- the bottom of the sign-in sheet, signed in or out (Cody 2026-10-04): the game's X account, and Support right next to it -->

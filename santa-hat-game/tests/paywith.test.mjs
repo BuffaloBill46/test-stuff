@@ -15,6 +15,9 @@ assert.equal(await chooseMethod(q(), rpcWith(1_000_000), t22, 'me', 'auto'), 'sa
 assert.equal(await chooseMethod(q(), rpcWith(999_999), t22, 'me', 'auto'), 'sol', 'auto, one short: SOL');
 assert.equal(await chooseMethod(q(), rpcWith(Object.assign(new Error('Solana error #8100002'), { context: { __code: -32602, __serverMessage: 'Invalid param: could not find account' } })), t22, 'me', 'auto'), 'sol', 'auto, no SANTA account: SOL');
 assert.equal(await chooseMethod(q(), rpcWith(new Error('fetch failed')), t22, 'me', 'auto'), 'santa', 'auto, balance unreadable: SANTA');
-const h = payWithHtml('auto');
-assert.ok(/aria-pressed="true">Auto/.test(h) && (h.match(/data-paywith=/g) || []).length === 3 && /otherwise SOL/.test(h), 'the switch: Auto / SANTA / SOL, Auto pressed, says what Auto does');
-console.log('OK: pay with: devnet SANTA only; a picked SANTA or SOL wins; Auto = SANTA when enough, else SOL (no account too); unreadable balance = SANTA');
+// the switch (Cody 2026-10-05: "Remove the auto option"; "Default to santa"): just SANTA | SOL, SANTA unless SOL was picked
+const { payWith } = await import('../mockups/paywith.js');
+const h = payWithHtml();
+assert.ok(/aria-pressed="true">SANTA/.test(h) && (h.match(/data-paywith=/g) || []).length === 2 && !/Auto/.test(h), 'the switch: SANTA | SOL, SANTA pressed, no Auto');
+assert.equal(payWith(), 'santa', 'nothing picked: SANTA');
+console.log('OK: pay with: devnet SANTA only; a picked SANTA or SOL wins; the switch is SANTA | SOL with SANTA by default (no Auto)');
