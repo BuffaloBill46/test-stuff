@@ -26,9 +26,10 @@ if (bad.length) { const kinds = [...new Set(bad.map((l) => l.replace(/[0-9a-f-]{
 // them apart). A deploy = new code checked out in /opt/santa/repo up to 3 minutes before; a crash = systemd counting restarts.
 const restarts = (sh(`journalctl -u santa-games -u santa-worker -u santa-referee --since "-20 min" --no-pager -o cat | grep -c "Started "`) || '0');
 const crashes = ['santa-games', 'santa-worker', 'santa-referee'].reduce((n, u) => n + (+(sh(`systemctl show -p NRestarts --value ${u}`) || 0)), 0);
-const codeAt = +(sh(`stat -c %Y /opt/santa/repo/.git/HEAD`) || 0) * 1000; // when the last checkout happened
+// every checkout of the last while (git's own record of HEAD moving, "HEAD@{<unix time>}")
+const checkouts = (sh(`runuser -u santa -- git -C /opt/santa/repo reflog -n 40 --date=unix --format=%gd`) || '').split('\n').map((l) => +(l.match(/\{(\d+)\}/)?.[1] || 0) * 1000).filter(Boolean);
 const startsAt = ['santa-games', 'santa-worker', 'santa-referee'].map((u) => Date.parse(sh(`systemctl show -p ActiveEnterTimestamp --value ${u}`) || '') || 0);
-const byDeploy = startsAt.every((t) => !t || Date.now() - t > 20 * 60_000 || (t >= codeAt && t - codeAt < 3 * 60_000));
+const byDeploy = startsAt.every((t) => !t || Date.now() - t > 20 * 60_000 || checkouts.some((c) => t >= c && t - c < 3 * 60_000));
 if (crashes > 0) say(`${crashes} service crash-restarts (systemd NRestarts)`);
 else if (+restarts > 0 && !byDeploy) say(`${restarts} service (re)starts in 20 min, not after a deploy`);
 
