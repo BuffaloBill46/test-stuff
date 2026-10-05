@@ -198,20 +198,20 @@
   </footer>
 </main>
 <script type="module">
-  import './sitefoot.js?v=69bdf83362'; // version, ©, X, Support and "How to get SANTA" at the bottom (Cody 2026-10-04)
-  import { ITEMS, COSTUMES, SEASONS } from './catalog.js?v=69bdf83362';
-  import { SPECIALS } from './specials.js?v=69bdf83362';
-  import { TEAM_PAUSED } from './refcore.js?v=69bdf83362';
-  import { GEAR, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=69bdf83362';
-  import { LEVELS, MAX_LEVEL, WINS_PER_LEVEL, MAX_BOUGHT_LEVEL, buyPrice } from './levels.js?v=69bdf83362';
-  import { RULES, TICKET_MAX, settleRanked } from './ranked.js?v=69bdf83362';
-  import { LOTTERIES, LIVE_LOTTERIES, SALES_CLOSE_MS } from './lottery.js?v=69bdf83362';
-  import { SYMBOLS, MACHINES, stats, JACKPOT_PCT, POOL_RULES } from './slots.js?v=69bdf83362';
-  import * as DROP from './plinko.js?v=69bdf83362';
-  import * as STOCK from './stocking.js?v=69bdf83362';
-  import { K, PTS } from './sim.js?v=69bdf83362';
-  import * as SEASON from './seasons.js?v=69bdf83362';
-  import { VARIANTS } from './weekly.js?v=69bdf83362';
+  import './sitefoot.js?v=bd3bf76863'; // version, ©, X, Support and "How to get SANTA" at the bottom (Cody 2026-10-04)
+  import { ITEMS, COSTUMES, SEASONS } from './catalog.js?v=bd3bf76863';
+  import { SPECIALS } from './specials.js?v=bd3bf76863';
+  import { TEAM_PAUSED } from './refcore.js?v=bd3bf76863';
+  import { GEAR, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=bd3bf76863';
+  import { LEVELS, MAX_LEVEL, WINS_PER_LEVEL, MAX_BOUGHT_LEVEL, buyPrice } from './levels.js?v=bd3bf76863';
+  import { RULES, TICKET_MAX, settleRanked } from './ranked.js?v=bd3bf76863';
+  import { LOTTERIES, LIVE_LOTTERIES, SALES_CLOSE_MS } from './lottery.js?v=bd3bf76863';
+  import { SYMBOLS, MACHINES, stats, JACKPOT_PCT, POOL_RULES } from './slots.js?v=bd3bf76863';
+  import * as DROP from './plinko.js?v=bd3bf76863';
+  import * as STOCK from './stocking.js?v=bd3bf76863';
+  import { K, PTS } from './sim.js?v=bd3bf76863';
+  import * as SEASON from './seasons.js?v=bd3bf76863';
+  import { VARIANTS } from './weekly.js?v=bd3bf76863';
   // team play paused (refcore.js TEAM_PAUSED, Cody 2026-10-03): the guide says so, and goes back by itself when it reopens
   if (TEAM_PAUSED) document.querySelector('#teamLine').textContent = 'Team play (Nice vs Naughty) is paused for now.';
   const $ = (s) => document.querySelector(s);
@@ -278,13 +278,16 @@
   $('#rankedList').innerHTML = [
     `<b>10 free tickets</b> every day, refilled at <b>9 PM Eastern (Indiana time)</b>. One ticket per ranked match; leave before it starts and you get it back.`,
     `Buy up to <b>10 more</b> a day in the Store (that limit also resets at 9 PM). You can hold <b>${TICKET_MAX}</b> at most.`,
-    `Every player in the match adds <b>${RULES.perPlayer} points</b> to the pot, bots included.`,
+    `Every player adds <b>${RULES.perLevel} points per level</b> to the pot (level 1 adds ${RULES.perLevel}, level 10 adds ${RULES.perLevel * 10}); each bot adds <b>${RULES.perBot}</b>. So beating higher levels wins you more, and beating lower levels less.`,
     `3 or fewer players: 1st takes the whole pot. 4 or more: 1st ${RULES.split4[0] * 100}%, 2nd ${RULES.split4[1] * 100}%, 3rd ${RULES.split4[2] * 100}%. Not placing costs <b>${-RULES.notPlacing}</b> points.`,
     `Bots play to win and can take paid places. The leaderboard (Ranks) is your total points.`,
   ].map((t) => `<li>${t}</li>`).join('');
-  const ex = (n) => { const r = settleRanked(Array.from({ length: n }, (_, i) => ({ id: 'p' + i, bot: false, score: 100 - i }))); return Array.from({ length: n }, (_, i) => r.points['p' + i]); };
-  $('#rankedEx').innerHTML = head(['Players', 'Pot', '1st', '2nd', '3rd', 'Others'], ['', 'n', 'n', 'n', 'n', 'n']) + '<tbody>' + [3, 4, 8].map((n) => { const p = ex(n), s = (v) => (v > 0 ? '+' : '') + v;
-    return row([n, n * RULES.perPlayer, s(p[0]), s(p[1]), s(p[2]), n > 3 ? s(p[3]) : '—'], ['', 'n', 'n', 'n', 'n', 'n']); }).join('') + '</tbody>';
+  // worked examples, straight from ranked.js (players finish in the order listed): the pot is 2 per level, 5 per bot (to-do #14)
+  const EX = [['3 players, all level 1', [1, 1, 1]], ['3 players: a level 1 beats two level 10s', [1, 10, 10]], ['3 players: a level 10 beats two level 1s', [10, 1, 1]],
+    ['4 players, all level 5', [5, 5, 5, 5]], ['8 players, all level 5', [5, 5, 5, 5, 5, 5, 5, 5]], ['8 players, all level 10', [10, 10, 10, 10, 10, 10, 10, 10]]];
+  $('#rankedEx').innerHTML = head(['Match', 'Pot', '1st', '2nd', '3rd', 'Others'], ['', 'n', 'n', 'n', 'n', 'n']) + '<tbody>' + EX.map(([label, lv]) => {
+    const r = settleRanked(lv.map((level, i) => ({ id: 'p' + i, bot: false, score: 100 - i, level }))), p = lv.map((_, i) => r.points['p' + i]), s = (v) => (v > 0 ? '+' : '') + v;
+    return row([label, r.pot, s(p[0]), s(p[1]), s(p[2]), lv.length > 3 ? s(p[3]) : '—'], ['', 'n', 'n', 'n', 'n', 'n']); }).join('') + '</tbody>';
 
   // Big Hat
   const M = MACHINES.big, st = stats(M);
