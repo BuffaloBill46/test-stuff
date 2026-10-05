@@ -23,9 +23,11 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: santa-hat-game/tests/db/package-lock.json
-      - name: Install the database test library (PGlite)
-        run: npm ci --prefix tests/db
+          cache-dependency-path: |
+            santa-hat-game/tests/db/package-lock.json
+            santa-hat-game/tests/solana/package-lock.json
+      - name: Install the test libraries (PGlite, the Solana toolkit)
+        run: npm ci --prefix tests/db && npm ci --prefix tests/solana  # PGlite; the Solana toolkit (rent-guard uses the real one)
       - name: Unit tests
         run: |
           fail=0

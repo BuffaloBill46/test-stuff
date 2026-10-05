@@ -70,8 +70,11 @@ assert.equal(await prog(ava), undefined, 'a page-reported finish: no season prog
 await levels.finishByReferee(match([ben, null, null, ava], [{}, null, null, {}])); // Ava 4th: +10, no top-3 bonus
 let pa = await prog(ava);
 assert.deepEqual([pa.stats.games, pa.matches_scored, pa.top3_scored, pa.points], [1, 1, 0, 10], 'one match, 4th place: +10 ' + JSON.stringify(pa));
-const pb = await prog(ben); // Ben 1st: +10 +10, and a win (a task only if it's one of today's)
-assert.equal(pb.points, 20 + (TASKS.some((t) => t.stat === 'wins') ? 100 : 0), 'a 1st place: +10, +10 top 3' + (TASKS.some((t) => t.stat === 'wins') ? ', and the win task +100' : '') + ': ' + JSON.stringify(pb));
+const pb = await prog(ben); // Ben 1st: +10 +10, and +100 for each of today's tasks a 1st place completes ('wins' and 'top3' both
+// need one such finish; which of them are among today's 3 rotating tasks depends on the date: found when the tests first ran on
+// GitHub's machines, whose clock is UTC, 2026-10-04)
+const firstDone = TASKS.filter((t) => ['wins', 'top3'].includes(t.stat) && t.need <= 1).map((t) => t.stat);
+assert.equal(pb.points, 20 + 100 * firstDone.length, `a 1st place: +10, +10 top 3, and +100 for each of today's tasks it completes (${firstDone.join(', ') || 'none today'}): ` + JSON.stringify(pb));
 
 // 3. Log in: +100 once a day, only through season_login; a match can't claim it
 await levels.finishByReferee(match([cid], [{ login: 5 }]));

@@ -4,14 +4,18 @@
 // the reward sweeper would PAY; the books are zero; accounts, the catalogue and settings are kept; a second run is harmless.
 // Run: node mainnet-reset.test.mjs [backup file]
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs'; import path from 'node:path';
+import { readFileSync, readdirSync, existsSync } from 'node:fs'; import path from 'node:path';
 import { makeDb } from './setup.mjs';
 import { runPayouts } from '../../server/payouts.js';
 import { queueRewardClaims } from '../../server/rewards.js';
 import { createLottery } from '../../server/lottery.js';
 
 const DIR = process.env.BACKUPS || (process.platform === 'win32' ? 'C:/santa-devnet-keys/backups' : '/mnt/c/santa-devnet-keys/backups');
-const file = process.argv[2] || path.join(DIR, readdirSync(DIR).filter((f) => f.startsWith('db-before-mainnet-')).sort().pop());
+// The live-data backup is private and lives only on Cody's PC: anywhere without it (GitHub's automatic test runs) this rehearsal
+// is skipped and says so, rather than failing (found 2026-10-04 when the tests first ran on GitHub).
+const latest = existsSync(DIR) ? readdirSync(DIR).filter((f) => f.startsWith('db-before-mainnet-')).sort().pop() : null;
+if (!process.argv[2] && !latest) { console.log(`SKIPPED: mainnet switch-over rehearsal: no live-data backup in ${DIR} here (it is private and stays on Cody's PC)`); process.exit(0); }
+const file = process.argv[2] || path.join(DIR, latest);
 const backup = JSON.parse(readFileSync(file, 'utf8')), T = backup.tables;
 const FILES = readdirSync(new URL('../../supabase/', import.meta.url)).filter((f) => /^0\d\d_.*\.sql$/.test(f) && f !== '031_games_role.sql').sort();
 const db = await makeDb(FILES);
