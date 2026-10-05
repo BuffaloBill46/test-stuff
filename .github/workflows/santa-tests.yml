@@ -1,0 +1,44 @@
+# Santa Hat Legends: the tests run automatically on every change (Cody, 2026-10-04 to-do #2), on GitHub's machines, so they
+# don't depend on Claude's PC. Every push or pull request that touches santa-hat-game/: the unit tests (tests/*.test.mjs),
+# the database tests on real Postgres (tests/db/*.test.mjs, PGlite in-process + the system Postgres for lock.test), and the
+# full 50-player / 30-day simulation. The browser suite stays on Claude's PC (it needs real Chrome and ~20 min).
+# A failure names the test; the run's page on GitHub (Actions tab) shows its output.
+name: Santa Hat tests
+on:
+  push:
+    paths: ['santa-hat-game/**', '.github/workflows/santa-tests.yml']
+  pull_request:
+    paths: ['santa-hat-game/**']
+  workflow_dispatch: {}
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: santa-hat-game
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: santa-hat-game/tests/db/package-lock.json
+      - name: Install the database test library (PGlite)
+        run: npm ci --prefix tests/db
+      - name: Unit tests
+        run: |
+          fail=0
+          for t in tests/*.test.mjs; do
+            echo "::group::$t"; if node "$t"; then echo "PASS $t"; else echo "::error title=Failed::$t"; fail=1; fi; echo "::endgroup::"
+          done
+          exit $fail
+      - name: Database tests
+        run: |
+          fail=0
+          for t in tests/db/*.test.mjs; do
+            echo "::group::$t"; if node "$t"; then echo "PASS $t"; else echo "::error title=Failed::$t"; fail=1; fi; echo "::endgroup::"
+          done
+          exit $fail
+      - name: Full simulation (50 players, 30 days)
+        run: node tests/db/full-sim.mjs
