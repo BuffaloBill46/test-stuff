@@ -2,12 +2,12 @@
 // otherwise the Games tab runs the in-browser demo (house.js). Same steps, same order: the server does the work.
 // Buying needs a wallet to sign the payment: `window.santaPay(quote)` must return the finalized transaction signature.
 // That wallet step can't be built or tested in this workspace (FOR_MAIN_CLAUDE.md); until it exists, buying says so.
-import { accounts } from './net.js?v=896c3a7b98';
+import { accounts } from './net.js?v=e76ac7b780';
 
 const params = new URLSearchParams(location.search);
 // LAUNCHED (Cody's GO, mainnet): the public site itself plays through the game server, no ?server= needed, and the demo is gone.
 // Only on the real site's own addresses: a test page (localhost) keeps the demo unless it passes ?server= itself.
-const LAUNCHED = false;
+const LAUNCHED = true; // Cody's GO, 2026-10-05: the public site plays for real (mainnet)
 const PUBLIC_SITE = /(^|\.)santahatgames\.com$|^buffalobill46\.github\.io$/.test(location.hostname);
 // THE TEST SITE (Cody 2026-10-05, to-do #11): test.santahatgames.com always plays through the TEST game server (devnet, test
 // SANTA, no real value), reached at its own /api (Caddy on the Droplet; deploy-test.sh publishes it). Changes go there first.
@@ -15,7 +15,7 @@ export const STAGING = location.hostname === 'test.santahatgames.com';
 export const SERVER = params.get('server') || (STAGING ? 'https://test.santahatgames.com/api' : LAUNCHED && PUBLIC_SITE ? 'https://api.santahatgames.com' : null);
 const testToken = params.get('token'); // tests only, and only against a local server
 // The wallet step (window.santaPay): loaded only in server mode, so the demo never fetches the Solana libraries.
-export const walletReady = SERVER ? import('./wallet.js?v=896c3a7b98').catch((e) => { console.warn('wallet step unavailable:', e); }) : Promise.resolve();
+export const walletReady = SERVER ? import('./wallet.js?v=e76ac7b780').catch((e) => { console.warn('wallet step unavailable:', e); }) : Promise.resolve();
 
 export async function token() {
   if (testToken && /^http:\/\/localhost[:/]/.test(SERVER || '')) return testToken;
@@ -64,6 +64,6 @@ export async function call(action, body = {}) {
 // still loading, so a name defined further down isn't there yet; the error was swallowed by the catch below and the page
 // quietly kept the built-in settings (settings-mode-test caught it, 2026-10-04).
 export const settingsReady = SERVER ? (async () => {
-  try { const r = await call('settings'); if (r?.settings) { const { applyToGame } = await import('./settings.js?v=896c3a7b98'); applyToGame(r.settings); return r; } } catch (e) { console.error('published settings not loaded:', e); }
+  try { const r = await call('settings'); if (r?.settings) { const { applyToGame } = await import('./settings.js?v=e76ac7b780'); applyToGame(r.settings); return r; } } catch (e) { console.error('published settings not loaded:', e); }
   return null;
 })() : Promise.resolve(null);
