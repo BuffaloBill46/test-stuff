@@ -589,3 +589,8 @@ about; tests/botaim.test.mjs holds each bot on its own target.
 games, which needs one bot in the top 3 in all 10. Renaming the bots (053) changed their order and the luck ran out. It now checks
 the real invariant: every match gives exactly 3 level ticks. Also: house bots must never reuse practice-bot names (players have
 seen those as bots); housebots-db checks it.
+
+**A try-on must not outlive the screen it was tried on (2026-10-05).** On the Avatar screen a Special Gear item Cody didn't own
+(Santa Costume) stayed in the draft when he changed tab, and since the costume covers the shirt and pants, every shirt and pants
+he then tried looked the same: "I can't preview anything". Now changing tab takes off anything not wearable (any slot) back to
+the saved look. tests/browser/avatar-tryon-test.mjs fails on the old code exactly as he saw it.

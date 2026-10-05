@@ -1014,7 +1014,7 @@ function setPreview(a) {
   // the preview wears what is in the gear slots (a Gift Box: a wrapped present); an Elf Hat or a Santa cap takes the hat's place
   // (retired gear, gear.js RETIRED, isn't worn: an old saved Pumpkin Costume doesn't draw, as in a match)
   const gear = GEAR_SLOTS.map((s) => BY_ID.get(cleanAvatar(a)[s])?.gear).filter((k) => k && !RETIRED.has(k));
-  const ch = avatarCharacter(a, { gear }); preview.userData.ch = ch; preview.add(ch);
+  const ch = avatarCharacter(a, { gear }); preview.userData.ch = ch; preview.userData.gear = gear; preview.add(ch);
   // a costume hat (the Nutcracker's shako, the Ice Crown) is shown instead of the Santa hat: they're tall and the Santa hat hid them
   const costumeHat = !!BY_ID.get(cleanAvatar(a).hat)?.set;
   previewHat.position.set(0, K.HEAD_Y, 0); previewHat.rotation.y = Math.PI / 2; preview.add(previewHat); previewHat.visible = !costumeHat && !gear.some((k) => k === 'elfhat' || k === 'santa');
@@ -1068,6 +1068,7 @@ window.__sq = { hatsDrawn: () => 1 + extraHats.filter((o) => o.mesh.visible).len
   // tests: the plaza theme, and what's on the GPU / in the scene (a theme swap must not leave the old plaza behind)
   // tests: the size a player is drawn at (Elf Hat: 0.5)
   drawnScale: (id) => views.get(id)?.mesh.scale.x,
+  previewGear: () => [...(preview.userData.gear || [])], // tests: the gear the Avatar screen's model is wearing
   // tests: a fingerprint of how a player is drawn (vertices, shapes, colours), the same for a gear list on the default look,
   // and how many tracer/shimmer points were drawn last frame (plain snowballs and no gear: none); whether a player's cosmetic
   // hat is showing (it steps aside while they wear the Santa hat)

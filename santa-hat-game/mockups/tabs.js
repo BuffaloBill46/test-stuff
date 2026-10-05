@@ -518,7 +518,17 @@ export function initTabs(app) {
     $('#avtheme').innerHTML = THEME_IDS.map((id) => `<button type="button" data-theme="${id}" aria-pressed="${id === app.theme}"><i style="background: linear-gradient(${THEMES[id].sky.join(', ')})"></i>${esc(THEMES[id].name)}</button>`).join('');
   }
   $('#avtheme').addEventListener('click', (e) => { const b = e.target.closest('[data-theme]'); if (!b) return; app.setTheme(b.dataset.theme); renderThemes(); });
-  $('#avslots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (b) { state.slot = b.dataset.slot; $('#avmsg').textContent = ''; renderAvatar(); } });
+  // Changing tab takes off everything only being TRIED ON (not owned, or above my level), in every slot: a tried Santa Costume
+  // covers the shirt and pants, so it stayed on and hid every shirt and pants tried after it (Cody 2026-10-05: "should be same for
+  // all tabs"). Each slot goes back to what I saved if I can wear it, else to empty (gear, special snowballs) or the default look.
+  const dropTried = () => { const d = state.draft, lvl = app.profile ? app.profile.level : 1, saved = cleanAvatar(app.me.a);
+    const ok = (id) => !!BY_ID.get(id) && usable(BY_ID.get(id), lvl, state.owned);
+    for (const [slots, none] of [[SLOTS, null], [SB_SLOTS, 'sb_none'], [GEAR_SLOTS, 'gear_none']]) for (const s of slots) {
+      if (ok(d.a[s])) continue;
+      const back = saved[s], dup = none && back !== none && slots.some((o) => o !== s && d.a[o] === back);
+      d.a[s] = ok(back) && !dup ? back : none ?? DEFAULT_AVATAR[s];
+    } };
+  $('#avslots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (b) { if (b.dataset.slot !== state.slot) dropTried(); state.slot = b.dataset.slot; $('#avmsg').textContent = ''; renderAvatar(); } });
   $('#avgrid').addEventListener('click', (e) => {
     // a costume card: put on every piece at once (a locked costume is previewed, like any locked item; Save waits for the level)
     const c = e.target.closest('[data-costume]');
