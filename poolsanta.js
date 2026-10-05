@@ -2,7 +2,7 @@
 // (Slots, Snowball Drop, Stocking Stuffer) and in the money strip, the same amount in SANTA at the live price. It watches the
 // dollar readouts the games already write (so it can never disagree with them) and redraws when they or the price change.
 // Without a live price it shows nothing rather than a guess.
-import { fmtSanta } from './market.js?v=2002bb8cce';
+import { fmtSanta } from './market.js?v=bc6d244bc6';
 
 const IDS = ['slotPool', 'dropPool', 'stockPool', 'msPool'];
 let price = null;

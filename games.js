@@ -1,25 +1,25 @@
 // Games tab: wires the Slots page (readouts, Pull, full screen, paytable, winners list) to the rules (slots.js) and the
 // 3D Big Hat machine (slots3d.js). DEMO ONLY: play money and a demo pool kept in this browser. No SANTA moves.
-import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount, poolJackpot } from './slots.js?v=2002bb8cce';
-import { JP as DROP_JP } from './plinko.js?v=2002bb8cce';
-import { JP as STOCK_JP } from './stocking.js?v=2002bb8cce';
-import { createMachine, symbolImages } from './slots3d.js?v=2002bb8cce';
-import { poolState, savePool, resetPool, showResult } from './gamepool.js?v=2002bb8cce';
-import { initDrop, showDrop, refreshDrop, resetDrop } from './dropui.js?v=2002bb8cce';
-import { initStocking, showStocking, refreshStocking, resetStocking } from './stockingui.js?v=2002bb8cce';
-import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js?v=2002bb8cce';
-import { runSummary } from './runui.js?v=2002bb8cce';
-import { livePrice, liveFee, santaFor, fmtSanta } from './market.js?v=2002bb8cce';
-import { initPoolSanta, setPoolPrice } from './poolsanta.js?v=2002bb8cce'; // the Game pool in SANTA too, under each $ total (Cody 2026-10-05)
-import { FEE } from './slots.js?v=2002bb8cce';
-import { play as sfx } from './sfx.js?v=2002bb8cce';
-import { celebrate, tierOf } from './celebrate.js?v=2002bb8cce';
-import { SERVER, call, settingsReady } from './gameserver.js?v=2002bb8cce';
-import { refreshWallet } from './walletline.js?v=2002bb8cce';
-import { weekStart } from './gameclock.js?v=2002bb8cce';
-import { KINDS, SIZES } from './credits.js?v=2002bb8cce';
-import { initRunPick, priceLabel } from './runpick.js?v=2002bb8cce';
-import { bigShare } from './sharecard.js?v=2002bb8cce'; // "Share this win" on a big single win (Cody 2026-10-04)
+import { MACHINES, SYMBOLS, POOL_RULES, pull, stats, evaluate, jackpotAmount, poolJackpot } from './slots.js?v=bc6d244bc6';
+import { JP as DROP_JP } from './plinko.js?v=bc6d244bc6';
+import { JP as STOCK_JP } from './stocking.js?v=bc6d244bc6';
+import { createMachine, symbolImages } from './slots3d.js?v=bc6d244bc6';
+import { poolState, savePool, resetPool, showResult } from './gamepool.js?v=bc6d244bc6';
+import { initDrop, showDrop, refreshDrop, resetDrop, setDropHistory } from './dropui.js?v=bc6d244bc6';
+import { initStocking, showStocking, refreshStocking, resetStocking, setStockingHistory } from './stockingui.js?v=bc6d244bc6';
+import { initCredits, playRun, short, refresh as refreshCredits, resetCredits, setPrice, resumePaid } from './playcredits.js?v=bc6d244bc6';
+import { runSummary } from './runui.js?v=bc6d244bc6';
+import { livePrice, liveFee, santaFor, fmtSanta } from './market.js?v=bc6d244bc6';
+import { initPoolSanta, setPoolPrice } from './poolsanta.js?v=bc6d244bc6'; // the Game pool in SANTA too, under each $ total (Cody 2026-10-05)
+import { FEE } from './slots.js?v=bc6d244bc6';
+import { play as sfx } from './sfx.js?v=bc6d244bc6';
+import { celebrate, tierOf } from './celebrate.js?v=bc6d244bc6';
+import { SERVER, call, settingsReady } from './gameserver.js?v=bc6d244bc6';
+import { refreshWallet } from './walletline.js?v=bc6d244bc6';
+import { weekStart } from './gameclock.js?v=bc6d244bc6';
+import { KINDS, SIZES } from './credits.js?v=bc6d244bc6';
+import { initRunPick, priceLabel } from './runpick.js?v=bc6d244bc6';
+import { bigShare } from './sharecard.js?v=bc6d244bc6'; // "Share this win" on a big single win (Cody 2026-10-04)
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -260,7 +260,7 @@ export async function initGames(opts = {}) {
   initCredits({ wallet, pools: { slots: state, spin: poolState() }, onChange: () => { shownPool = shared().pool; store.set(state); render(); savePool(); refreshDrop(); refreshStocking(); refreshWallet(); } }); // refreshWallet: my wallet under the games (at most every 8 s)
   refreshCredits();
   // A payment from an earlier visit the server never received (closed tab, dropped network): hand it over and play it now.
-  if (SERVER) resumePaid().then((r) => { if (r) { console.info('finished a paid run from an earlier visit', r.run); refreshCredits(); } }).catch(() => {});
+  if (SERVER) resumePaid().then((r) => { if (r) { console.info('finished a paid run from an earlier visit', r.run); refreshCredits(); syncTurns(); } }).catch(() => {});
   showMarket();
   loadWinners();
   window.__slots = { state, view, test, get shownPool() { return shownPool; }, get busy() { return busy; }, get fast() { return fast; } };
@@ -310,4 +310,14 @@ function labelsFromSettings() {
 export async function showGames(on, opts) {
   if (on) await initGames(opts);
   view?.setActive(on); showDrop(on); showStocking(on);
+  if (on) syncTurns();
+}
+// "Your last turns" under Stocking Stuffer and Snowball Drop, read from the server each time the Arcade opens (Cody 2026-10-05):
+// a refresh no longer empties them, and a play the server recovered for you (a payment your page never reported) is there.
+// Signed out (or no server): the lists stay as this visit made them.
+async function syncTurns() {
+  if (!SERVER) return;
+  const [s, d] = await Promise.all(['stocking', 'drop'].map((kind) => call('my-turns', { kind }).catch(() => null)));
+  if (Array.isArray(s?.turns)) setStockingHistory(s.turns.map((t) => t.found ?? 0));
+  if (Array.isArray(d?.turns)) setDropHistory(d.turns.map((t) => (t.jackpot ? 'JP' : t.mult ?? 0)));
 }

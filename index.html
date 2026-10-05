@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-build="2002bb8cce">
+<html lang="en" data-build="bc6d244bc6">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -278,6 +278,36 @@ button:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
   display: flex; align-items: center; gap: 6px 14px; flex-wrap: wrap; padding: 8px 10px 8px 14px; border-color: var(--lamp); background: linear-gradient(90deg, rgba(207,49,40,.92), rgba(27,35,68,.96) 55%); animation: coIn .3s ease-out; }
 #jpbar b { font: 400 22px/1 var(--display); color: var(--brim); } #jpbar span { flex: 1 1 200px; font-size: 15px; } #jpbar em { font-style: normal; font-weight: 800; color: var(--lamp); }
 #jpbar .go { font-size: 18px; padding: 6px 14px; } #jpbar .x { background: none; border: 0; color: var(--dim); font-size: 22px; cursor: pointer; padding: 0 4px; }
+/* TOURNAMENTS (tourui.js): the countdown bar on every screen (the jackpot bar's look, gold-edged; under it when both show), the
+   tournament page (waiting room + bracket) and the admin's row under the lobby's Tournament button */
+#tourBar { position: fixed; z-index: 8; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 72px); width: min(720px, calc(100% - 24px)); box-sizing: border-box;
+  display: flex; align-items: center; gap: 6px 14px; flex-wrap: wrap; padding: 8px 10px 8px 14px; border-color: var(--lamp); background: linear-gradient(90deg, rgba(31,90,58,.95), rgba(27,35,68,.96) 60%); animation: coIn .3s ease-out; }
+#tourBar.low { top: calc(env(safe-area-inset-top, 0px) + 136px); }
+#tourBar b { font: 400 22px/1 var(--display); color: var(--brim); } #tourBar span { flex: 1 1 220px; font-size: 15px; } #tourBar em { font: 700 17px/1 var(--digits); font-style: normal; color: var(--lamp); font-variant-numeric: tabular-nums; }
+#tourBar .go { font-size: 18px; padding: 6px 16px 10px; }
+#tourPage { position: fixed; z-index: 9; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 64px); width: min(820px, calc(100% - 24px)); box-sizing: border-box; max-height: calc(100% - 84px); overflow: auto; padding: 16px 18px 18px; }
+#tourPage .x { position: absolute; right: 8px; top: 6px; background: none; border: 0; color: var(--dim); font-size: 28px; cursor: pointer; }
+#tourPage p { margin: 0 0 10px; line-height: 1.4; color: #d6ddf0; } #tourPage .trules { color: var(--frost); font-size: 15px; }
+#tourPage .tyou { font-size: 17px; padding: 8px 12px; background: rgba(127,224,160,.1); border-left: 3px solid var(--pine); } #tourPage .tyou.out { background: rgba(154,166,199,.1); border-color: var(--dim); }
+#tourPage .tyou.won { background: rgba(255,190,92,.12); border-color: var(--lamp); } #tourPage .tyou b { color: var(--lamp); }
+#tourPage .tnote { color: #ffb4a8; } .tentry { display: grid; gap: 8px; margin: 6px 0 12px; } .tentry .go { justify-self: start; }
+.th { font: 700 11px/1.3 var(--digits); letter-spacing: 1px; text-transform: uppercase; color: var(--frost); margin: 14px 0 6px; } .th em { font-style: normal; color: var(--lamp); }
+.tnames { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; } .tnames li { padding: 4px 9px; background: var(--ink); border: 1px solid rgba(185,205,242,.18); font-size: 15px; }
+.tbracket { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(200px, 1fr); gap: 12px; overflow-x: auto; padding-bottom: 4px; }
+.tround .tgame { background: var(--ink); border: 1px solid rgba(185,205,242,.14); padding: 8px 10px; margin-bottom: 8px; }
+.tgame ol { margin: 0 0 6px; padding-left: 20px; } .tgame li { font-size: 15px; line-height: 1.5; } .tgame li.thru { color: var(--pine); font-weight: 700; } .tgame li.out { color: var(--dim); text-decoration: line-through; }
+.tgame li i { font: 700 9px/1 var(--digits); letter-spacing: .6px; text-transform: uppercase; font-style: normal; color: var(--pine); }
+.tgame p { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 !important; font-size: 13px; color: var(--dim) !important; } .tgame .sec { font-size: 13px; padding: 4px 10px; }
+.tstand { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 3px; } .tstand li { display: grid; grid-template-columns: 2.2em 1fr auto; gap: 8px; align-items: baseline; padding: 4px 8px; background: var(--ink); }
+.tstand li:first-child { border-left: 3px solid var(--lamp); } .tstand b { font: 700 16px var(--digits); color: var(--lamp); } .tstand em { font: 700 14px var(--digits); font-style: normal; color: var(--pine); }
+.tacts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.tadmin { display: grid; gap: 8px; margin: 8px 0; padding: 10px 12px; border: 1px dashed var(--lamp); background: rgba(255,190,92,.06); } .tadmin > b { font-size: 15px; color: var(--lamp); }
+.tadmin .tbtns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tadmin .tcode { font: 700 22px/1 var(--digits); letter-spacing: 3px; color: var(--brim); } .tadmin .go { justify-self: start; font-size: 20px; padding: 8px 18px 12px; }
+.tpick { display: flex; flex-wrap: wrap; gap: 4px 14px; } .tpick label { display: inline-flex; gap: 6px; align-items: center; margin: 0; text-transform: none; letter-spacing: 0; font: 500 15px var(--body); color: var(--text); }
+#tourBox { display: grid; gap: 6px; } #waitList .tourpin { border-color: var(--lamp); background: linear-gradient(90deg, rgba(31,90,58,.55), var(--ink) 70%); }
+@media (max-width: 600px) { #tourBar { top: calc(env(safe-area-inset-top, 0px) + 60px); } #tourBar.low { top: calc(env(safe-area-inset-top, 0px) + 118px); } #tourBar b { font-size: 18px; } #tourBar span { font-size: 14px; }
+  #tourPage { top: calc(env(safe-area-inset-top, 0px) + 56px); max-height: calc(100% - 70px); padding: 14px 14px 16px; } .tbracket { grid-auto-flow: row; } }
 @media (max-width: 600px) { #jpbar { top: calc(env(safe-area-inset-top, 0px) + 60px); } #jpbar b { font-size: 18px; } #jpbar span { font-size: 14px; } }
 #panel .vrule { margin: 4px 0 8px; color: var(--lamp); font-weight: 700; }
 /* Games tab: jump buttons and the folded notes */
@@ -1398,7 +1428,7 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
       <label><input type="checkbox" data-astyle="normal"> <span>Normal play <small>plain snowballs</small></span></label>
       <label><input type="checkbox" data-astyle="gear"> <span>Special gear <small>your specials and gear count</small></span></label>
     </div>
-    <button class="sec" id="tourney" disabled hidden>Tournament · Coming soon</button>
+    <div id="tourBox" hidden><button class="sec" id="tourney">Tournament</button><div id="tourAdmin" hidden></div></div>
     <div class="row unr"><input id="code" type="text" maxlength="6" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code"><button class="sec" id="joinBtn">Join room</button></div>
     <div class="row unr"><button class="sec" id="create">Create private room</button><button class="sec" id="practice">Practice vs bots</button></div>
   </div>
@@ -1413,6 +1443,6 @@ label .note { text-transform: none; letter-spacing: 0; font-weight: 600; }
 <div id="emotes" hidden></div>
 <div id="joy" hidden></div>
 <div id="zoom" hidden><button id="zoomIn" aria-label="Zoom in">+</button><button id="zoomOut" aria-label="Zoom out">−</button></div>
-<script type="module" src="./online.js?v=2002bb8cce"></script>
+<script type="module" src="./online.js?v=bc6d244bc6"></script>
 </body>
 </html>

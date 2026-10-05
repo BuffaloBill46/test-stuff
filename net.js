@@ -3,7 +3,7 @@
 // Message plan (Supabase counts every delivery): the host sends snapshots on the room channel;
 // each player sends their moves on their own channel, which only the host listens to.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm';
-import { humanToken, resetHumanCheck } from './human.js?v=2002bb8cce';
+import { humanToken, resetHumanCheck } from './human.js?v=bc6d244bc6';
 
 const SB_URL = 'https://olganobdypnxfpmsxibe.supabase.co';
 const SB_KEY = 'sb_publishable_eLn_YYzLDOTuUAOTZLeyKQ_PLGT8B6N'; // publishable key: meant to be public
@@ -128,7 +128,7 @@ function refereeRoom(url, code, me, token, ranked = false, auto = null) {
       else if (m.t === 'emote') L.fire('emote', m.d);
       else if (m.t === 'counted') L.fire('counted', m.d); // my Auto match finish, recorded by the server
       else if (m.t === 'rank') L.fire('rank', m.d); // my ranked points change
-      else if (m.t === 'closed') { left = true; L.fire('closed', m.why); } // the server closed the room (a ranked match is over)
+      else if (m.t === 'closed') { left = true; L.fire('closed', m.why, !!m.tour); } // the server closed the room (a ranked match is over; tour: a tournament game, back to the bracket)
       else if (m.t === 'goto') L.fire('goto', m.code); // Auto match together: the group's seats are held in this public room
       else if (m.t === 'err' && joined) L.fire('err', m.why); // a refusal while in the room (e.g. Auto match together)
       else if (m.t === 'err' && !joined) { left = true; clearTimeout(t); ws.close(); const e = new Error(m.why); e.why = m.why; reject(e); }
@@ -147,20 +147,36 @@ function refereeRoom(url, code, me, token, ranked = false, auto = null) {
     };
   });
 }
+// The lobby line also carries TOURNAMENTS (Cody 2026-10-05; server/referee.js): every page keeps it open (tour.on) so the
+// countdown reaches every screen. tour.signIn(getToken) says who this is (again on every reconnect: a fresh token); tour.send
+// passes a tap (enter, leave; the admin's create / start / call off). Listeners get ({ d, you }) or (null, why) for a refusal.
 function refereeBoard(url) {
-  const fns = new Set(); let ws = null, list = [];
+  const fns = new Set(), tfns = new Set(); let ws = null, list = [], tour = null, getToken = null; const queue = [];
+  const send = (m) => { if (ws?.readyState === 1) ws.send(JSON.stringify(m)); else { queue.push(m); open(); } };
+  const ident = () => Promise.resolve(getToken ? getToken() : null).catch(() => null).then((token) => { if (ws?.readyState === 1) ws.send(JSON.stringify({ t: 'tsub', token: token || '' })); });
   function open() {
     if (ws) return;
     ws = new WebSocket(url);
-    ws.onopen = () => ws.send(JSON.stringify({ t: 'board' }));
-    ws.onmessage = ({ data }) => { try { const m = JSON.parse(data); if (m.t === 'board' && Array.isArray(m.games)) { list = m.games; fns.forEach((f) => f(list)); } } catch {} };
-    ws.onclose = () => { ws = null; if (fns.size) setTimeout(open, 3000); }; // keep the lobby list alive while someone looks at it
+    ws.onopen = () => { ws.send(JSON.stringify({ t: 'board' })); ident(); while (queue.length) ws.send(JSON.stringify(queue.shift())); };
+    ws.onmessage = ({ data }) => { try { const m = JSON.parse(data);
+      if (m.t === 'board' && Array.isArray(m.games)) { list = m.games; fns.forEach((f) => f(list)); }
+      else if (m.t === 'tour') { tour = { d: m.d || null, you: m.you || {} }; tfns.forEach((f) => f(tour)); }
+      else if (m.t === 'terr') tfns.forEach((f) => f(null, String(m.why || 'Something went wrong.')));
+    } catch {} };
+    ws.onclose = () => { ws = null; if (fns.size || tfns.size) setTimeout(open, 3000); }; // keep the line alive while someone needs it
   }
   return {
-    async watch(fn) { fns.add(fn); open(); fn(list); return () => { fns.delete(fn); if (!fns.size && ws) { const w = ws; ws = null; w.onclose = null; w.close(); } }; },
+    async watch(fn) { fns.add(fn); open(); fn(list); return () => { fns.delete(fn); if (!fns.size && !tfns.size && ws) { const w = ws; ws = null; w.onclose = null; w.close(); } }; },
     async publish() {}, async unpublish() {}, // the server makes the list itself
+    tour: {
+      on(fn) { tfns.add(fn); open(); if (tour) fn(tour); return () => tfns.delete(fn); },
+      signIn(fn) { getToken = fn; ident(); },
+      send,
+    },
   };
 }
+// no match server (tests, this computer only): no tournaments
+const NO_TOUR = { on() { return () => {}; }, signIn() {}, send() {} };
 
 // ---------- live games board: each running room's referee posts a short summary here
 // (players, round, time, leader) so lobbies can list games and offer Watch now.
@@ -180,6 +196,7 @@ function supabaseBoard() {
     async watch(fn) { fns.add(fn); await open(); fn(list()); return () => { fns.delete(fn); maybeClose(); }; },
     async publish(summary) { publishing = true; await open(); await ch.track(summary); },
     async unpublish() { publishing = false; if (ch) { try { await ch.untrack(); } catch {} } maybeClose(); },
+    tour: NO_TOUR,
   };
 }
 
@@ -194,6 +211,7 @@ function localBoard() {
     async watch(fn) { fns.add(fn); bc.postMessage({ k: 'ask' }); fn(list()); return () => fns.delete(fn); },
     async publish(summary) { mine = summary; seen.set(summary.code, { ...summary, at: Date.now() }); bc.postMessage({ k: 'game', g: summary }); },
     async unpublish() { if (mine) bc.postMessage({ k: 'gone', code: mine.code }); if (mine) seen.delete(mine.code); mine = null; },
+    tour: NO_TOUR,
   };
 }
 
