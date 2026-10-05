@@ -2,7 +2,7 @@
 // to spin more than 10 times they can. Maybe set a max of 100"). ▼ ▲ step by one (hold to keep going), or type a number. Its
 // Play button is an ordinary [data-run] button, so the game's own click handler, price labels and busy state treat it like the
 // others; this only keeps its number, label and price in step with the box.
-import { MAX_RUN } from './credits.js?v=134660cf17';
+import { MAX_RUN } from './credits.js?v=1cebc9f32d';
 
 // A run's price as the buttons show it: 50¢, $2, $2.50.
 export const priceLabel = (usd) => { const v = Math.round(usd * 100) / 100; return v < 1 ? Math.round(v * 100) + '¢' : '$' + (Number.isInteger(v) ? v : v.toFixed(2)); };
