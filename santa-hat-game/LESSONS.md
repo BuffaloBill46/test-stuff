@@ -572,3 +572,9 @@ Cody's real deposits before recording them. getTransaction asks for version 1 an
 **The page must READ the real numbers on load in server mode (GO day, 2026-10-05).** The Game pool readouts only updated after the
 player's own play, so on the live site they showed the browser's demo pool ($125) instead of the real $139. Every server-mode test had
 played first, so none caught it; only opening the LIVE site before playing did. games.js syncServerPool reads it on load + every 30 s.
+
+**Test money code under the login that will really run it (2026-10-05).** The fast-payment gate read public.runs as the payout
+worker, whose limited login (020) may not read that column; every test ran as the database owner, so all passed, and live every
+payout pass failed "permission denied for table runs" for ~50 minutes until Cody asked why his winnings had not arrived. Fixed
+by 051 (worker reads run id + signature); worker-role-db now runs the real gate as santa_worker and fails without 051. Also: a
+watch that only logs "payouts pass failed" is not an alert; WE OWE caught it (Cody), the 15-minute watch was not yet approved.
