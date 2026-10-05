@@ -13,7 +13,7 @@
 //  - No bulk discount.
 // Invariants (audit): every run: plays made = played + refused ≤ n; every payment buys one run, once;
 //   a finished run is paid exactly once, exactly what it won + refunded; an unfinished run is paid nothing.
-import { IN_PER_DOLLAR } from './slots.js?v=4d68b93fc8';
+import { IN_PER_DOLLAR } from './slots.js?v=134660cf17';
 
 // kind → the pool it pays, and the sizes it can be played at (fixed here). The retired Santa Hat Spin (kind 'spin') was
 // removed on 2026-10-04; 'spin' as a POOL key (game: 'spin') is the shared Game pool and stays.

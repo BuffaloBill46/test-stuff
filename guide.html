@@ -77,8 +77,8 @@
     <p>Up to <b data-k="maxHumans">8</b> players in a snowy ring. One Santa hat. Wear it to score; knock it off everyone else.</p>
     <h3>Controls</h3>
     <ul>
-      <li><b>Computer:</b> <span class="kbd">WASD</span> or arrows to move, <b>click</b> to throw where you point, <span class="kbd">Space</span> to auto-aim, <span class="kbd">1</span>–<span class="kbd">4</span> for emotes, <span class="kbd">Q</span> <span class="kbd">E</span> <span class="kbd">R</span> for your special snowballs.</li>
-      <li><b>Phone:</b> move with the joystick, tap anywhere else to throw there. To move the joystick, triple-tap it and hold, then drag it where you like. Your special snowballs are the buttons under your snowball counter.</li>
+      <li><b>Computer:</b> <span class="kbd">WASD</span> or arrows to move, <b>click</b> to throw where you point, <span class="kbd">Space</span> to auto-aim, <span class="kbd">1</span>–<span class="kbd">4</span> for emotes, <span class="kbd">Q</span> <span class="kbd">E</span> <span class="kbd">R</span> for your special snowballs: press once to throw one, <b>press twice quickly to lock it on</b> (every throw uses it; press twice again for plain snowballs).</li>
+      <li><b>Phone:</b> move with the joystick, tap anywhere else to throw there. To move the joystick, triple-tap it and hold, then drag it where you like. Your special snowballs are the buttons under your snowball counter: tap one for your next throw, or <b>double-tap to lock it on</b> (a gold ring and LOCKED show; every throw uses it until you double-tap it again). Run short of snowballs for it and that throw is a plain one; the lock stays.</li>
     </ul>
     <h3>A match</h3>
     <ul>
@@ -157,6 +157,10 @@
       <p><b>18+ and real money.</b> These games are played with SANTA on Solana. Only play with what you can afford to lose.</p>
       <p>Every entry: <b>10% is burned</b> and the rest goes into the <b>Game pool</b> that all three games pay from. Pick how many plays you want; the SANTA price is locked for the whole run, and everything the run wins is sent to your wallet at the end.</p>
       <p><b>3% SANTA tax:</b> winnings arrive 3% lighter. The SANTA token does that, not the game.</p>
+      <p><b>Pay with SANTA or SOL:</b> the same one approval either way. Pick <b>Auto</b>, <b>SANTA</b> or <b>SOL</b> under each game (Auto
+        uses SANTA when your wallet has enough). With SOL you pay exactly the price; it's swapped to SANTA inside the same payment, and the
+        swap's fees come out of what reaches the pool, not out of your pocket. Your very first SOL payment may also include Solana's small
+        refundable account deposit (about 25¢), once. Winnings are always paid in SANTA.</p>
       <p><b>Provably fair:</b> after a run, tap <b>Check last result</b> to re-run it from the revealed secret and check it yourself.</p>
     </div>
     <h3>Big Hat · slots</h3>
@@ -182,6 +186,9 @@
       <li>Signing in only proves you own the wallet: it sends nothing and costs nothing. Every payment shows its exact amount in your wallet before you approve it.</li>
       <li><b>Nobody from Santa Hat will ever ask for your secret phrase</b> or DM you first. Anyone who does is a scammer.</li>
       <li>A payment that went through but didn't reach the game (a closed tab, a dropped connection) is finished automatically the next time you open the site.</li>
+      <li><b>Need help?</b> Tap <b>Sign in</b> (or your name), then <b>Support</b> at the bottom. You get a ticket number, and it shows there as
+        <b>Pending</b> until we've looked at it, then <b>Resolved</b> with our answer. No sign-in needed.</li>
+      <li>News and updates: <a href="https://x.com/Santahatgame" target="_blank" rel="noopener">@Santahatgame on X</a>.</li>
     </ul>
   </section>
 
@@ -191,19 +198,19 @@
   </footer>
 </main>
 <script type="module">
-  import { ITEMS, COSTUMES, SEASONS } from './catalog.js?v=4d68b93fc8';
-  import { SPECIALS } from './specials.js?v=4d68b93fc8';
-  import { TEAM_PAUSED } from './refcore.js?v=4d68b93fc8';
-  import { GEAR, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=4d68b93fc8';
-  import { LEVELS, MAX_LEVEL, WINS_PER_LEVEL, MAX_BOUGHT_LEVEL, buyPrice } from './levels.js?v=4d68b93fc8';
-  import { RULES, TICKET_MAX, settleRanked } from './ranked.js?v=4d68b93fc8';
-  import { LOTTERIES, LIVE_LOTTERIES, SALES_CLOSE_MS } from './lottery.js?v=4d68b93fc8';
-  import { SYMBOLS, MACHINES, stats, JACKPOT_PCT, POOL_RULES } from './slots.js?v=4d68b93fc8';
-  import * as DROP from './plinko.js?v=4d68b93fc8';
-  import * as STOCK from './stocking.js?v=4d68b93fc8';
-  import { K, PTS } from './sim.js?v=4d68b93fc8';
-  import * as SEASON from './seasons.js?v=4d68b93fc8';
-  import { VARIANTS } from './weekly.js?v=4d68b93fc8';
+  import { ITEMS, COSTUMES, SEASONS } from './catalog.js?v=134660cf17';
+  import { SPECIALS } from './specials.js?v=134660cf17';
+  import { TEAM_PAUSED } from './refcore.js?v=134660cf17';
+  import { GEAR, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=134660cf17';
+  import { LEVELS, MAX_LEVEL, WINS_PER_LEVEL, MAX_BOUGHT_LEVEL, buyPrice } from './levels.js?v=134660cf17';
+  import { RULES, TICKET_MAX, settleRanked } from './ranked.js?v=134660cf17';
+  import { LOTTERIES, LIVE_LOTTERIES, SALES_CLOSE_MS } from './lottery.js?v=134660cf17';
+  import { SYMBOLS, MACHINES, stats, JACKPOT_PCT, POOL_RULES } from './slots.js?v=134660cf17';
+  import * as DROP from './plinko.js?v=134660cf17';
+  import * as STOCK from './stocking.js?v=134660cf17';
+  import { K, PTS } from './sim.js?v=134660cf17';
+  import * as SEASON from './seasons.js?v=134660cf17';
+  import { VARIANTS } from './weekly.js?v=134660cf17';
   // team play paused (refcore.js TEAM_PAUSED, Cody 2026-10-03): the guide says so, and goes back by itself when it reopens
   if (TEAM_PAUSED) document.querySelector('#teamLine').textContent = 'Team play (Nice vs Naughty) is paused for now.';
   const $ = (s) => document.querySelector(s);
@@ -236,7 +243,7 @@
       + `<li>The other <b>${cnt((r) => r.kind === 'tickets')}</b> doors: a <b>ranked ticket</b> (their own bank, used after your free daily ones)</li>`
       + `<li>Every <b>${SEASON.STREAK_EVERY}</b> perfect days in a row (all 5 tasks): a bonus level tick.</li>`;
     $('#passLine').innerHTML = cur.gold.length
-      ? `The ${cur.name} pass costs <b>$${SEASON.PASS_PRICE}</b> (paid in SANTA, like a Store item) and adds <b>the ${cur.costume} costume</b>: ${cur.gold.length} pieces (${cur.gold.map(nameOf).join(', ')}), one on doors <b>${SEASON.PIECE_DOORS.join(', ')}</b>, on top of everyone's prize. Buy it any time: the pieces of every door you've already reached come at once. Yours to keep.`
+      ? `The ${cur.name} pass costs <b>$${SEASON.PASS_PRICE}</b> (paid in SANTA or SOL; all of it goes to the game's treasury, none burned) and adds <b>the ${cur.costume} costume</b>: ${cur.gold.length} pieces (${cur.gold.map(nameOf).join(', ')}), one on doors <b>${SEASON.PIECE_DOORS.join(', ')}</b>, on top of everyone's prize. Buy it any time: the pieces of every door you've already reached come at once. Yours to keep.`
       : `The ${cur.name} pass opens soon.`;
     $('#weeklyList').innerHTML = Object.values(VARIANTS).map((v) => `<li><b>${v.name}:</b> ${v.short}</li>`).join(''); }
   for (const [k, v] of Object.entries({ maxHumans: K.MAX_HUMANS })) document.querySelectorAll(`[data-k="${k}"]`).forEach((e) => { e.textContent = v; });
