@@ -175,6 +175,11 @@ internal names (#tab-games, data-tab="games", the #games link) so links and test
   (recoverUnreported), Telegram when it finds one. "Your last turns" read from the server (my-turns).
 - GitHub (21:00-21:30 UTC): Pages build stuck "queued" and a runner not acquired (GitHub's side); lock.test failed once on
   main, passed on the branch for the same commit (overloaded runner?) — watch it. The site may lag the servers until it clears.
+- WATCH FIXED (~21:55 UTC): the 15-min launch watch had run no checks since 17:24 (stuck on approvals). Now it uses only two
+  pre-approved commands (the ssh check; worker/watchlog.mjs for the date + its log, rule in .claude/settings.local.json with
+  Cody's OK), and watch.mjs itself tells a deploy's restart from a crash. First clean run logged "OK" (out/watch/).
+- STILL CODY'S: delete the old DO snapshot santa-before-mainnet-2026-10-03; lock/delete C:santa-mainnet-keys. KNOWN GAPS: the
+  unreported-payment recovery covers the Arcade only (not lottery / Store); first live tournament not run yet; lock.test flaky on CI.
 - DONE + LIVE (~21:33 UTC): the wallet line under each game shows SANTA then SOL (each with dollars), the one paid with lit
   green, "Paying with" kept (walletline.js; server wallet() reads SOL). Private rooms: Create uses the code typed in the box
   (3-6, remembered on the device; public codes refused); friends Join with the same code. GitHub's queue cleared: the site
