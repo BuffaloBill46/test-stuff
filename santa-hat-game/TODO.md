@@ -16,9 +16,9 @@ them. Last updated: 2026-10-04.
 7. [x] **Share buttons:** big wins, getting a costume, and the score after a match.
 8. [x] **Money dashboard** on the admin screen, under its own button.
 9. [x] **Money flow chart** (SOL and SANTA): where every payment goes. Done: docs/money-flow.png (source docs/money-flow.html).
-10. [ ] **"How to get SANTA"** (Cody 2026-10-04): a link in the sign-in/profile sheet and at the bottom of pages, opening a pop-up
+10. [x] **"How to get SANTA"** (Cody 2026-10-04): a link in the sign-in/profile sheet and at the bottom of pages, opening a pop-up
     with step-by-step instructions: buying SANTA with SOL (and getting SOL first). Built together with 10b.
-10b. [ ] **Version number + copyright** at the bottom of every page, with the X and Support links.
+10b. [x] **Version number + copyright** at the bottom of every page, with the X and Support links. Done (both): mockups/sitefoot.js on the game page (under every tab) and the guide; the pop-up also opens from santahatgames.com/#get-santa. Test: getsanta-test.
 11. [ ] **Staging site** at test.santahatgames.com (test money, changes go there first); santahatgames.com stays the main site.
     **Needs Cody:** one DNS record at your domain registrar (Claude will say exactly what to type).
 12. [ ] **Jupiter fix** — SOL payments use Jupiter's new address with the old one as a backup, and retry when busy (the free
