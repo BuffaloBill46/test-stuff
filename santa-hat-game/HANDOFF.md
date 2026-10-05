@@ -167,7 +167,8 @@ internal names (#tab-games, data-tab="games", the #games link) so links and test
 ### 2026-10-05 (NEWEST): LIVE ON MAINNET (Cody's GO ~12:55 UTC; LAUNCH_CHECKLIST "LIVE")
 - Switched with go-mainnet --go; deposits recorded (books = wallet); main site real (LAUNCHED = true). Test site's /api answers 503
   (Caddy test-api.caddy; its devnet line in test-api.caddy.devnet). Devnet settings kept as /etc/santa/*.env.devnet.
-- Waiting on Cody: his 10¢ SANTA play + ~$1 SOL purchase, then the announcement.
+- Cody's real-money checks done and audited (books = Solana). RANKED OPEN (2026-10-05): solo after 45 s vs 4 bots; bots 25% easier.
+  To pause ranked again: touch /etc/santa/ranked-paused on the Droplet (no restart).
 
 ### 2026-10-05: READY FOR GO. Waiting only on Cody's "GO" (LAUNCH_CHECKLIST "READY FOR GO": the exact steps)
 - Wallets funded (Game pool 345,379.17 SANTA ≈ $139 + 0.245 SOL; lottery 0.0295 SOL; treasury 0.05 SOL); keys backed up to Cody's

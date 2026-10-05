@@ -63,6 +63,8 @@ per player in the pot (bots included), bots can win, and bots play under player-
 - **NO automatic top-off from the Treasury.** Cody deposits by hand when the "needs a TOP-OFF" alert comes (pool under $200).
 - **The $30 floor:** no NEW Arcade runs while the Game pool really holds under $30; winnings still pay; reopens by itself.
 - **Stuck winnings:** the player gets a pop-up (once per payout) to send a ticket; Cody gets "WE OWE <wallet> x SANTA".
+- **Ranked OPEN** (pause file removed). Alone 45 s in a ranked room → you vs **4 bots** (5 s countdown).
+- **Bots 25% easier** (sim K.BOT_EASE 1.25: 25% longer between throws, 25% looser aim; speed unchanged).
 - **At least 2 bots a match** unless 8 real players fill it. **Ranked pot:** 2 points per level, 5 per bot.
 
 ### Decided 2026-10-04 (Cody)
