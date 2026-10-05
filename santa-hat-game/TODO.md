@@ -9,14 +9,16 @@ them. Last updated: 2026-10-04.
    refuses to publish a missing file, checked 2026-10-04; this makes it a test the automatic runs check too.)
 2. [ ] **Tests run automatically on every change** (GitHub Actions: the unit and database tests on every push).
 3. [ ] **Hear about errors players hit** — the page reports its errors to the game server; a list on the admin screen.
-4. [ ] **Mini games: "Play at your own risk"** at the top of the Games page.
+4. [ ] **Mini games: "Play at your own risk"** at the top of the Arcade page.
 5. [ ] **End of match: snowballs thrown, hit, and hit %** on the results card.
 6. [ ] **Player Progress + Ranked board: thrown / hit / % / SANTA spent / SANTA won.** (Flag for Cody: spent/won on the PUBLIC
    ranked board shows everyone's money; Progress is private. Building it as asked; easy to hide later.)
 7. [ ] **Share buttons:** big wins, getting a costume, and the score after a match.
 8. [ ] **Money dashboard** on the admin screen, under its own button.
 9. [ ] **Money flow chart** (SOL and SANTA): where every payment goes.
-10. [ ] **Version number + copyright** at the bottom of every page, with the X and Support links.
+10. [ ] **"How to get SANTA"** (Cody 2026-10-04): a link in the sign-in/profile sheet and at the bottom of pages, opening a pop-up
+    with step-by-step instructions: buying SANTA with SOL (and getting SOL first). Built together with 10b.
+10b. [ ] **Version number + copyright** at the bottom of every page, with the X and Support links.
 11. [ ] **Staging site** at test.santahatgames.com (test money, changes go there first); santahatgames.com stays the main site.
     **Needs Cody:** one DNS record at your domain registrar (Claude will say exactly what to type).
 12. [ ] **Jupiter fix** — SOL payments use Jupiter's new address with the old one as a backup, and retry when busy (the free
@@ -42,6 +44,7 @@ them. Last updated: 2026-10-04.
 - A free Jupiter key held on the server (no limits).
 
 ## Done (2026-10-04)
+- [x] Games tab renamed **Arcade** (nav bar, page heading, guide, docs)
 - [x] Pay with SOL (exact price), live, tested on a copy of mainnet · [x] 10 ticks a level · [x] Season pass 100% treasury
 - [x] Match points 10 / 25 · [x] Support tickets (Pending / Resolved / ×) + @Santahatgame · [x] Final launch QA
 - [x] Sign-in emails reach everyone (Resend, from signin@santahatgames.com; done 2026-10-02, checked in HANDOFF) · [x] Alert false alarm fixed · [x] Guide, Store text, docs brought up to date · [x] X logo, banner, posts, Frost King still
@@ -54,11 +57,11 @@ Restored 2026-10-04 (Claude overwrote it by mistake when starting the list above
 
 Kept up to date as things get done. Details for lobbies, economy and open questions live in `DESIGN_NOTES.md`.
 
-## Launch checklist (2026-10-01): what stands between today and real SANTA on the Games tab
+## Launch checklist (2026-10-01): what stands between today and real SANTA on the Arcade tab
 Details are in the sections below and in FOR_MAIN_CLAUDE.md. "Main Claude" = the session with wallets and live access.
 1. **Cody:** legal check of the paid games (see RESEARCH.md → "Other things that would help"), pool + treasury wallets, Supabase settings.
 2. **Main Claude:** devnet test token + pool wallets; apply `005` + `007`; deploy the Edge Function and set its secrets; check the visitor-address header.
-3. **Main Claude:** real wallet payment in the page (`window.santaPay`); then make server mode the default on the Games tab.
+3. **Main Claude:** real wallet payment in the page (`window.santaPay`); then make server mode the default on the Arcade tab.
 4. **Main Claude:** payout worker, skim sending and the reconciliation check on a schedule; the emergency-withdrawal transfer.
 5. **Everyone:** the dress rehearsal on devnet, end to end; then real phones (Phantom sign-in, feel).
 6. **Publish** the site (`deploy-pages.sh`; the admin screen's bot box isn't live yet).
@@ -100,7 +103,7 @@ existing bot (frozen/failed payouts, books ≠ wallet, top-off waiting, server d
 
 ## Before anything paid goes live
 - [x] **Cheat-proof referee server: THE DEFAULT since 2026-10-02** (every room runs on wss://play.santahatgames.com; ?ref=off / ?net=local for the old page-run rooms in tests). Left: Turnstile at ranked start (Cody's Cloudflare keys), the rank-band search over time, Telegram alerts. History: today the host player's browser runs the match and could fake scores. Paid tickets and points need a server we control. *Phase 1 BUILT and LIVE (2026-10-02, on the $6 Droplet Cody OK'd):* `server/referee.js` runs every room's match (same sim + `mockups/refcore.js` lookups as the page), `worker/referee.mjs` is its WebSocket door, served by Caddy at `wss://147-182-219-161.sslip.io`; the page uses it only with `?ref=wss://147-182-219-161.sslip.io` (opt-in). Tested: `tests/referee.test.mjs`, `worker/referee.door.test.mjs`, `tests/browser/referee-server-test.mjs` (also with `REF_URL=` against the live one: passed). *Phase 2 server side BUILT and LIVE (2026-10-02):* sign-ins checked on join (Supabase checks the token; the referee's own least-privilege database login, `supabase/017_referee_role.sql`, applied live, reads the SAVED level and look, which the database only accepts with owned items); unverified players play as plain guests (no specials/gear, level 1); one seat per account; Auto match finishes recorded by the server (`levels.finishByReferee`) and the player is told (`counted`). Proven: `tests/referee.test.mjs`, `tests/db/referee-role-db.test.mjs`, live login lookup + guest match through the live referee. NOT yet proven with a real signed-in player on the live referee (Cody's Phantom test, HANDOFF list #2, does it). **Left for phase 2:** ranked Auto match + tickets + Turnstile on top; then the page uses the referee by default (one line: REFEREE in online.js) and Supabase Realtime is dropped; publish. Original plan: players prove who they are (Supabase sign-in token) so the server knows each profile; looks/levels/specials/gear checked against what the player owns in the database (today the page's word, like before); the server reports Auto match finishes itself (levels; today only the page's referee does, so server rooms don't count yet); ranked Auto match + tickets on top; then the page uses it by default and Supabase Realtime is dropped. Cody's real domain replaces the sslip.io name when bought (one line in /etc/caddy/Caddyfile).
-- [ ] **SANTA payments:** USD prices paid in SANTA at the live price, with a quote locked for about a minute. *Built so far:* live price + live tax on the Games tab (`mockups/market.js`), server quotes (`server/games.js`).
+- [ ] **SANTA payments:** USD prices paid in SANTA at the live price, with a quote locked for about a minute. *Built so far:* live price + live tax on the Arcade tab (`mockups/market.js`), server quotes (`server/games.js`).
 - [ ] **The page's live tax line leans on two free RPCs (found 2026-10-01):** `solana-rpc.publicnode.com` didn't answer from Cody's PC at all, and the backup `api.mainnet-beta.solana.com` refuses browsers (403), so the tax readout can silently fall back. The price line (DexScreener) was fine. Before launch: serve the live tax from our own server (the Edge Function already reads it) or a Helius endpoint, not free public RPCs. *Fixed for server mode (2026-10-02):* the server answers a public `market` action (the price quotes use + the token's tax, read by the server, kept a minute) and the page's line asks it first (`tests/market-server.test.mjs`, `tests/browser/server-mode-test.mjs`). The demo (no server) still uses the free lookups; at launch the site runs in server mode.
 - [x] **Where the Spin/Slots server runs (decided, Cody 2026-09-30): Supabase Edge Functions** (free plan: 500,000 calls a month). The multiplayer referee still needs an always-on server later (~$5–10/month, ask first).
 - [x] **Stuck plays are tidied (built, 2026-09-30):** before each new play, that player's plays stuck for a minute are fixed: 'spent' (no secret yet) → refunded; 'open' (secret locked, the player's number never came) → finished with a server-made number and paid. `server/games.js` → `tidy`, tested in `tests/db/server.test.mjs`.
@@ -114,7 +117,7 @@ existing bot (frozen/failed payouts, books ≠ wallet, top-off waiting, server d
 - [ ] **Santa Lottery (decided, Cody 2026-10-01; being built):** server-run like Spin (one lottery wallet, key on the server only), five lotteries: Daily 10¢ and Daily $1 (1 winner), Weekly 10¢, Weekly $1 and Christmas $1 (closes Dec 23, 2026) (top 3: 60/25/15), no ticket cap, 90% to winners / 10% burned at purchase. Full rules: DESIGN_NOTES → "Santa Lottery". (Cody's GREEN LIFE `green-lottery` program can't hold SANTA as written: it books the amount sent, not what arrives after the 3% tax.)
 - [x] **Buying needs a wallet:** email-only accounts must link one first (linking already works). **Done (every quote refuses a profile with no linked wallet).**
 
-## Santa Hat Games tab
+## Santa Hat Arcade tab (the Arcade tab until 2026-10-04)
 - [ ] **Spin pool skim:** when the Spin pool reaches $175, the server sends $25 to the treasury (decided).
 - [x] **Snowball Drop in the arcade (2026-10-01):** a Games-tab card after Spin; prizes 10× · 5× · 1× · 0.4× · 0× (edges to middle, Cody), 78.4%; **shares the Spin pool**; **one dollar balance for 10¢ and $1 drops** (Cody: buy $10, play either size). Server and database steps built and tested. Preview page `/plinko.html` still there.
 - [x] **Santa Hat Spin (demo built, 2026-09-30):** 3D prize wheel (pine-wreath rim, gold pegs, candy-cane flapper, Santa hat hub), 10¢/$1 chips, **two wheels since 2026-09-30 (Cody's option A): main 40 equal segments with 3 gold stars → bonus wheel of 12 (3×/4×/5×), pays back 80.0%** (Cody's ~80% target), own $50 pool with $25 skim at $175 and a top-off below $10, tap-to-land, 1× shown as "money back", celebrations for 2×+, odds legend, last-spins strip, full screen, wins feed the shared Recent winners list. Tests: `tests/spin.test.mjs`, `tests/browser/spin-test.mjs`. Real SANTA needs the server.
@@ -122,7 +125,7 @@ existing bot (frozen/failed payouts, books ≠ wallet, top-off waiting, server d
 - [ ] **Slots pool jackpot %:** 25% (Cody) gives about $360–430 on a full pool; about 14% would give about $250. Cody to confirm.
 - [x] **Provably fair results, in Cody's order (built, 2026-09-30):** `fair.js` + `house.js` (demo) and `server/games.js` (server). "Check this result" on the page. The pool safety rule (a play only starts if the pool covers that game's biggest fixed win: Spin 5× the bet, Slots its top fixed prize).
 - [x] **Entries split 90% to the pool, 10% burned** *(done, ticked 2026-10-01: one transaction from the player, built by `mockups/pay.js`, checked by `server/verify.js`; proven on the real token program, `tests/solana/pay.test.mjs`)* (after the 3% tax).
-- [x] **3% SANTA tax notice:** the Games tab intro covers Spin and Slots; each win message also says what arrives after the 3% tax.
+- [x] **3% SANTA tax notice:** the Arcade tab intro covers Spin and Slots; each win message also says what arrives after the 3% tax.
 - [ ] **Simulate a million spins** to prove the payback % before launch. (Slots: exact payback from the reel math plus `tests/payout-ranges.mjs`, 5 million pulls. Re-run both after any change.)
 - [ ] More click games from the idea list (Hat Drop, Present Pick, Sleigh Climb, Advent Scratch, Naughty or Nice). Needs Cody's pick of game and its odds/payback first.
 
@@ -157,7 +160,7 @@ stop cheating and spam:
 
 ### Slots: tips for building it right (from the research, see RESEARCH.md)
 - [ ] **Keep it a "PAR sheet" machine:** odds come only from symbol counts on the reel strips; change payback by changing counts or prizes in `mockups/slots.js`, then re-run `tests/slots.test.mjs`, `tests/paytable.mjs` and `tests/payout-ranges.mjs`.
-- [x] **Provably fair, in Cody's order (done, ticked 2026-10-01; see the item above under the Games tab) (see DESIGN_NOTES → "Fair results: the order"):** payment confirmed
+- [x] **Provably fair, in Cody's order (done, ticked 2026-10-01; see the item above under the Arcade tab) (see DESIGN_NOTES → "Fair results: the order"):** payment confirmed
       FIRST; only then does the server make and lock a fresh secret for that play. Anyone can re-check a play afterwards.
 - [x] **Show every win clearly:** draw the winning paylines, light the winning symbols, show the hat-bonus nickels, then the total.
 - [x] **Only celebrate real wins:** big effects only when the pull pays more than the $1 it cost (research: "losses disguised as wins"). Small returns show quietly.
@@ -193,7 +196,7 @@ stop cheating and spam:
 - Bots with player names and random outfits; ranking rules written on the Play tab.
 - **"How to win" button under the Big Hat (2026-09-30):** opens a panel with the rules in plain words, 7 winning examples (grids with the winning squares lit; prizes worked out by the real rules, so they can't drift) and a simple win table.
 - **Big Hat slot machine rebuilt (demo, 2026-09-30):** one 5×5 machine (Mini Hat removed, no gold hatband), flat square reels, winning paylines drawn and squares framed, "+5¢" on every Santa Hat, full grid of hats for the pool jackpot, tap-to-stop, an honest slow-down when 3+ hats line up, celebrations only for wins over $1, **Full screen button**, total pool + pool-jackpot % and amount + $100 top prize, payout table with all 11 line diagrams, and a **Recent winners list** (shared by every Santa Hat game: name, amount, +%, game icon; demo shows this browser's wins).
-- **Games tab + Santa Hat Slots (first demo, replaced)**: Mini Hat ($0.10) and Big Hat ($1.00) 3D machines shaped like Santa hats (pom-pom lever), stacked; total Slots pool under the title; each machine shows its jackpot % and amount; draft paytable; demo money only.
+- **Arcade tab + Santa Hat Slots (first demo, replaced)**: Mini Hat ($0.10) and Big Hat ($1.00) 3D machines shaped like Santa hats (pom-pom lever), stacked; total Slots pool under the title; each machine shows its jackpot % and amount; draft paytable; demo money only.
 - Price cushion decided: 60-second quote, a payment counts if within 2%.
 - 3% SANTA tax notice on the Play page intro, the Wager card and the Lottery block. Decided: winners absorb the tax.
 - Unranked lobby (FFA or TEAM, Auto match into public games, private room code, practice) and the FFA RANKED lobby layout (Tournament greyed out, Coming soon).

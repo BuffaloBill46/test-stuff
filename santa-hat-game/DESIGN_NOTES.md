@@ -98,7 +98,7 @@ holders know it"). A 2× win on $1 sends $2.00 and the player receives $1.94. Sa
 - (Rejected: the pool tops up winners so they receive the full amount.)
 - **The tax must be written where players read about the game:** the Play page intro, and the top of every
   game description that pays out SANTA. Done: Play page intro, Wager card, Lottery block. To do: Spin and Slots
-  pages when the Games tab is built.
+  pages when the Arcade tab is built.
 
 ### Pool wallets ("escrows") (decided)
 Cody wants only 2–3 to start:
@@ -216,7 +216,7 @@ Costume looks like one), not just an icon.
   plays still re-check and Spin could come back. The pool's rules (start, $25 skim at $175, top-off covering Drop's $10 top
   prize) are unchanged.
 - **The site/brand is now "Santa Hat Legends"** (Cody's pick: the brand only). The multiplayer mode keeps its name, Snowball
-  Square, and the Games tab stays "Santa Hat Games".
+  Square, and the Arcade tab stays "Santa Hat Games".
 
 ### Santa Lottery (decided, Cody 2026-10-01)
 **Cody's calls:**
@@ -376,7 +376,7 @@ sends" (no claim button). How it works:
 - **Price locked per run (Cody, 2026-10-01):** "the Santa price is locked at start of each run and that is what the payout
   price is converted with." Every play of a run converts dollars to SANTA at its quote's price (the price the player paid at),
   never the live price when the play settles: winnings, refunds, skims, top-offs. The run's one payout = the sum of its plays'
-  SANTA. Pool-share prizes (the Pool jackpot) pay the same SANTA at any price. A note at the top of the Games page says so.
+  SANTA. Pool-share prizes (the Pool jackpot) pay the same SANTA at any price. A note at the top of the Arcade page says so.
   (server/games.js settle; tests/db/server.test.mjs moves the live price ×3 and ÷4 mid-run.)
 - The server makes the run's plays (and locks each secret) only after the payment is confirmed. The plays settle one after
   another; the run's LAST play queues ONE payout of everything the run won, plus the price of any play the pool refused
@@ -409,7 +409,7 @@ are a balance: buy $1–$10 in one payment; a 10¢ drop takes 10¢ of it, a $1 d
 (never fractions): $10 = 100 units, a 10¢ drop 1 unit, a $1 drop 10. A size the balance can't cover is refused before
 anything is taken; a refused or failed drop gives back exactly what it took. Same fairness order; the 8 bounces come from
 the fair numbers (one per row), and "Check this result" replays them. Tested: `tests/credits.test.mjs` (to the cent),
-`tests/db/server.test.mjs` (real Postgres, the real buy flow), `tests/browser/drop-test.mjs` (the Games tab).
+`tests/db/server.test.mjs` (real Postgres, the real buy flow), `tests/browser/drop-test.mjs` (the Arcade tab).
 
 **Slots, current rules (decided by Cody, 2026-09-30; full numbers in `PAYTABLE.md`, always regenerate it after changes):**
 - **One machine: the Big Hat, $1.00 a pull, 5×5 grid, 11 paylines: straight or diagonal only, always starting on the first
@@ -437,7 +437,7 @@ the fair numbers (one per row), and "Check this result" replays them. Tested: `t
   (2) Real starting pool amount (the demo uses $500).
   (3) The "$500 threshold bonus" idea: still open.
 
-**Built earlier (demo, 2026-09-29; now out of date, see TODO):** the Games tab has the two machines, stacked: **Mini Hat** ($0.10) and **Big Hat** ($1.00).
+**Built earlier (demo, 2026-09-29; now out of date, see TODO):** the Arcade tab has the two machines, stacked: **Mini Hat** ($0.10) and **Big Hat** ($1.00).
 The **total Slots pool** shows under the Slots title. Each machine shows its **jackpot % of the pool and the current
 jackpot amount**, plus its jackpot odds and biggest fixed win (worked out from the paytable).
 - Each cabinet is a Santa hat: red cone body, fur brim base, and the pom-pom on the drooping tip is the lever.
@@ -480,7 +480,7 @@ jackpot amount**, plus its jackpot odds and biggest fixed win (worked out from t
 - A seasonal pass with a cosmetic reward track.
 - Extra daily-challenge rerolls.
 
-## Santa Hat Games tab (quick click games)
+## Santa Hat Arcade tab (the Arcade tab until 2026-10-04) (quick click games)
 
 ### Decided
 - **Single-player fun games:** each player plays on their own, with no rooms or opponents. They don't use the live multiplayer connection, so they cost no Supabase messages.

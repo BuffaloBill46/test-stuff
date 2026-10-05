@@ -134,7 +134,7 @@ Read this before starting new work on the game. Add to it whenever something rea
   1/20 s, so tests run in slow motion. Use headless runs to check logic, not game feel.
 - **Several 3D windows at once can starve a slow workspace.** On a 4-core machine, the lobby and link tests' 3rd/4th
   window took over 30 s to finish loading (every file had arrived; the page was just CPU-starved), so they timed out.
-  Not a game bug (the Games tab loads only when opened). Those tests now allow 90 s per page load.
+  Not a game bug (the Arcade tab loads only when opened). Those tests now allow 90 s per page load.
 
 ## Research access notes
 

@@ -47,7 +47,7 @@ touch real funds without Cody's OK**, never delete code that only *looks* dead, 
   - `net.js`: all networking and accounts (Supabase rooms, games board, sign-in). `?net=local` swaps in
     one-computer stand-ins for testing.
   - `catalog.js`: every avatar item (slot, level or price).
-  - Games tab: `games.js` (Big Hat), `dropui.js` / `plinko.js` (Snowball Drop), `stockingui.js` / `stocking.js` (Stocking Stuffer),
+  - Arcade tab: `games.js` (Big Hat), `dropui.js` / `plinko.js` (Snowball Drop), `stockingui.js` / `stocking.js` (Stocking Stuffer),
     `gamepool.js` (the demo Game pool), `celebrate.js` (win tiers), `slots3d.js` (3D). Santa Hat Spin was REMOVED 2026-10-04.
   - Snowball Drop: `plinko.js` (rules), `plinkoboard.js` (the board), `dropui.js` (its Games-tab card); preview `plinko.html`.
   - Runs (buy 1/5/10 plays, or any number up to 100 from the box, that play straight away) and fair results: `credits.js` (the run ledger; the file name is older
@@ -105,7 +105,7 @@ node tests/matchmaker.test.mjs   # ranked matchmaking rules, 2 simulated hours o
 node tests/ranked.test.mjs       # ranked points: the Play page's rules as code (pot, places, ties, −5)
 node tests/http.test.mjs         # the server's web door: sign-in, other websites refused, plain errors
 (cd tests/solana && node payouts.test.mjs)  # payout worker: winners paid exactly once, even through crashes
-(cd tests/browser && node server-mode-test.mjs)  # the Games page playing through the real server code + real SQL
+(cd tests/browser && node server-mode-test.mjs)  # the Arcade page playing through the real server code + real SQL
 (cd tests/db && node admin.test.mjs)            # escrow admin controls: wallet-signed only, no replays, stop really stops
 (cd tests/db && node tickets.test.mjs)          # ranked tickets: 10 free a day, held/spent/released, 10 bought per 24 h
 (cd tests/db && node security.test.mjs && node price.test.mjs)  # audit: attacks refused cleanly; price manipulation guard
@@ -145,9 +145,9 @@ node idle.mjs                    # 3-minute idle and hidden-tab kicks
 node live.mjs                    # STALE (found 2026-10-01): written before the lobby redesign; it stops at "Waiting for the referee" (it blocks Supabase). Until it's updated, click through the live site in a real browser instead
 node spin-test.mjs               # RETIRED with Spin (Cody, 2026-10-01): the Spin card is hidden, so this no longer runs; kept with Spin's code
 node devnet-pay-test.mjs         # REAL devnet: the page's wallet step buys a Snowball Drop run, server checks the real payment, payout sent (needs tests/solana/devnet-setup.mjs)
-node games-test.mjs              # Games tab: Slots readouts, pulls, forced win and jackpot, money math
+node games-test.mjs              # Arcade tab: Slots readouts, pulls, forced win and jackpot, money math
 node sfx-test.mjs                # sound: waits for a tap, fires at the right moments, mute remembered
-node live-games.mjs              # buys + pulls + spins + re-checks a result on the PUBLISHED Games tab
+node live-games.mjs              # buys + pulls + spins + re-checks a result on the PUBLISHED Arcade tab
 ```
 
 The browser tests need Playwright installed globally and use headless Chromium with software graphics
@@ -160,6 +160,9 @@ several windows on one computer share a room. Screenshots land in `tests/browser
 between two devices has never been tested from here. Cody and friends testing on real phones is the check.
 
 ## Where we are right now
+
+**Naming (Cody, 2026-10-04): the Games tab is now the ARCADE** (nav bar, page heading "Santa Hat Arcade", guide). Code keeps its
+internal names (#tab-games, data-tab="games", the #games link) so links and tests don't break. Docs say Arcade from here.
 
 ### 2026-10-04 (NEWEST): X LINK + SUPPORT (046 live; servers bd7d0e8)
 - Sign-in sheet bottom: @Santahatgame (x.com/Santahatgame) with a Support button beside it (supportui.js). Anyone, signed in
@@ -269,7 +272,7 @@ between two devices has never been tested from here. Cody and friends testing on
 - Results card next step (`online.js endActions`): practice Play again (instant), Auto match "starts by itself" + Leave, ranked
   Play again · 1 ticket, friends' rooms Leave; guest top-3 sign-in nudge (`results-test`).
 - First-match tips (`coach.js`): Move / Throw / Get the hat, done by doing, once per browser, Skip; taps pass through (`coach-test`).
-- Games tab: jump buttons, Good to know fold (`games-tidy-test`). Guide's team line follows TEAM_PAUSED.
+- Arcade tab: jump buttons, Good to know fold (`games-tidy-test`). Guide's team line follows TEAM_PAUSED.
 - Spooky Halloween plaza LIVE (helper agent, reviewed): 3 skeletons, 2 black cats, 3 zombies, a cobweb (`plaza.js
   halloweenFolk`); outside the ring, never between camera and field; Christmas pixel-identical (`theme-christmas-same.mjs <old
   mockups folder>`), `halloween-spooky-shots`.
@@ -610,7 +613,7 @@ branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from
   moves/throws in either; every player's level, games, top-3 %, rank points, special snowballs; gear says "coming soon". Numbers
   need the deployed server (013 is applied live; dashes until the server is deployed). Tests: `tests/match-intro.test.mjs`,
   `tests/browser/match-intro-test.mjs`. Browser tests that start matches skip the 10 s (they set the timer to 0).
-- **Games tab changes BUILT, NOT published** (Cody, 2026-10-01): any run of 1–100 from a ▼ number ▲ box under each game's
+- **Arcade tab changes BUILT, NOT published** (Cody, 2026-10-01): any run of 1–100 from a ▼ number ▲ box under each game's
   buttons (`mockups/runpick.js`; rules/server say 1–100; `supabase/014_run_sizes.sql` is applied live); a "This run 7 / 25 · won $3.40" counter between each game and its buttons; bigger Big Hat
   reels; "Top Line JackPot" + one "Jackpot odds (Top Line or Pool) about 1 in 7,665" row; Drop shows only "1 in 14.2 to hit a
   5× or 10×"; **price locked per run** (every play of a run converts at its quote's price; note at the top of the Games
@@ -657,7 +660,7 @@ branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from
   server's network; waits for finalized; a paid-but-unconfirmed run is retried on the next visit). Proven on real devnet in a
   browser: pay → 5 plays → ONE payout sent, books = wallets (`tests/browser/devnet-pay-test.mjs`).
 - **Not done yet:** Edge Function deploy + its settings (waits on `npx supabase login` by Cody), a real-Phantom check in Cody's
-  Chrome, the scheduled payout worker, skims on chain, reconcile on a schedule, publishing the specials, load screen and Games tab pages (012–014 are applied).
+  Chrome, the scheduled payout worker, skims on chain, reconcile on a schedule, publishing the specials, load screen and Arcade tab pages (012–014 are applied).
 - ~~Waiting on Cody: `npx supabase login`~~ NOT NEEDED (2026-10-02): the game server is deployed through the Supabase
   connector instead (a one-line Edge Function that loads the code at a pinned commit of the public repo). Decided: devnet wallets are
   Claude's to make and fund (labelled in `devnet.json`); lottery payouts manual; real wallets at launch.
@@ -668,7 +671,7 @@ branch `ccr-55527f21-p10a6h` is merged in; the live site was last published from
 - **Play tab:** Snowball Square multiplayer (rooms, bots that now sometimes emote, idle kicks), unranked lobby, FFA RANKED layout
   (Auto match off until tickets + server exist), live games list with Watch now. Sound effects with a remembered mute button.
 - **Store / Avatar / Ranks tabs:** item catalog, avatar editor, wallet or email sign-in with linking, leaderboard.
-- **Games tab:** Big Hat slots, Santa Hat Spin and Snowball Drop, each with **Play 1 / 5 / 10 buttons** (one payment, the plays
+- **Arcade tab:** Big Hat slots, Santa Hat Spin and Snowball Drop, each with **Play 1 / 5 / 10 buttons** (one payment, the plays
   run straight away, winnings sent automatically at the end; no credits, no claim button; Cody 2026-10-01),
   **fair results in Cody's order** (payment first, then the secret) with a "Check this result" panel,
   and the **live SANTA price and live token tax**. Numbers: `PAYTABLE.md` (Spin's numbers there are history: the game was removed 2026-10-04).
@@ -697,7 +700,7 @@ FOR_MAIN_CLAUDE.md.
   credits or the server yet.
 - **Spin credits are a dollar balance too** (2026-10-01, Cody: per-game credits, either size): buy $10 of Spin, play 10¢
   or $1 spins in any mix. Big Hat still counts pulls.
-- **Snowball Drop added to the Games tab** (2026-10-01): shares the Spin pool; 10¢ or $1 drops (Cody). Built through to the server and SQL; tests `tests/browser/drop-test.mjs`, `tests/db/server.test.mjs`.
+- **Snowball Drop added to the Arcade tab** (2026-10-01): shares the Spin pool; 10¢ or $1 drops (Cody). Built through to the server and SQL; tests `tests/browser/drop-test.mjs`, `tests/db/server.test.mjs`.
 - **"What's SANTA?" draft copy** in `WHATS_SANTA.md` (short + long, from santahat.gold and on-chain facts): Cody to edit.
 - **Credits removed; RUNS instead (2026-10-01, Cody):** every game has Play 1 / 5 / 10 at the size picked on the card. One
   confirm, one payment, the plays run one after another (Skip ahead finishes the animations), and when the last one lands the
@@ -743,7 +746,7 @@ server, the database or payments.
 - Edge Function `games` (Cody's choice): quote → buy a run → settle each play → one payout per run, stuck-run tidying, one run at a time per player (at the quote),
   pools in SANTA floating with the price (Cody), escrow admin controls (wallet-signed stop/resume/settings, logged).
 - Payout worker: never pays twice, even through crashes (proven on the real token program).
-- The Games page's server mode (`?server=<address>`), proven end to end against the real server code and SQL.
+- The Arcade page's server mode (`?server=<address>`), proven end to end against the real server code and SQL.
 
 **Game settings (Cody, 2026-09-30):** the admin screen edits prices, the Spin wheel, Big Hat odds/prizes/symbols, the jackpot
 % and odds, and the store (price/level changes, new colour items), with a guard-rail preview. Versioned and wallet-signed;
@@ -767,7 +770,7 @@ Logic: `mockups/settings.js`. New item SHAPES (not colours) still need code.
 10. ~~Which always-on server~~ **Decided: DigitalOcean** (a new, separate Droplet; ~$6/mo for 1,000 players a day). Cody's other calls (Helius, Turnstile, Telegram alerts, no multisig): FOR_MAIN_CLAUDE → "Cody's calls on servers".
 11. A lawyer's check of the paid games before real money (RESEARCH.md → "Other things that would help").
 
-**Next big step:** connect the Games page to the Edge Function instead of the in-browser stand-in (`house.js`), apply `005`,
+**Next big step:** connect the Arcade page to the Edge Function instead of the in-browser stand-in (`house.js`), apply `005`,
 deploy the function. Before real money: Cody's pool wallets (real money), Solana sign-in turned on, a payout worker (sends
 queued prizes; needs the pool keys, server-only). The pool lock is proven on real Postgres (2026-10-01).
 
