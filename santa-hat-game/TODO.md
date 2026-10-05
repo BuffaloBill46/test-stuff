@@ -26,7 +26,7 @@ them. Last updated: 2026-10-04.
     address is being retired; found 2026-10-04).
 
 13. [x] **"Max paid to level 5"** under the Buy level button in Player Progress (Cody 2026-10-04).
-14. [ ] **Ranked points by level** (Cody 2026-10-04): each player in a ranked match puts 2 × their level into the pot (level 1 =
+14. [x] **Ranked points by level** (Cody 2026-10-04): each player in a ranked match puts 2 × their level into the pot (level 1 =
     2 points … level 10 = 20) instead of 10 each; not placing still costs 5. Higher levels are worth more to beat, lower less.
     A bot puts in 5 points (Cody 2026-10-04).
 

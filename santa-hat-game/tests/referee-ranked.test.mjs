@@ -72,9 +72,11 @@ until(a, 'play');
 c2.h.gone(); await settle(); assert.equal(tickets.get(P(3)), 9, 'quitting after the start: the ticket stays spent');
 until(a, 'end'); await settle();
 const end = a.last('snap').d, mid = end.mid;
-const order = end.E.map((r) => ({ id: r[2] ? 'x' + r[0] : { anne0001: P(1), benn0001: P(2) }[r[1]], bot: !!r[2], score: r[11] }));
+// the pot uses each player's SAVED level (Ann 3, Ben 4: 2 points a level, to-do #14), not the level 10 their pages claimed
+const order = end.E.map((r) => ({ id: r[2] ? 'x' + r[0] : { anne0001: P(1), benn0001: P(2) }[r[1]], bot: !!r[2], score: r[11], level: { anne0001: 3, benn0001: 4 }[r[1]] }));
 const want = settleRanked(order).points; want[P(3)] = -5;
-assert.deepEqual(Object.fromEntries(results.filter((r) => r.mid === mid).map((r) => [r.pid, r.change])), want, 'points = ranked.js on the final scores; the quitter −5');
+assert.deepEqual(Object.fromEntries(results.filter((r) => r.mid === mid).map((r) => [r.pid, r.change])), want, 'points = ranked.js on the final scores and saved levels; the quitter −5');
+assert.notDeepEqual(want, (() => { const w = settleRanked(order.map((o) => ({ ...o, level: 10 }))).points; w[P(3)] = -5; return w; })(), "(and that's a different answer from the claimed level 10s)");
 assert.equal(results.length, 3, 'once per player per match');
 assert.deepEqual(a.last('rank').d, { change: want[P(1)], points: 100 + want[P(1)] }, 'each player is told their change');
 assert.equal(finishes.length, 1, 'the finish also counts toward levels'); assert.equal(finishes[0].id, mid);

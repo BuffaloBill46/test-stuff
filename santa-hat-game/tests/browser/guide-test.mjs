@@ -9,7 +9,7 @@ const web = http.createServer((req, res) => { const f = path.join(ROOT, decodeUR
   if (!f.startsWith(ROOT) || !existsSync(f)) { res.writeHead(404); return res.end(); } res.writeHead(200, { 'content-type': f.endsWith('.js') ? 'text/javascript' : 'text/html' }); res.end(readFileSync(f)); }).listen(8793);
 const b = await chromium.launch();
 import { COSTUMES } from '../../mockups/catalog.js';
-const WANT = { pts: 4, sbTable: 6, gearTable: 8, levelTable: 10, lookTable: 9 + Object.values(COSTUMES).filter((c) => c.season).length, /* levels 2–10, then one row per season-pass costume */ rankedEx: 3, bigTable: 9, dropTable: 5, stockTable: 8 };
+const WANT = { pts: 4, sbTable: 6, gearTable: 8, levelTable: 10, lookTable: 9 + Object.values(COSTUMES).filter((c) => c.season).length, /* levels 2–10, then one row per season-pass costume */ rankedEx: 6, /* six worked examples by level (to-do #14) */ bigTable: 9, dropTable: 5, stockTable: 8 };
 for (const [label, vp] of [['phone', { width: 390, height: 844 }], ['desktop', { width: 1280, height: 900 }]]) {
   const p = await b.newPage({ viewport: vp }), errs = [];
   p.on('pageerror', (e) => errs.push(e.message));
@@ -26,7 +26,7 @@ for (const [label, vp] of [['phone', { width: 390, height: 844 }], ['desktop', {
   // the season and weekly modes (seasons.js, weekly.js), read from the rules files
   const has = (...xs) => xs.every((x) => r.text.includes(x));
   check(has('Halloween (October 1 to October 31)', 'Thanksgiving (November 1 to November 30)', 'Christmas (December 1 to January 1)'), `${label}: the three seasons and their dates`);
-  check(has('Play 2 Auto matches', 'Log in', 'Win an Auto match', 'Halloween, door 2: Candy Corn', 'costs $2', 'Pumpkin King', '30 doors, one every 300 points', 'up to 700 a day', 'Elf Hat', 'ranked ticket', '+1 level tick', 'adds the') && !/one door a day/.test(r.text),
+  check(has('Play 2 Auto matches', 'Log in', 'Win an Auto match', 'Halloween, door 2: Candy Corn', 'costs $2', 'Pumpkin King', '30 doors, one every 300 points', 'up to 700 a day', 'Elf Hat', 'ranked ticket', '+1 level tick', 'adds the', 'points per level') && !/one door a day/.test(r.text),
     `${label}: season points (30 doors, 300 each, up to 700 a day), tasks, free looks by door, the $2 pass and what it gives`);
   check(has('Hot Hat:', 'King of the Gazebo:', 'Blizzard:', 'Hat Hunt:', 'Auto match together'), `${label}: weekly modes and playing with friends`);
   check(!errs.length, `${label}: no page errors ${errs.join(' | ')}`);

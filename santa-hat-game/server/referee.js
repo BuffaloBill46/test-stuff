@@ -285,7 +285,7 @@ export function createReferee({ now = () => Date.now(), rand = Math.random, iden
   // Someone who left during the match isn't in it any more but started it: not placing, so quitting a loss doesn't dodge it.
   function rankedPoints(room, order) {
     const mid = room.sim.S.mid, seen = new Set();
-    const ps = order.map((e) => { const pid = e.bot ? null : room.conns.get(e.peer)?.me.pid || null; if (pid) seen.add(pid); return { id: pid || 'x' + e.id, bot: !pid, score: e.score }; });
+    const ps = order.map((e) => { const pid = e.bot ? null : room.conns.get(e.peer)?.me.pid || null; if (pid) seen.add(pid); return { id: pid || 'x' + e.id, bot: !pid, score: e.score, level: pid ? room.conns.get(e.peer)?.me.l : 1 }; }); // me.l: the saved level (database)
     const { points } = settleRanked(ps);
     for (const pid of room.startedWith || []) if (!seen.has(pid)) points[pid] = RULES.notPlacing;
     for (const [pid, change] of Object.entries(points)) {
