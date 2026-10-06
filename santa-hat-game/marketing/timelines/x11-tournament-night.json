@@ -1,0 +1,333 @@
+{
+ "name": "Tournament night",
+ "clipVolume": 0.3,
+ "segments": [
+  {
+   "t": 0,
+   "dur": 2.4,
+   "fur": true,
+   "lines": [
+    {
+     "text": "Tournament",
+     "y": 680,
+     "size": 160,
+     "color": "#f5f1e8",
+     "at": -1
+    },
+    {
+     "text": "night.",
+     "y": 880,
+     "size": 128,
+     "color": "#ff7a66",
+     "at": 0.6
+    },
+    {
+     "text": "FREE ENTRY",
+     "y": 1060,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#b9cdf2",
+     "at": 1
+    },
+    {
+     "text": "santahatgames.com",
+     "font": "body",
+     "size": 70,
+     "weight": 800,
+     "color": "#ffbe5c",
+     "y": 1300,
+     "at": -1
+    }
+   ]
+  },
+  {
+   "t": 2.4,
+   "dur": 2.6,
+   "img": "stills/tour-bar.png",
+   "zoom0": 1,
+   "zoom1": 1.05,
+   "fadeIn": 0.12,
+   "fadeOut": 0.15,
+   "vignette": 0.15,
+   "dy": 208,
+   "flash": 0.8
+  },
+  {
+   "t": 5,
+   "dur": 2.6,
+   "img": "stills/tour-waiting.png",
+   "zoom0": 1,
+   "zoom1": 1.04,
+   "fadeIn": 0.12,
+   "fadeOut": 0.15,
+   "vignette": 0.15
+  },
+  {
+   "t": 7.6,
+   "dur": 2.6,
+   "src": "raw/gameplay-mode-hothat.webm",
+   "from": 5,
+   "mute": true,
+   "zoom0": 1.15,
+   "zoom1": 1.05,
+   "fadeIn": 0.08,
+   "fadeOut": 0.12,
+   "vignette": 0.3
+  },
+  {
+   "t": 10.200000000000001,
+   "dur": 2.6,
+   "img": "stills/tour-bracket.png",
+   "zoom0": 1,
+   "zoom1": 1.04,
+   "fadeIn": 0.12,
+   "fadeOut": 0.15,
+   "vignette": 0.15
+  },
+  {
+   "t": 12.8,
+   "dur": 4.2,
+   "img": "stills/tour-standings.png",
+   "zoom0": 1,
+   "zoom1": 1.04,
+   "fadeIn": 0.12,
+   "fadeOut": 0.15,
+   "vignette": 0.15
+  }
+ ],
+ "overlays": [
+  {
+   "t": 2.5,
+   "dur": 2.4,
+   "band": [
+    1500,
+    250
+   ],
+   "lines": [
+    {
+     "text": "60 SECONDS",
+     "y": 1560,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#ffbe5c"
+    },
+    {
+     "text": "Tap the bar to join",
+     "y": 1660,
+     "size": 92,
+     "color": "#f5f1e8"
+    }
+   ]
+  },
+  {
+   "t": 5.1,
+   "dur": 2.4,
+   "band": [
+    1500,
+    250
+   ],
+   "lines": [
+    {
+     "text": "THE BRACKET",
+     "y": 1560,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#ffbe5c"
+    },
+    {
+     "text": "Everyone gets a seat",
+     "y": 1660,
+     "size": 92,
+     "color": "#f5f1e8"
+    }
+   ]
+  },
+  {
+   "t": 7.699999999999999,
+   "dur": 2.4,
+   "band": [
+    170,
+    250
+   ],
+   "lines": [
+    {
+     "text": "90-SECOND GAMES",
+     "y": 230,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#ffbe5c"
+    },
+    {
+     "text": "Top 2 go through",
+     "y": 330,
+     "size": 112,
+     "color": "#f5f1e8"
+    }
+   ]
+  },
+  {
+   "t": 10.3,
+   "dur": 2.4,
+   "band": [
+    1500,
+    250
+   ],
+   "lines": [
+    {
+     "text": "ROUND BY ROUND",
+     "y": 1560,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#ffbe5c"
+    },
+    {
+     "text": "Until the final",
+     "y": 1660,
+     "size": 112,
+     "color": "#f5f1e8"
+    }
+   ]
+  },
+  {
+   "t": 12.9,
+   "dur": 2.4,
+   "band": [
+    170,
+    250
+   ],
+   "lines": [
+    {
+     "text": "THE FINAL",
+     "y": 230,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#ffbe5c"
+    },
+    {
+     "text": "Top 8 placed",
+     "y": 330,
+     "size": 112,
+     "color": "#f5f1e8"
+    }
+   ]
+  },
+  {
+   "t": 14.1,
+   "dur": 2.9,
+   "band": [
+    1360,
+    430
+   ],
+   "lines": [
+    {
+     "text": "Watch for the next one",
+     "y": 1470,
+     "size": 104,
+     "color": "#f5f1e8"
+    },
+    {
+     "text": "Follow so you see the countdown",
+     "y": 1590,
+     "font": "body",
+     "size": 60,
+     "weight": 700,
+     "color": "#b9cdf2"
+    },
+    {
+     "text": "santahatgames.com",
+     "font": "body",
+     "size": 82,
+     "weight": 800,
+     "color": "#ffbe5c",
+     "y": 1700
+    }
+   ]
+  }
+ ],
+ "music": {
+  "bpm": 112,
+  "parts": [
+   {
+    "drone": true,
+    "t": 0,
+    "end": 2.4,
+    "note": 38,
+    "v": 0.12
+   },
+   {
+    "bells": true,
+    "t": 0.05,
+    "notes": [
+     74,
+     77,
+     81,
+     86
+    ],
+    "every": 1,
+    "v": 0.14
+   },
+   {
+    "roll": true,
+    "t": 1.2,
+    "end": 2.4
+   },
+   {
+    "boom": true,
+    "t": 2.4,
+    "v": 1
+   },
+   {
+    "groove": true,
+    "t": 2.4,
+    "end": 17,
+    "bass": [
+     38,
+     38,
+     41,
+     43,
+     38,
+     38,
+     45,
+     43
+    ]
+   },
+   {
+    "hit": true,
+    "t": 2.4,
+    "v": 0.5
+   },
+   {
+    "hit": true,
+    "t": 5,
+    "v": 0.55
+   },
+   {
+    "hit": true,
+    "t": 7.6,
+    "v": 0.6
+   },
+   {
+    "hit": true,
+    "t": 10.200000000000001,
+    "v": 0.65
+   },
+   {
+    "hit": true,
+    "t": 12.8,
+    "v": 0.7
+   },
+   {
+    "stab": true,
+    "t": 13.8,
+    "root": 50,
+    "v": 0.08
+   }
+  ]
+ }
+}

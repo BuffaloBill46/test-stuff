@@ -1,0 +1,319 @@
+{
+ "name": "Where your SANTA goes",
+ "clipVolume": 0.3,
+ "segments": [
+  {
+   "t": 0,
+   "dur": 2.4,
+   "fur": true,
+   "lines": [
+    {
+     "text": "Where does",
+     "y": 680,
+     "size": 160,
+     "color": "#f5f1e8",
+     "at": -1
+    },
+    {
+     "text": "your SANTA go?",
+     "y": 880,
+     "size": 128,
+     "color": "#ff7a66",
+     "at": 0.6
+    },
+    {
+     "text": "NO SECRETS",
+     "y": 1060,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#b9cdf2",
+     "at": 1
+    },
+    {
+     "text": "santahatgames.com",
+     "font": "body",
+     "size": 70,
+     "weight": 800,
+     "color": "#ffbe5c",
+     "y": 1300,
+     "at": -1
+    }
+   ]
+  },
+  {
+   "t": 2.4,
+   "dur": 2.8,
+   "img": "stills/money-flow.png",
+   "zoom0": 1,
+   "zoom1": 1.04,
+   "fadeIn": 0.12,
+   "fadeOut": 0.15,
+   "vignette": false,
+   "dx": -882,
+   "flash": 0.8
+  },
+  {
+   "t": 5.199999999999999,
+   "dur": 2.8,
+   "img": "stills/money-flow.png",
+   "zoom0": 1.04,
+   "zoom1": 1.08,
+   "fadeIn": 0.12,
+   "fadeOut": 0.15,
+   "vignette": false,
+   "dx": -882
+  },
+  {
+   "t": 8,
+   "dur": 2.8,
+   "img": "stills/money-flow.png",
+   "zoom0": 1.08,
+   "zoom1": 1.1,
+   "fadeIn": 0.12,
+   "fadeOut": 0.15,
+   "vignette": false,
+   "dx": -882
+  },
+  {
+   "t": 10.799999999999999,
+   "dur": 4.4,
+   "img": "stills/money-flow.png",
+   "zoom0": 1.1,
+   "zoom1": 1.12,
+   "fadeIn": 0.12,
+   "fadeOut": 0.15,
+   "vignette": false,
+   "dx": 882
+  }
+ ],
+ "overlays": [
+  {
+   "t": 2.5,
+   "dur": 2.5999999999999996,
+   "band": [
+    170,
+    330
+   ],
+   "lines": [
+    {
+     "text": "ARCADE",
+     "y": 230,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#ffbe5c"
+    },
+    {
+     "text": "10% burned forever",
+     "y": 330,
+     "size": 112,
+     "color": "#f5f1e8"
+    },
+    {
+     "text": "90% to the Game pool",
+     "y": 440,
+     "font": "body",
+     "size": 54,
+     "weight": 700,
+     "color": "#b9cdf2"
+    }
+   ]
+  },
+  {
+   "t": 5.299999999999999,
+   "dur": 2.5999999999999996,
+   "band": [
+    170,
+    250
+   ],
+   "lines": [
+    {
+     "text": "THE GAME POOL",
+     "y": 230,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#ffbe5c"
+    },
+    {
+     "text": "Pays every Arcade win",
+     "y": 330,
+     "size": 92,
+     "color": "#f5f1e8"
+    }
+   ]
+  },
+  {
+   "t": 8.1,
+   "dur": 2.5999999999999996,
+   "band": [
+    170,
+    330
+   ],
+   "lines": [
+    {
+     "text": "YOUR WINS",
+     "y": 230,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#ffbe5c"
+    },
+    {
+     "text": "Straight to your wallet",
+     "y": 330,
+     "size": 92,
+     "color": "#f5f1e8"
+    },
+    {
+     "text": "in SANTA",
+     "y": 440,
+     "font": "body",
+     "size": 54,
+     "weight": 700,
+     "color": "#b9cdf2"
+    }
+   ]
+  },
+  {
+   "t": 10.899999999999999,
+   "dur": 2.5999999999999996,
+   "band": [
+    170,
+    330
+   ],
+   "lines": [
+    {
+     "text": "PAY YOUR WAY",
+     "y": 230,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#ffbe5c"
+    },
+    {
+     "text": "SANTA or SOL",
+     "y": 330,
+     "size": 112,
+     "color": "#f5f1e8"
+    },
+    {
+     "text": "one wallet approval",
+     "y": 440,
+     "font": "body",
+     "size": 54,
+     "weight": 700,
+     "color": "#b9cdf2"
+    }
+   ]
+  },
+  {
+   "t": 12.299999999999999,
+   "dur": 2.9,
+   "band": [
+    1360,
+    430
+   ],
+   "lines": [
+    {
+     "text": "Every payment, on-chain",
+     "y": 1470,
+     "size": 104,
+     "color": "#f5f1e8"
+    },
+    {
+     "text": "Solana · $SANTA",
+     "y": 1590,
+     "font": "body",
+     "size": 60,
+     "weight": 700,
+     "color": "#b9cdf2"
+    },
+    {
+     "text": "santahatgames.com",
+     "font": "body",
+     "size": 82,
+     "weight": 800,
+     "color": "#ffbe5c",
+     "y": 1700
+    }
+   ]
+  }
+ ],
+ "music": {
+  "bpm": 112,
+  "parts": [
+   {
+    "drone": true,
+    "t": 0,
+    "end": 2.4,
+    "note": 38,
+    "v": 0.12
+   },
+   {
+    "bells": true,
+    "t": 0.05,
+    "notes": [
+     74,
+     77,
+     81,
+     86
+    ],
+    "every": 1,
+    "v": 0.14
+   },
+   {
+    "roll": true,
+    "t": 1.2,
+    "end": 2.4
+   },
+   {
+    "boom": true,
+    "t": 2.4,
+    "v": 1
+   },
+   {
+    "groove": true,
+    "t": 2.4,
+    "end": 15.2,
+    "bass": [
+     38,
+     38,
+     41,
+     43,
+     38,
+     38,
+     45,
+     43
+    ]
+   },
+   {
+    "hit": true,
+    "t": 2.4,
+    "v": 0.5
+   },
+   {
+    "hit": true,
+    "t": 5.199999999999999,
+    "v": 0.55
+   },
+   {
+    "hit": true,
+    "t": 8,
+    "v": 0.6
+   },
+   {
+    "hit": true,
+    "t": 10.799999999999999,
+    "v": 0.65
+   },
+   {
+    "stab": true,
+    "t": 12,
+    "root": 50,
+    "v": 0.08
+   }
+  ]
+ }
+}

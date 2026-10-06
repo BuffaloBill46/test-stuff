@@ -106,6 +106,8 @@ window.compose = async function (TL) {
   const vids = {};
   for (const s of TL.segments) if (s.src && !vids[s.src]) { const v = document.createElement('video'); v.src = s.src; v.preload = 'auto'; v.playsInline = true; v.muted = true;
     await new Promise((r, j) => { v.oncanplaythrough = r; v.onerror = () => j(new Error('cannot load ' + s.src)); v.load(); }); vids[s.src] = v; }
+  // a still picture (img: a sharp page screenshot) is framed like a clip: same zoom, fades and labels, nothing to play
+  for (const s of TL.segments) if (s.img && !vids[s.img]) { const im = new Image(); im.src = s.img; await im.decode(); vids[s.img] = im; }
   for (const s of TL.segments) if (s.log) s._log = await (await fetch(s.log)).json();
   const FPS = 30, SR = 48000, total = TL.segments.reduce((m, s) => Math.max(m, s.t + s.dur), 0) + (TL.tail ?? 0.4);
   // ---- sound, made ahead of time on the same clock as the pictures: the music plus each clip's own sound (with its fades)
@@ -177,17 +179,17 @@ function gameText(s, v, x, y, w, h) {
 function draw(t, TL, vids, started) {
   for (const s of TL.segments) {
     if (t < s.t - 0.6 || t > s.t + s.dur) continue;
-    if (s.src) { const v = vids[s.src];
-      if (!started.has(s) && t >= s.t - 0.15) { started.add(s); v.currentTime = s.from ?? 0; v.playbackRate = s.rate ?? 1; v.play(); }
+    if (s.src || s.img) { const v = vids[s.src || s.img], vw = v.videoWidth || v.naturalWidth, vh = v.videoHeight || v.naturalHeight;
+      if (s.src && !started.has(s) && t >= s.t - 0.15) { started.add(s); v.currentTime = s.from ?? 0; v.playbackRate = s.rate ?? 1; v.play(); }
       if (t < s.t) continue; const lt = t - s.t, p = lt / s.dur;
       const fi = s.fadeIn ?? 0.35, fo = s.fadeOut ?? 0.35, a = Math.min(clamp(lt / fi), clamp((s.dur - lt) / fo));
       g.globalAlpha = a; const z = (s.zoom0 ?? 1.02) + ((s.zoom1 ?? 1.1) - (s.zoom0 ?? 1.02)) * ease(p);
       // contain: a game screen that isn't phone-shaped, framed whole on the site's night blue (with the fur trim)
-      if (s.fit === 'contain') { card({ bg: s.bg, fur: s.fur, furTop: s.furTop ?? 150, furBottom: s.furBottom ?? 1800, lines: [] }, 0); const w = W * (s.width ?? 0.94) * z, h = w * v.videoHeight / v.videoWidth, cy = s.cy ?? 900;
+      if (s.fit === 'contain') { card({ bg: s.bg, fur: s.fur, furTop: s.furTop ?? 150, furBottom: s.furBottom ?? 1800, lines: [] }, 0); const w = W * (s.width ?? 0.94) * z, h = w * vh / vw, cy = s.cy ?? 900;
         g.save(); g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 40; g.fillStyle = COL.ink; g.fillRect((W - w) / 2 - 8, cy - h / 2 - 8, w + 16, h + 16); g.restore();
         g.drawImage(v, (W - w) / 2, cy - h / 2, w, h);
         if (s._log) gameText(s, v, (W - w) / 2, cy - h / 2, w, h); }
-      else cover(v, v.videoWidth, v.videoHeight, z, (s.pan ?? 0) * p * 60, 0); g.globalAlpha = 1;
+      else cover(v, vw, vh, z, (s.dx ?? 0) + (s.pan ?? 0) * p * 60, s.dy ?? 0); // dy: shift a tall picture down (keep its top in frame) g.globalAlpha = 1;
       if (s.vignette !== false) { g.globalAlpha = a; vignette(s.vignette ?? 0.5); g.globalAlpha = 1; }
       if (s.flash && lt < 0.25) { g.fillStyle = 'rgba(255,255,255,' + ((1 - lt / 0.25) * s.flash) + ')'; g.fillRect(0, 0, W, H); }
       if (s.label) { const la = clamp((lt - 0.25) / 0.3) * clamp((s.dur - lt - 0.1) / 0.3), y = s.labelY ?? 1560, slide = (1 - ease(clamp((lt - 0.25) / 0.4))) * 40;

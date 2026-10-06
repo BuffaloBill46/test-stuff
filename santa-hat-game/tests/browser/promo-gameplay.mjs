@@ -11,6 +11,8 @@ const SECS = +(process.argv[2] || 14), ZOOM = process.argv[3] || '1.7', TAG = pr
 // with them playing"): THEME=halloween|christmas (the plaza), BODIES=8 (a full arena: me + 7), W/H (the window), SHOT=<file.png> with
 // SHOT_AT=<seconds> (one picture of the page at that moment, saved to marketing/stills/), NOREC=1 (picture only, no video).
 const W = +(process.env.W || 540), H = +(process.env.H || 960), THEME = process.env.THEME || '', BODIES = +(process.env.BODIES || 5);
+// VARIANT=hothat|gazebo|blizzard|hathunt (a weekly mode), MODE=team (Nice vs Naughty): the switched-off modes, for their videos
+const VARIANT = /^(hothat|gazebo|blizzard|hathunt)$/.test(process.env.VARIANT || '') ? process.env.VARIANT : '', MODE = process.env.MODE === 'team' ? 'team' : 'ffa';
 const SHOT = process.env.SHOT || '', SHOT_AT = +(process.env.SHOT_AT || 8), NOREC = !!process.env.NOREC;
 const LOOKS = [
   { face: 'face_panda', shirt: 'shirt_coal', pants: 'pants_snow', hat: 'hat_earmuffs' },
@@ -32,13 +34,15 @@ await ctx.route('**/*', async (route) => { const url = route.request().url();
   if (/cdn\.jsdelivr\.net\/npm\/|fonts\.googleapis|fonts\.gstatic/.test(url)) { try { return route.fulfill({ body: execSync(`curl -sS -L -A "Mozilla/5.0 Chrome/120" "${url}"`, { maxBuffer: 1e8 }), contentType: url.includes('googleapis') ? 'text/css' : url.includes('gstatic') ? 'font/woff2' : 'text/javascript' }); } catch { return route.fulfill({ status: 503, body: '' }); } }
   if (url.startsWith('http://localhost/')) { const p = url.replace('http://localhost/', '').split(/[?#]/)[0], f = path.join(ROOT, p); if (!existsSync(f)) return route.fulfill({ status: 404, body: 'nf' });
     let body = readFileSync(f);
+    // VARIANT=<weekly mode id> (Cody 2026-10-06: a video of each switched-off mode): this recording's practice match plays that mode
+    if (p === 'online.js' && VARIANT) body = body.toString().replace('sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)), startOf, specialsOf, levelOf, gearOf });', `sim = createSim(Math.random, { rulesOf: (e) => ballRules(avatarOf(e)), startOf, specialsOf, levelOf, gearOf, variant: '${VARIANT}' });`);
     if (p === 'sim.js') body = body.toString().replace('MIN_BODIES: 4,', `MIN_BODIES: ${BODIES},`); // me + the four costumes (+ more: a full arena)
     if (p === 'refcore.js') body = body.toString().replace('export function botAvatar(id) {', 'export function botAvatar(id) { const P = globalThis.__promo; if (P) { if (!(id in P.map) && P.queue.length) P.map[id] = cleanAvatar(P.queue.shift()); if (P.map[id]) return P.map[id]; }');
     return route.fulfill({ body, contentType: p.endsWith('.js') ? 'text/javascript' : p.endsWith('.png') ? 'image/png' : p.endsWith('.css') ? 'text/css' : 'text/html' }); }
   return route.fulfill({ status: 503, body: '' }); });
 const page = await ctx.newPage(); page.on('pageerror', (e) => console.log('ERR', e.message));
 await page.goto('http://localhost/online.html?net=local', { timeout: 90000 }); await page.waitForFunction(() => window.__sq, null, { timeout: 90000 });
-await page.evaluate(() => { const s = window.__sq; s.me.n = 'SnowStorm'; Object.assign(s.me.a, { shirt: 'shirt_red', pants: 'pants_navy', face: 'face_dots', skin: 'skin_2', hat: 'hat_beanie', pack: 'pack_none' }); s.me.l = 8; s.startPractice(); });
+await page.evaluate((mode) => { const s = window.__sq; s.me.n = 'SnowStorm'; Object.assign(s.me.a, { shirt: 'shirt_red', pants: 'pants_navy', face: 'face_dots', skin: 'skin_2', hat: 'hat_beanie', pack: 'pack_none' }); s.me.l = 8; s.startPractice(); if (mode === 'team') s.sim.S.mode = 'team'; }, MODE);
 await page.waitForFunction(() => document.querySelector('#start'), null, { timeout: 30000 }); await page.evaluate(() => document.querySelector('#start').click());
 await page.waitForFunction(() => { const s = window.__sq; if (/^(intro|count)$/.test(s.sim?.S.phase)) s.sim.S.time = 0; return s.view?.phase === 'play'; }, null, { timeout: 60000 });
 // the browser's own recorder on the game's 3D view (no HUD: just the match), 30 fps

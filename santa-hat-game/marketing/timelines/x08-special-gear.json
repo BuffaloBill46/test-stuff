@@ -1,0 +1,389 @@
+{
+ "name": "Special gear",
+ "clipVolume": 0.3,
+ "segments": [
+  {
+   "t": 0,
+   "dur": 2.2,
+   "fur": true,
+   "lines": [
+    {
+     "text": "Gear up.",
+     "y": 680,
+     "size": 160,
+     "color": "#f5f1e8",
+     "at": -1
+    },
+    {
+     "text": "Then grab the hat.",
+     "y": 880,
+     "size": 104,
+     "color": "#ff7a66",
+     "at": 0.6
+    },
+    {
+     "text": "SPECIAL GEAR",
+     "y": 1060,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#b9cdf2",
+     "at": 1
+    },
+    {
+     "text": "santahatgames.com",
+     "font": "body",
+     "size": 70,
+     "weight": 800,
+     "color": "#ffbe5c",
+     "y": 1300,
+     "at": -1
+    }
+   ]
+  },
+  {
+   "t": 2.2,
+   "dur": 2.3,
+   "src": "raw/gameplay-mode-gazebo.webm",
+   "from": 0.5,
+   "mute": true,
+   "zoom0": 1.15,
+   "zoom1": 1.05,
+   "fadeIn": 0.08,
+   "fadeOut": 0.12,
+   "vignette": 0.3,
+   "flash": 0.8
+  },
+  {
+   "t": 4.5,
+   "dur": 2.3,
+   "src": "raw/gameplay-mode-hothat.webm",
+   "from": 3,
+   "mute": true,
+   "zoom0": 1.15,
+   "zoom1": 1.05,
+   "fadeIn": 0.08,
+   "fadeOut": 0.12,
+   "vignette": 0.3
+  },
+  {
+   "t": 6.8,
+   "dur": 2.3,
+   "src": "raw/gameplay-c.webm",
+   "from": 1.5,
+   "mute": true,
+   "zoom0": 1.25,
+   "zoom1": 1.12,
+   "fadeIn": 0.08,
+   "fadeOut": 0.12,
+   "vignette": 0.3
+  },
+  {
+   "t": 9.1,
+   "dur": 2.3,
+   "src": "raw/gameplay-c.webm",
+   "from": 5,
+   "mute": true,
+   "zoom0": 1.25,
+   "zoom1": 1.12,
+   "fadeIn": 0.08,
+   "fadeOut": 0.12,
+   "vignette": 0.3
+  },
+  {
+   "t": 11.399999999999999,
+   "dur": 2.3,
+   "src": "raw/gameplay-mode-hothat.webm",
+   "from": 7.5,
+   "mute": true,
+   "zoom0": 1.15,
+   "zoom1": 1.05,
+   "fadeIn": 0.08,
+   "fadeOut": 0.12,
+   "vignette": 0.3
+  },
+  {
+   "t": 13.7,
+   "dur": 3.9,
+   "src": "raw/gameplay-c.webm",
+   "from": 9.5,
+   "mute": true,
+   "zoom0": 1.25,
+   "zoom1": 1.12,
+   "fadeIn": 0.08,
+   "fadeOut": 0.12,
+   "vignette": 0.3
+  }
+ ],
+ "overlays": [
+  {
+   "t": 2.3000000000000003,
+   "dur": 2.0999999999999996,
+   "band": [
+    170,
+    250
+   ],
+   "lines": [
+    {
+     "text": "KEVLAR VEST",
+     "y": 230,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#ffbe5c"
+    },
+    {
+     "text": "Takes 1 extra hit",
+     "y": 330,
+     "size": 112,
+     "color": "#f5f1e8"
+    }
+   ]
+  },
+  {
+   "t": 4.6,
+   "dur": 2.0999999999999996,
+   "band": [
+    170,
+    330
+   ],
+   "lines": [
+    {
+     "text": "SANTA COSTUME",
+     "y": 230,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#ffbe5c"
+    },
+    {
+     "text": "2 extra hits",
+     "y": 330,
+     "size": 112,
+     "color": "#f5f1e8"
+    },
+    {
+     "text": "level 3+",
+     "y": 440,
+     "font": "body",
+     "size": 54,
+     "weight": 700,
+     "color": "#b9cdf2"
+    }
+   ]
+  },
+  {
+   "t": 6.8999999999999995,
+   "dur": 2.0999999999999996,
+   "band": [
+    170,
+    250
+   ],
+   "lines": [
+    {
+     "text": "TOY SACK",
+     "y": 230,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#ffbe5c"
+    },
+    {
+     "text": "+50% snowballs held",
+     "y": 330,
+     "size": 92,
+     "color": "#f5f1e8"
+    }
+   ]
+  },
+  {
+   "t": 9.2,
+   "dur": 2.0999999999999996,
+   "band": [
+    170,
+    250
+   ],
+   "lines": [
+    {
+     "text": "ELF SHOES",
+     "y": 230,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#ffbe5c"
+    },
+    {
+     "text": "+25% speed",
+     "y": 330,
+     "size": 112,
+     "color": "#f5f1e8"
+    }
+   ]
+  },
+  {
+   "t": 11.499999999999998,
+   "dur": 2.0999999999999996,
+   "band": [
+    170,
+    250
+   ],
+   "lines": [
+    {
+     "text": "ELF HAT",
+     "y": 230,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#ffbe5c"
+    },
+    {
+     "text": "Half your size",
+     "y": 330,
+     "size": 112,
+     "color": "#f5f1e8"
+    }
+   ]
+  },
+  {
+   "t": 13.799999999999999,
+   "dur": 2.0999999999999996,
+   "band": [
+    170,
+    250
+   ],
+   "lines": [
+    {
+     "text": "GIFT BOX",
+     "y": 230,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#ffbe5c"
+    },
+    {
+     "text": "A surprise every match",
+     "y": 330,
+     "size": 92,
+     "color": "#f5f1e8"
+    }
+   ]
+  },
+  {
+   "t": 14.700000000000001,
+   "dur": 2.9,
+   "band": [
+    1360,
+    430
+   ],
+   "lines": [
+    {
+     "text": "From 50 cents",
+     "y": 1470,
+     "size": 128,
+     "color": "#f5f1e8"
+    },
+    {
+     "text": "Lasts 7 days · the Store",
+     "y": 1590,
+     "font": "body",
+     "size": 60,
+     "weight": 700,
+     "color": "#b9cdf2"
+    },
+    {
+     "text": "santahatgames.com",
+     "font": "body",
+     "size": 82,
+     "weight": 800,
+     "color": "#ffbe5c",
+     "y": 1700
+    }
+   ]
+  }
+ ],
+ "music": {
+  "bpm": 112,
+  "parts": [
+   {
+    "drone": true,
+    "t": 0,
+    "end": 2.4,
+    "note": 38,
+    "v": 0.12
+   },
+   {
+    "bells": true,
+    "t": 0.05,
+    "notes": [
+     74,
+     77,
+     81,
+     86
+    ],
+    "every": 1,
+    "v": 0.14
+   },
+   {
+    "roll": true,
+    "t": 1.2,
+    "end": 2.4
+   },
+   {
+    "boom": true,
+    "t": 2.4,
+    "v": 1
+   },
+   {
+    "groove": true,
+    "t": 2.4,
+    "end": 17.6,
+    "bass": [
+     38,
+     38,
+     41,
+     43,
+     38,
+     38,
+     45,
+     43
+    ]
+   },
+   {
+    "hit": true,
+    "t": 2.2,
+    "v": 0.5
+   },
+   {
+    "hit": true,
+    "t": 4.5,
+    "v": 0.55
+   },
+   {
+    "hit": true,
+    "t": 6.8,
+    "v": 0.6
+   },
+   {
+    "hit": true,
+    "t": 9.1,
+    "v": 0.65
+   },
+   {
+    "hit": true,
+    "t": 11.399999999999999,
+    "v": 0.7
+   },
+   {
+    "hit": true,
+    "t": 13.7,
+    "v": 0.75
+   },
+   {
+    "stab": true,
+    "t": 14.400000000000002,
+    "root": 50,
+    "v": 0.08
+   }
+  ]
+ }
+}

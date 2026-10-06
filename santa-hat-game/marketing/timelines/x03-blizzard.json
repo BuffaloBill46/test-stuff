@@ -1,0 +1,283 @@
+{
+ "name": "Blizzard (coming soon?)",
+ "clipVolume": 0.3,
+ "segments": [
+  {
+   "t": 0,
+   "dur": 2.4,
+   "fur": true,
+   "lines": [
+    {
+     "text": "BLIZZARD",
+     "y": 680,
+     "size": 160,
+     "color": "#f5f1e8",
+     "at": -1
+    },
+    {
+     "text": "Coming soon?",
+     "y": 880,
+     "size": 128,
+     "color": "#ff7a66",
+     "at": 0.6
+    },
+    {
+     "text": "A SNOWSTORM HITS THE SQUARE",
+     "y": 1060,
+     "font": "pixel",
+     "size": 34,
+     "weight": 700,
+     "color": "#b9cdf2",
+     "at": 1
+    },
+    {
+     "text": "santahatgames.com",
+     "font": "body",
+     "size": 70,
+     "weight": 800,
+     "color": "#ffbe5c",
+     "y": 1300,
+     "at": -1
+    }
+   ]
+  },
+  {
+   "t": 2.4,
+   "dur": 2.6,
+   "src": "raw/gameplay-mode-blizzard.webm",
+   "from": 1,
+   "mute": true,
+   "zoom0": 1.15,
+   "zoom1": 1.05,
+   "fadeIn": 0.08,
+   "fadeOut": 0.12,
+   "vignette": 0.3,
+   "flash": 0.8
+  },
+  {
+   "t": 5,
+   "dur": 2.6,
+   "src": "raw/gameplay-mode-blizzard.webm",
+   "from": 4.5,
+   "mute": true,
+   "zoom0": 1.15,
+   "zoom1": 1.05,
+   "fadeIn": 0.08,
+   "fadeOut": 0.12,
+   "vignette": 0.3
+  },
+  {
+   "t": 7.6,
+   "dur": 2.6,
+   "src": "raw/gameplay-mode-blizzard.webm",
+   "from": 8,
+   "mute": true,
+   "zoom0": 1.15,
+   "zoom1": 1.05,
+   "fadeIn": 0.08,
+   "fadeOut": 0.12,
+   "vignette": 0.3
+  },
+  {
+   "t": 10.200000000000001,
+   "dur": 4.2,
+   "src": "raw/gameplay-mode-blizzard.webm",
+   "from": 11,
+   "mute": true,
+   "zoom0": 1.15,
+   "zoom1": 1.05,
+   "fadeIn": 0.08,
+   "fadeOut": 0.12,
+   "vignette": 0.3
+  }
+ ],
+ "overlays": [
+  {
+   "t": 2.5,
+   "dur": 2.4,
+   "band": [
+    170,
+    250
+   ],
+   "lines": [
+    {
+     "text": "THE STORM",
+     "y": 230,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#ffbe5c"
+    },
+    {
+     "text": "You see less",
+     "y": 330,
+     "size": 112,
+     "color": "#f5f1e8"
+    }
+   ]
+  },
+  {
+   "t": 5.1,
+   "dur": 2.4,
+   "band": [
+    170,
+    330
+   ],
+   "lines": [
+    {
+     "text": "THE UPSIDE",
+     "y": 230,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#ffbe5c"
+    },
+    {
+     "text": "Snowballs refill",
+     "y": 330,
+     "size": 112,
+     "color": "#f5f1e8"
+    },
+    {
+     "text": "2x as fast",
+     "y": 440,
+     "font": "body",
+     "size": 54,
+     "weight": 700,
+     "color": "#b9cdf2"
+    }
+   ]
+  },
+  {
+   "t": 7.699999999999999,
+   "dur": 2.4,
+   "band": [
+    170,
+    250
+   ],
+   "lines": [
+    {
+     "text": "SO",
+     "y": 230,
+     "font": "pixel",
+     "size": 42,
+     "weight": 700,
+     "color": "#ffbe5c"
+    },
+    {
+     "text": "Throw blind. Throw a lot.",
+     "y": 330,
+     "size": 92,
+     "color": "#f5f1e8"
+    }
+   ]
+  },
+  {
+   "t": 11.5,
+   "dur": 2.9,
+   "band": [
+    1360,
+    430
+   ],
+   "lines": [
+    {
+     "text": "Switch it on?",
+     "y": 1470,
+     "size": 128,
+     "color": "#f5f1e8"
+    },
+    {
+     "text": "Reply YES and it goes live",
+     "y": 1590,
+     "font": "body",
+     "size": 60,
+     "weight": 700,
+     "color": "#b9cdf2"
+    },
+    {
+     "text": "santahatgames.com",
+     "font": "body",
+     "size": 82,
+     "weight": 800,
+     "color": "#ffbe5c",
+     "y": 1700
+    }
+   ]
+  }
+ ],
+ "music": {
+  "bpm": 112,
+  "parts": [
+   {
+    "drone": true,
+    "t": 0,
+    "end": 2.4,
+    "note": 38,
+    "v": 0.12
+   },
+   {
+    "bells": true,
+    "t": 0.05,
+    "notes": [
+     74,
+     77,
+     81,
+     86
+    ],
+    "every": 1,
+    "v": 0.14
+   },
+   {
+    "roll": true,
+    "t": 1.2,
+    "end": 2.4
+   },
+   {
+    "boom": true,
+    "t": 2.4,
+    "v": 1
+   },
+   {
+    "groove": true,
+    "t": 2.4,
+    "end": 14.4,
+    "bass": [
+     38,
+     38,
+     41,
+     43,
+     38,
+     38,
+     45,
+     43
+    ]
+   },
+   {
+    "hit": true,
+    "t": 2.4,
+    "v": 0.5
+   },
+   {
+    "hit": true,
+    "t": 5,
+    "v": 0.55
+   },
+   {
+    "hit": true,
+    "t": 7.6,
+    "v": 0.6
+   },
+   {
+    "hit": true,
+    "t": 10.200000000000001,
+    "v": 0.65
+   },
+   {
+    "stab": true,
+    "t": 11.2,
+    "root": 50,
+    "v": 0.08
+   }
+  ]
+ }
+}
