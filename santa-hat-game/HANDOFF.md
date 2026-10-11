@@ -175,6 +175,10 @@ internal names (#tab-games, data-tab="games", the #games link) so links and test
   (recoverUnreported), Telegram when it finds one. "Your last turns" read from the server (my-turns).
 - GitHub (21:00-21:30 UTC): Pages build stuck "queued" and a runner not acquired (GitHub's side); lock.test failed once on
   main, passed on the branch for the same commit (overloaded runner?) — watch it. The site may lag the servers until it clears.
+- BOOKS 2026-10-11 ~18:05 UTC: Cody added 18,708.43 SANTA to the Game pool (treasury 2,508.77 tx 9adtQ7yr…, his Phantom 1,737.14
+  tx 2Defiw8H…, a SOL swap 14,462.52 tx 4uYMP7uX…), all recorded (record-deposit) → books = wallet = 459,011.83 SANTA (≈$255).
+  Pool SOL now 0.048 (≈4,800 payouts of fees). Note: deposits to the pool's SANTA account (5jCbWui6…) don't show under the
+  wallet's own address: check that account too.
 - BOOKS (23:40 UTC): Cody swapped ~0.123 SOL into 42,030.81 SANTA inside the Game pool (tx 4u47gAD9…); recorded as a deposit
   (record-deposit, codyAdmin) → books 440,303.40 = wallet. Runs 116-122 = Cody playing (116-118 from the TREASURY wallet as
   "Player FiP8", 119-122 from Deputy), all paid. Wallets then: pool 440,303.40 SANTA + 0.122 SOL; lottery 9,519.71 + 0.0295 SOL;
