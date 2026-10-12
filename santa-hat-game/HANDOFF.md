@@ -175,6 +175,8 @@ internal names (#tab-games, data-tab="games", the #games link) so links and test
   (recoverUnreported), Telegram when it finds one. "Your last turns" read from the server (my-turns).
 - GitHub (21:00-21:30 UTC): Pages build stuck "queued" and a runner not acquired (GitHub's side); lock.test failed once on
   main, passed on the branch for the same commit (overloaded runner?) — watch it. The site may lag the servers until it clears.
+- ARCADE HIDDEN on the live site (2026-10-12, Cody: "I will turn it back on later"): mockups/tabs.js ARCADE_LIVE = false (no tab,
+  #games → Home, no jackpot bar); on for tests + test site; game server untouched. Back on: ARCADE_LIVE = true, deploy-pages.
 - BOOKS 2026-10-11 ~18:05 UTC: Cody added 18,708.43 SANTA to the Game pool (treasury 2,508.77 tx 9adtQ7yr…, his Phantom 1,737.14
   tx 2Defiw8H…, a SOL swap 14,462.52 tx 4uYMP7uX…), all recorded (record-deposit) → books = wallet = 459,011.83 SANTA (≈$255).
   Pool SOL now 0.048 (≈4,800 payouts of fees). Note: deposits to the pool's SANTA account (5jCbWui6…) don't show under the
