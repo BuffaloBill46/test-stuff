@@ -1,20 +1,20 @@
 // Site tabs: Play / Store / Avatar / Ranks, wallet sign-in, avatar editor, leaderboard.
-import { THREE, character, lights, toon, part, build, hatGeo, giftGeo, C, Sparks, TOON } from './kit.js?v=601a695cff';
-import { costumeShareButton, usePortraits } from './sharecard.js?v=601a695cff'; // share a costume (Cody 2026-10-04)
-import { BALL_COLOR, tracer, dropStreak } from './ballfx.js?v=601a695cff';
-import { mountHumanCheck } from './human.js?v=601a695cff';
-import { GEAR_SLOTS } from './catalog.js?v=601a695cff';
-import { shopBuy, resumeShop } from './shopui.js?v=601a695cff';
-import { forSale } from './shoprules.js?v=601a695cff';
-import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=601a695cff';
-import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable, COSTUMES, costumeItems, costumeWord, SEASONS } from './catalog.js?v=601a695cff';
-import { SPECIALS } from './specials.js?v=601a695cff';
-import { settingsReady, call } from './gameserver.js?v=601a695cff';
-import { TICKET_MAX } from './ranked.js?v=601a695cff';
-import { dayStart, weekStart } from './gameclock.js?v=601a695cff';
-import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js?v=601a695cff';
-import { refreshSeason } from './seasonui.js?v=601a695cff';
-import { THEMES, THEME_IDS } from './themes.js?v=601a695cff';
+import { THREE, character, lights, toon, part, build, hatGeo, giftGeo, C, Sparks, TOON } from './kit.js?v=fd271a1635';
+import { costumeShareButton, usePortraits } from './sharecard.js?v=fd271a1635'; // share a costume (Cody 2026-10-04)
+import { BALL_COLOR, tracer, dropStreak } from './ballfx.js?v=fd271a1635';
+import { mountHumanCheck } from './human.js?v=fd271a1635';
+import { GEAR_SLOTS } from './catalog.js?v=fd271a1635';
+import { shopBuy, resumeShop } from './shopui.js?v=fd271a1635';
+import { forSale } from './shoprules.js?v=fd271a1635';
+import { GEAR, statOf, NO_STACK_NOTE, WEAR_DAYS, RETIRED } from './gear.js?v=fd271a1635';
+import { ITEMS, BY_ID, SLOTS, SB_SLOTS, SLOT_NAMES, DEFAULT_AVATAR, cleanAvatar, usable, COSTUMES, costumeItems, costumeWord, SEASONS } from './catalog.js?v=fd271a1635';
+import { SPECIALS } from './specials.js?v=fd271a1635';
+import { settingsReady, call } from './gameserver.js?v=fd271a1635';
+import { TICKET_MAX } from './ranked.js?v=fd271a1635';
+import { dayStart, weekStart } from './gameclock.js?v=fd271a1635';
+import { levelInfo, progressLine, buyPrice, LEVELS } from './levels.js?v=fd271a1635';
+import { refreshSeason } from './seasonui.js?v=fd271a1635';
+import { THEMES, THEME_IDS } from './themes.js?v=fd271a1635';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
@@ -134,6 +134,13 @@ export async function refreshTickets(profile) {
 // careerOf(ids) is set by initTabs (the accounts' public lookup, so it works on the demo site too).
 let careerOf = null;
 const short1 = (raw) => { const n = (raw || 0) / 1e6; return n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K' : String(Math.round(n)); };
+// THE ARCADE SWITCH (Cody 2026-10-12: "make the arcade tab hidden for now. I will turn it back on later"): false hides the Arcade
+// tab, sends any link to it (#games, the pool jackpot bar) to Home, and keeps the jackpot bar quiet. Turn it back on: true.
+// (Only the page: the game server still answers, so payouts, a run someone started, and the unreported-payment check carry on.)
+export const ARCADE_LIVE = false; // <- the switch (the live site only)
+// on everywhere else: this computer and the tests, and the test site (test.santahatgames.com), where Arcade changes are tried
+const host = typeof location === 'undefined' ? '' : location.hostname;
+export const ARCADE_ON = ARCADE_LIVE || !/(^|\.)santahatgames\.com$|^buffalobill46\.github\.io$/.test(host) || host === 'test.santahatgames.com';
 export const aimText = (c) => (c ? `${c.thrown} thrown · ${c.hits} hit · ${c.thrown ? Math.min(100, Math.round((100 * c.hits) / c.thrown)) : 0}%` : '—');
 export const santaText = (c) => (c ? `${short1(c.spentRaw)} spent · ${short1(c.wonRaw)} won` : '—');
 // the Ranked board's two career lines, label first and in the readable font (Cody 2026-10-05: "on my phone it's hard to tell SANTA 0 used 0 won")
@@ -191,7 +198,7 @@ export function initTabs(app) {
 
   // ---------- tabs
   function show(tab) {
-    if (!['home', 'play', 'games', 'store', 'avatar', 'ranks'].includes(tab)) tab = 'home';
+    if (!['home', 'play', 'games', 'store', 'avatar', 'ranks'].includes(tab) || (tab === 'games' && !ARCADE_ON)) tab = 'home'; // the Arcade switched off: Home
     state.tab = tab;
     // Player Progress is ONE box (its ids are used everywhere): it sits at the top of Home or Play, whichever is open (Cody 2026-10-03)
     const pg = $('#progress'), page = $('#tab-' + tab);

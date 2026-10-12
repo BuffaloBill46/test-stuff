@@ -2,10 +2,10 @@
 // guess. The shares come from the rules files (the same numbers the server charges and checks); the live numbers from the
 // game server: SANTA burned so far ('burned', server/games.js) and, on Games, the Game pool and its jackpots (games.js fills
 // those as the pool moves). A number that can't be read shows "—", never a guess.
-import { call } from './gameserver.js?v=601a695cff';
-import { SHOP_BURN_BPS } from './shoprules.js?v=601a695cff';
-import { BURN_BPS as LOTTERY_BURN_BPS } from './lottery.js?v=601a695cff';
-import { GAME_BURN_BPS } from './credits.js?v=601a695cff';
+import { call } from './gameserver.js?v=fd271a1635';
+import { SHOP_BURN_BPS } from './shoprules.js?v=fd271a1635';
+import { BURN_BPS as LOTTERY_BURN_BPS } from './lottery.js?v=fd271a1635';
+import { GAME_BURN_BPS } from './credits.js?v=fd271a1635';
 
 const $ = (s) => document.querySelector(s);
 const pct = (bps) => +(bps / 100).toFixed(2) + '%';
