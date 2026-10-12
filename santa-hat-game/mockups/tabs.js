@@ -134,6 +134,13 @@ export async function refreshTickets(profile) {
 // careerOf(ids) is set by initTabs (the accounts' public lookup, so it works on the demo site too).
 let careerOf = null;
 const short1 = (raw) => { const n = (raw || 0) / 1e6; return n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K' : String(Math.round(n)); };
+// THE ARCADE SWITCH (Cody 2026-10-12: "make the arcade tab hidden for now. I will turn it back on later"): false hides the Arcade
+// tab, sends any link to it (#games, the pool jackpot bar) to Home, and keeps the jackpot bar quiet. Turn it back on: true.
+// (Only the page: the game server still answers, so payouts, a run someone started, and the unreported-payment check carry on.)
+export const ARCADE_LIVE = false; // <- the switch (the live site only)
+// on everywhere else: this computer and the tests, and the test site (test.santahatgames.com), where Arcade changes are tried
+const host = typeof location === 'undefined' ? '' : location.hostname;
+export const ARCADE_ON = ARCADE_LIVE || !/(^|\.)santahatgames\.com$|^buffalobill46\.github\.io$/.test(host) || host === 'test.santahatgames.com';
 export const aimText = (c) => (c ? `${c.thrown} thrown · ${c.hits} hit · ${c.thrown ? Math.min(100, Math.round((100 * c.hits) / c.thrown)) : 0}%` : '—');
 export const santaText = (c) => (c ? `${short1(c.spentRaw)} spent · ${short1(c.wonRaw)} won` : '—');
 // the Ranked board's two career lines, label first and in the readable font (Cody 2026-10-05: "on my phone it's hard to tell SANTA 0 used 0 won")
@@ -191,7 +198,7 @@ export function initTabs(app) {
 
   // ---------- tabs
   function show(tab) {
-    if (!['home', 'play', 'games', 'store', 'avatar', 'ranks'].includes(tab)) tab = 'home';
+    if (!['home', 'play', 'games', 'store', 'avatar', 'ranks'].includes(tab) || (tab === 'games' && !ARCADE_ON)) tab = 'home'; // the Arcade switched off: Home
     state.tab = tab;
     // Player Progress is ONE box (its ids are used everywhere): it sits at the top of Home or Play, whichever is open (Cody 2026-10-03)
     const pg = $('#progress'), page = $('#tab-' + tab);

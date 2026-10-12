@@ -6,7 +6,7 @@ import { buildPlaza, makeHat, shadowBlob } from './plaza.js';
 import { createSim, K, PHASES, constrain, KIND_OF, DROP_OF, PTS } from './sim.js';
 import { openRoom, accounts, findWallet, gamesBoard } from './net.js';
 import { SLOTS, SB_SLOTS, GEAR_SLOTS, BY_ID, DEFAULT_AVATAR, cleanAvatar, usable, ballRules, specialsIn } from './catalog.js';
-import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets } from './tabs.js';
+import { initTabs, avatarCharacter, renderProgress, thumbnail, refreshTickets, ARCADE_ON } from './tabs.js';
 import { initSeason, refreshSeason } from './seasonui.js';
 import { initMoneyStrips, refreshBurned } from './moneystrip.js';
 import { initWalletLines, refreshWallet } from './walletline.js';
@@ -1087,7 +1087,8 @@ call('weekly').then((r) => {
   for (const el of document.querySelectorAll('[data-weekly-name]')) el.textContent = VARIANTS[weeklyNow].name;
   for (const el of document.querySelectorAll('[data-weekly-rule]')) el.textContent = VARIANTS[weeklyNow].short;
 }).catch(() => {});
-initJackpotBar({ el: $('#jpbar'), inMatch: () => inRoom(), go: (id) => { tabs.show('games'); setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 700); } });
+if (!ARCADE_ON) $('#t-games')?.setAttribute('hidden', ''); // the Arcade switched off (tabs.js ARCADE_ON): no tab
+if (ARCADE_ON) initJackpotBar({ el: $('#jpbar'), inMatch: () => inRoom(), go: (id) => { tabs.show('games'); setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 700); } });
 renderProgress(app.profile); // the Play page's Player Progress box (guests: level 1; updated on sign-in)
 initLottery(); // the Store's Santa Lottery (lotteryui.js)
 $('#loading')?.remove();
